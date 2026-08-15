@@ -1,7 +1,39 @@
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { parse } from 'graphql';
-import { describe, expect, it, vi } from 'vitest';
-import { NODE_CAP, RESULT_BUDGET, STRING_CAP, compactLinearResult, linearApiTool, resolveRequest } from '../extensions/api';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  AUTO_SPILL_BYTES,
+  NODE_CAP,
+  RESULT_BUDGET,
+  STRING_CAP,
+  compactLinearResult,
+  linearApiTool,
+  routeLinearResult,
+  resolveRequest,
+} from '../extensions/api';
 import { operations } from '../extensions/operations';
+
+const originalArtifactRoot = process.env.PI_ARTIFACT_PROJECT_ROOT;
+const originalSpillBytes = process.env.LINEAR_SPILL_BYTES;
+const temporaryRoots: string[] = [];
+
+afterEach(async () => {
+  vi.unstubAllGlobals();
+  if (originalArtifactRoot === undefined) delete process.env.PI_ARTIFACT_PROJECT_ROOT;
+  else process.env.PI_ARTIFACT_PROJECT_ROOT = originalArtifactRoot;
+  if (originalSpillBytes === undefined) delete process.env.LINEAR_SPILL_BYTES;
+  else process.env.LINEAR_SPILL_BYTES = originalSpillBytes;
+  await Promise.all(temporaryRoots.splice(0).map((path) => rm(path, { recursive: true, force: true })));
+});
+
+async function artifactRoot(): Promise<string> {
+  const path = await mkdtemp(join(tmpdir(), 'pi-linear-'));
+  temporaryRoots.push(path);
+  process.env.PI_ARTIFACT_PROJECT_ROOT = path;
+  return path;
+}
 
 describe('named operations', () => {
   it('loads valid bundled operation documents', () => {
@@ -64,6 +96,79 @@ describe('compactLinearResult', () => {
   });
 });
 
+describe('result routing', () => {
+  it('auto-spills results above the default threshold', async () => {
+    expect(AUTO_SPILL_BYTES).toBe(8 * 1024);
+    await artifactRoot();
+    const result = await routeLinearResult({ body: 'x'.repeat(AUTO_SPILL_BYTES) }, { label: 'get_issue' });
+
+    expect(result).toMatchObject({ bytes: expect.any(Number), path: expect.stringContaining('/linear/raw/get_issue-') });
+    expect(result).not.toHaveProperty('data');
+  });
+
+  it('honors forced artifact and inline sinks', async () => {
+    await artifactRoot();
+    const forcedArtifact = await routeLinearResult({ ok: true }, { label: 'query', sink: 'artifact' });
+    const forcedInline = await routeLinearResult(
+      { body: 'x'.repeat(AUTO_SPILL_BYTES + 1) },
+      { label: 'query', sink: 'inline' },
+    );
+
+    expect(forcedArtifact).toHaveProperty('path');
+    expect(forcedInline).toHaveProperty('data');
+    expect(forcedInline).not.toHaveProperty('path');
+  });
+
+  it('indexes issue-like nodes and caps the index at 50 lines', async () => {
+    await artifactRoot();
+    const nodes = Array.from({ length: 52 }, (_, index) => ({
+      identifier: `AEO-${index + 1}`,
+      title: `Issue ${index + 1}`,
+      state: { name: 'Open' },
+    }));
+    const result = await routeLinearResult({ issues: { nodes } }, { label: 'query', sink: 'artifact' });
+
+    expect('index' in result).toBe(true);
+    if (!('index' in result)) throw new Error('Expected artifact result.');
+    expect(result.index).toHaveLength(51);
+    expect(result.index[0]).toBe('AEO-1 · Issue 1 · Open');
+    expect(result.index[50]).toBe('+2 more');
+  });
+
+  it('indexes top-level keys and connection node counts for non-issue results', async () => {
+    await artifactRoot();
+    const result = await routeLinearResult(
+      { teams: { nodes: [{ id: '1' }, { id: '2' }] }, viewer: { id: 'me' } },
+      { label: 'list_teams', sink: 'artifact' },
+    );
+
+    expect('index' in result).toBe(true);
+    if (!('index' in result)) throw new Error('Expected artifact result.');
+    expect(result.index).toEqual(['teams · 2 nodes', 'viewer']);
+  });
+
+  it('writes complete strings to the artifact without inline clipping', async () => {
+    await artifactRoot();
+    const body = 'x'.repeat(STRING_CAP + 792);
+    const result = await routeLinearResult({ comments: { nodes: [{ body }] } }, { label: 'get_issue', sink: 'artifact' });
+    expect('path' in result).toBe(true);
+    if (!('path' in result)) throw new Error('Expected artifact result.');
+    const file = JSON.parse(await readFile(result.path, 'utf8'));
+
+    expect(file.data.comments.nodes[0].body).toBe(body);
+    expect(result.meta).toEqual({ truncations: [], stringsClipped: 0 });
+    expect(Buffer.byteLength(JSON.stringify(file))).toBe(result.bytes);
+  });
+
+  it('uses LINEAR_SPILL_BYTES as the auto-spill threshold', async () => {
+    await artifactRoot();
+    process.env.LINEAR_SPILL_BYTES = '100';
+    const result = await routeLinearResult({ body: 'x'.repeat(100) }, { label: 'query' });
+
+    expect(result).toHaveProperty('path');
+  });
+});
+
 describe('read-only tool', () => {
   it('rejects a mutation before credential lookup or network access', async () => {
     const fetch = vi.fn();
@@ -78,6 +183,5 @@ describe('read-only tool', () => {
       { hasUI: false },
     )).rejects.toThrow('read-only mode');
     expect(fetch).not.toHaveBeenCalled();
-    vi.unstubAllGlobals();
   });
 });

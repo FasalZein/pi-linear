@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0
+
+- Added automatic artifact routing for results larger than 8KB.
+- Added `sink: "inline" | "artifact"` to override automatic routing.
+- Added artifact digests with paths, byte counts, indexes, and result metadata.
+- Kept artifact JSON complete while retaining v0.2 clipping for inline results.
+- Added the `LINEAR_SPILL_BYTES` threshold override.
+
 ## 0.2.0
 
 - Added bundled named operations and kept raw GraphQL as an escape hatch.

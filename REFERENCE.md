@@ -26,6 +26,10 @@ Example:
 }
 ```
 
+## Large results
+
+Results larger than 8KB automatically return an artifact digest. The digest includes the absolute file `path`, full `bytes`, a compact `index`, and `meta`. The JSON file contains the complete result. Use `sink: "artifact"` to force this route, or `sink: "inline"` to force v0.2 clipping rules.
+
 ## Raw GraphQL
 
 Use `query` when no bundled operation covers the task. Select only required fields. Add a small `first:` value to every connection. Select `pageInfo { hasNextPage endCursor }` when more pages can matter.
