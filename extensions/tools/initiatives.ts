@@ -1,0 +1,409 @@
+import { defineTool } from '@earendil-works/pi-coding-agent';
+import { Type } from 'typebox';
+import { withLinearAuth, linearGraphQL } from '../client';
+import {
+  PaginationParams,
+  paginationVariables,
+  filterParam,
+  sortParam,
+  inputParam,
+  INITIATIVE_SORT_KEYS,
+  stringEnum,
+  DateResolutionTypeSchema,
+  FrequencyResolutionTypeSchema,
+  DaySchema,
+  nullable,
+} from '../params';
+import { INITIATIVE_SELECTION } from '../selections';
+import type { JsonObject, LinearConnection } from '../types';
+import { compactObject, asObject, asObjectArray, asString } from '../util';
+import {
+  renderLinearArchiveInitiativeCall,
+  renderLinearDeleteInitiativeCall,
+  renderLinearGetInitiativeCall,
+  renderLinearInitiativeListCall,
+  renderLinearInitiativeListResult,
+  renderLinearInitiativeResult,
+  renderLinearInitiativeSuccessResult,
+  renderLinearSaveInitiativeCall,
+  renderLinearSaveInitiativeResult,
+  renderLinearUnarchiveInitiativeCall,
+} from '../renderers/initiatives';
+
+const INITIATIVE_CREATE_ONLY = ['id'] as const;
+const INITIATIVE_UPDATE_ONLY = [
+  'frequencyResolution',
+  'trashed',
+  'updateReminderFrequency',
+  'updateReminderFrequencyInWeeks',
+  'updateRemindersDay',
+  'updateRemindersHour',
+] as const;
+
+export function initiativeTools() {
+  return [
+    defineTool({
+      name: 'linear_list_initiatives',
+      label: 'Linear List Initiatives',
+      description: 'List initiatives. Supports full initiatives query args.',
+      parameters: Type.Object({
+        ...PaginationParams,
+        filter: filterParam(
+          'InitiativeFilter',
+          'Closed sets: status (Proposed, Planned, Active, Completed, Canceled); health (onTrack, atRisk, offTrack).',
+        ),
+        sort: sortParam('InitiativeSortInput', INITIATIVE_SORT_KEYS),
+      }),
+      renderCall: renderLinearInitiativeListCall,
+      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+        return withLinearAuth(ctx, signal, async (apiKey) => {
+          const variables = compactObject({
+            ...paginationVariables(params, 20),
+            filter: asObject(params.filter),
+            sort: asObjectArray(params.sort),
+          });
+
+          const data = await linearGraphQL<{
+            initiatives: LinearConnection<JsonObject>;
+          }>(
+            apiKey,
+            `query ListInitiatives(
+              $after: String
+              $before: String
+              $filter: InitiativeFilter
+              $first: Int
+              $includeArchived: Boolean
+              $last: Int
+              $orderBy: PaginationOrderBy
+              $sort: [InitiativeSortInput!]
+            ) {
+              initiatives(
+                after: $after
+                before: $before
+                filter: $filter
+                first: $first
+                includeArchived: $includeArchived
+                last: $last
+                orderBy: $orderBy
+                sort: $sort
+              ) {
+                nodes {
+                  ${INITIATIVE_SELECTION}
+                }
+                pageInfo {
+                  hasNextPage
+                  hasPreviousPage
+                  startCursor
+                  endCursor
+                }
+              }
+            }`,
+            variables,
+            signal,
+          );
+
+          const initiatives = data.initiatives.nodes;
+          const pageInfo = data.initiatives.pageInfo;
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ initiatives, pageInfo }, null, 2) }],
+            details: { initiatives, pageInfo },
+          };
+        });
+      },
+      renderResult: renderLinearInitiativeListResult,
+    }),
+    defineTool({
+      name: 'linear_get_initiative',
+      label: 'Linear Get Initiative',
+      description: 'Get a specific initiative by id.',
+      parameters: Type.Object({
+        initiativeId: Type.String(),
+      }),
+      renderCall: renderLinearGetInitiativeCall,
+      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+        return withLinearAuth(ctx, signal, async (apiKey) => {
+          const data = await linearGraphQL<{ initiative: JsonObject | null }>(
+            apiKey,
+            `query GetInitiative($id: String!) {
+              initiative(id: $id) {
+                ${INITIATIVE_SELECTION}
+              }
+            }`,
+            { id: params.initiativeId },
+            signal,
+          );
+
+          const initiative = data.initiative;
+          return {
+            content: [
+              { type: 'text', text: JSON.stringify({ initiative: initiative ?? null }, null, 2) },
+            ],
+            details: { initiative: initiative ?? null },
+          };
+        });
+      },
+      renderResult: renderLinearInitiativeResult('Initiative'),
+    }),
+    defineTool({
+      name: 'linear_save_initiative',
+      label: 'Linear Save Initiative',
+      description:
+        'Create or update an initiative. If initiativeId is provided, uses initiativeUpdate; otherwise uses initiativeCreate.',
+      parameters: Type.Object({
+        initiativeId: Type.Optional(Type.String({ description: 'Initiative id for update mode.' })),
+        color: Type.Optional(Type.String()),
+        content: Type.Optional(Type.String()),
+        description: Type.Optional(Type.String()),
+        icon: Type.Optional(Type.String()),
+        id: Type.Optional(
+          Type.String({ description: 'InitiativeCreateInput.id (create mode only).' }),
+        ),
+        name: Type.Optional(Type.String({ description: 'Required in create mode.' })),
+        ownerId: Type.Optional(Type.String()),
+        sortOrder: Type.Optional(Type.Number()),
+        status: Type.Optional(
+          stringEnum(['Proposed', 'Planned', 'Active', 'Completed', 'Canceled'], {
+            description: 'Initiative status.',
+          }),
+        ),
+        targetDate: nullable(
+          Type.String(),
+          'Target date (ISO date, YYYY-MM-DD). Set to null to clear.',
+        ),
+        targetDateResolution: Type.Optional(DateResolutionTypeSchema),
+        frequencyResolution: Type.Optional(FrequencyResolutionTypeSchema),
+        trashed: nullable(Type.Boolean(), 'Set true to trash, null to restore (update mode only).'),
+        updateReminderFrequency: Type.Optional(Type.Number({ description: 'Update mode only.' })),
+        updateReminderFrequencyInWeeks: Type.Optional(
+          Type.Number({ description: 'Update mode only.' }),
+        ),
+        updateRemindersDay: Type.Optional(DaySchema),
+        updateRemindersHour: Type.Optional(
+          Type.Integer({
+            minimum: 0,
+            maximum: 23,
+            description: 'Hour of day (0-23) for update reminders (update mode only).',
+          }),
+        ),
+        input: inputParam(
+          'InitiativeCreateInput (initiativeId omitted) or InitiativeUpdateInput (initiativeId provided)',
+          'Enum fields: status (Proposed, Planned, Active, Completed, Canceled); targetDateResolution (month, quarter, halfYear, year); update mode also: frequencyResolution (daily, weekly), updateRemindersDay (Sunday-Saturday).',
+        ),
+      }),
+      renderCall: renderLinearSaveInitiativeCall,
+      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+        return withLinearAuth(ctx, signal, async (apiKey) => {
+          const rawInput = asObject(params.input) || {};
+          const updateId = asString(params.initiativeId);
+
+          const invalidForMode = (
+            updateId ? INITIATIVE_CREATE_ONLY : INITIATIVE_UPDATE_ONLY
+          ).filter((key) => params[key] !== undefined || rawInput[key] !== undefined);
+          if (invalidForMode.length) {
+            throw new Error(
+              `Params not valid in ${updateId ? 'update' : 'create'} mode: ${invalidForMode.join(', ')}.`,
+            );
+          }
+
+          const input = {
+            ...rawInput,
+            ...compactObject({
+              color: params.color,
+              content: params.content,
+              description: params.description,
+              frequencyResolution: params.frequencyResolution,
+              icon: params.icon,
+              id: params.id,
+              name: params.name,
+              ownerId: params.ownerId,
+              sortOrder: params.sortOrder,
+              status: params.status,
+              targetDate: params.targetDate,
+              targetDateResolution: params.targetDateResolution,
+              trashed: params.trashed,
+              updateReminderFrequency: params.updateReminderFrequency,
+              updateReminderFrequencyInWeeks: params.updateReminderFrequencyInWeeks,
+              updateRemindersDay: params.updateRemindersDay,
+              updateRemindersHour: params.updateRemindersHour,
+            }),
+          };
+
+          if (updateId) {
+            if (Object.keys(input).length === 0) {
+              throw new Error('No initiative update fields were provided.');
+            }
+
+            const data = await linearGraphQL<{
+              initiativeUpdate: {
+                success: boolean;
+                initiative?: JsonObject | null;
+              };
+            }>(
+              apiKey,
+              `mutation UpdateInitiative($id: String!, $input: InitiativeUpdateInput!) {
+                initiativeUpdate(id: $id, input: $input) {
+                  success
+                  initiative {
+                    ${INITIATIVE_SELECTION}
+                  }
+                }
+              }`,
+              { id: updateId, input },
+              signal,
+            );
+
+            if (!data.initiativeUpdate.success || !data.initiativeUpdate.initiative) {
+              throw new Error('Linear initiativeUpdate did not succeed.');
+            }
+
+            const initiative = data.initiativeUpdate.initiative;
+            return {
+              content: [{ type: 'text', text: JSON.stringify({ initiative }, null, 2) }],
+              details: { initiative },
+            };
+          }
+
+          if (!asString(input.name)) {
+            throw new Error('Initiative name is required for initiativeCreate (name).');
+          }
+
+          const data = await linearGraphQL<{
+            initiativeCreate: {
+              success: boolean;
+              initiative?: JsonObject | null;
+            };
+          }>(
+            apiKey,
+            `mutation CreateInitiative($input: InitiativeCreateInput!) {
+              initiativeCreate(input: $input) {
+                success
+                initiative {
+                  ${INITIATIVE_SELECTION}
+                }
+              }
+            }`,
+            { input },
+            signal,
+          );
+
+          if (!data.initiativeCreate.success || !data.initiativeCreate.initiative) {
+            throw new Error('Linear initiativeCreate did not succeed.');
+          }
+
+          const initiative = data.initiativeCreate.initiative;
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ initiative }, null, 2) }],
+            details: { initiative },
+          };
+        });
+      },
+      renderResult: renderLinearSaveInitiativeResult,
+    }),
+    defineTool({
+      name: 'linear_delete_initiative',
+      label: 'Linear Delete Initiative',
+      description:
+        'Move an initiative to trash by id (restorable via linear_unarchive_initiative).',
+      parameters: Type.Object({
+        initiativeId: Type.String(),
+      }),
+      renderCall: renderLinearDeleteInitiativeCall,
+      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+        return withLinearAuth(ctx, signal, async (apiKey) => {
+          const data = await linearGraphQL<{
+            initiativeDelete: { success: boolean };
+          }>(
+            apiKey,
+            `mutation DeleteInitiative($id: String!) {
+              initiativeDelete(id: $id) {
+                success
+              }
+            }`,
+            { id: params.initiativeId },
+            signal,
+          );
+
+          if (!data.initiativeDelete.success) {
+            throw new Error('Linear initiativeDelete did not succeed.');
+          }
+
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ success: true }, null, 2) }],
+            details: { success: true },
+          };
+        });
+      },
+      renderResult: renderLinearInitiativeSuccessResult('Deleted'),
+    }),
+    defineTool({
+      name: 'linear_archive_initiative',
+      label: 'Linear Archive Initiative',
+      description: 'Archive an initiative by id.',
+      parameters: Type.Object({
+        initiativeId: Type.String(),
+      }),
+      renderCall: renderLinearArchiveInitiativeCall,
+      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+        return withLinearAuth(ctx, signal, async (apiKey) => {
+          const data = await linearGraphQL<{
+            initiativeArchive: { success: boolean };
+          }>(
+            apiKey,
+            `mutation ArchiveInitiative($id: String!) {
+              initiativeArchive(id: $id) {
+                success
+              }
+            }`,
+            { id: params.initiativeId },
+            signal,
+          );
+
+          if (!data.initiativeArchive.success) {
+            throw new Error('Linear initiativeArchive did not succeed.');
+          }
+
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ success: true }, null, 2) }],
+            details: { success: true },
+          };
+        });
+      },
+      renderResult: renderLinearInitiativeSuccessResult('Archived'),
+    }),
+    defineTool({
+      name: 'linear_unarchive_initiative',
+      label: 'Linear Unarchive Initiative',
+      description: 'Unarchive an initiative by id.',
+      parameters: Type.Object({
+        initiativeId: Type.String(),
+      }),
+      renderCall: renderLinearUnarchiveInitiativeCall,
+      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+        return withLinearAuth(ctx, signal, async (apiKey) => {
+          const data = await linearGraphQL<{
+            initiativeUnarchive: { success: boolean };
+          }>(
+            apiKey,
+            `mutation UnarchiveInitiative($id: String!) {
+              initiativeUnarchive(id: $id) {
+                success
+              }
+            }`,
+            { id: params.initiativeId },
+            signal,
+          );
+
+          if (!data.initiativeUnarchive.success) {
+            throw new Error('Linear initiativeUnarchive did not succeed.');
+          }
+
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ success: true }, null, 2) }],
+            details: { success: true },
+          };
+        });
+      },
+      renderResult: renderLinearInitiativeSuccessResult('Unarchived'),
+    }),
+  ];
+}

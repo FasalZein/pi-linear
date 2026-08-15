@@ -1,0 +1,462 @@
+import { defineTool } from '@earendil-works/pi-coding-agent';
+import { Type } from 'typebox';
+import { withLinearAuth, linearGraphQL } from '../client';
+import {
+  PaginationParams,
+  paginationVariables,
+  filterParam,
+  sortParam,
+  inputParam,
+  PROJECT_SORT_KEYS,
+  DateResolutionTypeSchema,
+  FrequencyResolutionTypeSchema,
+  DaySchema,
+  nullable,
+} from '../params';
+import { PROJECT_DETAIL_SELECTION, PROJECT_LIST_SELECTION } from '../selections';
+import type { JsonObject, LinearConnection } from '../types';
+import { compactObject, asObject, asObjectArray, asString } from '../util';
+import {
+  renderLinearArchiveProjectCall,
+  renderLinearDeleteProjectCall,
+  renderLinearGetProjectCall,
+  renderLinearProjectListCall,
+  renderLinearProjectListResult,
+  renderLinearProjectResult,
+  renderLinearProjectSuccessResult,
+  renderLinearSaveProjectCall,
+  renderLinearSaveProjectResult,
+  renderLinearUnarchiveProjectCall,
+} from '../renderers/projects';
+
+const PROJECT_CREATE_ONLY = ['id', 'templateId', 'useDefaultTemplate', 'slackChannelName'] as const;
+const PROJECT_UPDATE_ONLY = [
+  'canceledAt',
+  'completedAt',
+  'frequencyResolution',
+  'projectUpdateRemindersPausedUntilAt',
+  'slackIssueComments',
+  'slackIssueStatuses',
+  'slackNewIssue',
+  'trashed',
+  'updateReminderFrequency',
+  'updateReminderFrequencyInWeeks',
+  'updateRemindersDay',
+  'updateRemindersHour',
+] as const;
+
+export function projectTools() {
+  return [
+    defineTool({
+      name: 'linear_list_projects',
+      label: 'Linear List Projects',
+      description: 'List projects. Supports full projects query args and raw filter/sort.',
+      parameters: Type.Object({
+        ...PaginationParams,
+        filter: filterParam(
+          'ProjectFilter',
+          'Closed sets: status.type (backlog, planned, started, paused, completed, canceled); health (onTrack, atRisk, offTrack); priority (0-4).',
+        ),
+        sort: sortParam('ProjectSortInput', PROJECT_SORT_KEYS),
+      }),
+      renderCall: renderLinearProjectListCall,
+      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+        return withLinearAuth(ctx, signal, async (apiKey) => {
+          const variables = compactObject({
+            ...paginationVariables(params, 20),
+            filter: asObject(params.filter),
+            sort: asObjectArray(params.sort),
+          });
+
+          const data = await linearGraphQL<{
+            projects: LinearConnection<JsonObject>;
+          }>(
+            apiKey,
+            `query ListProjects(
+              $after: String
+              $before: String
+              $filter: ProjectFilter
+              $first: Int
+              $includeArchived: Boolean
+              $last: Int
+              $orderBy: PaginationOrderBy
+              $sort: [ProjectSortInput!]
+            ) {
+              projects(
+                after: $after
+                before: $before
+                filter: $filter
+                first: $first
+                includeArchived: $includeArchived
+                last: $last
+                orderBy: $orderBy
+                sort: $sort
+              ) {
+                nodes {
+                  ${PROJECT_LIST_SELECTION}
+                }
+                pageInfo {
+                  hasNextPage
+                  hasPreviousPage
+                  startCursor
+                  endCursor
+                }
+              }
+            }`,
+            variables,
+            signal,
+          );
+
+          const projects = data.projects.nodes;
+          const pageInfo = data.projects.pageInfo;
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ projects, pageInfo }, null, 2) }],
+            details: { projects, pageInfo },
+          };
+        });
+      },
+      renderResult: renderLinearProjectListResult,
+    }),
+    defineTool({
+      name: 'linear_get_project',
+      label: 'Linear Get Project',
+      description: 'Get a specific project by id.',
+      parameters: Type.Object({
+        projectId: Type.String({ description: 'Project id.' }),
+      }),
+      renderCall: renderLinearGetProjectCall,
+      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+        return withLinearAuth(ctx, signal, async (apiKey) => {
+          const data = await linearGraphQL<{ project: JsonObject | null }>(
+            apiKey,
+            `query GetProject($id: String!) {
+              project(id: $id) {
+                ${PROJECT_DETAIL_SELECTION}
+              }
+            }`,
+            { id: params.projectId },
+            signal,
+          );
+
+          const project = data.project;
+          return {
+            content: [
+              { type: 'text', text: JSON.stringify({ project: project ?? null }, null, 2) },
+            ],
+            details: { project: project ?? null },
+          };
+        });
+      },
+      renderResult: renderLinearProjectResult('Project'),
+    }),
+    defineTool({
+      name: 'linear_save_project',
+      label: 'Linear Save Project',
+      description:
+        'Create or update a project. Pass projectId to update an existing project; omit it to create. The id param is only for pre-setting a UUID on create.',
+      parameters: Type.Object({
+        projectId: Type.Optional(Type.String({ description: 'Project id for update mode.' })),
+        id: Type.Optional(
+          Type.String({ description: 'ProjectCreateInput.id (create mode only).' }),
+        ),
+        name: Type.Optional(Type.String({ description: 'Required in create mode.' })),
+        description: Type.Optional(Type.String()),
+        content: Type.Optional(Type.String()),
+        color: Type.Optional(Type.String()),
+        icon: Type.Optional(Type.String()),
+        convertedFromIssueId: Type.Optional(Type.String()),
+        labelIds: Type.Optional(Type.Array(Type.String())),
+        lastAppliedTemplateId: Type.Optional(Type.String()),
+        leadId: Type.Optional(Type.String()),
+        memberIds: Type.Optional(Type.Array(Type.String())),
+        priority: Type.Optional(
+          Type.Integer({
+            minimum: 0,
+            maximum: 4,
+            description: 'Priority (0 = No priority, 1 = Urgent, 2 = High, 3 = Medium, 4 = Low).',
+          }),
+        ),
+        prioritySortOrder: Type.Optional(Type.Number()),
+        sortOrder: Type.Optional(Type.Number()),
+        startDate: Type.Optional(Type.String({ description: 'ISO date (YYYY-MM-DD).' })),
+        startDateResolution: Type.Optional(DateResolutionTypeSchema),
+        statusId: Type.Optional(Type.String()),
+        targetDate: Type.Optional(Type.String({ description: 'ISO date (YYYY-MM-DD).' })),
+        targetDateResolution: Type.Optional(DateResolutionTypeSchema),
+        teamIds: Type.Optional(
+          Type.Array(Type.String(), { description: 'Required in create mode (non-empty).' }),
+        ),
+        templateId: Type.Optional(Type.String({ description: 'Create mode only.' })),
+        useDefaultTemplate: Type.Optional(Type.Boolean({ description: 'Create mode only.' })),
+        canceledAt: Type.Optional(
+          Type.String({ description: 'ISO-8601 datetime (update mode only).' }),
+        ),
+        completedAt: Type.Optional(
+          Type.String({ description: 'ISO-8601 datetime (update mode only).' }),
+        ),
+        frequencyResolution: Type.Optional(FrequencyResolutionTypeSchema),
+        projectUpdateRemindersPausedUntilAt: nullable(
+          Type.String(),
+          'Set to null to resume reminders (update mode only).',
+        ),
+        slackIssueComments: Type.Optional(Type.Boolean({ description: 'Update mode only.' })),
+        slackIssueStatuses: Type.Optional(Type.Boolean({ description: 'Update mode only.' })),
+        slackNewIssue: Type.Optional(Type.Boolean({ description: 'Update mode only.' })),
+        trashed: nullable(Type.Boolean(), 'Set true to trash, null to restore (update mode only).'),
+        updateReminderFrequency: Type.Optional(Type.Number({ description: 'Update mode only.' })),
+        updateReminderFrequencyInWeeks: Type.Optional(
+          Type.Number({ description: 'Update mode only.' }),
+        ),
+        updateRemindersDay: Type.Optional(DaySchema),
+        updateRemindersHour: Type.Optional(
+          Type.Integer({
+            minimum: 0,
+            maximum: 23,
+            description: 'Hour of day (0-23) for update reminders (update mode only).',
+          }),
+        ),
+        slackChannelName: Type.Optional(
+          Type.String({
+            description: 'Full Slack channel name to create/connect (create mode only).',
+          }),
+        ),
+        input: inputParam(
+          'ProjectCreateInput (projectId omitted) or ProjectUpdateInput (projectId provided)',
+          'Enum fields: startDateResolution/targetDateResolution (month, quarter, halfYear, year); update mode also: frequencyResolution (daily, weekly), updateRemindersDay (Sunday-Saturday).',
+        ),
+      }),
+      renderCall: renderLinearSaveProjectCall,
+      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+        return withLinearAuth(ctx, signal, async (apiKey) => {
+          const rawInput = asObject(params.input) || {};
+          const updateId = asString(params.projectId);
+
+          const invalidForMode = (updateId ? PROJECT_CREATE_ONLY : PROJECT_UPDATE_ONLY).filter(
+            (key) => params[key] !== undefined || rawInput[key] !== undefined,
+          );
+          if (invalidForMode.length) {
+            throw new Error(
+              `Params not valid in ${updateId ? 'update' : 'create'} mode: ${invalidForMode.join(', ')}.`,
+            );
+          }
+
+          const input = {
+            ...rawInput,
+            ...compactObject({
+              canceledAt: params.canceledAt,
+              color: params.color,
+              completedAt: params.completedAt,
+              content: params.content,
+              convertedFromIssueId: params.convertedFromIssueId,
+              description: params.description,
+              frequencyResolution: params.frequencyResolution,
+              icon: params.icon,
+              id: params.id,
+              labelIds: params.labelIds,
+              lastAppliedTemplateId: params.lastAppliedTemplateId,
+              leadId: params.leadId,
+              memberIds: params.memberIds,
+              name: params.name,
+              priority: params.priority,
+              prioritySortOrder: params.prioritySortOrder,
+              projectUpdateRemindersPausedUntilAt: params.projectUpdateRemindersPausedUntilAt,
+              slackIssueComments: params.slackIssueComments,
+              slackIssueStatuses: params.slackIssueStatuses,
+              slackNewIssue: params.slackNewIssue,
+              sortOrder: params.sortOrder,
+              startDate: params.startDate,
+              startDateResolution: params.startDateResolution,
+              statusId: params.statusId,
+              targetDate: params.targetDate,
+              targetDateResolution: params.targetDateResolution,
+              teamIds: params.teamIds,
+              templateId: params.templateId,
+              trashed: params.trashed,
+              updateReminderFrequency: params.updateReminderFrequency,
+              updateReminderFrequencyInWeeks: params.updateReminderFrequencyInWeeks,
+              updateRemindersDay: params.updateRemindersDay,
+              updateRemindersHour: params.updateRemindersHour,
+              useDefaultTemplate: params.useDefaultTemplate,
+            }),
+          };
+
+          if (updateId) {
+            if (Object.keys(input).length === 0) {
+              throw new Error('No project update fields were provided.');
+            }
+
+            const data = await linearGraphQL<{
+              projectUpdate: { success: boolean; project?: JsonObject | null };
+            }>(
+              apiKey,
+              `mutation UpdateProject($id: String!, $input: ProjectUpdateInput!) {
+                projectUpdate(id: $id, input: $input) {
+                  success
+                  project {
+                    ${PROJECT_DETAIL_SELECTION}
+                  }
+                }
+              }`,
+              { id: updateId, input },
+              signal,
+            );
+
+            if (!data.projectUpdate.success || !data.projectUpdate.project) {
+              throw new Error('Linear projectUpdate did not succeed.');
+            }
+
+            const project = data.projectUpdate.project;
+            return {
+              content: [{ type: 'text', text: JSON.stringify({ project }, null, 2) }],
+              details: { project },
+            };
+          }
+
+          if (!asString(input.name)) {
+            throw new Error('Project name is required for projectCreate (name).');
+          }
+
+          if (!Array.isArray(input.teamIds) || input.teamIds.length === 0) {
+            throw new Error('teamIds is required for projectCreate and must be a non-empty array.');
+          }
+
+          const data = await linearGraphQL<{
+            projectCreate: { success: boolean; project?: JsonObject | null };
+          }>(
+            apiKey,
+            `mutation CreateProject($input: ProjectCreateInput!, $slackChannelName: String) {
+              projectCreate(input: $input, slackChannelName: $slackChannelName) {
+                success
+                project {
+                  ${PROJECT_DETAIL_SELECTION}
+                }
+              }
+            }`,
+            {
+              input,
+              slackChannelName: params.slackChannelName,
+            },
+            signal,
+          );
+
+          if (!data.projectCreate.success || !data.projectCreate.project) {
+            throw new Error('Linear projectCreate did not succeed.');
+          }
+
+          const project = data.projectCreate.project;
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ project }, null, 2) }],
+            details: { project },
+          };
+        });
+      },
+      renderResult: renderLinearSaveProjectResult,
+    }),
+    defineTool({
+      name: 'linear_delete_project',
+      label: 'Linear Delete Project',
+      description: 'Move a project to trash by id (restorable via linear_unarchive_project).',
+      parameters: Type.Object({
+        projectId: Type.String(),
+      }),
+      renderCall: renderLinearDeleteProjectCall,
+      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+        return withLinearAuth(ctx, signal, async (apiKey) => {
+          const data = await linearGraphQL<{
+            projectDelete: { success: boolean };
+          }>(
+            apiKey,
+            `mutation DeleteProject($id: String!) {
+              projectDelete(id: $id) {
+                success
+              }
+            }`,
+            { id: params.projectId },
+            signal,
+          );
+
+          if (!data.projectDelete.success) {
+            throw new Error('Linear projectDelete did not succeed.');
+          }
+
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ success: true }, null, 2) }],
+            details: { success: true },
+          };
+        });
+      },
+      renderResult: renderLinearProjectSuccessResult('Deleted'),
+    }),
+    defineTool({
+      name: 'linear_archive_project',
+      label: 'Linear Archive Project',
+      description: 'Archive a project by id. Use trash=true to trash instead.',
+      parameters: Type.Object({
+        projectId: Type.String(),
+        trash: Type.Optional(Type.Boolean()),
+      }),
+      renderCall: renderLinearArchiveProjectCall,
+      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+        return withLinearAuth(ctx, signal, async (apiKey) => {
+          const data = await linearGraphQL<{
+            projectArchive: { success: boolean };
+          }>(
+            apiKey,
+            `mutation ArchiveProject($id: String!, $trash: Boolean) {
+              projectArchive(id: $id, trash: $trash) {
+                success
+              }
+            }`,
+            { id: params.projectId, trash: params.trash },
+            signal,
+          );
+
+          if (!data.projectArchive.success) {
+            throw new Error('Linear projectArchive did not succeed.');
+          }
+
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ success: true }, null, 2) }],
+            details: { success: true },
+          };
+        });
+      },
+      renderResult: renderLinearProjectSuccessResult('Archived'),
+    }),
+    defineTool({
+      name: 'linear_unarchive_project',
+      label: 'Linear Unarchive Project',
+      description: 'Unarchive a project by id.',
+      parameters: Type.Object({
+        projectId: Type.String(),
+      }),
+      renderCall: renderLinearUnarchiveProjectCall,
+      async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+        return withLinearAuth(ctx, signal, async (apiKey) => {
+          const data = await linearGraphQL<{
+            projectUnarchive: { success: boolean };
+          }>(
+            apiKey,
+            `mutation UnarchiveProject($id: String!) {
+              projectUnarchive(id: $id) {
+                success
+              }
+            }`,
+            { id: params.projectId },
+            signal,
+          );
+
+          if (!data.projectUnarchive.success) {
+            throw new Error('Linear projectUnarchive did not succeed.');
+          }
+
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ success: true }, null, 2) }],
+            details: { success: true },
+          };
+        });
+      },
+      renderResult: renderLinearProjectSuccessResult('Unarchived'),
+    }),
+  ];
+}
