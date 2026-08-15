@@ -146,6 +146,7 @@ describe('linearGraphQL error surfacing', () => {
         ok: response.ok,
         status: response.status,
         statusText: response.statusText,
+        headers: new Headers(),
         json: async () => {
           if (response.body === undefined) throw new Error('not json');
           return response.body;
@@ -202,6 +203,35 @@ describe('linearGraphQL error surfacing', () => {
     await expect(linearGraphQL('key', 'query { viewer { id } }', {})).rejects.toThrow(
       'Linear API request failed: 502 Bad Gateway',
     );
+  });
+
+  it('wraps fetch failures in a stable network error', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('socket closed'); }));
+    await expect(linearGraphQL('key', 'query { viewer { id } }')).rejects.toThrow(
+      'Linear network error: socket closed',
+    );
+  });
+
+  it('retries one 429 and honors Retry-After', async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        statusText: 'Too Many Requests',
+        headers: new Headers({ 'Retry-After': '0' }),
+        json: async () => ({}),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        headers: new Headers(),
+        json: async () => ({ data: { viewer: { id: 'user-1' } } }),
+      });
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(linearGraphQL('key', 'query { viewer { id } }')).resolves.toEqual({ viewer: { id: 'user-1' } });
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 });
 

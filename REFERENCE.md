@@ -1,134 +1,69 @@
-# Linear GraphQL reference
+# Linear API reference
 
-Pass a fenced GraphQL document as `query` and the adjacent JSON object as `variables` to `linear_api`.
-Use IDs returned by the read queries in mutations. Ask before every mutation.
+Call `linear_api` with exactly one of `operation` or `query`. Pass operation inputs through `variables`. Use IDs from read operations in mutations.
 
-## Get an issue by identifier
+## Operations catalog
 
-```graphql
-query GetIssueByIdentifier($teamKey: String!, $number: Float!) {
-  issues(first: 1, filter: { team: { key: { eq: $teamKey } }, number: { eq: $number } }) {
-    nodes { id identifier title description state { id name type } team { id key name } }
-  }
+| Operation | Variables | Return shape | Purpose |
+| --- | --- | --- | --- |
+| `get_issue` | `{ teamKey: String!, number: Float! }` | `issues.nodes[]` with issue fields, comments, relations, project, state, and labels | Build a complete ticket brief. |
+| `search_issues` | `{ term: String!, after?: String }` | `searchIssues.nodes[]`, `pageInfo` | Search issues in pages of 10. |
+| `create_issue` | `{ input: IssueCreateInput! }` | `issueCreate { success, issue }` | Create an issue. |
+| `update_issue_state` | `{ issueId: String!, stateId: String! }` | `issueUpdate { success, issue }` | Move an issue to a workflow state. |
+| `add_comment` | `{ issueId: String!, body: String! }` | `commentCreate { success, comment }` | Add a comment. |
+| `create_relation` | `{ issueId: String!, relatedIssueId: String!, type: IssueRelationType! }` | `issueRelationCreate { success, issueRelation }` | Relate two issues. |
+| `list_teams` | `{ after?: String }` | `teams.nodes[]` with nested states and labels, `pageInfo` | Discover team, state, and label IDs. |
+| `list_workflow_states` | `{ after?: String }` | `workflowStates.nodes[]`, `pageInfo` | Discover workflow state IDs. |
+| `list_issue_labels` | `{ after?: String }` | `issueLabels.nodes[]`, `pageInfo` | Discover label IDs. |
+| `list_projects` | `{ after?: String }` | `projects.nodes[]`, `pageInfo` | Discover project IDs and status. |
+
+Example:
+
+```json
+{
+  "operation": "get_issue",
+  "variables": { "teamKey": "AEO", "number": 236 }
 }
 ```
 
+## Raw GraphQL
+
+Use `query` when no bundled operation covers the task. Select only required fields. Add a small `first:` value to every connection. Select `pageInfo { hasNextPage endCursor }` when more pages can matter.
+
+The default entry allows only the documented safe mutation fields. The read-only entry rejects every mutation. Ask the user before a mutation even when the runtime allows it.
+
 ```json
-{ "teamKey": "AEO", "number": 236 }
+{
+  "query": "query Viewer { viewer { id name } }",
+  "variables": {}
+}
 ```
 
-## Search issues
+## Cursor pagination recipe
 
-Keep `first: 10` to control context size.
+1. Call an operation without `after`, or set `after` to `null`.
+2. Read `pageInfo.hasNextPage` and `pageInfo.endCursor`.
+3. If `hasNextPage` is true, call the same operation again.
+4. Keep all other variables unchanged.
+5. Set `after` to the previous `endCursor`.
+6. Stop when `hasNextPage` is false.
+
+Example next page:
+
+```json
+{
+  "operation": "search_issues",
+  "variables": { "term": "authentication", "after": "CURSOR_FROM_PAGE_INFO" }
+}
+```
+
+For a raw query, declare `$after: String` and pass it to the connection:
 
 ```graphql
-query SearchIssues($term: String!) {
-  searchIssues(term: $term, first: 10) {
-    nodes { id identifier title state { id name type } assignee { id name } }
+query MoreIssues($after: String) {
+  issues(first: 10, after: $after) {
+    nodes { id identifier title }
     pageInfo { hasNextPage endCursor }
   }
 }
-```
-
-```json
-{ "term": "authentication" }
-```
-
-## Create an issue
-
-Get `teamId` from **List teams, states, and labels** first.
-
-```graphql
-mutation CreateIssue($input: IssueCreateInput!) {
-  issueCreate(input: $input) {
-    success
-    issue { id identifier title state { id name } }
-  }
-}
-```
-
-```json
-{ "input": { "teamId": "TEAM_ID", "title": "Issue title", "description": "Markdown description" } }
-```
-
-## Update an issue state
-
-Get `issueId` from **Get an issue by identifier**. Get `stateId` from **List teams, states, and labels**.
-
-```graphql
-mutation UpdateIssueState($issueId: String!, $stateId: String!) {
-  issueUpdate(id: $issueId, input: { stateId: $stateId }) {
-    success
-    issue { id identifier title state { id name type } }
-  }
-}
-```
-
-```json
-{ "issueId": "ISSUE_ID", "stateId": "STATE_ID" }
-```
-
-## Add a comment
-
-Get `issueId` from **Get an issue by identifier**.
-
-```graphql
-mutation AddComment($issueId: String!, $body: String!) {
-  commentCreate(input: { issueId: $issueId, body: $body }) {
-    success
-    comment { id body createdAt user { id name } }
-  }
-}
-```
-
-```json
-{ "issueId": "ISSUE_ID", "body": "Comment text" }
-```
-
-## List teams, states, and labels
-
-```graphql
-query ListLinearReferenceData {
-  teams(first: 50) {
-    nodes {
-      id
-      key
-      name
-      states(first: 50) { nodes { id name type } }
-      labels(first: 50) { nodes { id name color } }
-    }
-  }
-}
-```
-
-```json
-{}
-```
-
-## List all workflow states
-
-```graphql
-query ListWorkflowStates {
-  workflowStates(first: 50) {
-    nodes { id name type color team { id key name } }
-  }
-}
-```
-
-```json
-{}
-```
-
-## List all issue labels
-
-```graphql
-query ListIssueLabels {
-  issueLabels(first: 50) {
-    nodes { id name color description team { id key name } }
-  }
-}
-```
-
-```json
-{}
 ```

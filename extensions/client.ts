@@ -171,18 +171,36 @@ function errorText(error: LinearGraphQLError): string {
   return asString(error.message) ?? asString(extensions.type) ?? asString(extensions.code) ?? 'Unknown Linear GraphQL error';
 }
 
+function retryDelay(response: Response): number {
+  const value = response.headers.get('Retry-After');
+  if (!value) return 3_000;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1_000);
+  return Math.max(0, Date.parse(value) - Date.now());
+}
+
 export async function linearGraphQL<TData>(
   apiKey: string,
   query: string,
   variables: Record<string, unknown> = {},
   signal?: AbortSignal,
 ): Promise<TData> {
-  const response = await fetch(LINEAR_GRAPHQL_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: apiKey },
-    body: JSON.stringify({ query, variables }),
-    signal,
-  });
+  let response: Response;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      response = await fetch(LINEAR_GRAPHQL_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: apiKey },
+        body: JSON.stringify({ query, variables }),
+        signal,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Linear network error: ${message}`);
+    }
+    if (response.status !== 429 || attempt === 1) break;
+    await new Promise((resolve) => setTimeout(resolve, retryDelay(response)));
+  }
 
   let body: { data?: TData; errors?: LinearGraphQLError[] } = {};
   try {

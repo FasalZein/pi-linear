@@ -11,6 +11,7 @@ import {
   switchWorkspace,
 } from './client';
 import { linearApiTool } from './api';
+import type { MutationMode } from './safety';
 
 function text(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
@@ -18,7 +19,7 @@ function text(value: unknown): string | undefined {
   return trimmed || undefined;
 }
 
-export default function linearExtension(pi: ExtensionAPI) {
+export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = 'allowlist') {
   pi.registerCommand('linear-auth', {
     description: 'Manage Linear auth: /linear-auth [add|remove|switch|prefer|status]',
     handler: async (args, ctx) => {
@@ -94,5 +95,9 @@ export default function linearExtension(pi: ExtensionAPI) {
   });
 
   const referencePath = fileURLToPath(new URL('../REFERENCE.md', import.meta.url));
-  pi.registerTool(linearApiTool(referencePath));
+  pi.registerTool(linearApiTool(referencePath, mode));
+}
+
+export default function linearExtension(pi: ExtensionAPI) {
+  registerLinearExtension(pi);
 }
