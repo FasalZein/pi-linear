@@ -1,16 +1,11 @@
 {
-  "name": "@alasano/pi-linear",
-  "version": "0.5.0",
-  "description": "Linear integration for pi with 64+ tools, multi-workspace auth, and per-tool settings",
+  "name": "@tothemoon/pi-linear-lite",
+  "version": "0.1.0",
+  "description": "Code-mode Linear GraphQL extension for pi with one tool and multi-workspace auth",
   "keywords": [
     "pi-package"
   ],
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/alasano/house-of-pi",
-    "directory": "packages/pi-linear"
-  },
   "type": "module",
   "scripts": {
     "test": "vitest run",
@@ -19,22 +14,20 @@
   "pi": {
     "extensions": [
       "./extensions"
-    ],
-    "image": "https://raw.githubusercontent.com/alasano/house-of-pi/master/packages/pi-linear/assets/screenshot.png"
+    ]
   },
   "files": [
     "extensions",
-    "assets",
+    "REFERENCE.md",
     "README.md"
   ],
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": ">=0.79.9",
-    "@earendil-works/pi-tui": ">=0.79.9",
     "typebox": ">=1.1.38"
   },
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "^0.84.1",
-    "@earendil-works/pi-tui": "^0.84.1",
-    "typebox": "^1.1.38"
+    "typebox": "^1.1.38",
+    "vitest": "^3.2.4"
   }
 }

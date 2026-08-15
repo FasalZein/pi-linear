@@ -227,6 +227,23 @@ describe('resolveApiKey precedence', () => {
     expect(result).toEqual({ apiKey: WORKSPACE_KEY, source: 'workspace' });
   });
 
+  it('uses a requested workspace without changing the active workspace', async () => {
+    await writeCredentials(
+      credsWith({ workspaces: { 'my-workspace': { apiKey: WORKSPACE_KEY }, other: { apiKey: 'other-key' } } }),
+    );
+
+    const result = await resolveApiKey(fakeCtx(), { promptIfMissing: false, workspace: 'other' });
+    expect(result).toEqual({ apiKey: 'other-key', source: 'workspace' });
+    expect((await readCredentials()).activeWorkspace).toBe('my-workspace');
+  });
+
+  it('rejects an unknown requested workspace', async () => {
+    await writeCredentials(credsWith());
+    await expect(
+      resolveApiKey(fakeCtx(), { promptIfMissing: false, workspace: 'missing' }),
+    ).rejects.toThrow('does not exist');
+  });
+
   it('uses env var first when auth preference is env', async () => {
     await writeCredentials(credsWith({ authPreference: 'env' }));
     process.env[ENV_KEY] = ENV_VAR_KEY;
