@@ -31,7 +31,19 @@ describe('mutation detection and gating', () => {
   it('rejects every mutation in read-only mode even with the escape hatch', () => {
     process.env.LINEAR_MUTATIONS = 'all';
     expect(() => assertMutationAllowed('mutation { issueUpdate(id: "x", input: {}) { success } }', 'readonly')).toThrow(
-      'read-only entry point',
+      'read-only mode',
     );
+  });
+
+  it('LINEAR_READONLY=1 forces read-only mode on the default entry', () => {
+    process.env.LINEAR_READONLY = '1';
+    try {
+      expect(() => assertMutationAllowed('mutation { issueCreate(input: {}) { success } }', 'allowlist')).toThrow(
+        'read-only mode',
+      );
+      expect(() => assertMutationAllowed('query { viewer { id } }', 'allowlist')).not.toThrow();
+    } finally {
+      delete process.env.LINEAR_READONLY;
+    }
   });
 });

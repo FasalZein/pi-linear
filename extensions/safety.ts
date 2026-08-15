@@ -38,7 +38,8 @@ function mutationFields(document: DocumentNode): string[] {
 export function assertMutationAllowed(query: string, mode: MutationMode): void {
   const fields = mutationFields(parse(query));
   if (!fields.length) return;
-  if (mode === 'readonly') throw new Error('Linear mutations are disabled by the read-only entry point.');
+  const effectiveMode = process.env.LINEAR_READONLY === '1' ? 'readonly' : mode;
+  if (effectiveMode === 'readonly') throw new Error('Linear mutations are disabled by read-only mode.');
   if (process.env.LINEAR_MUTATIONS === 'all') return;
   const rejected = fields.filter((field) => !ALLOWED_MUTATIONS.has(field));
   if (rejected.length) {

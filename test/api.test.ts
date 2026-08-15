@@ -76,7 +76,7 @@ describe('read-only tool', () => {
       undefined,
       undefined,
       { hasUI: false },
-    )).rejects.toThrow('read-only entry point');
+    )).rejects.toThrow('read-only mode');
     expect(fetch).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
