@@ -1,6 +1,6 @@
 {
   "name": "@tothemoon/pi-linear-lite",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Linear GraphQL extension for pi with named operations and mutation safety",
   "keywords": [
     "pi-package"

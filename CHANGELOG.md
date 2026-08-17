@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0
+
+- Added evidence-driven, on-demand discovery while keeping one compact `linear_api` tool.
+- Added help bootstrap, domain catalogs, and authoritative operation parameter cards with valid examples.
+- Expanded the named catalog to 48 safe, non-destructive canonical operations.
+- Added exact, fail-closed resolution for issue, team, state, user, and supported named-entity references.
+- Kept v0.3 operation names and request shapes as hidden compatibility aliases.
+- Changed default mutation authorization to safe named operations with exact declared roots.
+- Required `LINEAR_MUTATIONS=all` for raw GraphQL mutations while preserving all read-only overrides.
+- Added catalog parity, help, resolver, compatibility, mutation safety, and blind-task coverage; 89 tests pass across six files at parity commit `1876561`.
+
 ## 0.3.0
 
 - Added automatic artifact routing for results larger than 8KB.
