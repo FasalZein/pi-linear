@@ -2,7 +2,7 @@ import { Kind, parse, type DocumentNode, type SelectionSetNode } from 'graphql';
 
 export type MutationMode = 'allowlist' | 'readonly';
 
-export const ALLOWED_MUTATIONS = new Set([
+export const SAFE_NAMED_MUTATION_ROOTS = new Set([
   'issueCreate',
   'issueUpdate',
   'commentCreate',
@@ -35,15 +35,30 @@ function mutationFields(document: DocumentNode): string[] {
   return [...fields];
 }
 
-export function assertMutationAllowed(query: string, mode: MutationMode): void {
+export function assertMutationAllowed(
+  query: string,
+  mode: MutationMode,
+  namedMutationRoots?: readonly string[],
+): void {
   const fields = mutationFields(parse(query));
   if (!fields.length) return;
+
   const effectiveMode = process.env.LINEAR_READONLY === '1' ? 'readonly' : mode;
   if (effectiveMode === 'readonly') throw new Error('Linear mutations are disabled by read-only mode.');
-  if (process.env.LINEAR_MUTATIONS === 'all') return;
-  const rejected = fields.filter((field) => !ALLOWED_MUTATIONS.has(field));
-  if (rejected.length) {
-    throw new Error(`Linear mutation rejected: ${rejected.join(', ')} is not allowlisted. Set LINEAR_MUTATIONS=all to allow all mutations.`);
+
+  if (namedMutationRoots === undefined) {
+    if (process.env.LINEAR_MUTATIONS === 'all') return;
+    throw new Error('Raw Linear mutations are disabled. Set LINEAR_MUTATIONS=all to allow raw mutations.');
+  }
+
+  const undeclared = fields.filter((field) => !namedMutationRoots.includes(field));
+  if (undeclared.length) {
+    throw new Error(`Named Linear operation contains undeclared mutation roots: ${undeclared.join(', ')}.`);
+  }
+
+  const unsafe = fields.filter((field) => !SAFE_NAMED_MUTATION_ROOTS.has(field));
+  if (unsafe.length) {
+    throw new Error(`Linear mutation rejected: ${unsafe.join(', ')} is not in the safe named-root set.`);
   }
 }
 

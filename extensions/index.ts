@@ -1,5 +1,4 @@
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
-import { fileURLToPath } from 'node:url';
 import {
   addWorkspace,
   getActiveWorkspaceName,
@@ -94,8 +93,7 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
     },
   });
 
-  const referencePath = fileURLToPath(new URL('../REFERENCE.md', import.meta.url));
-  pi.registerTool(linearApiTool(referencePath, mode));
+  pi.registerTool(linearApiTool(mode));
 }
 
 export default function linearExtension(pi: ExtensionAPI) {

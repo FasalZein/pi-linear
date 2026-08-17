@@ -4,7 +4,15 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Type } from 'typebox';
 import { linearGraphQL, resolveApiKey } from './client';
-import { getOperation } from './operations';
+import {
+  DOMAINS,
+  formatInvocation,
+  getOperation,
+  operationSignature,
+  operationsForDomain,
+  type LinearOperation,
+  type OperationDomain,
+} from './operations';
 import { assertMutationAllowed, type MutationMode } from './safety';
 
 export const NODE_CAP = 100;
@@ -136,23 +144,89 @@ async function apiKeyForWorkspace(ctx: ExtensionContext, workspace?: string): Pr
   return apiKey;
 }
 
-export function resolveRequest(params: { operation?: string; query?: string }): {
-  query: string;
-  named: boolean;
-} {
-  if (Boolean(params.operation) === Boolean(params.query)) {
-    throw new Error('Provide exactly one of operation or query.');
-  }
-  return params.operation
-    ? { query: getOperation(params.operation).document, named: true }
-    : { query: params.query!, named: false };
+const REQUEST_SHAPES = 'Invalid request. Send exactly one of: { "operation": "get_issue", "variables": { "teamKey": "AEO", "number": 258 } }, { "operation": "help" }, or { "query": "query { viewer { id } }", "variables": {} }.';
+const HELP_SHAPES = 'Send exactly one of: { "operation": "help" }, { "operation": "help", "variables": { "domain": "issues" } }, or { "operation": "help", "variables": { "operation": "get_issue" } }.';
+
+function parameterList(operation: LinearOperation): string {
+  return operation.parameters.map(({ name, type, required }) =>
+    `${name}: ${type}${required ? ' (required)' : ' (optional)'}`,
+  ).join(', ');
 }
 
-export function linearApiTool(referencePath: string, mode: MutationMode = 'allowlist') {
+function validateVariables(operation: LinearOperation, variables: Record<string, unknown>): void {
+  const valid = new Set(operation.parameters.map(({ name }) => name));
+  const missing = operation.parameters.filter(({ name, required }) => required && !(name in variables)).map(({ name }) => name);
+  const unknown = Object.keys(variables).filter((name) => !valid.has(name));
+  if (!missing.length && !unknown.length) return;
+
+  const problems = [
+    ...(missing.length ? [`missing ${missing.join(', ')}`] : []),
+    ...(unknown.length ? [`unknown ${unknown.join(', ')}`] : []),
+  ].join('; ');
+  throw new Error(
+    `Invalid parameters for "${operation.name}": ${problems}. Valid parameters: ${parameterList(operation)}. Example: ${formatInvocation(operation.example)}.`,
+  );
+}
+
+export function resolveRequest(params: {
+  operation?: string;
+  query?: string;
+  variables?: Record<string, unknown>;
+}): { query: string; named: false } | { query: string; named: true; operation: LinearOperation } {
+  if (Boolean(params.operation) === Boolean(params.query)) throw new Error(REQUEST_SHAPES);
+  if (!params.operation) return { query: params.query!, named: false };
+
+  const operation = getOperation(params.operation);
+  validateVariables(operation, params.variables ?? {});
+  return { query: operation.document, named: true, operation };
+}
+
+function helpResult(variables: Record<string, unknown> = {}): JsonObject {
+  const keys = Object.keys(variables);
+  if (!keys.length) {
+    return {
+      domains: DOMAINS,
+      domainHelp: { operation: 'help', variables: { domain: 'issues' } },
+      operationHelp: { operation: 'help', variables: { operation: 'get_issue' } },
+    };
+  }
+
+  const domain = variables.domain;
+  const operationName = variables.operation;
+  if (keys.length !== 1 || (domain === undefined) === (operationName === undefined)) {
+    throw new Error(`Invalid help request. ${HELP_SHAPES}`);
+  }
+  if (typeof domain === 'string' && DOMAINS.includes(domain as OperationDomain)) {
+    return {
+      domain,
+      operations: operationsForDomain(domain as OperationDomain).map((operation) => ({
+        name: operation.name,
+        signature: operationSignature(operation),
+      })),
+    };
+  }
+  if (typeof operationName === 'string') {
+    const operation = getOperation(operationName);
+    return {
+      name: operation.name,
+      domain: operation.domain,
+      purpose: operation.purpose,
+      parameters: operation.parameters,
+      example: operation.example,
+    };
+  }
+  throw new Error(`Invalid help request. ${HELP_SHAPES}`);
+}
+
+function toolResult(details: JsonObject) {
+  return { content: [{ type: 'text' as const, text: JSON.stringify(details) }], details };
+}
+
+export function linearApiTool(mode: MutationMode = 'allowlist') {
   return defineTool({
     name: 'linear_api',
     label: 'Linear API',
-    description: `Run a bundled Linear operation or raw GraphQL. Catalog errors list operations. Reference: ${referencePath}`,
+    description: 'Run a named Linear operation or raw GraphQL. Discover operations with { "operation": "help" }.',
     parameters: Type.Object({
       operation: Type.Optional(Type.String({ description: 'Bundled operation name.' })),
       query: Type.Optional(Type.String({ description: 'Raw GraphQL escape hatch.' })),
@@ -165,8 +239,10 @@ export function linearApiTool(referencePath: string, mode: MutationMode = 'allow
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       if (signal?.aborted) throw new Error('Request cancelled.');
+      if (params.operation === 'help' && !params.query) return toolResult(helpResult(params.variables));
+
       const request = resolveRequest(params);
-      assertMutationAllowed(request.query, mode);
+      assertMutationAllowed(request.query, mode, request.named ? request.operation.mutationRoots : undefined);
       const apiKey = await apiKeyForWorkspace(ctx, params.workspace);
       const data = await linearGraphQL<JsonObject>(apiKey, request.query, params.variables ?? {}, signal);
       const result = await routeLinearResult(data, {
@@ -174,7 +250,7 @@ export function linearApiTool(referencePath: string, mode: MutationMode = 'allow
         sink: params.sink,
         nodeCap: request.named ? undefined : NODE_CAP,
       });
-      return { content: [{ type: 'text', text: JSON.stringify(result) }], details: result };
+      return toolResult(result);
     },
   });
 }

@@ -1,13 +1,57 @@
+export const DOMAINS = [
+  'issues',
+  'comments',
+  'users',
+  'teams',
+  'projects',
+  'cycles',
+  'milestones',
+  'initiatives',
+  'documents',
+  'views',
+  'labels',
+  'relations',
+  'workspace',
+] as const;
+
+export type OperationDomain = typeof DOMAINS[number];
+export type OperationParameter = { name: string; type: string; required: boolean };
+export type OperationExample = { operation: string; variables: Record<string, unknown> };
 export type LinearOperation = {
-  signature: string;
+  name: string;
+  aliases: readonly string[];
+  domain: OperationDomain;
   purpose: string;
+  parameters: readonly OperationParameter[];
+  example: OperationExample;
   document: string;
+  mutationRoots: readonly string[];
 };
+
+export function operationSignature(operation: LinearOperation): string {
+  const parameters = operation.parameters.map(({ name, type, required }) =>
+    required ? `${name}: ${type}!` : `${name}?: ${type}`,
+  );
+  return `${operation.name}(${parameters.join(', ')})`;
+}
+
+export function formatInvocation(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(formatInvocation).join(', ')}]`;
+  if (value && typeof value === 'object') {
+    return `{ ${Object.entries(value as Record<string, unknown>)
+      .map(([key, entry]) => `${JSON.stringify(key)}: ${formatInvocation(entry)}`)
+      .join(', ')} }`;
+  }
+  return JSON.stringify(value);
+}
 
 export const operations = {
   get_issue: {
-    signature: 'get_issue(teamKey: String!, number: Float!)',
+    name: 'get_issue', aliases: [], domain: 'issues',
     purpose: 'Fetch one issue brief with comments, relations, project, state, and labels.',
+    parameters: [{ name: 'teamKey', type: 'String', required: true }, { name: 'number', type: 'Float', required: true }],
+    example: { operation: 'get_issue', variables: { teamKey: 'AEO', number: 258 } },
+    mutationRoots: [],
     document: `query GetIssue($teamKey: String!, $number: Float!) {
   issues(first: 1, filter: { team: { key: { eq: $teamKey } }, number: { eq: $number } }) {
     nodes {
@@ -23,8 +67,11 @@ export const operations = {
 }`,
   },
   search_issues: {
-    signature: 'search_issues(term: String!, after?: String)',
+    name: 'search_issues', aliases: [], domain: 'issues',
     purpose: 'Search for issues in pages of ten.',
+    parameters: [{ name: 'term', type: 'String', required: true }, { name: 'after', type: 'String', required: false }],
+    example: { operation: 'search_issues', variables: { term: 'authentication' } },
+    mutationRoots: [],
     document: `query SearchIssues($term: String!, $after: String) {
   searchIssues(term: $term, first: 10, after: $after) {
     nodes { id identifier title description state { id name type } assignee { id name } team { id key name } }
@@ -33,29 +80,45 @@ export const operations = {
 }`,
   },
   create_issue: {
-    signature: 'create_issue(input: IssueCreateInput!)',
+    name: 'create_issue', aliases: [], domain: 'issues',
     purpose: 'Create one issue.',
+    parameters: [{ name: 'input', type: 'IssueCreateInput', required: true }],
+    example: { operation: 'create_issue', variables: { input: { teamId: 'team-id', title: 'Issue title' } } },
+    mutationRoots: ['issueCreate'],
     document: `mutation CreateIssue($input: IssueCreateInput!) {
   issueCreate(input: $input) { success issue { id identifier title state { id name type } } }
 }`,
   },
   update_issue_state: {
-    signature: 'update_issue_state(issueId: String!, stateId: String!)',
+    name: 'update_issue_state', aliases: [], domain: 'issues',
     purpose: 'Move one issue to a workflow state.',
+    parameters: [{ name: 'issueId', type: 'String', required: true }, { name: 'stateId', type: 'String', required: true }],
+    example: { operation: 'update_issue_state', variables: { issueId: 'issue-id', stateId: 'state-id' } },
+    mutationRoots: ['issueUpdate'],
     document: `mutation UpdateIssueState($issueId: String!, $stateId: String!) {
   issueUpdate(id: $issueId, input: { stateId: $stateId }) { success issue { id identifier title state { id name type } } }
 }`,
   },
-  add_comment: {
-    signature: 'add_comment(issueId: String!, body: String!)',
+  create_comment: {
+    name: 'create_comment', aliases: ['add_comment'], domain: 'comments',
     purpose: 'Add one comment to an issue.',
+    parameters: [{ name: 'issueId', type: 'String', required: true }, { name: 'body', type: 'String', required: true }],
+    example: { operation: 'create_comment', variables: { issueId: 'issue-id', body: 'Comment text' } },
+    mutationRoots: ['commentCreate'],
     document: `mutation AddComment($issueId: String!, $body: String!) {
   commentCreate(input: { issueId: $issueId, body: $body }) { success comment { id body createdAt user { id name } } }
 }`,
   },
-  create_relation: {
-    signature: 'create_relation(issueId: String!, relatedIssueId: String!, type: IssueRelationType!)',
+  create_issue_relation: {
+    name: 'create_issue_relation', aliases: ['create_relation'], domain: 'relations',
     purpose: 'Create a relation between two issues.',
+    parameters: [
+      { name: 'issueId', type: 'String', required: true },
+      { name: 'relatedIssueId', type: 'String', required: true },
+      { name: 'type', type: 'IssueRelationType', required: true },
+    ],
+    example: { operation: 'create_issue_relation', variables: { issueId: 'issue-id', relatedIssueId: 'related-issue-id', type: 'related' } },
+    mutationRoots: ['issueRelationCreate'],
     document: `mutation CreateRelation($issueId: String!, $relatedIssueId: String!, $type: IssueRelationType!) {
   issueRelationCreate(input: { issueId: $issueId, relatedIssueId: $relatedIssueId, type: $type }) {
     success issueRelation { id type relatedIssue { id identifier title } }
@@ -63,8 +126,11 @@ export const operations = {
 }`,
   },
   list_teams: {
-    signature: 'list_teams(after?: String)',
+    name: 'list_teams', aliases: [], domain: 'teams',
     purpose: 'List teams with their workflow states and labels.',
+    parameters: [{ name: 'after', type: 'String', required: false }],
+    example: { operation: 'list_teams', variables: {} },
+    mutationRoots: [],
     document: `query ListTeams($after: String) {
   teams(first: 50, after: $after) {
     nodes { id key name states(first: 50) { nodes { id name type color } } labels(first: 50) { nodes { id name color } } }
@@ -72,9 +138,12 @@ export const operations = {
   }
 }`,
   },
-  list_workflow_states: {
-    signature: 'list_workflow_states(after?: String)',
+  list_issue_statuses: {
+    name: 'list_issue_statuses', aliases: ['list_workflow_states'], domain: 'workspace',
     purpose: 'List workspace workflow states.',
+    parameters: [{ name: 'after', type: 'String', required: false }],
+    example: { operation: 'list_issue_statuses', variables: {} },
+    mutationRoots: [],
     document: `query ListWorkflowStates($after: String) {
   workflowStates(first: 50, after: $after) {
     nodes { id name type color team { id key name } }
@@ -83,8 +152,11 @@ export const operations = {
 }`,
   },
   list_issue_labels: {
-    signature: 'list_issue_labels(after?: String)',
+    name: 'list_issue_labels', aliases: [], domain: 'labels',
     purpose: 'List workspace issue labels.',
+    parameters: [{ name: 'after', type: 'String', required: false }],
+    example: { operation: 'list_issue_labels', variables: {} },
+    mutationRoots: [],
     document: `query ListIssueLabels($after: String) {
   issueLabels(first: 50, after: $after) {
     nodes { id name color description team { id key name } }
@@ -93,8 +165,11 @@ export const operations = {
 }`,
   },
   list_projects: {
-    signature: 'list_projects(after?: String)',
+    name: 'list_projects', aliases: [], domain: 'projects',
     purpose: 'List workspace projects.',
+    parameters: [{ name: 'after', type: 'String', required: false }],
+    example: { operation: 'list_projects', variables: {} },
+    mutationRoots: [],
     document: `query ListProjects($after: String) {
   projects(first: 50, after: $after) {
     nodes { id name description state progress url teams { nodes { id key name } } }
@@ -106,12 +181,17 @@ export const operations = {
 
 export type OperationName = keyof typeof operations;
 
-export function operationCatalog(): string {
-  return Object.values(operations).map(({ signature, purpose }) => `- ${signature}: ${purpose}`).join('\n');
+const aliases = new Map<string, LinearOperation>();
+for (const operation of Object.values(operations)) {
+  for (const alias of operation.aliases) aliases.set(alias, operation);
 }
 
 export function getOperation(name: string): LinearOperation {
-  const operation = (operations as Record<string, LinearOperation>)[name];
-  if (!operation) throw new Error(`Unknown Linear operation "${name}". Valid operations:\n${operationCatalog()}`);
+  const operation = (operations as Record<string, LinearOperation>)[name] ?? aliases.get(name);
+  if (!operation) throw new Error(`Unknown Linear operation "${name}". Send { "operation": "help" }.`);
   return operation;
+}
+
+export function operationsForDomain(domain: OperationDomain): LinearOperation[] {
+  return Object.values(operations).filter((operation) => operation.domain === domain);
 }

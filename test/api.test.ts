@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { parse } from 'graphql';
+import { Kind, parse, type SelectionSetNode } from 'graphql';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   AUTO_SPILL_BYTES,
@@ -13,7 +13,7 @@ import {
   routeLinearResult,
   resolveRequest,
 } from '../extensions/api';
-import { operations } from '../extensions/operations';
+import { DOMAINS, getOperation, operations } from '../extensions/operations';
 
 const originalArtifactRoot = process.env.PI_ARTIFACT_PROJECT_ROOT;
 const originalSpillBytes = process.env.LINEAR_SPILL_BYTES;
@@ -36,25 +36,172 @@ async function artifactRoot(): Promise<string> {
 }
 
 describe('named operations', () => {
-  it('loads valid bundled operation documents', () => {
-    for (const [name, operation] of Object.entries(operations)) {
-      expect(resolveRequest({ operation: name })).toEqual({ query: operation.document, named: true });
-      expect(() => parse(operation.document)).not.toThrow();
-    }
-  });
-
-  it('lists signatures for every valid operation when the name is unknown', () => {
-    expect(() => resolveRequest({ operation: 'missing' })).toThrow(
-      'Unknown Linear operation "missing". Valid operations:\n- get_issue(teamKey: String!, number: Float!)',
+  function parsedRootOperation(documentText: string) {
+    const document = parse(documentText);
+    const fragments = new Map(
+      document.definitions
+        .filter((definition) => definition.kind === Kind.FRAGMENT_DEFINITION)
+        .map((fragment) => [fragment.name.value, fragment.selectionSet]),
     );
-    for (const operation of Object.values(operations)) {
-      expect(() => resolveRequest({ operation: 'missing' })).toThrow(operation.signature);
+    const definitions = document.definitions.filter((definition) => definition.kind === Kind.OPERATION_DEFINITION);
+    expect(definitions).toHaveLength(1);
+    const definition = definitions[0];
+    if (!definition || definition.kind !== Kind.OPERATION_DEFINITION) throw new Error('Expected one operation definition.');
+
+    const roots = new Set<string>();
+    const visit = (selectionSet: SelectionSetNode) => {
+      for (const selection of selectionSet.selections) {
+        if (selection.kind === Kind.FIELD) roots.add(selection.name.value);
+        else if (selection.kind === Kind.INLINE_FRAGMENT) visit(selection.selectionSet);
+        else {
+          const fragment = fragments.get(selection.name.value);
+          if (fragment) visit(fragment);
+        }
+      }
+    };
+    visit(definition.selectionSet);
+    return { type: definition.operation, roots: [...roots].sort() };
+  }
+
+  it('loads valid documents and exactly matches mutation-root declarations', () => {
+    for (const [name, operation] of Object.entries(operations)) {
+      expect(resolveRequest({ operation: name, variables: operation.example.variables })).toMatchObject({
+        query: operation.document,
+        named: true,
+        operation,
+      });
+      expect(operation.name).toBe(name);
+      expect(operation.example.operation).toBe(name);
+
+      const parsed = parsedRootOperation(operation.document);
+      if (parsed.type === 'query') expect(operation.mutationRoots).toEqual([]);
+      else expect([...operation.mutationRoots].sort()).toEqual(parsed.roots);
     }
   });
 
-  it('requires exactly one request form', () => {
-    expect(() => resolveRequest({})).toThrow('Provide exactly one');
-    expect(() => resolveRequest({ operation: 'get_issue', query: 'query { viewer { id } }' })).toThrow('Provide exactly one');
+  it('accepts old names and variable shapes as hidden aliases', () => {
+    const aliases = [
+      ['add_comment', { issueId: 'issue-id', body: 'Comment text' }, 'create_comment'],
+      ['create_relation', { issueId: 'issue-id', relatedIssueId: 'related-issue-id', type: 'related' }, 'create_issue_relation'],
+      ['list_workflow_states', {}, 'list_issue_statuses'],
+    ] as const;
+
+    for (const [alias, variables, canonical] of aliases) {
+      expect(getOperation(alias).name).toBe(canonical);
+      expect(resolveRequest({ operation: alias, variables })).toMatchObject({
+        named: true,
+        operation: { name: canonical },
+      });
+    }
+  });
+
+  it('teaches the exact valid request shapes for invalid request selection', () => {
+    const message = 'Invalid request. Send exactly one of: { "operation": "get_issue", "variables": { "teamKey": "AEO", "number": 258 } }, { "operation": "help" }, or { "query": "query { viewer { id } }", "variables": {} }.';
+    expect(() => resolveRequest({})).toThrow(message);
+    expect(() => resolveRequest({ operation: 'get_issue', query: 'query { viewer { id } }' })).toThrow(message);
+  });
+
+  it('teaches help for unknown operations and the example for invalid parameters', () => {
+    expect(() => resolveRequest({ operation: 'missing' })).toThrow(
+      'Unknown Linear operation "missing". Send { "operation": "help" }.',
+    );
+    expect(() => resolveRequest({ operation: 'get_issue', variables: { teamKey: 'AEO', extra: true } })).toThrow(
+      'Invalid parameters for "get_issue": missing number; unknown extra. Valid parameters: teamKey: String (required), number: Float (required). Example: { "operation": "get_issue", "variables": { "teamKey": "AEO", "number": 258 } }.',
+    );
+  });
+});
+
+describe('runtime discovery', () => {
+  function execute(tool: any, params: Record<string, unknown>) {
+    return tool.execute('call-1', params, undefined, undefined, { hasUI: false });
+  }
+
+  it('keeps the description compact and bootstraps exact help', () => {
+    const tool = linearApiTool() as any;
+    expect(tool.description).toContain('{ "operation": "help" }');
+    expect(tool.description).not.toContain('REFERENCE.md');
+    expect(tool.description).not.toContain('/REFERENCE');
+    expect(tool.description).not.toContain('get_issue(');
+  });
+
+  it('returns zero-argument, domain, and operation help without network calls', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const tool = linearApiTool() as any;
+
+    const root = await execute(tool, { operation: 'help' });
+    expect(root.details).toEqual({
+      domains: DOMAINS,
+      domainHelp: { operation: 'help', variables: { domain: 'issues' } },
+      operationHelp: { operation: 'help', variables: { operation: 'get_issue' } },
+    });
+
+    const domain = await execute(tool, { operation: 'help', variables: { domain: 'issues' } });
+    expect(domain.details.operations).toEqual([
+      { name: 'get_issue', signature: 'get_issue(teamKey: String!, number: Float!)' },
+      { name: 'search_issues', signature: 'search_issues(term: String!, after?: String)' },
+      { name: 'create_issue', signature: 'create_issue(input: IssueCreateInput!)' },
+      { name: 'update_issue_state', signature: 'update_issue_state(issueId: String!, stateId: String!)' },
+    ]);
+
+    const comments = await execute(tool, { operation: 'help', variables: { domain: 'comments' } });
+    expect(comments.details.operations).toEqual([
+      { name: 'create_comment', signature: 'create_comment(issueId: String!, body: String!)' },
+    ]);
+    const relations = await execute(tool, { operation: 'help', variables: { domain: 'relations' } });
+    expect(relations.details.operations).toEqual([
+      { name: 'create_issue_relation', signature: 'create_issue_relation(issueId: String!, relatedIssueId: String!, type: IssueRelationType!)' },
+    ]);
+    const workspace = await execute(tool, { operation: 'help', variables: { domain: 'workspace' } });
+    expect(workspace.details.operations).toEqual([
+      { name: 'list_issue_statuses', signature: 'list_issue_statuses(after?: String)' },
+    ]);
+    expect(JSON.stringify([comments.details, relations.details, workspace.details])).not.toMatch(
+      /add_comment|create_relation|list_workflow_states/,
+    );
+
+    const aliasCards = await Promise.all([
+      execute(tool, { operation: 'help', variables: { operation: 'add_comment' } }),
+      execute(tool, { operation: 'help', variables: { operation: 'create_relation' } }),
+      execute(tool, { operation: 'help', variables: { operation: 'list_workflow_states' } }),
+    ]);
+    expect(aliasCards.map(({ details }: any) => details.name)).toEqual([
+      'create_comment',
+      'create_issue_relation',
+      'list_issue_statuses',
+    ]);
+    expect(aliasCards[0].details).toMatchObject({
+      example: { operation: 'create_comment', variables: { issueId: 'issue-id', body: 'Comment text' } },
+    });
+    for (const card of aliasCards) expect(card.details).not.toHaveProperty('aliases');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects ambiguous and invalid help with exact alternatives before network access', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const tool = linearApiTool() as any;
+    const alternatives = 'Send exactly one of: { "operation": "help" }, { "operation": "help", "variables": { "domain": "issues" } }, or { "operation": "help", "variables": { "operation": "get_issue" } }.';
+
+    await expect(execute(tool, { operation: 'help', variables: { domain: 'issues', operation: 'get_issue' } }))
+      .rejects.toThrow(alternatives);
+    await expect(execute(tool, { operation: 'help', variables: { domain: 'unknown' } }))
+      .rejects.toThrow(alternatives);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects unknown operations and wrong parameters before network access', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const tool = linearApiTool() as any;
+
+    await expect(execute(tool, { operation: 'missing' })).rejects.toThrow(
+      'Unknown Linear operation "missing". Send { "operation": "help" }.',
+    );
+    await expect(execute(tool, { operation: 'get_issue', variables: { teamKey: 'AEO' } })).rejects.toThrow(
+      'Valid parameters: teamKey: String (required), number: Float (required). Example: { "operation": "get_issue", "variables": { "teamKey": "AEO", "number": 258 } }.',
+    );
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
 
@@ -173,7 +320,7 @@ describe('read-only tool', () => {
   it('rejects a mutation before credential lookup or network access', async () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
-    const tool = linearApiTool('/tmp/reference', 'readonly') as any;
+    const tool = linearApiTool('readonly') as any;
 
     await expect(tool.execute(
       'call-1',
