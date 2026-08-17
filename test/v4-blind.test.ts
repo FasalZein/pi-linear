@@ -112,10 +112,6 @@ describe("v0.4 blind-task first calls", () => {
 		});
 		await execute({
 			operation: "list_issues",
-			variables: { assignee: "me", state: "In Progress" },
-		});
-		await execute({
-			operation: "list_issues",
 			variables: { assignee: "me", stateType: "started" },
 		});
 		await execute({
@@ -136,13 +132,6 @@ describe("v0.4 blind-task first calls", () => {
 				.filter(({ query }) => query.includes("ListIssues"))
 				.map(({ variables }) => variables),
 		).toEqual([
-			{
-				first: 20,
-				filter: {
-					state: { name: { eq: "In Progress" } },
-					assignee: { id: { eq: USER_ID } },
-				},
-			},
 			{
 				first: 20,
 				filter: {

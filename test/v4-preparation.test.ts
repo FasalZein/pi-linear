@@ -177,6 +177,101 @@ describe("exact upstream pagination and create-view discovery", () => {
 	});
 });
 
+describe("fail-closed list_issues state preparation", () => {
+	it("rejects a state name without team before credential or network access", async () => {
+		const fetch = vi.fn();
+		vi.stubGlobal("fetch", fetch);
+		const tool = linearApiTool() as any;
+		await expect(
+			tool.execute(
+				"call",
+				{ operation: "list_issues", variables: { state: "In Progress" } },
+				undefined,
+				undefined,
+				{ hasUI: false },
+			),
+		).rejects.toThrow(
+			'team is required when state is a name. For cross-team calls, use { "assignee": "me", "stateType": "started" }',
+		);
+		await expect(
+			tool.execute(
+				"call",
+				{ operation: "list_issues", variables: { state: 42 } },
+				undefined,
+				undefined,
+				{ hasUI: false },
+			),
+		).rejects.toThrow("state must be a non-empty UUID");
+		expect(fetch).not.toHaveBeenCalled();
+	});
+
+	it("verifies an exact state UUID without team before adding it to the filter", async () => {
+		const stateId = "55555555-5555-4555-8555-555555555555";
+		const teamId = "66666666-6666-4666-8666-666666666666";
+		const { requests } = graphqlStub((query, variables) => {
+			expect(query).toContain("query ResolveStateById($id: String!)");
+			expect(variables).toEqual({ id: stateId });
+			return {
+				workflowState: { id: stateId, name: "Started", team: { id: teamId } },
+			};
+		});
+		const prepared = await prepare("list_issues", { state: stateId });
+		expect(requests).toHaveLength(1);
+		expect(prepared.variables).toEqual({
+			first: 20,
+			filter: { state: { id: { eq: stateId } } },
+		});
+	});
+
+	it("rejects a missing state UUID instead of forwarding it unchecked", async () => {
+		const stateId = "55555555-5555-4555-8555-555555555555";
+		graphqlStub(() => ({ workflowState: null }));
+		await expect(prepare("list_issues", { state: stateId })).rejects.toThrow(
+			`Linear state "${stateId}" was not found.`,
+		);
+	});
+
+	it("resolves team plus exact state name in that team", async () => {
+		const teamId = "66666666-6666-4666-8666-666666666666";
+		const stateId = "55555555-5555-4555-8555-555555555555";
+		const { requests } = graphqlStub((query, variables) => {
+			if (query.includes("ResolveTeamByKey")) {
+				expect(variables).toEqual({ key: "ENG" });
+				return { teams: { nodes: [{ id: teamId, key: "ENG" }] } };
+			}
+			expect(query).toContain(
+				"query ResolveStateByName($teamId: ID!, $name: String!)",
+			);
+			expect(variables).toEqual({ teamId, name: "In Progress" });
+			return {
+				workflowStates: {
+					nodes: [{ id: stateId, name: "In Progress", team: { id: teamId } }],
+				},
+			};
+		});
+		const prepared = await prepare("list_issues", {
+			team: "ENG",
+			state: "In Progress",
+		});
+		expect(requests).toHaveLength(2);
+		expect(prepared.variables).toEqual({
+			first: 20,
+			filter: { team: { id: { eq: teamId } }, state: { id: { eq: stateId } } },
+		});
+	});
+
+	it("uses stateType started across teams without a state resolver", async () => {
+		const fetch = vi.fn();
+		vi.stubGlobal("fetch", fetch);
+		const prepared = await prepare("list_issues", { stateType: "started" });
+		expect(prepared.variables).toEqual({
+			first: 20,
+			filter: { state: { type: { eq: "started" } } },
+		});
+		expect(fetch).not.toHaveBeenCalled();
+	});
+});
+
 describe("save operation mode validation and branch preparation", () => {
 	it("prepares valid create branches from top-level and raw input fields", async () => {
 		const initiative = await prepare("save_initiative", {

@@ -131,11 +131,13 @@ Comment on an issue:
 { "operation": "create_comment", "variables": { "issue": "AEO-258", "body": "Status update" } }
 ```
 
-List the current user's in-progress issues:
+List the current user's in-progress issues across teams:
 
 ```json
-{ "operation": "list_issues", "variables": { "assignee": "me", "state": "In Progress" } }
+{ "operation": "list_issues", "variables": { "assignee": "me", "stateType": "started" } }
 ```
+
+Exact state names require a team, for example `{ "operation": "list_issues", "variables": { "team": "AEO", "state": "In Progress" } }`.
 
 Create a child issue under `AEO-258` in Backlog. The parent supplies the team for exact state resolution:
 

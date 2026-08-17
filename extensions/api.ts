@@ -161,17 +161,30 @@ function validateVariables(
   variables: Record<string, unknown>,
 ): void {
   const shapes = parameterShapes(operation, requestedName);
-  const validShape = shapes.find((shape) => {
-    const valid = new Set(shape.map(({ name }) => name));
-    return shape.every(({ name, required }) => !required || name in variables)
-      && Object.keys(variables).every((name) => valid.has(name));
-  });
-  if (validShape) return;
+  const valid = new Set(shapes.flatMap((shape) => shape.map(({ name }) => name)));
+  const validShape = !operation.requiresVariables || Object.keys(variables).length > 0
+    ? shapes.find((shape) => {
+      const shapeKeys = new Set(shape.map(({ name }) => name));
+      return shape.every(({ name, required }) => !required || name in variables)
+        && Object.keys(variables).every((name) => shapeKeys.has(name));
+    })
+    : undefined;
+  if (validShape) {
+    try {
+      operation.validateVariables?.(variables);
+      return;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `Invalid parameters for "${operation.name}": ${message}. Valid parameters: ${parameterList(operation)}. Example: ${formatInvocation(operation.example)}.`,
+      );
+    }
+  }
 
-  const valid = new Set((operation.acceptedParameters ?? operation.parameters).map(({ name }) => name));
   const missing = operation.parameters.filter(({ name, required }) => required && !(name in variables)).map(({ name }) => name);
   const unknown = Object.keys(variables).filter((name) => !valid.has(name));
   const problems = [
+    ...(operation.requiresVariables && !Object.keys(variables).length ? ['at least one parameter is required'] : []),
     ...(missing.length ? [`missing ${missing.join(', ')}`] : []),
     ...(unknown.length ? [`unknown ${unknown.join(', ')}`] : []),
   ].join('; ') || 'parameters do not match one accepted shape';

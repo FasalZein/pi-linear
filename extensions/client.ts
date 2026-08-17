@@ -315,6 +315,38 @@ export async function resolveTeamReference(
   return team;
 }
 
+export async function resolveStateIdReference(
+  apiKey: string,
+  value: string,
+  signal?: AbortSignal,
+): Promise<ResolvedState> {
+  const reference = requireReference(value, 'state');
+  if (!UUID_PATTERN.test(reference)) {
+    throw new Error(
+      `Invalid Linear state reference "${reference}". Use a state UUID, or provide team with an exact state name.`,
+    );
+  }
+  const data = await linearGraphQL<{
+    workflowState: {
+      id: string;
+      name: string;
+      team: { id: string } | null;
+    } | null;
+  }>(apiKey, `query ResolveStateById($id: String!) {
+  workflowState(id: $id) { id name team { id } }
+}`, { id: reference }, signal);
+  if (!data.workflowState) throw new Error(`Linear state "${reference}" was not found.`);
+  if (data.workflowState.id !== reference) {
+    throw new Error(`Linear state resolver returned mismatched id for "${reference}".`);
+  }
+  if (!data.workflowState.team?.id) throw new Error(`Linear state "${reference}" has no team.`);
+  return {
+    id: data.workflowState.id,
+    name: data.workflowState.name,
+    teamId: data.workflowState.team.id,
+  };
+}
+
 export async function resolveStateReference(
   apiKey: string,
   teamId: string,

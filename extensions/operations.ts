@@ -1,6 +1,7 @@
 import {
 	resolveIssueReference,
 	resolveNamedEntityReference,
+	resolveStateIdReference,
 	resolveStateReference,
 	resolveTeamReference,
 	resolveUserReference,
@@ -150,7 +151,7 @@ function issueReference(
 function isUuid(value: unknown): value is string {
 	return (
 		typeof value === "string" &&
-		/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+		/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
 			value,
 		)
 	);
@@ -243,6 +244,7 @@ function listOperation(config: {
 	example?: Record<string, unknown>;
 	resolverPaths?: Record<string, string>;
 	acceptedParameters?: readonly OperationParameter[];
+	validateVariables?: LinearOperation["validateVariables"];
 }): LinearOperation {
 	const parameters = config.parameters ?? [];
 	const document = listDocument(
@@ -273,6 +275,7 @@ function listOperation(config: {
 			...(config.sortKeys ? { sortKeys: config.sortKeys } : {}),
 		},
 		resolverPaths: config.resolverPaths,
+		validateVariables: config.validateVariables,
 		prepare: config.prepare ?? listPrepare(config.pageSize),
 	};
 }
@@ -292,6 +295,7 @@ function simpleMutation(config: {
 	legacyParameters?: LinearOperation["legacyParameters"];
 	aliasParameters?: LinearOperation["aliasParameters"];
 	resolverPaths?: Record<string, string>;
+	validateVariables?: LinearOperation["validateVariables"];
 	document?: string;
 }): LinearOperation {
 	const document =
@@ -316,6 +320,7 @@ function simpleMutation(config: {
 		document,
 		mutationRoots: [config.root],
 		resolverPaths: config.resolverPaths,
+		validateVariables: config.validateVariables,
 		prepare:
 			config.prepare ??
 			(config.idKey ? updateInputPrepare(config.idKey) : plainInputPrepare()),
@@ -445,6 +450,7 @@ const entries: LinearOperation[] = [
 		aliases: ["add_comment"],
 		legacyParameters: [
 			[p("issueId", "String", true), p("body", "String", true)],
+			[p("input", "CommentCreateInput", true)],
 		],
 		aliasParameters: {
 			add_comment: [p("issueId", "String", true), p("body", "String", true)],
@@ -452,6 +458,18 @@ const entries: LinearOperation[] = [
 		resolverPaths: {
 			issue: "resolveIssueReference",
 			issueId: "resolveIssueReference",
+		},
+		validateVariables(variables) {
+			if (!variables.input) return;
+			const raw = object(variables.input) ?? {};
+			if (
+				typeof (variables.body ?? raw.body) !== "string" &&
+				!object(variables.bodyData ?? raw.bodyData)
+			) {
+				throw new Error(
+					"canonical fields or nested input require body or bodyData",
+				);
+			}
 		},
 		async prepare(apiKey, variables, signal) {
 			const requested =
@@ -669,18 +687,30 @@ const entries: LinearOperation[] = [
 			p("team", "TeamReference", true),
 			p("startsAt", "DateTime", true),
 			p("endsAt", "DateTime", true),
-			input,
 		],
 		acceptedParameters: [
 			"team",
-			"teamId",
-			"teamKey",
 			"name",
 			"description",
 			"startsAt",
 			"endsAt",
-			"input",
 		].map((n) => p(n)),
+		legacyParameters: [
+			[
+				p("teamId", "String", true),
+				p("startsAt", "DateTime", true),
+				p("endsAt", "DateTime", true),
+				p("name"),
+				p("description"),
+			],
+			[
+				p("teamKey", "String", true),
+				p("startsAt", "DateTime", true),
+				p("endsAt", "DateTime", true),
+				p("name"),
+				p("description"),
+			],
+		],
 		example: { team: "AEO", startsAt: "2026-08-17", endsAt: "2026-08-31" },
 		resolverPaths: { team: "resolveTeamReference" },
 		async prepare(k, v, s) {
@@ -713,16 +743,14 @@ const entries: LinearOperation[] = [
 		root: "cycleUpdate",
 		inputType: "CycleUpdateInput",
 		selection: `cycle { ${CYCLE_SELECTION} }`,
-		parameters: [p("id", "String", true), input],
-		acceptedParameters: [
-			"id",
-			"name",
-			"description",
-			"startsAt",
-			"endsAt",
-			"completedAt",
-			"input",
-		].map((n) => p(n)),
+		parameters: [
+			p("id", "String", true),
+			p("name"),
+			p("description"),
+			p("startsAt"),
+			p("endsAt"),
+			p("completedAt"),
+		],
 		example: { id: "cycle-id", name: "Cycle 12" },
 		idKey: "id",
 	}),
@@ -789,7 +817,16 @@ const entries: LinearOperation[] = [
 			"title",
 			"input",
 		].map((n) => p(n)),
+		legacyParameters: [[p("input", "DocumentCreateInput", true)]],
 		example: { title: "Planning notes", content: "Notes" },
+		validateVariables(variables) {
+			if (
+				variables.input &&
+				typeof (variables.title ?? object(variables.input)?.title) !== "string"
+			) {
+				throw new Error("canonical fields or nested input require title");
+			}
+		},
 		resolverPaths: {
 			issueId: "resolveIssueReference",
 			teamKey: "resolveTeamReference",
@@ -993,7 +1030,16 @@ const entries: LinearOperation[] = [
 			"replaceTeamLabels",
 			"input",
 		].map((n) => p(n)),
+		legacyParameters: [[p("input", "IssueLabelCreateInput", true)]],
 		example: { name: "needs-review", color: "#ff0000" },
+		validateVariables(variables) {
+			if (
+				variables.input &&
+				typeof (variables.name ?? object(variables.input)?.name) !== "string"
+			) {
+				throw new Error("canonical fields or nested input require name");
+			}
+		},
 		resolverPaths: { team: "resolveTeamReference" },
 		async prepare(k, v, s) {
 			const rawInput = object(v.input);
@@ -1173,6 +1219,7 @@ const entries: LinearOperation[] = [
 		filterType: "IssueFilter",
 		sortType: "IssueSortInput",
 		sortKeys: ISSUE_SORT_KEYS,
+		example: { assignee: "me", stateType: "started" },
 		parameters: [
 			p("query"),
 			p("team", "TeamReference"),
@@ -1199,6 +1246,24 @@ const entries: LinearOperation[] = [
 			state: "resolveStateReference",
 			assignee: "resolveUserReference",
 		},
+		validateVariables(variables) {
+			const state = variables.state ?? variables.stateName;
+			if (state === undefined) return;
+			if (typeof state !== "string" || !state.trim()) {
+				throw new Error(
+					'state must be a non-empty UUID, or an exact state name with team. For cross-team calls, use { "assignee": "me", "stateType": "started" }',
+				);
+			}
+			const hasTeam =
+				variables.team !== undefined ||
+				variables.teamId !== undefined ||
+				variables.teamKey !== undefined;
+			if (!hasTeam && (variables.stateName !== undefined || !isUuid(state))) {
+				throw new Error(
+					'team is required when state is a name. For cross-team calls, use { "assignee": "me", "stateType": "started" }',
+				);
+			}
+		},
 		prepare: async (k, v, s) => {
 			const teamRef = v.team ?? v.teamKey ?? v.teamId;
 			const team = teamRef
@@ -1208,24 +1273,24 @@ const entries: LinearOperation[] = [
 			const assignee = assigneeRef
 				? await resolveUserReference(k, String(assigneeRef), s)
 				: undefined;
+			const stateReference = v.state ?? v.stateName;
 			let stateId: string | undefined;
-			if (v.state && team)
-				stateId = (await resolveStateReference(k, team.id, String(v.state), s))
+			if (stateReference && team) {
+				stateId = (
+					await resolveStateReference(k, team.id, String(stateReference), s)
+				).id;
+			} else if (stateReference) {
+				stateId = (await resolveStateIdReference(k, String(stateReference), s))
 					.id;
+			}
 			const convenience = compactObject({
 				title: v.query ? { containsIgnoreCase: v.query } : undefined,
 				team: team ? { id: { eq: team.id } } : undefined,
 				state: stateId
 					? { id: { eq: stateId } }
-					: isUuid(v.state)
-						? { id: { eq: v.state } }
-						: v.state
-							? { name: { eq: String(v.state) } }
-							: v.stateName
-								? { name: { eq: String(v.stateName) } }
-								: v.stateType
-									? { type: { eq: String(v.stateType) } }
-									: undefined,
+					: v.stateType
+						? { type: { eq: String(v.stateType) } }
+						: undefined,
 				assignee: assignee ? { id: { eq: assignee.id } } : undefined,
 			});
 			return {
@@ -1246,7 +1311,7 @@ const entries: LinearOperation[] = [
 							}
 						: undefined,
 					state: stateId
-						? { requested: v.state, resolvedId: stateId }
+						? { requested: stateReference, resolvedId: stateId }
 						: undefined,
 				}),
 			};
@@ -1300,6 +1365,27 @@ const entries: LinearOperation[] = [
 		],
 		legacyParameters: [[p("input", "IssueCreateInput", true)]],
 		example: { title: "v0.4 trial child", parent: "AEO-258" },
+		validateVariables(variables) {
+			const raw = object(variables.input) ?? {};
+			const title = variables.title ?? raw.title;
+			if (typeof title !== "string" || !title.trim()) {
+				throw new Error(
+					"title is required in canonical fields or nested input",
+				);
+			}
+			const teamOrParent =
+				variables.team ??
+				variables.teamKey ??
+				variables.teamId ??
+				variables.parent ??
+				raw.teamId ??
+				raw.parentId;
+			if (typeof teamOrParent !== "string" || !teamOrParent.trim()) {
+				throw new Error(
+					"team or parent is required in canonical fields or nested input",
+				);
+			}
+		},
 		resolverPaths: {
 			parent: "resolveIssueReference",
 			parentId: "resolveIssueReference",
@@ -1572,7 +1658,16 @@ const entries: LinearOperation[] = [
 			"isGroup",
 			"input",
 		].map((n) => p(n)),
+		legacyParameters: [[p("input", "ProjectLabelCreateInput", true)]],
 		example: { name: "Strategic" },
+		validateVariables(variables) {
+			if (
+				variables.input &&
+				typeof (variables.name ?? object(variables.input)?.name) !== "string"
+			) {
+				throw new Error("canonical fields or nested input require name");
+			}
+		},
 	}),
 	simpleMutation({
 		name: "update_project_label",
@@ -1835,6 +1930,41 @@ function addSaveOperation(config: {
 		`${config.entity[0]!.toLowerCase() + config.entity.slice(1)} { ${config.selection} }`,
 		true,
 	);
+	const validateSaveVariables = (v: Record<string, unknown>) => {
+		const reference = v[config.idKey];
+		const update = typeof reference === "string" && reference.length > 0;
+		const rawInput = object(v.input) ?? {};
+		const invalidForMode = (
+			update ? config.createOnly : config.updateOnly
+		).filter((key) => v[key] !== undefined || rawInput[key] !== undefined);
+		if (invalidForMode.length) {
+			throw new Error(
+				`Params not valid in ${update ? "update" : "create"} mode: ${invalidForMode.join(", ")}.`,
+			);
+		}
+		const prepared = mergedInput(v, [config.idKey]);
+		if (update && Object.keys(prepared).length === 0) {
+			throw new Error(config.emptyUpdateMessage);
+		}
+		if (!update) {
+			if (typeof prepared.name !== "string" || !prepared.name.trim())
+				throw new Error(
+					`${config.entity} name is required for ${config.createRoot} (name).`,
+				);
+			if (
+				config.name === "save_milestone" &&
+				typeof prepared.projectId !== "string"
+			)
+				throw new Error("projectId is required for projectMilestoneCreate.");
+			if (
+				config.name === "save_project" &&
+				(!Array.isArray(prepared.teamIds) || prepared.teamIds.length === 0)
+			)
+				throw new Error(
+					"teamIds is required for projectCreate and must be a non-empty array.",
+				);
+		}
+	};
 	const cardParameters =
 		config.name === "save_project"
 			? [p("projectId", "ProjectReference"), p("name"), input]
@@ -1858,40 +1988,13 @@ function addSaveOperation(config: {
 		documents: [createDocument, updateDocument],
 		mutationRoots: [config.createRoot, config.updateRoot],
 		resolverPaths: config.resolverPaths,
+		requiresVariables: true,
+		validateVariables: validateSaveVariables,
 		async prepare(k, v, s) {
+			validateSaveVariables(v);
 			const reference = v[config.idKey];
 			const update = typeof reference === "string" && reference.length > 0;
-			const rawInput = object(v.input) ?? {};
-			const invalidForMode = (
-				update ? config.createOnly : config.updateOnly
-			).filter((key) => v[key] !== undefined || rawInput[key] !== undefined);
-			if (invalidForMode.length) {
-				throw new Error(
-					`Params not valid in ${update ? "update" : "create"} mode: ${invalidForMode.join(", ")}.`,
-				);
-			}
 			const prepared = mergedInput(v, [config.idKey]);
-			if (update && Object.keys(prepared).length === 0) {
-				throw new Error(config.emptyUpdateMessage);
-			}
-			if (!update) {
-				if (typeof prepared.name !== "string" || !prepared.name.trim())
-					throw new Error(
-						`${config.entity} name is required for ${config.createRoot} (name).`,
-					);
-				if (
-					config.name === "save_milestone" &&
-					typeof prepared.projectId !== "string"
-				)
-					throw new Error("projectId is required for projectMilestoneCreate.");
-				if (
-					config.name === "save_project" &&
-					(!Array.isArray(prepared.teamIds) || prepared.teamIds.length === 0)
-				)
-					throw new Error(
-						"teamIds is required for projectCreate and must be a non-empty array.",
-					);
-			}
 			const resolution: Record<string, unknown> = {};
 			let id: string | undefined;
 			if (update) {
@@ -2142,12 +2245,29 @@ export function parameterShapes(
 	operation: LinearOperation,
 	requestedName: string,
 ): readonly (readonly OperationParameter[])[] {
+	const required = new Set(
+		operation.parameters
+			.filter((parameter) => parameter.required)
+			.map(({ name }) => name),
+	);
+	const canonicalShape = (
+		operation.acceptedParameters ?? operation.parameters
+	).map((parameter) => ({
+		...parameter,
+		required: required.has(parameter.name),
+	}));
 	const aliasShape = operation.aliasParameters?.[requestedName];
-	if (aliasShape) return [operation.parameters, aliasShape];
-	return [
-		operation.acceptedParameters ?? operation.parameters,
-		...(operation.legacyParameters ?? []),
-	];
+	if (aliasShape) return [canonicalShape, aliasShape];
+	const legacyShapes = (operation.legacyParameters ?? []).map((shape) => {
+		if (shape.length !== 1 || shape[0]?.name !== "input" || !shape[0].required)
+			return shape;
+		const accepted = operation.acceptedParameters ?? operation.parameters;
+		return accepted.map((parameter) => ({
+			...parameter,
+			required: parameter.name === "input",
+		}));
+	});
+	return [canonicalShape, ...legacyShapes];
 }
 export function operationsForDomain(
 	domain: OperationDomain,

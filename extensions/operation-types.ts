@@ -49,6 +49,8 @@ export type LinearOperation = {
 	mutationRoots: readonly string[];
 	pagination?: PaginationMetadata;
 	resolverPaths?: Readonly<Record<string, string>>;
+	requiresVariables?: boolean;
+	validateVariables?: (variables: Record<string, unknown>) => void;
 	prepare?: (
 		apiKey: string,
 		variables: Record<string, unknown>,

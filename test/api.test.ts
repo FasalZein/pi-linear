@@ -110,7 +110,7 @@ describe('named operations', () => {
       'Unknown Linear operation "missing". Send { "operation": "help" }.',
     );
     expect(() => resolveRequest({ operation: 'get_issue', variables: { teamKey: 'AEO', extra: true } })).toThrow(
-      'Invalid parameters for "get_issue": missing issue; unknown teamKey, extra. Valid parameters: issue: IssueReference (required). Example: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }.',
+      'Invalid parameters for "get_issue": missing issue; unknown extra. Valid parameters: issue: IssueReference (required). Example: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }.',
     );
   });
 });
