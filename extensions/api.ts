@@ -280,11 +280,17 @@ function helpResult(variables: Record<string, unknown> = {}): JsonObject {
 
   const domain = variables.domain;
   const operationName = variables.operation;
+  const naturalKeys = keys.filter((key) => key === 'query' || key === 'search');
+  const schemaKeys = keys.filter((key) => key === 'includeSchema' || key === 'include_schema');
   const naturalQuery = variables.query ?? variables.search;
-  if (keys.length !== 1) throw new Error(`Invalid help request. ${HELP_SHAPES}`);
-  if ((keys[0] === 'query' || keys[0] === 'search') && typeof naturalQuery === 'string' && naturalQuery.trim()) {
+  const naturalMode = naturalKeys.length === 1
+    && schemaKeys.length <= 1
+    && keys.length === naturalKeys.length + schemaKeys.length
+    && (schemaKeys.length === 0 || typeof variables[schemaKeys[0]!] === 'boolean');
+  if (naturalMode && typeof naturalQuery === 'string' && naturalQuery.trim()) {
     return naturalHelp(naturalQuery.trim());
   }
+  if (keys.length !== 1) throw new Error(`Invalid help request. ${HELP_SHAPES}`);
   if (typeof domain === 'string' && DOMAINS.includes(domain as OperationDomain)) {
     return {
       domain,

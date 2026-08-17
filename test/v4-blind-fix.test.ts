@@ -74,6 +74,17 @@ describe("post-change blind regression replay", () => {
 			{ variables: { query: "issue lookup by identifier" }, first: "get_issue" },
 			{ variables: { search: "comment issue create comment" }, first: "create_comment" },
 			{ variables: { query: "issues assigned to current user in progress list" }, first: "list_issues" },
+			{
+				variables: {
+					search: "create sub-issue child issue set status backlog",
+					includeSchema: true,
+				},
+				first: "create_issue",
+			},
+			{
+				variables: { query: "create child issue", include_schema: false },
+				first: "create_issue",
+			},
 		] as const;
 		for (const { variables, first } of helpCalls) {
 			const result = await execute({ operation: "help", variables });

@@ -191,6 +191,10 @@ describe('runtime discovery', () => {
       .rejects.toThrow('For natural search, send exactly one of:');
     await expect(execute(tool, { operation: 'help', variables: { domain: 'issues', query: 'comments' } }))
       .rejects.toThrow('For natural search, send exactly one of:');
+    await expect(execute(tool, { operation: 'help', variables: { domain: 'issues', includeSchema: true } }))
+      .rejects.toThrow('For natural search, send exactly one of:');
+    await expect(execute(tool, { operation: 'help', variables: { query: 'issues', includeSchema: 'yes' } }))
+      .rejects.toThrow('For natural search, send exactly one of:');
     await expect(execute(tool, { operation: 'help', variables: { query: 42 } }))
       .rejects.toThrow('For natural search, send exactly one of:');
     await expect(execute(tool, { operation: 'help', variables: { domain: 'unknown' } }))
