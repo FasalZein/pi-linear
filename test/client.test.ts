@@ -14,6 +14,7 @@ import {
   resolveTeamReference,
   resolveStateReference,
   resolveUserReference,
+  resolveNamedEntityReference,
   type WorkspaceCredentials,
 } from '../extensions/client';
 
@@ -361,6 +362,26 @@ describe('strict reference resolvers', () => {
       byDisplayName: { nodes: [] },
     }));
     await expect(resolveUserReference('key', 'Ada')).rejects.toThrow('2 matches');
+  });
+
+
+  it('resolves supported entity names exactly and uses title for documents', async () => {
+    graphqlStub((query) => {
+      expect(query).toContain('documents(first: 2, filter: { title: { eq: $name } })');
+      expect(query).toContain('name: title');
+      return { documents: { nodes: [{ id: OTHER_ID, name: 'Planning notes' }] } };
+    });
+    await expect(resolveNamedEntityReference('key', 'document', 'Planning notes')).resolves.toEqual({
+      id: OTHER_ID,
+      name: 'Planning notes',
+    });
+  });
+
+  it('rejects ambiguous supported entity names', async () => {
+    graphqlStub(() => ({
+      projects: { nodes: [{ id: USER_ID, name: 'Platform' }, { id: OTHER_ID, name: 'Platform' }] },
+    }));
+    await expect(resolveNamedEntityReference('key', 'project', 'Platform')).rejects.toThrow('2 matches');
   });
 });
 

@@ -3,11 +3,31 @@ import { Kind, parse, type DocumentNode, type SelectionSetNode } from 'graphql';
 export type MutationMode = 'allowlist' | 'readonly';
 
 export const SAFE_NAMED_MUTATION_ROOTS = new Set([
+  'commentCreate',
+  'commentUpdate',
+  'customViewCreate',
+  'customViewUpdate',
+  'viewPreferencesCreate',
+  'cycleCreate',
+  'cycleUpdate',
+  'documentCreate',
+  'documentUpdate',
+  'initiativeCreate',
+  'initiativeUpdate',
+  'issueLabelCreate',
+  'issueLabelUpdate',
+  'issueRelationCreate',
+  'issueRelationUpdate',
   'issueCreate',
   'issueUpdate',
-  'commentCreate',
-  'issueRelationCreate',
-  'issueLabelCreate',
+  'projectMilestoneCreate',
+  'projectMilestoneUpdate',
+  'projectLabelCreate',
+  'projectLabelUpdate',
+  'projectRelationCreate',
+  'projectRelationUpdate',
+  'projectCreate',
+  'projectUpdate',
 ]);
 
 function mutationFields(document: DocumentNode): string[] {

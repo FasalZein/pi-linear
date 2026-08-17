@@ -13,7 +13,7 @@ import {
   routeLinearResult,
   resolveRequest,
 } from '../extensions/api';
-import { DOMAINS, getOperation, operations } from '../extensions/operations';
+import { DOMAINS, getOperation, operationDocuments, operations } from '../extensions/operations';
 
 const originalArtifactRoot = process.env.PI_ARTIFACT_PROJECT_ROOT;
 const originalSpillBytes = process.env.LINEAR_SPILL_BYTES;
@@ -76,9 +76,10 @@ describe('named operations', () => {
       expect(operation.name).toBe(name);
       expect(operation.example.operation).toBe(name);
 
-      const parsed = parsedRootOperation(operation.document);
-      if (parsed.type === 'query') expect(operation.mutationRoots).toEqual([]);
-      else expect([...operation.mutationRoots].sort()).toEqual(parsed.roots);
+      const parsed = operationDocuments(operation).map(parsedRootOperation);
+      const mutationRoots = [...new Set(parsed.filter(({ type }) => type === 'mutation').flatMap(({ roots }) => roots))].sort();
+      expect([...operation.mutationRoots].sort()).toEqual(mutationRoots);
+      for (const document of parsed.filter(({ type }) => type === 'query')) expect(document.roots.length).toBeGreaterThan(0);
     }
   });
 
@@ -140,24 +141,22 @@ describe('runtime discovery', () => {
     });
 
     const domain = await execute(tool, { operation: 'help', variables: { domain: 'issues' } });
-    expect(domain.details.operations).toEqual([
-      { name: 'get_issue', signature: 'get_issue(issue: IssueReference!)' },
-      { name: 'search_issues', signature: 'search_issues(term: String!, after?: String)' },
-      { name: 'create_issue', signature: 'create_issue(input: IssueCreateInput!)' },
-      { name: 'update_issue_state', signature: 'update_issue_state(issue: IssueReference!, state: StateReference!)' },
+    expect(domain.details.operations.map(({ name }: any) => name)).toEqual([
+      'list_issues', 'get_issue', 'create_issue', 'update_issue', 'search_issues',
     ]);
 
     const comments = await execute(tool, { operation: 'help', variables: { domain: 'comments' } });
-    expect(comments.details.operations).toEqual([
-      { name: 'create_comment', signature: 'create_comment(issue: IssueReference!, body: String!)' },
+    expect(comments.details.operations.map(({ name }: any) => name)).toEqual([
+      'list_comments', 'create_comment', 'update_comment',
     ]);
     const relations = await execute(tool, { operation: 'help', variables: { domain: 'relations' } });
-    expect(relations.details.operations).toEqual([
-      { name: 'create_issue_relation', signature: 'create_issue_relation(issue: IssueReference!, relatedIssue: IssueReference!, type: IssueRelationType!)' },
+    expect(relations.details.operations.map(({ name }: any) => name)).toEqual([
+      'list_issue_relations', 'create_issue_relation', 'update_issue_relation',
+      'list_project_relations', 'create_project_relation', 'update_project_relation',
     ]);
     const workspace = await execute(tool, { operation: 'help', variables: { domain: 'workspace' } });
-    expect(workspace.details.operations).toEqual([
-      { name: 'list_issue_statuses', signature: 'list_issue_statuses(after?: String)' },
+    expect(workspace.details.operations.map(({ name }: any) => name)).toEqual([
+      'list_issue_statuses', 'switch_workspace',
     ]);
     expect(JSON.stringify([comments.details, relations.details, workspace.details])).not.toMatch(
       /add_comment|create_relation|list_workflow_states/,
@@ -236,14 +235,14 @@ describe('reference preparation pipeline', () => {
         data = { workflowStates: { nodes: [{ id: STATE_ID, name: 'Backlog', team: { id: TEAM_ID } }] } };
       } else if (query.includes('ResolveStateById')) {
         data = { workflowState: { id: STATE_ID, name: 'Backlog', team: { id: TEAM_ID } } };
-      } else if (query.includes('mutation AddComment')) {
-        data = { commentCreate: { success: true, comment: { id: 'comment-1', body: variables.body } } };
-      } else if (query.includes('mutation CreateRelation')) {
-        data = { issueRelationCreate: { success: true, issueRelation: { id: 'relation-1', type: variables.type } } };
-      } else if (query.includes('mutation UpdateIssueState')) {
-        data = { issueUpdate: { success: true, issue: { id: variables.issueId, identifier: 'AEO-258' } } };
+      } else if (query.includes('mutation CreateComment')) {
+        data = { commentCreate: { success: true, comment: { id: 'comment-1', body: (variables.input as any).body } } };
+      } else if (query.includes('mutation CreateIssueRelation')) {
+        data = { issueRelationCreate: { success: true, issueRelation: { id: 'relation-1', type: (variables.input as any).type } } };
+      } else if (query.includes('mutation UpdateIssue')) {
+        data = { issueUpdate: { success: true, issue: { id: variables.id, identifier: 'AEO-258' } } };
       } else {
-        data = { issue: { id: variables.issueId, identifier: 'AEO-258' } };
+        data = { issue: { id: variables.id, identifier: 'AEO-258' } };
       }
       return { ok: true, status: 200, statusText: 'OK', headers: new Headers(), json: async () => ({ data }) };
     });
@@ -270,14 +269,14 @@ describe('reference preparation pipeline', () => {
 
     const final = requests.filter(({ query }) => !query.includes('Resolve'));
     expect(final.map(({ variables }) => variables)).toEqual([
-      { issueId: ISSUE_ID },
-      { issueId: ISSUE_ID },
-      { issueId: ISSUE_ID, body: 'canonical' },
-      { issueId: ISSUE_ID, body: 'legacy' },
-      { issueId: ISSUE_ID, relatedIssueId: RELATED_ID, type: 'related' },
-      { issueId: ISSUE_ID, relatedIssueId: RELATED_ID, type: 'blocks' },
-      { issueId: ISSUE_ID, stateId: STATE_ID },
-      { issueId: ISSUE_ID, stateId: STATE_ID },
+      { id: ISSUE_ID },
+      { id: ISSUE_ID },
+      { input: { body: 'canonical', issueId: ISSUE_ID } },
+      { input: { issueId: ISSUE_ID, body: 'legacy' } },
+      { input: { issueId: ISSUE_ID, relatedIssueId: RELATED_ID, type: 'related' } },
+      { input: { issueId: ISSUE_ID, relatedIssueId: RELATED_ID, type: 'blocks' } },
+      { id: ISSUE_ID, input: { stateId: STATE_ID } },
+      { id: ISSUE_ID, input: { stateId: STATE_ID } },
     ]);
     expect(results[2].details.resolution.target).toEqual({
       requested: 'AEO-258', resolvedId: ISSUE_ID, identifier: 'AEO-258',

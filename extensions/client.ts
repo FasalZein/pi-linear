@@ -11,6 +11,7 @@ export type ResolvedIssue = { id: string; identifier: string; teamId: string; te
 export type ResolvedTeam = { id: string; key: string };
 export type ResolvedState = { id: string; name: string; teamId: string };
 export type ResolvedUser = { id: string; name?: string; displayName?: string; email?: string };
+export type ResolvedNamedEntity = { id: string; name: string };
 
 export type AuthPreference = 'workspace' | 'env';
 
@@ -344,6 +345,64 @@ export async function resolveStateReference(
   );
   const state = requireSingle(matches, `state "${reference}" in team "${teamId}"`);
   return { id: state.id, name: state.name, teamId };
+}
+
+export async function resolveNamedEntityReference(
+	apiKey: string,
+	kind:
+		| "project"
+		| "initiative"
+		| "cycle"
+		| "document"
+		| "projectMilestone"
+		| "customView",
+	value: string,
+	signal?: AbortSignal,
+): Promise<ResolvedNamedEntity> {
+	const reference = requireReference(value, kind);
+	const singular = kind;
+	const plural =
+		kind === "projectMilestone"
+			? "projectMilestones"
+			: kind === "customView"
+				? "customViews"
+				: `${kind}s`;
+	const nameField = kind === "document" ? "title" : "name";
+	const nameSelection = kind === "document" ? "name: title" : "name";
+	if (UUID_PATTERN.test(reference)) {
+		const data = await linearGraphQL<
+			Record<string, ResolvedNamedEntity | null>
+		>(
+			apiKey,
+			`query ResolveNamedEntityById($id: String!) {
+  ${singular}(id: $id) { id ${nameSelection} }
+}`,
+			{ id: reference },
+			signal,
+		);
+		const entity = data[singular];
+		if (!entity)
+			throw new Error(`Linear ${kind} "${reference}" was not found.`);
+		if (entity.id !== reference)
+			throw new Error(
+				`Linear ${kind} resolver returned mismatched id for "${reference}".`,
+			);
+		return entity;
+	}
+	const data = await linearGraphQL<
+		Record<string, { nodes: ResolvedNamedEntity[] }>
+	>(
+		apiKey,
+		`query ResolveNamedEntityByName($name: String!) {
+  ${plural}(first: 2, filter: { ${nameField}: { eq: $name } }) { nodes { id ${nameSelection} } }
+}`,
+		{ name: reference },
+		signal,
+	);
+	const matches = (data[plural]?.nodes ?? []).filter(
+		(entity) => entity.name === reference,
+	);
+	return requireSingle(matches, `${kind} "${reference}"`);
 }
 
 export async function resolveUserReference(

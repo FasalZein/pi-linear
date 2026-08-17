@@ -1,283 +1,2161 @@
 import {
-  resolveIssueReference,
-  resolveStateReference,
-  type ResolvedIssue,
-} from './client';
+	resolveIssueReference,
+	resolveNamedEntityReference,
+	resolveStateReference,
+	resolveTeamReference,
+	resolveUserReference,
+	switchWorkspace,
+	type ResolvedIssue,
+} from "./client";
+import {
+	COMMENT_SELECTION,
+	CYCLE_SELECTION,
+	DOCUMENT_SELECTION,
+	INITIATIVE_SELECTION,
+	ISSUE_LABEL_SELECTION,
+	ISSUE_RELATION_SELECTION,
+	ISSUE_SELECTION,
+	MILESTONE_SELECTION,
+	PAGE_INFO,
+	PROJECT_DETAIL_SELECTION,
+	PROJECT_LABEL_SELECTION,
+	PROJECT_LIST_SELECTION,
+	PROJECT_RELATION_SELECTION,
+	TEAM_SELECTION,
+	USER_SELECTION,
+	VIEW_SELECTION,
+	WORKFLOW_STATE_SELECTION,
+} from "./selections";
+import {
+	compactObject,
+	mergeFilters,
+	mergedInput,
+	p,
+	paginationVariables,
+	type LinearOperation,
+	type OperationDomain,
+	type OperationParameter,
+} from "./operation-types";
+export type {
+	LinearOperation,
+	OperationDomain,
+	OperationParameter,
+} from "./operation-types";
 
 export const DOMAINS = [
-  'issues',
-  'comments',
-  'users',
-  'teams',
-  'projects',
-  'cycles',
-  'milestones',
-  'initiatives',
-  'documents',
-  'views',
-  'labels',
-  'relations',
-  'workspace',
+	"issues",
+	"comments",
+	"users",
+	"teams",
+	"projects",
+	"cycles",
+	"milestones",
+	"initiatives",
+	"documents",
+	"views",
+	"labels",
+	"relations",
+	"workspace",
+] as const satisfies readonly OperationDomain[];
+
+const pagination = [
+	p("after"),
+	p("before"),
+	p("first", "Int"),
+	p("last", "Int"),
+	p("includeArchived", "Boolean"),
+	p("orderBy", "PaginationOrderBy"),
+];
+const input = p("input", "Input");
+const filter = p("filter", "Filter");
+const sort = p("sort", "[SortInput!]");
+const ISSUE_SORT_KEYS = [
+	"priority",
+	"estimate",
+	"title",
+	"label",
+	"labelGroup",
+	"slaStatus",
+	"createdAt",
+	"updatedAt",
+	"completedAt",
+	"dueDate",
+	"accumulatedStateUpdatedAt",
+	"cycle",
+	"milestone",
+	"assignee",
+	"delegate",
+	"project",
+	"team",
+	"manual",
+	"workflowState",
+	"customer",
+	"customerRevenue",
+	"customerCount",
+	"customerImportantCount",
+	"rootIssue",
+	"linkCount",
+	"release",
+] as const;
+const PROJECT_SORT_KEYS = [
+	"name",
+	"status",
+	"priority",
+	"manual",
+	"targetDate",
+	"startDate",
+	"createdAt",
+	"updatedAt",
+	"health",
+	"lead",
+] as const;
+const INITIATIVE_SORT_KEYS = [
+	"name",
+	"manual",
+	"updatedAt",
+	"createdAt",
+	"targetDate",
+	"health",
+	"healthUpdatedAt",
+	"owner",
+	"priority",
+] as const;
+const USER_SORT_KEYS = ["name", "displayName"] as const;
+const DOCUMENT_SORT_KEYS = [
+	"title",
+	"creator",
+	"project",
+	"createdAt",
+	"updatedAt",
 ] as const;
 
-export type OperationDomain = typeof DOMAINS[number];
-export type OperationParameter = { name: string; type: string; required: boolean };
-export type OperationExample = { operation: string; variables: Record<string, unknown> };
-export type OperationPreparation = {
-  variables: Record<string, unknown>;
-  resolution?: Record<string, unknown>;
-};
-export type LinearOperation = {
-  name: string;
-  aliases: readonly string[];
-  domain: OperationDomain;
-  purpose: string;
-  parameters: readonly OperationParameter[];
-  legacyParameters?: readonly (readonly OperationParameter[])[];
-  aliasParameters?: Readonly<Record<string, readonly OperationParameter[]>>;
-  example: OperationExample;
-  document: string;
-  mutationRoots: readonly string[];
-  prepare?: (
-    apiKey: string,
-    variables: Record<string, unknown>,
-    signal: AbortSignal | undefined,
-  ) => Promise<OperationPreparation>;
-};
-
 function issueTarget(requested: string, issue: ResolvedIssue) {
-  return { requested, resolvedId: issue.id, identifier: issue.identifier };
+	return { requested, resolvedId: issue.id, identifier: issue.identifier };
+}
+function issueReference(
+	variables: Record<string, unknown>,
+	key = "issue",
+): string {
+	const value = variables[key] ?? variables[`${key}Id`];
+	if (typeof value === "string") return value;
+	if (
+		key === "issue" &&
+		typeof variables.teamKey === "string" &&
+		variables.number !== undefined
+	) {
+		return `${variables.teamKey}-${variables.number}`;
+	}
+	return "";
+}
+function isUuid(value: unknown): value is string {
+	return (
+		typeof value === "string" &&
+		/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+			value,
+		)
+	);
+}
+function object(value: unknown): Record<string, unknown> | undefined {
+	return value && typeof value === "object" && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: undefined;
+}
+function listDocument(
+	name: string,
+	root: string,
+	selection: string,
+	options: {
+		filterType?: string;
+		sortType?: string;
+		extras?: string;
+		extraArgs?: string;
+	} = {},
+) {
+	return `query ${name}(
+    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy
+    ${options.filterType ? `$filter: ${options.filterType}` : ""}
+    ${options.sortType ? `$sort: [${options.sortType}!]` : ""}
+    ${options.extras ?? ""}
+  ) {
+    ${root}(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy
+      ${options.filterType ? "filter: $filter" : ""} ${options.sortType ? "sort: $sort" : ""} ${options.extraArgs ?? ""}) {
+      nodes { ${selection} } ${PAGE_INFO}
+    }
+  }`;
+}
+function getDocument(name: string, root: string, selection: string) {
+	return `query ${name}($id: String!) { ${root}(id: $id) { ${selection} } }`;
+}
+function mutationDocument(
+	name: string,
+	root: string,
+	inputType: string,
+	selection: string,
+	id = false,
+) {
+	return `mutation ${name}(${id ? "$id: String! " : ""}$input: ${inputType}!) {
+    ${root}(${id ? "id: $id, " : ""}input: $input) { success ${selection} }
+  }`;
+}
+function listPrepare(
+	defaultPageSize: number,
+	extra?: (
+		variables: Record<string, unknown>,
+	) => Promise<Record<string, unknown>> | Record<string, unknown>,
+) {
+	return async (_apiKey: string, variables: Record<string, unknown>) => ({
+		variables: compactObject({
+			...paginationVariables(variables, defaultPageSize),
+			filter: object(variables.filter),
+			sort: Array.isArray(variables.sort) ? variables.sort : undefined,
+			...(extra ? await extra(variables) : {}),
+		}),
+	});
+}
+function plainInputPrepare(omitted: readonly string[] = []) {
+	return async (_apiKey: string, variables: Record<string, unknown>) => ({
+		variables: { input: mergedInput(variables, omitted) },
+	});
+}
+function updateInputPrepare(idKey = "id", omitted: readonly string[] = []) {
+	return async (_apiKey: string, variables: Record<string, unknown>) => {
+		const update = mergedInput(variables, [idKey, ...omitted]);
+		if (!Object.keys(update).length)
+			throw new Error("No update fields were provided.");
+		return { variables: { id: variables[idKey], input: update } };
+	};
+}
+function listOperation(config: {
+	name: string;
+	domain: OperationDomain;
+	root: string;
+	selection: string;
+	purpose: string;
+	pageSize: number;
+	filterType?: string;
+	sortType?: string;
+	sortKeys?: readonly string[];
+	parameters?: readonly OperationParameter[];
+	extras?: string;
+	extraArgs?: string;
+	prepare?: LinearOperation["prepare"];
+	aliases?: readonly string[];
+	example?: Record<string, unknown>;
+	resolverPaths?: Record<string, string>;
+	acceptedParameters?: readonly OperationParameter[];
+}): LinearOperation {
+	const parameters = config.parameters ?? [];
+	const document = listDocument(
+		config.name.replace(/(^|_)(\w)/g, (_, _a, c) => c.toUpperCase()),
+		config.root,
+		config.selection,
+		config,
+	);
+	return {
+		name: config.name,
+		aliases: config.aliases ?? [],
+		domain: config.domain,
+		purpose: config.purpose,
+		parameters: [
+			...parameters,
+			...pagination,
+			...(config.filterType ? [filter] : []),
+			...(config.sortType ? [sort] : []),
+		],
+		acceptedParameters: config.acceptedParameters,
+		example: { operation: config.name, variables: config.example ?? {} },
+		document,
+		mutationRoots: [],
+		pagination: {
+			defaultPageSize: config.pageSize,
+			...(config.filterType ? { filterType: config.filterType } : {}),
+			...(config.sortType ? { sortType: config.sortType } : {}),
+			...(config.sortKeys ? { sortKeys: config.sortKeys } : {}),
+		},
+		resolverPaths: config.resolverPaths,
+		prepare: config.prepare ?? listPrepare(config.pageSize),
+	};
+}
+function simpleMutation(config: {
+	name: string;
+	domain: OperationDomain;
+	purpose: string;
+	root: string;
+	inputType: string;
+	selection: string;
+	parameters: readonly OperationParameter[];
+	acceptedParameters?: readonly OperationParameter[];
+	example: Record<string, unknown>;
+	idKey?: string;
+	prepare?: LinearOperation["prepare"];
+	aliases?: readonly string[];
+	legacyParameters?: LinearOperation["legacyParameters"];
+	aliasParameters?: LinearOperation["aliasParameters"];
+	resolverPaths?: Record<string, string>;
+	document?: string;
+}): LinearOperation {
+	const document =
+		config.document ??
+		mutationDocument(
+			config.name.replace(/(^|_)(\w)/g, (_, _a, c) => c.toUpperCase()),
+			config.root,
+			config.inputType,
+			config.selection,
+			Boolean(config.idKey),
+		);
+	return {
+		name: config.name,
+		aliases: config.aliases ?? [],
+		domain: config.domain,
+		purpose: config.purpose,
+		parameters: config.parameters,
+		acceptedParameters: config.acceptedParameters,
+		legacyParameters: config.legacyParameters,
+		aliasParameters: config.aliasParameters,
+		example: { operation: config.name, variables: config.example },
+		document,
+		mutationRoots: [config.root],
+		resolverPaths: config.resolverPaths,
+		prepare:
+			config.prepare ??
+			(config.idKey ? updateInputPrepare(config.idKey) : plainInputPrepare()),
+	};
 }
 
-function issueReference(variables: Record<string, unknown>): string {
-  if (typeof variables.issue === 'string') return variables.issue;
-  if (typeof variables.issueId === 'string') return variables.issueId;
-  return `${String(variables.teamKey)}-${String(variables.number)}`;
+const commentInput = [
+	"body",
+	"bodyData",
+	"createAsUser",
+	"createOnSyncedSlackThread",
+	"createdAt",
+	"displayIconUrl",
+	"doNotSubscribeToIssue",
+	"documentContentId",
+	"id",
+	"initiativeUpdateId",
+	"issueId",
+	"parentId",
+	"postId",
+	"projectUpdateId",
+	"quotedText",
+	"subscriberIds",
+].map((name) => p(name));
+const issueCreateFields = [
+	"teamId",
+	"teamKey",
+	"title",
+	"description",
+	"assigneeId",
+	"completedAt",
+	"createAsUser",
+	"createdAt",
+	"cycleId",
+	"delegateId",
+	"descriptionData",
+	"displayIconUrl",
+	"dueDate",
+	"estimate",
+	"id",
+	"labelIds",
+	"lastAppliedTemplateId",
+	"parentId",
+	"preserveSortOrderOnCreate",
+	"priority",
+	"prioritySortOrder",
+	"projectId",
+	"projectMilestoneId",
+	"referenceCommentId",
+	"slaBreachesAt",
+	"slaStartedAt",
+	"slaType",
+	"sortOrder",
+	"sourceCommentId",
+	"sourcePullRequestCommentId",
+	"stateId",
+	"subIssueSortOrder",
+	"subscriberIds",
+	"templateId",
+	"useDefaultTemplate",
+].map((name) => p(name));
+const createIssueLabelDocument = `mutation CreateIssueLabel($input: IssueLabelCreateInput!, $replaceTeamLabels: Boolean) {
+  issueLabelCreate(input: $input, replaceTeamLabels: $replaceTeamLabels) {
+    success
+    issueLabel { ${ISSUE_LABEL_SELECTION} }
+  }
+}`;
+const updateIssueLabelDocument = `mutation UpdateIssueLabel($id: String!, $input: IssueLabelUpdateInput!, $replaceTeamLabels: Boolean) {
+  issueLabelUpdate(id: $id, input: $input, replaceTeamLabels: $replaceTeamLabels) {
+    success
+    issueLabel { ${ISSUE_LABEL_SELECTION} }
+  }
+}`;
+
+const issueUpdateFields = [
+	"title",
+	"description",
+	"priority",
+	"stateId",
+	"assigneeId",
+	"dueDate",
+	"addedLabelIds",
+	"autoClosedByParentClosing",
+	"cycleId",
+	"delegateId",
+	"descriptionData",
+	"estimate",
+	"labelIds",
+	"lastAppliedTemplateId",
+	"parentId",
+	"prioritySortOrder",
+	"projectId",
+	"projectMilestoneId",
+	"removedLabelIds",
+	"slaBreachesAt",
+	"slaStartedAt",
+	"slaType",
+	"snoozedById",
+	"snoozedUntilAt",
+	"sortOrder",
+	"subIssueSortOrder",
+	"subscriberIds",
+	"teamId",
+	"trashed",
+].map((name) => p(name));
+
+const entries: LinearOperation[] = [
+	listOperation({
+		name: "list_comments",
+		domain: "comments",
+		root: "comments",
+		selection: COMMENT_SELECTION,
+		purpose: "List comments.",
+		pageSize: 20,
+		filterType: "CommentFilter",
+	}),
+	simpleMutation({
+		name: "create_comment",
+		domain: "comments",
+		purpose: "Create a comment on an issue or another supported target.",
+		root: "commentCreate",
+		inputType: "CommentCreateInput",
+		selection: `comment { ${COMMENT_SELECTION} }`,
+		parameters: [p("issue", "IssueReference", true), p("body", "String", true)],
+		acceptedParameters: [p("issue"), ...commentInput, input],
+		example: { issue: "AEO-258", body: "Comment text" },
+		aliases: ["add_comment"],
+		legacyParameters: [
+			[p("issueId", "String", true), p("body", "String", true)],
+		],
+		aliasParameters: {
+			add_comment: [p("issueId", "String", true), p("body", "String", true)],
+		},
+		resolverPaths: {
+			issue: "resolveIssueReference",
+			issueId: "resolveIssueReference",
+		},
+		async prepare(apiKey, variables, signal) {
+			const requested =
+				issueReference(variables) ||
+				String(object(variables.input)?.issueId ?? "");
+			const issue = requested
+				? await resolveIssueReference(apiKey, requested, signal)
+				: undefined;
+			const prepared = mergedInput(variables, ["issue"]);
+			if (issue) prepared.issueId = issue.id;
+			if (typeof prepared.body !== "string" && !object(prepared.bodyData))
+				throw new Error(
+					"Comment body or bodyData is required for commentCreate.",
+				);
+			return {
+				variables: { input: prepared },
+				resolution: issue
+					? { target: issueTarget(requested, issue) }
+					: undefined,
+			};
+		},
+	}),
+	simpleMutation({
+		name: "update_comment",
+		domain: "comments",
+		purpose: "Update a comment by id.",
+		root: "commentUpdate",
+		inputType: "CommentUpdateInput",
+		selection: `comment { ${COMMENT_SELECTION} }`,
+		parameters: [p("id", "String", true), p("body"), p("quotedText"), input],
+		example: { id: "comment-id", body: "Updated text" },
+		idKey: "id",
+	}),
+
+	listOperation({
+		name: "list_views",
+		domain: "views",
+		root: "customViews",
+		selection: VIEW_SELECTION,
+		purpose: "List custom views.",
+		pageSize: 50,
+		filterType: "CustomViewFilter",
+	}),
+	{
+		name: "get_view",
+		aliases: [],
+		domain: "views",
+		purpose: "Get a custom view.",
+		parameters: [p("id", "String", true)],
+		example: { operation: "get_view", variables: { id: "view-id" } },
+		document: getDocument("GetView", "customView", VIEW_SELECTION),
+		mutationRoots: [],
+		async prepare(_k, v) {
+			return { variables: { id: v.id } };
+		},
+	},
+	simpleMutation({
+		name: "create_view",
+		domain: "views",
+		purpose:
+			"Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData.",
+		root: "customViewCreate",
+		inputType: "CustomViewCreateInput",
+		selection: `customView { ${VIEW_SELECTION} }`,
+		parameters: [
+			p("name", "String", true),
+			p("filterData", "Object"),
+			p("projectFilterData", "Object"),
+			p("initiativeFilterData", "Object"),
+			p("feedItemFilterData", "Object"),
+			p("team", "TeamReference"),
+		],
+		acceptedParameters: [
+			p("name", "String", true),
+			...[
+				"filterData",
+				"projectFilterData",
+				"initiativeFilterData",
+				"feedItemFilterData",
+				"team",
+				"teamId",
+				"teamKey",
+				"description",
+				"icon",
+				"color",
+				"shared",
+			].map((n) => p(n)),
+		],
+		example: { name: "My issues", filterData: {} },
+		resolverPaths: {
+			team: "resolveTeamReference",
+			teamKey: "resolveTeamReference",
+		},
+		async prepare(apiKey, v, signal) {
+			const x = mergedInput(v, ["team", "teamKey"]);
+			const ref = String(v.team ?? v.teamKey ?? v.teamId ?? "");
+			if (ref) x.teamId = (await resolveTeamReference(apiKey, ref, signal)).id;
+			return { variables: { input: x } };
+		},
+	}),
+	simpleMutation({
+		name: "update_view",
+		domain: "views",
+		purpose: "Update a custom view.",
+		root: "customViewUpdate",
+		inputType: "CustomViewUpdateInput",
+		selection: `customView { ${VIEW_SELECTION} }`,
+		parameters: [p("id", "String", true), input],
+		acceptedParameters: [
+			"id",
+			"name",
+			"filterData",
+			"projectFilterData",
+			"initiativeFilterData",
+			"feedItemFilterData",
+			"description",
+			"icon",
+			"color",
+			"shared",
+			"input",
+		].map((n) => p(n)),
+		example: { id: "view-id", name: "New name" },
+		idKey: "id",
+	}),
+	simpleMutation({
+		name: "set_view_preferences",
+		domain: "views",
+		purpose: "Set preferences for a custom view.",
+		root: "viewPreferencesCreate",
+		inputType: "ViewPreferencesCreateInput",
+		selection: "viewPreferences { id type viewType }",
+		parameters: [p("viewId", "String", true), p("preferences", "Object", true)],
+		example: { viewId: "view-id", preferences: {} },
+		async prepare(_k, v) {
+			return {
+				variables: {
+					input: {
+						type: "user",
+						viewType: "customView",
+						customViewId: v.viewId,
+						preferences: v.preferences,
+					},
+				},
+			};
+		},
+	}),
+
+	listOperation({
+		name: "list_cycles",
+		domain: "cycles",
+		root: "cycles",
+		selection: CYCLE_SELECTION,
+		purpose: "List cycles.",
+		pageSize: 50,
+		filterType: "CycleFilter",
+		parameters: [p("team", "TeamReference")],
+		acceptedParameters: [
+			p("team"),
+			p("teamId"),
+			p("teamKey"),
+			...pagination,
+			filter,
+		],
+		resolverPaths: { team: "resolveTeamReference" },
+		prepare: async (apiKey, v, signal) => {
+			const ref = String(v.team ?? v.teamKey ?? v.teamId ?? "");
+			const team = ref
+				? await resolveTeamReference(apiKey, ref, signal)
+				: undefined;
+			return {
+				variables: {
+					...paginationVariables(v, 50),
+					filter: mergeFilters(
+						object(v.filter),
+						team ? { team: { id: { eq: team.id } } } : undefined,
+					),
+				},
+			};
+		},
+	}),
+	{
+		name: "get_cycle",
+		aliases: [],
+		domain: "cycles",
+		purpose: "Get a cycle by exact name or UUID.",
+		parameters: [p("cycle", "CycleReference", true)],
+		legacyParameters: [[p("id", "String", true)]],
+		example: { operation: "get_cycle", variables: { cycle: "Cycle 12" } },
+		document: getDocument("GetCycle", "cycle", CYCLE_SELECTION),
+		mutationRoots: [],
+		resolverPaths: { cycle: "resolveNamedEntityReference" },
+		async prepare(k, v, s) {
+			const x = await resolveNamedEntityReference(
+				k,
+				"cycle",
+				String(v.cycle ?? v.id),
+				s,
+			);
+			return {
+				variables: { id: x.id },
+				resolution: {
+					target: { requested: v.cycle, resolvedId: x.id, name: x.name },
+				},
+			};
+		},
+	},
+	simpleMutation({
+		name: "create_cycle",
+		domain: "cycles",
+		purpose: "Create a cycle.",
+		root: "cycleCreate",
+		inputType: "CycleCreateInput",
+		selection: `cycle { ${CYCLE_SELECTION} }`,
+		parameters: [
+			p("team", "TeamReference", true),
+			p("startsAt", "DateTime", true),
+			p("endsAt", "DateTime", true),
+			input,
+		],
+		acceptedParameters: [
+			"team",
+			"teamId",
+			"teamKey",
+			"name",
+			"description",
+			"startsAt",
+			"endsAt",
+			"input",
+		].map((n) => p(n)),
+		example: { team: "AEO", startsAt: "2026-08-17", endsAt: "2026-08-31" },
+		resolverPaths: { team: "resolveTeamReference" },
+		async prepare(k, v, s) {
+			const team = await resolveTeamReference(
+				k,
+				String(v.team ?? v.teamKey ?? v.teamId),
+				s,
+			);
+			return {
+				variables: {
+					input: {
+						...mergedInput(v, ["team", "teamKey", "teamId"]),
+						teamId: team.id,
+					},
+				},
+				resolution: {
+					team: {
+						requested: v.team ?? v.teamKey ?? v.teamId,
+						resolvedId: team.id,
+						key: team.key,
+					},
+				},
+			};
+		},
+	}),
+	simpleMutation({
+		name: "update_cycle",
+		domain: "cycles",
+		purpose: "Update a cycle.",
+		root: "cycleUpdate",
+		inputType: "CycleUpdateInput",
+		selection: `cycle { ${CYCLE_SELECTION} }`,
+		parameters: [p("id", "String", true), input],
+		acceptedParameters: [
+			"id",
+			"name",
+			"description",
+			"startsAt",
+			"endsAt",
+			"completedAt",
+			"input",
+		].map((n) => p(n)),
+		example: { id: "cycle-id", name: "Cycle 12" },
+		idKey: "id",
+	}),
+
+	listOperation({
+		name: "list_documents",
+		domain: "documents",
+		root: "documents",
+		selection: DOCUMENT_SELECTION,
+		purpose: "List documents.",
+		pageSize: 20,
+		filterType: "DocumentFilter",
+		sortType: "DocumentSortInput",
+		sortKeys: DOCUMENT_SORT_KEYS,
+	}),
+	{
+		name: "get_document",
+		aliases: [],
+		domain: "documents",
+		purpose: "Get a document by exact title or UUID.",
+		parameters: [p("document", "DocumentReference", true)],
+		legacyParameters: [[p("documentId", "String", true)]],
+		example: {
+			operation: "get_document",
+			variables: { document: "Planning notes" },
+		},
+		document: getDocument("GetDocument", "document", DOCUMENT_SELECTION),
+		mutationRoots: [],
+		resolverPaths: { document: "resolveNamedEntityReference" },
+		async prepare(k, v, s) {
+			const x = await resolveNamedEntityReference(
+				k,
+				"document",
+				String(v.document ?? v.documentId),
+				s,
+			);
+			return { variables: { id: x.id } };
+		},
+	},
+	simpleMutation({
+		name: "create_document",
+		domain: "documents",
+		purpose: "Create a document.",
+		root: "documentCreate",
+		inputType: "DocumentCreateInput",
+		selection: `document { ${DOCUMENT_SELECTION} }`,
+		parameters: [p("title", "String", true), input],
+		acceptedParameters: [
+			"color",
+			"content",
+			"cycleId",
+			"icon",
+			"id",
+			"initiativeId",
+			"issueId",
+			"lastAppliedTemplateId",
+			"projectId",
+			"releaseId",
+			"resourceFolderId",
+			"sortOrder",
+			"subscriberIds",
+			"teamId",
+			"teamKey",
+			"title",
+			"input",
+		].map((n) => p(n)),
+		example: { title: "Planning notes", content: "Notes" },
+		resolverPaths: {
+			issueId: "resolveIssueReference",
+			teamKey: "resolveTeamReference",
+			teamId: "resolveTeamReference",
+		},
+		async prepare(k, v, s) {
+			const x = mergedInput(v, ["teamKey"]);
+			const resolution: Record<string, unknown> = {};
+			if (typeof x.issueId === "string") {
+				const issue = await resolveIssueReference(k, x.issueId, s);
+				resolution.issue = issueTarget(x.issueId, issue);
+				x.issueId = issue.id;
+			}
+			const related = [
+				"cycleId",
+				"initiativeId",
+				"issueId",
+				"projectId",
+				"releaseId",
+				"resourceFolderId",
+			].some((key) => typeof x[key] === "string" && x[key]);
+			const teamRef = v.teamKey ?? x.teamId;
+			if (related) delete x.teamId;
+			else if (teamRef) {
+				const team = await resolveTeamReference(k, String(teamRef), s);
+				resolution.team = {
+					requested: teamRef,
+					resolvedId: team.id,
+					key: team.key,
+				};
+				x.teamId = team.id;
+			}
+			if (typeof x.title !== "string" || !x.title.trim())
+				throw new Error(
+					"Document title is required for documentCreate (title).",
+				);
+			return { variables: { input: x }, resolution };
+		},
+	}),
+	simpleMutation({
+		name: "update_document",
+		domain: "documents",
+		purpose: "Update a document.",
+		root: "documentUpdate",
+		inputType: "DocumentUpdateInput",
+		selection: `document { ${DOCUMENT_SELECTION} }`,
+		parameters: [p("documentId", "String", true), input],
+		acceptedParameters: [
+			"documentId",
+			"color",
+			"content",
+			"cycleId",
+			"hiddenAt",
+			"icon",
+			"initiativeId",
+			"issueId",
+			"lastAppliedTemplateId",
+			"projectId",
+			"releaseId",
+			"resourceFolderId",
+			"sortOrder",
+			"subscriberIds",
+			"teamId",
+			"teamKey",
+			"title",
+			"trashed",
+			"input",
+		].map((n) => p(n)),
+		example: { documentId: "document-id", title: "Updated notes" },
+		idKey: "documentId",
+		resolverPaths: {
+			issueId: "resolveIssueReference",
+			teamKey: "resolveTeamReference",
+			teamId: "resolveTeamReference",
+		},
+		async prepare(k, v, s) {
+			const x = mergedInput(v, ["documentId", "teamKey"]);
+			const resolution: Record<string, unknown> = {};
+			if (typeof x.issueId === "string") {
+				const issue = await resolveIssueReference(k, x.issueId, s);
+				resolution.issue = issueTarget(x.issueId, issue);
+				x.issueId = issue.id;
+			}
+			const related = [
+				"cycleId",
+				"initiativeId",
+				"issueId",
+				"projectId",
+				"releaseId",
+				"resourceFolderId",
+			].some((key) => typeof x[key] === "string" && x[key]);
+			const teamRef = v.teamKey ?? x.teamId;
+			if (related) delete x.teamId;
+			else if (teamRef) {
+				const team = await resolveTeamReference(k, String(teamRef), s);
+				resolution.team = {
+					requested: teamRef,
+					resolvedId: team.id,
+					key: team.key,
+				};
+				x.teamId = team.id;
+			}
+			if (!Object.keys(x).length)
+				throw new Error("No update fields were provided.");
+			return { variables: { id: v.documentId, input: x }, resolution };
+		},
+	}),
+
+	listOperation({
+		name: "list_initiatives",
+		domain: "initiatives",
+		root: "initiatives",
+		selection: INITIATIVE_SELECTION,
+		purpose: "List initiatives.",
+		pageSize: 20,
+		filterType: "InitiativeFilter",
+		sortType: "InitiativeSortInput",
+		sortKeys: INITIATIVE_SORT_KEYS,
+	}),
+	{
+		name: "get_initiative",
+		aliases: [],
+		domain: "initiatives",
+		purpose: "Get an initiative by exact name or UUID.",
+		parameters: [p("initiative", "InitiativeReference", true)],
+		legacyParameters: [[p("initiativeId", "String", true)]],
+		example: {
+			operation: "get_initiative",
+			variables: { initiative: "Platform" },
+		},
+		document: getDocument("GetInitiative", "initiative", INITIATIVE_SELECTION),
+		mutationRoots: [],
+		resolverPaths: { initiative: "resolveNamedEntityReference" },
+		async prepare(k, v, s) {
+			const x = await resolveNamedEntityReference(
+				k,
+				"initiative",
+				String(v.initiative ?? v.initiativeId),
+				s,
+			);
+			return { variables: { id: x.id } };
+		},
+	},
+
+	listOperation({
+		name: "list_issue_labels",
+		domain: "labels",
+		root: "issueLabels",
+		selection: ISSUE_LABEL_SELECTION,
+		purpose: "List issue labels.",
+		pageSize: 50,
+		filterType: "IssueLabelFilter",
+		parameters: [p("team", "TeamReference")],
+		acceptedParameters: [
+			p("team"),
+			p("teamId"),
+			p("teamKey"),
+			...pagination,
+			filter,
+		],
+		resolverPaths: { team: "resolveTeamReference" },
+		prepare: async (k, v, s) => {
+			const ref = v.team ?? v.teamKey ?? v.teamId;
+			const team = ref
+				? await resolveTeamReference(k, String(ref), s)
+				: undefined;
+			return {
+				variables: {
+					...paginationVariables(v, 50),
+					filter: mergeFilters(
+						object(v.filter),
+						team ? { team: { id: { eq: team.id } } } : undefined,
+					),
+				},
+				resolution: team
+					? { team: { requested: ref, resolvedId: team.id, key: team.key } }
+					: undefined,
+			};
+		},
+	}),
+	simpleMutation({
+		name: "create_issue_label",
+		domain: "labels",
+		purpose: "Create an issue label.",
+		root: "issueLabelCreate",
+		inputType: "IssueLabelCreateInput",
+		selection: `issueLabel { ${ISSUE_LABEL_SELECTION} }`,
+		document: createIssueLabelDocument,
+		parameters: [p("name", "String", true), p("team", "TeamReference"), input],
+		acceptedParameters: [
+			"name",
+			"color",
+			"description",
+			"id",
+			"isGroup",
+			"parentId",
+			"retiredAt",
+			"team",
+			"teamId",
+			"teamKey",
+			"replaceTeamLabels",
+			"input",
+		].map((n) => p(n)),
+		example: { name: "needs-review", color: "#ff0000" },
+		resolverPaths: { team: "resolveTeamReference" },
+		async prepare(k, v, s) {
+			const rawInput = object(v.input);
+			const replaceTeamLabels =
+				v.replaceTeamLabels ?? rawInput?.replaceTeamLabels;
+			const x = mergedInput(v, [
+				"team",
+				"teamKey",
+				"teamId",
+				"replaceTeamLabels",
+			]);
+			delete x.replaceTeamLabels;
+			const ref = v.team ?? v.teamKey ?? v.teamId ?? x.teamId;
+			if (typeof x.name !== "string" || !x.name.trim())
+				throw new Error("Issue label name is required (name).");
+			if (!ref) {
+				return { variables: compactObject({ input: x, replaceTeamLabels }) };
+			}
+			const team = await resolveTeamReference(k, String(ref), s);
+			x.teamId = team.id;
+			return {
+				variables: compactObject({ input: x, replaceTeamLabels }),
+				resolution: {
+					team: { requested: ref, resolvedId: team.id, key: team.key },
+				},
+			};
+		},
+	}),
+	simpleMutation({
+		name: "update_issue_label",
+		domain: "labels",
+		purpose: "Update an issue label.",
+		root: "issueLabelUpdate",
+		inputType: "IssueLabelUpdateInput",
+		selection: `issueLabel { ${ISSUE_LABEL_SELECTION} }`,
+		document: updateIssueLabelDocument,
+		parameters: [p("id", "String", true), input],
+		acceptedParameters: [
+			"id",
+			"name",
+			"description",
+			"color",
+			"parentId",
+			"isGroup",
+			"retiredAt",
+			"replaceTeamLabels",
+			"input",
+		].map((n) => p(n)),
+		example: { id: "label-id", name: "review" },
+		idKey: "id",
+		async prepare(_k, v) {
+			const rawInput = object(v.input);
+			const replaceTeamLabels =
+				v.replaceTeamLabels ?? rawInput?.replaceTeamLabels;
+			const x = mergedInput(v, ["id", "replaceTeamLabels"]);
+			delete x.replaceTeamLabels;
+			if (!Object.keys(x).length)
+				throw new Error("No update fields were provided.");
+			return {
+				variables: compactObject({ id: v.id, input: x, replaceTeamLabels }),
+			};
+		},
+	}),
+
+	listOperation({
+		name: "list_issue_relations",
+		domain: "relations",
+		root: "issueRelations",
+		selection: ISSUE_RELATION_SELECTION,
+		purpose: "List issue relations.",
+		pageSize: 20,
+	}),
+	simpleMutation({
+		name: "create_issue_relation",
+		domain: "relations",
+		purpose: "Create a relation between two issues.",
+		root: "issueRelationCreate",
+		inputType: "IssueRelationCreateInput",
+		selection: `issueRelation { ${ISSUE_RELATION_SELECTION} }`,
+		parameters: [
+			p("issue", "IssueReference", true),
+			p("relatedIssue", "IssueReference", true),
+			p("type", "IssueRelationType", true),
+		],
+		example: { issue: "AEO-258", relatedIssue: "AEO-259", type: "related" },
+		aliases: ["create_relation"],
+		legacyParameters: [
+			[
+				p("issueId", "String", true),
+				p("relatedIssueId", "String", true),
+				p("type", "IssueRelationType", true),
+			],
+		],
+		aliasParameters: {
+			create_relation: [
+				p("issueId", "String", true),
+				p("relatedIssueId", "String", true),
+				p("type", "IssueRelationType", true),
+			],
+		},
+		resolverPaths: {
+			issue: "resolveIssueReference",
+			relatedIssue: "resolveIssueReference",
+		},
+		async prepare(k, v, s) {
+			const a = issueReference(v);
+			const b = String(v.relatedIssue ?? v.relatedIssueId);
+			const [x, y] = await Promise.all([
+				resolveIssueReference(k, a, s),
+				resolveIssueReference(k, b, s),
+			]);
+			return {
+				variables: {
+					input: { issueId: x.id, relatedIssueId: y.id, type: v.type },
+				},
+				resolution: {
+					target: issueTarget(a, x),
+					relatedTarget: issueTarget(b, y),
+				},
+			};
+		},
+	}),
+	simpleMutation({
+		name: "update_issue_relation",
+		domain: "relations",
+		purpose: "Update an issue relation.",
+		root: "issueRelationUpdate",
+		inputType: "IssueRelationUpdateInput",
+		selection: `issueRelation { ${ISSUE_RELATION_SELECTION} }`,
+		parameters: [p("id", "String", true), input],
+		acceptedParameters: [
+			"id",
+			"type",
+			"issueId",
+			"relatedIssueId",
+			"input",
+		].map((n) => p(n)),
+		example: { id: "relation-id", type: "blocks" },
+		idKey: "id",
+		resolverPaths: {
+			issueId: "resolveIssueReference",
+			relatedIssueId: "resolveIssueReference",
+		},
+		async prepare(k, v, s) {
+			const x = mergedInput(v, ["id"]);
+			const resolution: Record<string, unknown> = {};
+			for (const key of ["issueId", "relatedIssueId"])
+				if (typeof x[key] === "string") {
+					const issue = await resolveIssueReference(k, String(x[key]), s);
+					resolution[key] = issueTarget(String(x[key]), issue);
+					x[key] = issue.id;
+				}
+			if (!Object.keys(x).length)
+				throw new Error("No update fields were provided.");
+			return { variables: { id: v.id, input: x }, resolution };
+		},
+	}),
+
+	listOperation({
+		name: "list_issue_statuses",
+		domain: "workspace",
+		root: "workflowStates",
+		selection: WORKFLOW_STATE_SELECTION,
+		purpose: "List issue workflow states.",
+		pageSize: 50,
+		filterType: "WorkflowStateFilter",
+		aliases: ["list_workflow_states"],
+	}),
+
+	listOperation({
+		name: "list_issues",
+		domain: "issues",
+		root: "issues",
+		selection: ISSUE_SELECTION,
+		purpose: "List issues with exact convenience filters.",
+		pageSize: 20,
+		filterType: "IssueFilter",
+		sortType: "IssueSortInput",
+		sortKeys: ISSUE_SORT_KEYS,
+		parameters: [
+			p("query"),
+			p("team", "TeamReference"),
+			p("state", "StateReference"),
+			p("stateType", "WorkflowStateType"),
+			p("assignee", "UserReference"),
+		],
+		acceptedParameters: [
+			p("query"),
+			p("team"),
+			p("teamId"),
+			p("teamKey"),
+			p("state"),
+			p("stateName"),
+			p("stateType"),
+			p("assignee"),
+			p("assigneeId"),
+			...pagination,
+			filter,
+			sort,
+		],
+		resolverPaths: {
+			team: "resolveTeamReference",
+			state: "resolveStateReference",
+			assignee: "resolveUserReference",
+		},
+		prepare: async (k, v, s) => {
+			const teamRef = v.team ?? v.teamKey ?? v.teamId;
+			const team = teamRef
+				? await resolveTeamReference(k, String(teamRef), s)
+				: undefined;
+			const assigneeRef = v.assignee ?? v.assigneeId;
+			const assignee = assigneeRef
+				? await resolveUserReference(k, String(assigneeRef), s)
+				: undefined;
+			let stateId: string | undefined;
+			if (v.state && team)
+				stateId = (await resolveStateReference(k, team.id, String(v.state), s))
+					.id;
+			const convenience = compactObject({
+				title: v.query ? { containsIgnoreCase: v.query } : undefined,
+				team: team ? { id: { eq: team.id } } : undefined,
+				state: stateId
+					? { id: { eq: stateId } }
+					: isUuid(v.state)
+						? { id: { eq: v.state } }
+						: v.state
+							? { name: { eq: String(v.state) } }
+							: v.stateName
+								? { name: { eq: String(v.stateName) } }
+								: v.stateType
+									? { type: { eq: String(v.stateType) } }
+									: undefined,
+				assignee: assignee ? { id: { eq: assignee.id } } : undefined,
+			});
+			return {
+				variables: {
+					...paginationVariables(v, 20),
+					filter: mergeFilters(object(v.filter), convenience),
+					sort: Array.isArray(v.sort) ? v.sort : undefined,
+				},
+				resolution: compactObject({
+					team: team
+						? { requested: teamRef, resolvedId: team.id, key: team.key }
+						: undefined,
+					assignee: assignee
+						? {
+								requested: assigneeRef,
+								resolvedId: assignee.id,
+								name: assignee.name,
+							}
+						: undefined,
+					state: stateId
+						? { requested: v.state, resolvedId: stateId }
+						: undefined,
+				}),
+			};
+		},
+	}),
+	{
+		name: "get_issue",
+		aliases: [],
+		domain: "issues",
+		purpose: "Get one issue by exact identifier or UUID.",
+		parameters: [p("issue", "IssueReference", true)],
+		legacyParameters: [
+			[p("teamKey", "String", true), p("number", "Float", true)],
+		],
+		example: { operation: "get_issue", variables: { issue: "AEO-258" } },
+		document: getDocument("GetIssue", "issue", ISSUE_SELECTION),
+		mutationRoots: [],
+		resolverPaths: { issue: "resolveIssueReference" },
+		async prepare(k, v, s) {
+			const ref = issueReference(v);
+			const x = await resolveIssueReference(k, ref, s);
+			return {
+				variables: { id: x.id },
+				resolution: { target: issueTarget(ref, x) },
+			};
+		},
+	},
+	simpleMutation({
+		name: "create_issue",
+		domain: "issues",
+		purpose:
+			"Create an issue. A parent reference supplies the team when team is omitted.",
+		root: "issueCreate",
+		inputType: "IssueCreateInput",
+		selection: `issue { ${ISSUE_SELECTION} }`,
+		parameters: [
+			p("title", "String", true),
+			p("parent", "IssueReference"),
+			p("team", "TeamReference"),
+			p("state", "StateReference"),
+			p("assignee", "UserReference"),
+			input,
+		],
+		acceptedParameters: [
+			...issueCreateFields,
+			p("parent"),
+			p("team"),
+			p("state"),
+			p("assignee"),
+			input,
+		],
+		legacyParameters: [[p("input", "IssueCreateInput", true)]],
+		example: { title: "v0.4 trial child", parent: "AEO-258" },
+		resolverPaths: {
+			parent: "resolveIssueReference",
+			parentId: "resolveIssueReference",
+			team: "resolveTeamReference",
+			teamKey: "resolveTeamReference",
+			teamId: "resolveTeamReference",
+			state: "resolveStateReference",
+			stateId: "resolveStateReference",
+			assignee: "resolveUserReference",
+			assigneeId: "resolveUserReference",
+		},
+		async prepare(k, v, s) {
+			const x = mergedInput(v, [
+				"parent",
+				"team",
+				"teamKey",
+				"state",
+				"assignee",
+			]);
+			const parentRef = v.parent ?? x.parentId;
+			const parent = parentRef
+				? await resolveIssueReference(k, String(parentRef), s)
+				: undefined;
+			if (parent) x.parentId = parent.id;
+			const teamRef = v.team ?? v.teamKey ?? x.teamId;
+			const team = teamRef
+				? await resolveTeamReference(k, String(teamRef), s)
+				: undefined;
+			if (team && parent && team.id !== parent.teamId) {
+				throw new Error(
+					`Linear parent "${parent.identifier}" does not belong to team "${team.key}".`,
+				);
+			}
+			const teamId = team?.id ?? parent?.teamId;
+			if (!teamId)
+				throw new Error(
+					"Issue team is required. Send team, teamKey, teamId, or parent.",
+				);
+			x.teamId = teamId;
+			const stateRef = v.state ?? x.stateId;
+			if (stateRef)
+				x.stateId = (
+					await resolveStateReference(k, teamId, String(stateRef), s)
+				).id;
+			const userRef = v.assignee ?? x.assigneeId;
+			if (userRef)
+				x.assigneeId = (await resolveUserReference(k, String(userRef), s)).id;
+			if (typeof x.title !== "string" || !x.title.trim())
+				throw new Error("Issue title is required for issueCreate (title).");
+			return {
+				variables: { input: x },
+				resolution: compactObject({
+					parent: parent ? issueTarget(String(parentRef), parent) : undefined,
+					team: {
+						requested: teamRef ?? parentRef,
+						resolvedId: teamId,
+						key: team?.key ?? parent?.teamKey,
+					},
+					state: stateRef
+						? { requested: stateRef, resolvedId: x.stateId }
+						: undefined,
+					assignee: userRef
+						? { requested: userRef, resolvedId: x.assigneeId }
+						: undefined,
+				}),
+			};
+		},
+	}),
+	simpleMutation({
+		name: "update_issue",
+		domain: "issues",
+		purpose: "Update an issue by exact identifier or UUID.",
+		root: "issueUpdate",
+		inputType: "IssueUpdateInput",
+		selection: `issue { ${ISSUE_SELECTION} }`,
+		parameters: [
+			p("issue", "IssueReference", true),
+			p("state", "StateReference"),
+			p("assignee", "UserReference"),
+			p("parent", "IssueReference"),
+			input,
+		],
+		acceptedParameters: [
+			p("issue"),
+			p("issueId"),
+			p("state"),
+			p("assignee"),
+			p("parent"),
+			...issueUpdateFields,
+			input,
+		],
+		example: { issue: "AEO-258", state: "Backlog" },
+		aliases: ["update_issue_state"],
+		aliasParameters: {
+			update_issue_state: [
+				p("issueId", "String", true),
+				p("stateId", "String", true),
+			],
+		},
+		resolverPaths: {
+			issue: "resolveIssueReference",
+			issueId: "resolveIssueReference",
+			state: "resolveStateReference",
+			stateId: "resolveStateReference",
+			assignee: "resolveUserReference",
+			assigneeId: "resolveUserReference",
+			parent: "resolveIssueReference",
+			parentId: "resolveIssueReference",
+			teamId: "resolveTeamReference",
+		},
+		async prepare(k, v, s) {
+			const ref = issueReference(v);
+			const issue = await resolveIssueReference(k, ref, s);
+			const x = mergedInput(v, [
+				"issue",
+				"issueId",
+				"state",
+				"assignee",
+				"parent",
+			]);
+			const teamRef = x.teamId;
+			const targetTeam = teamRef
+				? await resolveTeamReference(k, String(teamRef), s)
+				: undefined;
+			if (targetTeam) x.teamId = targetTeam.id;
+			const stateRef = v.state ?? x.stateId;
+			if (stateRef)
+				x.stateId = (
+					await resolveStateReference(
+						k,
+						targetTeam?.id ?? issue.teamId,
+						String(stateRef),
+						s,
+					)
+				).id;
+			const userRef = v.assignee ?? x.assigneeId;
+			if (userRef)
+				x.assigneeId = (await resolveUserReference(k, String(userRef), s)).id;
+			const parentRef = v.parent ?? x.parentId;
+			if (parentRef) {
+				const parent = await resolveIssueReference(k, String(parentRef), s);
+				if (parent.teamId !== (targetTeam?.id ?? issue.teamId)) {
+					throw new Error(
+						`Linear parent "${parent.identifier}" does not belong to the issue team.`,
+					);
+				}
+				x.parentId = parent.id;
+			}
+			if (!Object.keys(x).length)
+				throw new Error("No update fields were provided.");
+			return {
+				variables: { id: issue.id, input: x },
+				resolution: compactObject({
+					target: issueTarget(ref, issue),
+					state: stateRef
+						? { requested: stateRef, resolvedId: x.stateId }
+						: undefined,
+					assignee: userRef
+						? { requested: userRef, resolvedId: x.assigneeId }
+						: undefined,
+					parent: parentRef
+						? { requested: parentRef, resolvedId: x.parentId }
+						: undefined,
+				}),
+			};
+		},
+	}),
+	listOperation({
+		name: "search_issues",
+		domain: "issues",
+		root: "searchIssues",
+		selection: ISSUE_SELECTION,
+		purpose: "Search issues by text.",
+		pageSize: 20,
+		filterType: "IssueFilter",
+		parameters: [
+			p("term", "String", true),
+			p("includeComments", "Boolean"),
+			p("team", "TeamReference"),
+		],
+		acceptedParameters: [
+			p("term", "String", true),
+			p("includeComments"),
+			p("team"),
+			p("teamId"),
+			...pagination,
+			filter,
+		],
+		resolverPaths: { team: "resolveTeamReference" },
+		example: { term: "authentication" },
+		extras: "$term: String! $includeComments: Boolean $teamId: String",
+		extraArgs: "term: $term includeComments: $includeComments teamId: $teamId",
+		prepare: async (k, v, s) => {
+			const teamRef = v.team ?? v.teamId;
+			const team = teamRef
+				? await resolveTeamReference(k, String(teamRef), s)
+				: undefined;
+			return {
+				variables: {
+					...paginationVariables(v, 20),
+					term: v.term,
+					includeComments: v.includeComments,
+					teamId: team?.id,
+					filter: object(v.filter),
+				},
+				resolution: team
+					? { team: { requested: teamRef, resolvedId: team.id, key: team.key } }
+					: undefined,
+			};
+		},
+	}),
+
+	listOperation({
+		name: "list_milestones",
+		domain: "milestones",
+		root: "projectMilestones",
+		selection: MILESTONE_SELECTION,
+		purpose: "List project milestones.",
+		pageSize: 20,
+		filterType: "ProjectMilestoneFilter",
+	}),
+	{
+		name: "get_milestone",
+		aliases: [],
+		domain: "milestones",
+		purpose: "Get a milestone by exact name or UUID.",
+		parameters: [p("milestone", "MilestoneReference", true)],
+		legacyParameters: [[p("milestoneId", "String", true)]],
+		example: { operation: "get_milestone", variables: { milestone: "Beta" } },
+		document: getDocument(
+			"GetMilestone",
+			"projectMilestone",
+			MILESTONE_SELECTION,
+		),
+		mutationRoots: [],
+		resolverPaths: { milestone: "resolveNamedEntityReference" },
+		async prepare(k, v, s) {
+			const x = await resolveNamedEntityReference(
+				k,
+				"projectMilestone",
+				String(v.milestone ?? v.milestoneId),
+				s,
+			);
+			return { variables: { id: x.id } };
+		},
+	},
+
+	listOperation({
+		name: "list_project_labels",
+		domain: "labels",
+		root: "projectLabels",
+		selection: PROJECT_LABEL_SELECTION,
+		purpose: "List project labels.",
+		pageSize: 50,
+		filterType: "ProjectLabelFilter",
+	}),
+	simpleMutation({
+		name: "create_project_label",
+		domain: "labels",
+		purpose: "Create a project label.",
+		root: "projectLabelCreate",
+		inputType: "ProjectLabelCreateInput",
+		selection: `projectLabel { ${PROJECT_LABEL_SELECTION} }`,
+		parameters: [p("name", "String", true), input],
+		acceptedParameters: [
+			"name",
+			"description",
+			"color",
+			"parentId",
+			"isGroup",
+			"input",
+		].map((n) => p(n)),
+		example: { name: "Strategic" },
+	}),
+	simpleMutation({
+		name: "update_project_label",
+		domain: "labels",
+		purpose: "Update a project label.",
+		root: "projectLabelUpdate",
+		inputType: "ProjectLabelUpdateInput",
+		selection: `projectLabel { ${PROJECT_LABEL_SELECTION} }`,
+		parameters: [p("id", "String", true), input],
+		acceptedParameters: [
+			"id",
+			"name",
+			"description",
+			"color",
+			"parentId",
+			"isGroup",
+			"input",
+		].map((n) => p(n)),
+		example: { id: "label-id", name: "Strategy" },
+		idKey: "id",
+	}),
+
+	listOperation({
+		name: "list_project_relations",
+		domain: "relations",
+		root: "projectRelations",
+		selection: PROJECT_RELATION_SELECTION,
+		purpose: "List project relations.",
+		pageSize: 20,
+	}),
+	simpleMutation({
+		name: "create_project_relation",
+		domain: "relations",
+		purpose: "Create a relation between two projects.",
+		root: "projectRelationCreate",
+		inputType: "ProjectRelationCreateInput",
+		selection: `projectRelation { ${PROJECT_RELATION_SELECTION} }`,
+		parameters: [
+			p("projectId", "String", true),
+			p("relatedProjectId", "String", true),
+			p("type", "String", true),
+			p("anchorType", "String", true),
+			p("relatedAnchorType", "String", true),
+		],
+		acceptedParameters: [
+			"projectId",
+			"relatedProjectId",
+			"type",
+			"anchorType",
+			"relatedAnchorType",
+			"projectMilestoneId",
+			"relatedProjectMilestoneId",
+			"input",
+		].map((n) => p(n)),
+		example: {
+			projectId: "project-id",
+			relatedProjectId: "other-project-id",
+			type: "related",
+			anchorType: "project",
+			relatedAnchorType: "project",
+		},
+	}),
+	simpleMutation({
+		name: "update_project_relation",
+		domain: "relations",
+		purpose: "Update a project relation.",
+		root: "projectRelationUpdate",
+		inputType: "ProjectRelationUpdateInput",
+		selection: `projectRelation { ${PROJECT_RELATION_SELECTION} }`,
+		parameters: [p("id", "String", true), input],
+		acceptedParameters: [
+			"id",
+			"type",
+			"projectId",
+			"relatedProjectId",
+			"anchorType",
+			"relatedAnchorType",
+			"projectMilestoneId",
+			"relatedProjectMilestoneId",
+			"input",
+		].map((n) => p(n)),
+		example: { id: "relation-id", type: "related" },
+		idKey: "id",
+	}),
+
+	listOperation({
+		name: "list_projects",
+		domain: "projects",
+		root: "projects",
+		selection: PROJECT_LIST_SELECTION,
+		purpose: "List projects.",
+		pageSize: 20,
+		filterType: "ProjectFilter",
+		sortType: "ProjectSortInput",
+		sortKeys: PROJECT_SORT_KEYS,
+	}),
+	{
+		name: "get_project",
+		aliases: [],
+		domain: "projects",
+		purpose: "Get a project by exact name or UUID.",
+		parameters: [p("project", "ProjectReference", true)],
+		legacyParameters: [[p("projectId", "String", true)]],
+		example: { operation: "get_project", variables: { project: "Platform" } },
+		document: getDocument("GetProject", "project", PROJECT_DETAIL_SELECTION),
+		mutationRoots: [],
+		resolverPaths: { project: "resolveNamedEntityReference" },
+		async prepare(k, v, s) {
+			const x = await resolveNamedEntityReference(
+				k,
+				"project",
+				String(v.project ?? v.projectId),
+				s,
+			);
+			return {
+				variables: { id: x.id },
+				resolution: {
+					target: {
+						requested: v.project ?? v.projectId,
+						resolvedId: x.id,
+						name: x.name,
+					},
+				},
+			};
+		},
+	},
+
+	listOperation({
+		name: "list_teams",
+		domain: "teams",
+		root: "teams",
+		selection: `${TEAM_SELECTION} states(first: 50) { nodes { id name type } }`,
+		purpose: "List teams and workflow states.",
+		pageSize: 50,
+		filterType: "TeamFilter",
+	}),
+	{
+		name: "get_team",
+		aliases: [],
+		domain: "teams",
+		purpose: "Get a team by exact key or UUID.",
+		parameters: [p("team", "TeamReference", true)],
+		legacyParameters: [[p("teamId", "String", true)]],
+		example: { operation: "get_team", variables: { team: "AEO" } },
+		document: getDocument("GetTeam", "team", TEAM_SELECTION),
+		mutationRoots: [],
+		resolverPaths: { team: "resolveTeamReference" },
+		async prepare(k, v, s) {
+			const x = await resolveTeamReference(k, String(v.team ?? v.teamId), s);
+			return {
+				variables: { id: x.id },
+				resolution: {
+					target: {
+						requested: v.team ?? v.teamId,
+						resolvedId: x.id,
+						key: x.key,
+					},
+				},
+			};
+		},
+	},
+	listOperation({
+		name: "list_users",
+		domain: "users",
+		root: "users",
+		selection: USER_SELECTION,
+		purpose: "List users.",
+		pageSize: 50,
+		filterType: "UserFilter",
+		sortType: "UserSortInput",
+		sortKeys: USER_SORT_KEYS,
+		parameters: [p("includeDisabled", "Boolean")],
+		extras: "$includeDisabled: Boolean",
+		extraArgs: "includeDisabled: $includeDisabled",
+		prepare: listPrepare(50, (v) => ({ includeDisabled: v.includeDisabled })),
+	}),
+	{
+		name: "get_user",
+		aliases: [],
+		domain: "users",
+		purpose: "Get a user by me, UUID, email, name, or display name.",
+		parameters: [p("user", "UserReference", true)],
+		legacyParameters: [[p("userId", "String", true)]],
+		example: { operation: "get_user", variables: { user: "me" } },
+		document: getDocument("GetUser", "user", USER_SELECTION),
+		mutationRoots: [],
+		resolverPaths: { user: "resolveUserReference" },
+		async prepare(k, v, s) {
+			const x = await resolveUserReference(k, String(v.user ?? v.userId), s);
+			return {
+				variables: { id: x.id },
+				resolution: {
+					target: {
+						requested: v.user ?? v.userId,
+						resolvedId: x.id,
+						name: x.name,
+					},
+				},
+			};
+		},
+	},
+	{
+		name: "switch_workspace",
+		aliases: [],
+		domain: "workspace",
+		purpose: "Switch the active stored workspace without exposing credentials.",
+		parameters: [p("name", "String", true)],
+		example: { operation: "switch_workspace", variables: { name: "work" } },
+		document: "query SwitchWorkspaceLocal { viewer { id } }",
+		mutationRoots: [],
+		async executeLocal(v) {
+			const updated = await switchWorkspace(String(v.name));
+			return { active: updated.activeWorkspace };
+		},
+	},
+];
+
+// Save operations use one catalog name and select the upstream create or update document at runtime.
+function addSaveOperation(config: {
+	name: string;
+	domain: OperationDomain;
+	entity: string;
+	entityKind: "project" | "initiative" | "projectMilestone";
+	documentName: string;
+	selection: string;
+	idKey: string;
+	createRoot: string;
+	updateRoot: string;
+	createType: string;
+	updateType: string;
+	parameters: readonly OperationParameter[];
+	example: Record<string, unknown>;
+	createOnly: readonly string[];
+	updateOnly: readonly string[];
+	emptyUpdateMessage: string;
+	resolverPaths?: Record<string, string>;
+}) {
+	const baseCreateDocument = mutationDocument(
+		`Create${config.documentName}`,
+		config.createRoot,
+		config.createType,
+		`${config.entity[0]!.toLowerCase() + config.entity.slice(1)} { ${config.selection} }`,
+	);
+	const createDocument =
+		config.name === "save_project"
+			? baseCreateDocument
+					.replace(
+						`$input: ${config.createType}!`,
+						`$input: ${config.createType}! $slackChannelName: String`,
+					)
+					.replace(
+						`${config.createRoot}(input: $input)`,
+						`${config.createRoot}(input: $input, slackChannelName: $slackChannelName)`,
+					)
+			: baseCreateDocument;
+	const updateDocument = mutationDocument(
+		`Update${config.documentName}`,
+		config.updateRoot,
+		config.updateType,
+		`${config.entity[0]!.toLowerCase() + config.entity.slice(1)} { ${config.selection} }`,
+		true,
+	);
+	const cardParameters =
+		config.name === "save_project"
+			? [p("projectId", "ProjectReference"), p("name"), input]
+			: config.name === "save_initiative"
+				? [p("initiativeId", "InitiativeReference"), p("name"), input]
+				: [
+						p("milestoneId", "MilestoneReference"),
+						p("name"),
+						p("projectId", "ProjectReference"),
+						input,
+					];
+	entries.push({
+		name: config.name,
+		aliases: [],
+		domain: config.domain,
+		purpose: `Create or update a ${config.entity.toLowerCase()}.`,
+		parameters: cardParameters,
+		acceptedParameters: config.parameters,
+		example: { operation: config.name, variables: config.example },
+		document: createDocument,
+		documents: [createDocument, updateDocument],
+		mutationRoots: [config.createRoot, config.updateRoot],
+		resolverPaths: config.resolverPaths,
+		async prepare(k, v, s) {
+			const reference = v[config.idKey];
+			const update = typeof reference === "string" && reference.length > 0;
+			const rawInput = object(v.input) ?? {};
+			const invalidForMode = (
+				update ? config.createOnly : config.updateOnly
+			).filter((key) => v[key] !== undefined || rawInput[key] !== undefined);
+			if (invalidForMode.length) {
+				throw new Error(
+					`Params not valid in ${update ? "update" : "create"} mode: ${invalidForMode.join(", ")}.`,
+				);
+			}
+			const prepared = mergedInput(v, [config.idKey]);
+			if (update && Object.keys(prepared).length === 0) {
+				throw new Error(config.emptyUpdateMessage);
+			}
+			if (!update) {
+				if (typeof prepared.name !== "string" || !prepared.name.trim())
+					throw new Error(
+						`${config.entity} name is required for ${config.createRoot} (name).`,
+					);
+				if (
+					config.name === "save_milestone" &&
+					typeof prepared.projectId !== "string"
+				)
+					throw new Error("projectId is required for projectMilestoneCreate.");
+				if (
+					config.name === "save_project" &&
+					(!Array.isArray(prepared.teamIds) || prepared.teamIds.length === 0)
+				)
+					throw new Error(
+						"teamIds is required for projectCreate and must be a non-empty array.",
+					);
+			}
+			const resolution: Record<string, unknown> = {};
+			let id: string | undefined;
+			if (update) {
+				const entity = await resolveNamedEntityReference(
+					k,
+					config.entityKind,
+					String(reference),
+					s,
+				);
+				id = entity.id;
+				resolution.target = {
+					requested: reference,
+					resolvedId: id,
+					name: entity.name,
+				};
+			}
+			if (
+				config.name === "save_milestone" &&
+				typeof prepared.projectId === "string"
+			) {
+				const project = await resolveNamedEntityReference(
+					k,
+					"project",
+					prepared.projectId,
+					s,
+				);
+				resolution.project = {
+					requested: prepared.projectId,
+					resolvedId: project.id,
+					name: project.name,
+				};
+				prepared.projectId = project.id;
+			}
+			if (
+				config.name === "save_project" &&
+				typeof prepared.convertedFromIssueId === "string"
+			) {
+				const issue = await resolveIssueReference(
+					k,
+					prepared.convertedFromIssueId,
+					s,
+				);
+				resolution.convertedFromIssue = issueTarget(
+					prepared.convertedFromIssueId,
+					issue,
+				);
+				prepared.convertedFromIssueId = issue.id;
+			}
+			const slackChannelName =
+				config.name === "save_project" ? prepared.slackChannelName : undefined;
+			if (config.name === "save_project") delete prepared.slackChannelName;
+			return {
+				document: update ? updateDocument : createDocument,
+				variables: update
+					? { id, input: prepared }
+					: {
+							input: prepared,
+							...(slackChannelName === undefined ? {} : { slackChannelName }),
+						},
+				resolution,
+			};
+		},
+	});
 }
+addSaveOperation({
+	name: "save_initiative",
+	domain: "initiatives",
+	entity: "Initiative",
+	entityKind: "initiative",
+	documentName: "Initiative",
+	selection: INITIATIVE_SELECTION,
+	idKey: "initiativeId",
+	createRoot: "initiativeCreate",
+	updateRoot: "initiativeUpdate",
+	createType: "InitiativeCreateInput",
+	updateType: "InitiativeUpdateInput",
+	resolverPaths: { initiativeId: "resolveNamedEntityReference" },
+	createOnly: ["id"],
+	updateOnly: [
+		"frequencyResolution",
+		"trashed",
+		"updateReminderFrequency",
+		"updateReminderFrequencyInWeeks",
+		"updateRemindersDay",
+		"updateRemindersHour",
+	],
+	emptyUpdateMessage: "No initiative update fields were provided.",
+	parameters: [
+		"initiativeId",
+		"color",
+		"content",
+		"description",
+		"icon",
+		"id",
+		"name",
+		"ownerId",
+		"sortOrder",
+		"status",
+		"targetDate",
+		"targetDateResolution",
+		"frequencyResolution",
+		"trashed",
+		"updateReminderFrequency",
+		"updateReminderFrequencyInWeeks",
+		"updateRemindersDay",
+		"updateRemindersHour",
+		"input",
+	].map((n) => p(n)),
+	example: { name: "Platform" },
+});
+addSaveOperation({
+	name: "save_milestone",
+	domain: "milestones",
+	entity: "ProjectMilestone",
+	entityKind: "projectMilestone",
+	documentName: "Milestone",
+	selection: MILESTONE_SELECTION,
+	idKey: "milestoneId",
+	createRoot: "projectMilestoneCreate",
+	updateRoot: "projectMilestoneUpdate",
+	createType: "ProjectMilestoneCreateInput",
+	updateType: "ProjectMilestoneUpdateInput",
+	resolverPaths: {
+		milestoneId: "resolveNamedEntityReference",
+		projectId: "resolveNamedEntityReference",
+	},
+	createOnly: ["id"],
+	updateOnly: [],
+	emptyUpdateMessage: "No milestone update fields were provided.",
+	parameters: [
+		"milestoneId",
+		"description",
+		"descriptionData",
+		"id",
+		"name",
+		"projectId",
+		"sortOrder",
+		"targetDate",
+		"input",
+	].map((n) => p(n)),
+	example: { name: "Beta", projectId: "project-id" },
+});
+addSaveOperation({
+	name: "save_project",
+	domain: "projects",
+	entity: "Project",
+	entityKind: "project",
+	documentName: "Project",
+	selection: PROJECT_DETAIL_SELECTION,
+	idKey: "projectId",
+	createRoot: "projectCreate",
+	updateRoot: "projectUpdate",
+	createType: "ProjectCreateInput",
+	updateType: "ProjectUpdateInput",
+	resolverPaths: {
+		projectId: "resolveNamedEntityReference",
+		convertedFromIssueId: "resolveIssueReference",
+	},
+	createOnly: ["id", "templateId", "useDefaultTemplate", "slackChannelName"],
+	updateOnly: [
+		"canceledAt",
+		"completedAt",
+		"frequencyResolution",
+		"projectUpdateRemindersPausedUntilAt",
+		"slackIssueComments",
+		"slackIssueStatuses",
+		"slackNewIssue",
+		"trashed",
+		"updateReminderFrequency",
+		"updateReminderFrequencyInWeeks",
+		"updateRemindersDay",
+		"updateRemindersHour",
+	],
+	emptyUpdateMessage: "No project update fields were provided.",
+	parameters: [
+		"projectId",
+		"id",
+		"name",
+		"description",
+		"content",
+		"color",
+		"icon",
+		"convertedFromIssueId",
+		"labelIds",
+		"lastAppliedTemplateId",
+		"leadId",
+		"memberIds",
+		"priority",
+		"prioritySortOrder",
+		"sortOrder",
+		"startDate",
+		"startDateResolution",
+		"statusId",
+		"targetDate",
+		"targetDateResolution",
+		"teamIds",
+		"templateId",
+		"useDefaultTemplate",
+		"canceledAt",
+		"completedAt",
+		"frequencyResolution",
+		"projectUpdateRemindersPausedUntilAt",
+		"slackIssueComments",
+		"slackIssueStatuses",
+		"slackNewIssue",
+		"trashed",
+		"updateReminderFrequency",
+		"updateReminderFrequencyInWeeks",
+		"updateRemindersDay",
+		"updateRemindersHour",
+		"slackChannelName",
+		"input",
+	].map((n) => p(n)),
+	example: { name: "Platform", teamIds: ["team-id"] },
+});
 
-export function operationSignature(operation: LinearOperation): string {
-  const parameters = operation.parameters.map(({ name, type, required }) =>
-    required ? `${name}: ${type}!` : `${name}?: ${type}`,
-  );
-  return `${operation.name}(${parameters.join(', ')})`;
-}
-
-export function formatInvocation(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(formatInvocation).join(', ')}]`;
-  if (value && typeof value === 'object') {
-    return `{ ${Object.entries(value as Record<string, unknown>)
-      .map(([key, entry]) => `${JSON.stringify(key)}: ${formatInvocation(entry)}`)
-      .join(', ')} }`;
-  }
-  return JSON.stringify(value);
-}
-
-export const operations = {
-  get_issue: {
-    name: 'get_issue', aliases: [], domain: 'issues',
-    purpose: 'Fetch one issue brief with comments, relations, project, state, and labels.',
-    parameters: [{ name: 'issue', type: 'IssueReference', required: true }],
-    legacyParameters: [[{ name: 'teamKey', type: 'String', required: true }, { name: 'number', type: 'Float', required: true }]],
-    example: { operation: 'get_issue', variables: { issue: 'AEO-258' } },
-    mutationRoots: [],
-    async prepare(apiKey, variables, signal) {
-      const requested = issueReference(variables);
-      const issue = await resolveIssueReference(apiKey, requested, signal);
-      return { variables: { issueId: issue.id }, resolution: { target: issueTarget(requested, issue) } };
-    },
-    document: `query GetIssue($issueId: String!) {
-  issue(id: $issueId) {
-    id identifier title description url priority createdAt updatedAt
-    team { id key name }
-    state { id name type }
-    project { id name }
-    labels(first: 25) { nodes { id name color } }
-    comments(first: 50) { nodes { id body createdAt updatedAt user { id name } } pageInfo { hasNextPage endCursor } }
-    relations(first: 50) { nodes { id type relatedIssue { id identifier title } } pageInfo { hasNextPage endCursor } }
-  }
-}`,
-  },
-  search_issues: {
-    name: 'search_issues', aliases: [], domain: 'issues',
-    purpose: 'Search for issues in pages of ten.',
-    parameters: [{ name: 'term', type: 'String', required: true }, { name: 'after', type: 'String', required: false }],
-    example: { operation: 'search_issues', variables: { term: 'authentication' } },
-    mutationRoots: [],
-    document: `query SearchIssues($term: String!, $after: String) {
-  searchIssues(term: $term, first: 10, after: $after) {
-    nodes { id identifier title description state { id name type } assignee { id name } team { id key name } }
-    pageInfo { hasNextPage endCursor }
-  }
-}`,
-  },
-  create_issue: {
-    name: 'create_issue', aliases: [], domain: 'issues',
-    purpose: 'Create one issue.',
-    parameters: [{ name: 'input', type: 'IssueCreateInput', required: true }],
-    example: { operation: 'create_issue', variables: { input: { teamId: 'team-id', title: 'Issue title' } } },
-    mutationRoots: ['issueCreate'],
-    document: `mutation CreateIssue($input: IssueCreateInput!) {
-  issueCreate(input: $input) { success issue { id identifier title state { id name type } } }
-}`,
-  },
-  update_issue_state: {
-    name: 'update_issue_state', aliases: [], domain: 'issues',
-    purpose: 'Move one issue to a workflow state.',
-    parameters: [{ name: 'issue', type: 'IssueReference', required: true }, { name: 'state', type: 'StateReference', required: true }],
-    legacyParameters: [[{ name: 'issueId', type: 'String', required: true }, { name: 'stateId', type: 'String', required: true }]],
-    example: { operation: 'update_issue_state', variables: { issue: 'AEO-258', state: 'Backlog' } },
-    mutationRoots: ['issueUpdate'],
-    async prepare(apiKey, variables, signal) {
-      const requested = issueReference(variables);
-      const requestedState = String(variables.state ?? variables.stateId);
-      const issue = await resolveIssueReference(apiKey, requested, signal);
-      const state = await resolveStateReference(apiKey, issue.teamId, requestedState, signal);
-      return {
-        variables: { issueId: issue.id, stateId: state.id },
-        resolution: {
-          target: issueTarget(requested, issue),
-          state: { requested: requestedState, resolvedId: state.id, name: state.name },
-        },
-      };
-    },
-    document: `mutation UpdateIssueState($issueId: String!, $stateId: String!) {
-  issueUpdate(id: $issueId, input: { stateId: $stateId }) { success issue { id identifier title state { id name type } } }
-}`,
-  },
-  create_comment: {
-    name: 'create_comment', aliases: ['add_comment'], domain: 'comments',
-    purpose: 'Add one comment to an issue.',
-    parameters: [{ name: 'issue', type: 'IssueReference', required: true }, { name: 'body', type: 'String', required: true }],
-    legacyParameters: [[{ name: 'issueId', type: 'String', required: true }, { name: 'body', type: 'String', required: true }]],
-    aliasParameters: { add_comment: [{ name: 'issueId', type: 'String', required: true }, { name: 'body', type: 'String', required: true }] },
-    example: { operation: 'create_comment', variables: { issue: 'AEO-258', body: 'Comment text' } },
-    mutationRoots: ['commentCreate'],
-    async prepare(apiKey, variables, signal) {
-      const requested = issueReference(variables);
-      const issue = await resolveIssueReference(apiKey, requested, signal);
-      return {
-        variables: { issueId: issue.id, body: variables.body },
-        resolution: { target: issueTarget(requested, issue) },
-      };
-    },
-    document: `mutation AddComment($issueId: String!, $body: String!) {
-  commentCreate(input: { issueId: $issueId, body: $body }) { success comment { id body createdAt user { id name } } }
-}`,
-  },
-  create_issue_relation: {
-    name: 'create_issue_relation', aliases: ['create_relation'], domain: 'relations',
-    purpose: 'Create a relation between two issues.',
-    parameters: [
-      { name: 'issue', type: 'IssueReference', required: true },
-      { name: 'relatedIssue', type: 'IssueReference', required: true },
-      { name: 'type', type: 'IssueRelationType', required: true },
-    ],
-    legacyParameters: [[
-      { name: 'issueId', type: 'String', required: true },
-      { name: 'relatedIssueId', type: 'String', required: true },
-      { name: 'type', type: 'IssueRelationType', required: true },
-    ]],
-    aliasParameters: { create_relation: [
-      { name: 'issueId', type: 'String', required: true },
-      { name: 'relatedIssueId', type: 'String', required: true },
-      { name: 'type', type: 'IssueRelationType', required: true },
-    ] },
-    example: { operation: 'create_issue_relation', variables: { issue: 'AEO-258', relatedIssue: 'AEO-259', type: 'related' } },
-    mutationRoots: ['issueRelationCreate'],
-    async prepare(apiKey, variables, signal) {
-      const requested = issueReference(variables);
-      const relatedRequested = String(variables.relatedIssue ?? variables.relatedIssueId);
-      const [issue, relatedIssue] = await Promise.all([
-        resolveIssueReference(apiKey, requested, signal),
-        resolveIssueReference(apiKey, relatedRequested, signal),
-      ]);
-      return {
-        variables: { issueId: issue.id, relatedIssueId: relatedIssue.id, type: variables.type },
-        resolution: {
-          target: issueTarget(requested, issue),
-          relatedTarget: issueTarget(relatedRequested, relatedIssue),
-        },
-      };
-    },
-    document: `mutation CreateRelation($issueId: String!, $relatedIssueId: String!, $type: IssueRelationType!) {
-  issueRelationCreate(input: { issueId: $issueId, relatedIssueId: $relatedIssueId, type: $type }) {
-    success issueRelation { id type relatedIssue { id identifier title } }
-  }
-}`,
-  },
-  list_teams: {
-    name: 'list_teams', aliases: [], domain: 'teams',
-    purpose: 'List teams with their workflow states and labels.',
-    parameters: [{ name: 'after', type: 'String', required: false }],
-    example: { operation: 'list_teams', variables: {} },
-    mutationRoots: [],
-    document: `query ListTeams($after: String) {
-  teams(first: 50, after: $after) {
-    nodes { id key name states(first: 50) { nodes { id name type color } } labels(first: 50) { nodes { id name color } } }
-    pageInfo { hasNextPage endCursor }
-  }
-}`,
-  },
-  list_issue_statuses: {
-    name: 'list_issue_statuses', aliases: ['list_workflow_states'], domain: 'workspace',
-    purpose: 'List workspace workflow states.',
-    parameters: [{ name: 'after', type: 'String', required: false }],
-    example: { operation: 'list_issue_statuses', variables: {} },
-    mutationRoots: [],
-    document: `query ListWorkflowStates($after: String) {
-  workflowStates(first: 50, after: $after) {
-    nodes { id name type color team { id key name } }
-    pageInfo { hasNextPage endCursor }
-  }
-}`,
-  },
-  list_issue_labels: {
-    name: 'list_issue_labels', aliases: [], domain: 'labels',
-    purpose: 'List workspace issue labels.',
-    parameters: [{ name: 'after', type: 'String', required: false }],
-    example: { operation: 'list_issue_labels', variables: {} },
-    mutationRoots: [],
-    document: `query ListIssueLabels($after: String) {
-  issueLabels(first: 50, after: $after) {
-    nodes { id name color description team { id key name } }
-    pageInfo { hasNextPage endCursor }
-  }
-}`,
-  },
-  list_projects: {
-    name: 'list_projects', aliases: [], domain: 'projects',
-    purpose: 'List workspace projects.',
-    parameters: [{ name: 'after', type: 'String', required: false }],
-    example: { operation: 'list_projects', variables: {} },
-    mutationRoots: [],
-    document: `query ListProjects($after: String) {
-  projects(first: 50, after: $after) {
-    nodes { id name description state progress url teams { nodes { id key name } } }
-    pageInfo { hasNextPage endCursor }
-  }
-}`,
-  },
-} as const satisfies Record<string, LinearOperation>;
-
+export const operations = Object.fromEntries(
+	entries.map((operation) => [operation.name, operation]),
+) as Record<string, LinearOperation>;
 export type OperationName = keyof typeof operations;
-
 const aliases = new Map<string, LinearOperation>();
-for (const operation of Object.values(operations)) {
-  for (const alias of operation.aliases) aliases.set(alias, operation);
-}
+for (const operation of entries)
+	for (const alias of operation.aliases) aliases.set(alias, operation);
 
 export function getOperation(name: string): LinearOperation {
-  const operation = (operations as Record<string, LinearOperation>)[name] ?? aliases.get(name);
-  if (!operation) throw new Error(`Unknown Linear operation "${name}". Send { "operation": "help" }.`);
-  return operation;
+	const operation = operations[name] ?? aliases.get(name);
+	if (!operation)
+		throw new Error(
+			`Unknown Linear operation "${name}". Send { "operation": "help" }.`,
+		);
+	return operation;
 }
-
-export function parameterShapes(operation: LinearOperation, requestedName: string): readonly (readonly OperationParameter[])[] {
-  const aliasShape = operation.aliasParameters?.[requestedName];
-  if (aliasShape) return [aliasShape];
-  return [operation.parameters, ...(operation.legacyParameters ?? [])];
+export function operationSignature(operation: LinearOperation): string {
+	return `${operation.name}(${operation.parameters.map(({ name, type, required }) => `${name}${required ? "" : "?"}: ${type}`).join(", ")})`;
 }
-
-export function operationsForDomain(domain: OperationDomain): LinearOperation[] {
-  return Object.values(operations).filter((operation) => operation.domain === domain);
+export function formatInvocation(value: unknown): string {
+	if (Array.isArray(value))
+		return `[${value.map(formatInvocation).join(", ")}]`;
+	if (value && typeof value === "object")
+		return `{ ${Object.entries(value as Record<string, unknown>)
+			.map(
+				([key, entry]) => `${JSON.stringify(key)}: ${formatInvocation(entry)}`,
+			)
+			.join(", ")} }`;
+	return JSON.stringify(value);
+}
+export function parameterShapes(
+	operation: LinearOperation,
+	requestedName: string,
+): readonly (readonly OperationParameter[])[] {
+	const aliasShape = operation.aliasParameters?.[requestedName];
+	if (aliasShape) return [operation.parameters, aliasShape];
+	return [
+		operation.acceptedParameters ?? operation.parameters,
+		...(operation.legacyParameters ?? []),
+	];
+}
+export function operationsForDomain(
+	domain: OperationDomain,
+): LinearOperation[] {
+	return entries.filter((operation) => operation.domain === domain);
+}
+export function operationDocuments(
+	operation: LinearOperation,
+): readonly string[] {
+	return operation.documents ?? [operation.document];
 }

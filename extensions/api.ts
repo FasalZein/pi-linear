@@ -11,6 +11,7 @@ import {
   operationSignature,
   operationsForDomain,
   parameterShapes,
+  operationDocuments,
   type LinearOperation,
   type OperationDomain,
 } from './operations';
@@ -167,7 +168,7 @@ function validateVariables(
   });
   if (validShape) return;
 
-  const valid = new Set(operation.parameters.map(({ name }) => name));
+  const valid = new Set((operation.acceptedParameters ?? operation.parameters).map(({ name }) => name));
   const missing = operation.parameters.filter(({ name, required }) => required && !(name in variables)).map(({ name }) => name);
   const unknown = Object.keys(variables).filter((name) => !valid.has(name));
   const problems = [
@@ -253,12 +254,23 @@ export function linearApiTool(mode: MutationMode = 'allowlist') {
       if (params.operation === 'help' && !params.query) return toolResult(helpResult(params.variables));
 
       const request = resolveRequest(params);
-      assertMutationAllowed(request.query, mode, request.named ? request.operation.mutationRoots : undefined);
+      if (request.named) {
+        for (const document of operationDocuments(request.operation)) {
+          assertMutationAllowed(document, mode, request.operation.mutationRoots);
+        }
+        if (request.operation.executeLocal) {
+          return toolResult(await request.operation.executeLocal(params.variables ?? {}, ctx));
+        }
+      } else {
+        assertMutationAllowed(request.query, mode);
+      }
       const apiKey = await apiKeyForWorkspace(ctx, params.workspace);
-      const prepared = request.named && request.operation.prepare
+      const prepared: { variables: Record<string, unknown>; resolution?: Record<string, unknown>; document?: string } = request.named && request.operation.prepare
         ? await request.operation.prepare(apiKey, params.variables ?? {}, signal)
-        : { variables: params.variables ?? {}, resolution: undefined };
-      const data = await linearGraphQL<JsonObject>(apiKey, request.query, prepared.variables, signal);
+        : { variables: params.variables ?? {} };
+      const document = prepared.document ?? request.query;
+      if (request.named) assertMutationAllowed(document, mode, request.operation.mutationRoots);
+      const data = await linearGraphQL<JsonObject>(apiKey, document, prepared.variables, signal);
       const result = await routeLinearResult(data, {
         label: params.operation ?? 'query',
         sink: params.sink,
