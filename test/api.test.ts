@@ -187,6 +187,12 @@ describe('runtime discovery', () => {
 
     await expect(execute(tool, { operation: 'help', variables: { domain: 'issues', operation: 'get_issue' } }))
       .rejects.toThrow(alternatives);
+    await expect(execute(tool, { operation: 'help', variables: { query: 'issues', search: 'comments' } }))
+      .rejects.toThrow('For natural search, send exactly one of:');
+    await expect(execute(tool, { operation: 'help', variables: { domain: 'issues', query: 'comments' } }))
+      .rejects.toThrow('For natural search, send exactly one of:');
+    await expect(execute(tool, { operation: 'help', variables: { query: 42 } }))
+      .rejects.toThrow('For natural search, send exactly one of:');
     await expect(execute(tool, { operation: 'help', variables: { domain: 'unknown' } }))
       .rejects.toThrow(alternatives);
     expect(fetch).not.toHaveBeenCalled();

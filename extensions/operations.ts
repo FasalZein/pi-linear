@@ -1461,6 +1461,7 @@ const entries: LinearOperation[] = [
 		root: "issueUpdate",
 		inputType: "IssueUpdateInput",
 		selection: `issue { ${ISSUE_SELECTION} }`,
+		idKey: "issue",
 		parameters: [
 			p("issue", "IssueReference", true),
 			p("state", "StateReference"),

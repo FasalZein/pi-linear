@@ -417,6 +417,26 @@ describe('resolveApiKey precedence', () => {
     expect((await readCredentials()).activeWorkspace).toBe('my-workspace');
   });
 
+  it.each(['default', 'active'])('uses normal workspace-first precedence for the %s alias', async (workspace) => {
+    await writeCredentials(credsWith());
+    process.env[ENV_KEY] = ENV_VAR_KEY;
+
+    await expect(resolveApiKey(fakeCtx(), { promptIfMissing: false, workspace })).resolves.toEqual({
+      apiKey: WORKSPACE_KEY,
+      source: 'workspace',
+    });
+  });
+
+  it.each(['default', 'active'])('uses normal env-first precedence for the %s alias', async (workspace) => {
+    await writeCredentials(credsWith({ authPreference: 'env' }));
+    process.env[ENV_KEY] = ENV_VAR_KEY;
+
+    await expect(resolveApiKey(fakeCtx(), { promptIfMissing: false, workspace })).resolves.toEqual({
+      apiKey: ENV_VAR_KEY,
+      source: 'env',
+    });
+  });
+
   it('rejects an unknown requested workspace', async () => {
     await writeCredentials(credsWith());
     await expect(

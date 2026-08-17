@@ -12,6 +12,7 @@ import {
   operationsForDomain,
   parameterShapes,
   operationDocuments,
+  operations,
   type LinearOperation,
   type OperationDomain,
 } from './operations';
@@ -147,7 +148,7 @@ async function apiKeyForWorkspace(ctx: ExtensionContext, workspace?: string): Pr
 }
 
 const REQUEST_SHAPES = 'Invalid request. Send exactly one of: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }, { "operation": "help" }, or { "query": "query { viewer { id } }", "variables": {} }.';
-const HELP_SHAPES = 'Send exactly one of: { "operation": "help" }, { "operation": "help", "variables": { "domain": "issues" } }, or { "operation": "help", "variables": { "operation": "get_issue" } }.';
+const HELP_SHAPES = 'Send exactly one of: { "operation": "help" }, { "operation": "help", "variables": { "domain": "issues" } }, or { "operation": "help", "variables": { "operation": "get_issue" } }. For natural search, send exactly one of: { "operation": "help", "variables": { "query": "issue lookup by identifier" } } or { "operation": "help", "variables": { "search": "comment issue create comment" } }.';
 
 function parameterList(operation: LinearOperation): string {
   return operation.parameters.map(({ name, type, required }) =>
@@ -206,6 +207,67 @@ export function resolveRequest(params: {
   return { query: operation.document, named: true, operation };
 }
 
+const HELP_WORD_ALIASES: Record<string, string> = {
+  assigned: 'assignee',
+  assignment: 'assignee',
+  comments: 'comment',
+  cycles: 'cycle',
+  documents: 'document',
+  initiatives: 'initiative',
+  issues: 'issue',
+  labels: 'label',
+  lookup: 'get',
+  milestones: 'milestone',
+  progress: 'started',
+  projects: 'project',
+  relations: 'relation',
+  statuses: 'status',
+  teams: 'team',
+  users: 'user',
+  views: 'view',
+};
+
+function helpWords(value: string): Set<string> {
+  const words = value
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    .match(/[a-z0-9]+/g) ?? [];
+  return new Set(words.map((word) => HELP_WORD_ALIASES[word] ?? word));
+}
+
+function naturalHelp(search: string): JsonObject {
+  const queryWords = helpWords(search);
+  const score = (operation: LinearOperation): number => {
+    const fields: Array<[Set<string>, number]> = [
+      [helpWords(operation.name), 16],
+      [helpWords(operation.domain), 6],
+      [helpWords(operation.purpose), 4],
+      [helpWords(operation.parameters.map(({ name, type }) => `${name} ${type}`).join(' ')), 2],
+    ];
+    return fields.reduce((total, [words, weight]) =>
+      total + [...queryWords].filter((word) => words.has(word)).length * weight, 0);
+  };
+  const ranked = Object.values(operations)
+    .map((operation) => ({ operation, score: score(operation) }))
+    .sort((left, right) => right.score - left.score || (left.operation.name < right.operation.name ? -1 : 1));
+  const best = ranked[0]!.operation;
+  return {
+    query: search,
+    match: {
+      name: best.name,
+      domain: best.domain,
+      purpose: best.purpose,
+      signature: operationSignature(best),
+      parameters: best.parameters,
+      invocation: best.example,
+    },
+    alternatives: ranked.slice(1, 3).filter(({ score }) => score > 0).map(({ operation }) => ({
+      name: operation.name,
+      signature: operationSignature(operation),
+    })),
+  };
+}
+
 function helpResult(variables: Record<string, unknown> = {}): JsonObject {
   const keys = Object.keys(variables);
   if (!keys.length) {
@@ -218,8 +280,10 @@ function helpResult(variables: Record<string, unknown> = {}): JsonObject {
 
   const domain = variables.domain;
   const operationName = variables.operation;
-  if (keys.length !== 1 || (domain === undefined) === (operationName === undefined)) {
-    throw new Error(`Invalid help request. ${HELP_SHAPES}`);
+  const naturalQuery = variables.query ?? variables.search;
+  if (keys.length !== 1) throw new Error(`Invalid help request. ${HELP_SHAPES}`);
+  if ((keys[0] === 'query' || keys[0] === 'search') && typeof naturalQuery === 'string' && naturalQuery.trim()) {
+    return naturalHelp(naturalQuery.trim());
   }
   if (typeof domain === 'string' && DOMAINS.includes(domain as OperationDomain)) {
     return {
@@ -256,7 +320,7 @@ export function linearApiTool(mode: MutationMode = 'allowlist') {
       operation: Type.Optional(Type.String({ description: 'Bundled operation name.' })),
       query: Type.Optional(Type.String({ description: 'Raw GraphQL escape hatch.' })),
       variables: Type.Optional(Type.Record(Type.String(), Type.Any())),
-      workspace: Type.Optional(Type.String({ description: 'Stored workspace name.' })),
+      workspace: Type.Optional(Type.String({ description: 'Stored workspace name, or default/active for normal credential selection.' })),
       sink: Type.Optional(Type.Union([
         Type.Literal('inline'),
         Type.Literal('artifact'),

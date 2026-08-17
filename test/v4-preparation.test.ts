@@ -272,6 +272,52 @@ describe("fail-closed list_issues state preparation", () => {
 	});
 });
 
+describe("update_issue final request", () => {
+	it.each([
+		["identifier and state name", "AEO-266", "Backlog"],
+		["identifier and state UUID", "AEO-266", MILESTONE_ID],
+		["issue UUID and state name", INITIATIVE_ID, "Backlog"],
+		["issue UUID and state UUID", INITIATIVE_ID, MILESTONE_ID],
+	])("prepares exact id and input variables for %s", async (_label, issueReference, stateReference) => {
+		const issueId = INITIATIVE_ID;
+		const teamId = PROJECT_ID;
+		const stateId = MILESTONE_ID;
+		graphqlStub((query, variables) => {
+			if (query.includes("ResolveIssueByIdentifier")) {
+				expect(variables).toEqual({ teamKey: "AEO", number: 266 });
+				return {
+					issues: { nodes: [{ id: issueId, identifier: "AEO-266", team: { id: teamId, key: "AEO" } }] },
+				};
+			}
+			if (query.includes("ResolveIssueById")) {
+				expect(variables).toEqual({ id: issueId });
+				return { issue: { id: issueId, identifier: "AEO-266", team: { id: teamId, key: "AEO" } } };
+			}
+			if (query.includes("ResolveStateByName")) {
+				expect(variables).toEqual({ teamId, name: "Backlog" });
+				return { workflowStates: { nodes: [{ id: stateId, name: "Backlog", team: { id: teamId } }] } };
+			}
+			expect(query).toContain("ResolveStateById");
+			expect(variables).toEqual({ id: stateId });
+			return { workflowState: { id: stateId, name: "Backlog", team: { id: teamId } } };
+		});
+
+		const prepared = await prepare("update_issue", { issue: issueReference, state: stateReference });
+		expect(operations.update_issue.document).toContain(
+			"mutation UpdateIssue($id: String! $input: IssueUpdateInput!)",
+		);
+		expect(operations.update_issue.document).toContain(
+			"issueUpdate(id: $id, input: $input)",
+		);
+		expect(prepared.variables).toEqual({ id: issueId, input: { stateId } });
+		expect(prepared.resolution?.target).toEqual({
+			requested: issueReference,
+			resolvedId: issueId,
+			identifier: "AEO-266",
+		});
+	});
+});
+
 describe("save operation mode validation and branch preparation", () => {
 	it("prepares valid create branches from top-level and raw input fields", async () => {
 		const initiative = await prepare("save_initiative", {

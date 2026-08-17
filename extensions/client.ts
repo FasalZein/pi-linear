@@ -112,7 +112,8 @@ export async function resolveApiKey(
   options?: { promptIfMissing?: boolean; workspace?: string },
 ): Promise<{ apiKey?: string; source: 'env' | 'workspace' | 'none' }> {
   const creds = await readCredentials();
-  const requestedWorkspace = asString(options?.workspace);
+  const workspaceAlias = options?.workspace === 'default' || options?.workspace === 'active';
+  const requestedWorkspace = workspaceAlias ? undefined : asString(options?.workspace);
   if (requestedWorkspace) {
     const apiKey = creds.workspaces[requestedWorkspace]?.apiKey;
     if (!apiKey) throw new Error(`Workspace "${requestedWorkspace}" does not exist.`);
