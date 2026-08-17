@@ -10,6 +10,7 @@ import {
   getOperation,
   operationSignature,
   operationsForDomain,
+  parameterShapes,
   type LinearOperation,
   type OperationDomain,
 } from './operations';
@@ -144,7 +145,7 @@ async function apiKeyForWorkspace(ctx: ExtensionContext, workspace?: string): Pr
   return apiKey;
 }
 
-const REQUEST_SHAPES = 'Invalid request. Send exactly one of: { "operation": "get_issue", "variables": { "teamKey": "AEO", "number": 258 } }, { "operation": "help" }, or { "query": "query { viewer { id } }", "variables": {} }.';
+const REQUEST_SHAPES = 'Invalid request. Send exactly one of: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }, { "operation": "help" }, or { "query": "query { viewer { id } }", "variables": {} }.';
 const HELP_SHAPES = 'Send exactly one of: { "operation": "help" }, { "operation": "help", "variables": { "domain": "issues" } }, or { "operation": "help", "variables": { "operation": "get_issue" } }.';
 
 function parameterList(operation: LinearOperation): string {
@@ -153,16 +154,26 @@ function parameterList(operation: LinearOperation): string {
   ).join(', ');
 }
 
-function validateVariables(operation: LinearOperation, variables: Record<string, unknown>): void {
+function validateVariables(
+  operation: LinearOperation,
+  requestedName: string,
+  variables: Record<string, unknown>,
+): void {
+  const shapes = parameterShapes(operation, requestedName);
+  const validShape = shapes.find((shape) => {
+    const valid = new Set(shape.map(({ name }) => name));
+    return shape.every(({ name, required }) => !required || name in variables)
+      && Object.keys(variables).every((name) => valid.has(name));
+  });
+  if (validShape) return;
+
   const valid = new Set(operation.parameters.map(({ name }) => name));
   const missing = operation.parameters.filter(({ name, required }) => required && !(name in variables)).map(({ name }) => name);
   const unknown = Object.keys(variables).filter((name) => !valid.has(name));
-  if (!missing.length && !unknown.length) return;
-
   const problems = [
     ...(missing.length ? [`missing ${missing.join(', ')}`] : []),
     ...(unknown.length ? [`unknown ${unknown.join(', ')}`] : []),
-  ].join('; ');
+  ].join('; ') || 'parameters do not match one accepted shape';
   throw new Error(
     `Invalid parameters for "${operation.name}": ${problems}. Valid parameters: ${parameterList(operation)}. Example: ${formatInvocation(operation.example)}.`,
   );
@@ -177,7 +188,7 @@ export function resolveRequest(params: {
   if (!params.operation) return { query: params.query!, named: false };
 
   const operation = getOperation(params.operation);
-  validateVariables(operation, params.variables ?? {});
+  validateVariables(operation, params.operation, params.variables ?? {});
   return { query: operation.document, named: true, operation };
 }
 
@@ -244,13 +255,16 @@ export function linearApiTool(mode: MutationMode = 'allowlist') {
       const request = resolveRequest(params);
       assertMutationAllowed(request.query, mode, request.named ? request.operation.mutationRoots : undefined);
       const apiKey = await apiKeyForWorkspace(ctx, params.workspace);
-      const data = await linearGraphQL<JsonObject>(apiKey, request.query, params.variables ?? {}, signal);
+      const prepared = request.named && request.operation.prepare
+        ? await request.operation.prepare(apiKey, params.variables ?? {}, signal)
+        : { variables: params.variables ?? {}, resolution: undefined };
+      const data = await linearGraphQL<JsonObject>(apiKey, request.query, prepared.variables, signal);
       const result = await routeLinearResult(data, {
         label: params.operation ?? 'query',
         sink: params.sink,
         nodeCap: request.named ? undefined : NODE_CAP,
       });
-      return toolResult(result);
+      return toolResult(prepared.resolution ? { ...result, resolution: prepared.resolution } : result);
     },
   });
 }

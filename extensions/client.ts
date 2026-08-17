@@ -4,6 +4,13 @@ import os from 'node:os';
 import path from 'node:path';
 
 const LINEAR_GRAPHQL_ENDPOINT = 'https://api.linear.app/graphql';
+const ISSUE_IDENTIFIER_PATTERN = /^([A-Z][A-Z0-9]*)-(\d+)$/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export type ResolvedIssue = { id: string; identifier: string; teamId: string; teamKey: string };
+export type ResolvedTeam = { id: string; key: string };
+export type ResolvedState = { id: string; name: string; teamId: string };
+export type ResolvedUser = { id: string; name?: string; displayName?: string; email?: string };
 
 export type AuthPreference = 'workspace' | 'env';
 
@@ -216,4 +223,161 @@ export async function linearGraphQL<TData>(
   if (body.errors?.length) throw new Error(`Linear GraphQL error: ${detail}`);
   if (!body.data) throw new Error('Linear GraphQL response did not include data.');
   return body.data;
+}
+
+function requireReference(value: string, kind: string): string {
+  const reference = value.trim();
+  if (!reference) throw new Error(`Linear ${kind} reference is required.`);
+  return reference;
+}
+
+function requireSingle<T>(nodes: T[], description: string): T {
+  if (nodes.length !== 1) {
+    throw new Error(`Linear ${description} resolved to ${nodes.length} matches; expected exactly one.`);
+  }
+  return nodes[0]!;
+}
+
+export async function resolveIssueReference(
+  apiKey: string,
+  value: string,
+  signal?: AbortSignal,
+): Promise<ResolvedIssue> {
+  const reference = requireReference(value, 'issue');
+  const identifier = reference.match(ISSUE_IDENTIFIER_PATTERN);
+  if (identifier) {
+    const teamKey = identifier[1]!;
+    const number = Number(identifier[2]!);
+    const data = await linearGraphQL<{ issues: { nodes: Array<{
+      id: string; identifier: string; team: { id: string; key: string } | null;
+    }> } }>(apiKey, `query ResolveIssueByIdentifier($teamKey: String!, $number: Float!) {
+  issues(first: 2, filter: { team: { key: { eq: $teamKey } }, number: { eq: $number } }) {
+    nodes { id identifier team { id key } }
+  }
+}`, { teamKey: teamKey.toUpperCase(), number }, signal);
+    const issue = requireSingle(data.issues.nodes, `issue "${reference}"`);
+    const parsedResult = issue.identifier.match(ISSUE_IDENTIFIER_PATTERN);
+    if (!parsedResult || parsedResult[1]!.toLowerCase() !== teamKey.toLowerCase() || Number(parsedResult[2]!) !== number) {
+      throw new Error(`Linear issue resolver returned mismatched identifier "${issue.identifier}" for "${reference}".`);
+    }
+    if (!issue.team || issue.team.key.toLowerCase() !== teamKey.toLowerCase()) {
+      throw new Error(`Linear issue resolver returned a mismatched team for "${reference}".`);
+    }
+    return { id: issue.id, identifier: issue.identifier, teamId: issue.team.id, teamKey: issue.team.key };
+  }
+
+  if (!UUID_PATTERN.test(reference)) {
+    throw new Error(`Invalid Linear issue reference "${reference}". Use TEAM-123 or a UUID.`);
+  }
+  const data = await linearGraphQL<{ issue: {
+    id: string; identifier: string; team: { id: string; key: string } | null;
+  } | null }>(apiKey, `query ResolveIssueById($id: String!) {
+  issue(id: $id) { id identifier team { id key } }
+}`, { id: reference }, signal);
+  if (!data.issue) throw new Error(`Linear issue "${reference}" was not found.`);
+  if (data.issue.id !== reference) {
+    throw new Error(`Linear issue resolver returned mismatched id "${data.issue.id}" for "${reference}".`);
+  }
+  if (!data.issue.team) throw new Error(`Linear issue "${reference}" has no team.`);
+  return {
+    id: data.issue.id,
+    identifier: data.issue.identifier,
+    teamId: data.issue.team.id,
+    teamKey: data.issue.team.key,
+  };
+}
+
+export async function resolveTeamReference(
+  apiKey: string,
+  value: string,
+  signal?: AbortSignal,
+): Promise<ResolvedTeam> {
+  const reference = requireReference(value, 'team');
+  if (UUID_PATTERN.test(reference)) {
+    const data = await linearGraphQL<{ team: { id: string; key: string } | null }>(apiKey, `query ResolveTeamById($id: String!) {
+  team(id: $id) { id key }
+}`, { id: reference }, signal);
+    if (!data.team) throw new Error(`Linear team "${reference}" was not found.`);
+    if (data.team.id !== reference) throw new Error(`Linear team resolver returned mismatched id for "${reference}".`);
+    return data.team;
+  }
+  if (!/^[A-Z][A-Z0-9]*$/i.test(reference)) {
+    throw new Error(`Invalid Linear team reference "${reference}". Use a team key or UUID.`);
+  }
+  const data = await linearGraphQL<{ teams: { nodes: ResolvedTeam[] } }>(apiKey, `query ResolveTeamByKey($key: String!) {
+  teams(first: 2, filter: { key: { eq: $key } }) { nodes { id key } }
+}`, { key: reference.toUpperCase() }, signal);
+  const team = requireSingle(data.teams.nodes, `team "${reference}"`);
+  if (team.key.toLowerCase() !== reference.toLowerCase()) {
+    throw new Error(`Linear team resolver returned mismatched key "${team.key}" for "${reference}".`);
+  }
+  return team;
+}
+
+export async function resolveStateReference(
+  apiKey: string,
+  teamId: string,
+  value: string,
+  signal?: AbortSignal,
+): Promise<ResolvedState> {
+  const reference = requireReference(value, 'state');
+  if (UUID_PATTERN.test(reference)) {
+    const data = await linearGraphQL<{ workflowState: {
+      id: string; name: string; team: { id: string } | null;
+    } | null }>(apiKey, `query ResolveStateById($id: String!) {
+  workflowState(id: $id) { id name team { id } }
+}`, { id: reference }, signal);
+    if (!data.workflowState) throw new Error(`Linear state "${reference}" was not found.`);
+    if (data.workflowState.id !== reference) throw new Error(`Linear state resolver returned mismatched id for "${reference}".`);
+    if (data.workflowState.team?.id !== teamId) throw new Error(`Linear state "${reference}" does not belong to team "${teamId}".`);
+    return { id: data.workflowState.id, name: data.workflowState.name, teamId };
+  }
+  const data = await linearGraphQL<{ workflowStates: { nodes: Array<{
+    id: string; name: string; team: { id: string } | null;
+  }> } }>(apiKey, `query ResolveStateByName($teamId: ID!, $name: String!) {
+  workflowStates(first: 2, filter: { team: { id: { eq: $teamId } }, name: { eqIgnoreCase: $name } }) {
+    nodes { id name team { id } }
+  }
+}`, { teamId, name: reference }, signal);
+  const matches = data.workflowStates.nodes.filter((state) =>
+    state.team?.id === teamId && state.name.toLowerCase() === reference.toLowerCase(),
+  );
+  const state = requireSingle(matches, `state "${reference}" in team "${teamId}"`);
+  return { id: state.id, name: state.name, teamId };
+}
+
+export async function resolveUserReference(
+  apiKey: string,
+  value: string,
+  signal?: AbortSignal,
+): Promise<ResolvedUser> {
+  const reference = requireReference(value, 'user');
+  const selection = 'id name displayName email';
+  if (reference.toLowerCase() === 'me') {
+    const data = await linearGraphQL<{ viewer: ResolvedUser | null }>(apiKey, `query ResolveViewer { viewer { ${selection} } }`, {}, signal);
+    if (!data.viewer?.id) throw new Error('Linear viewer could not be resolved.');
+    return data.viewer;
+  }
+  if (UUID_PATTERN.test(reference)) {
+    const data = await linearGraphQL<{ user: ResolvedUser | null }>(apiKey, `query ResolveUserById($id: String!) {
+  user(id: $id) { ${selection} }
+}`, { id: reference }, signal);
+    if (!data.user) throw new Error(`Linear user "${reference}" was not found.`);
+    if (data.user.id !== reference) throw new Error(`Linear user resolver returned mismatched id for "${reference}".`);
+    return data.user;
+  }
+  const data = await linearGraphQL<{
+    byEmail: { nodes: ResolvedUser[] };
+    byName: { nodes: ResolvedUser[] };
+    byDisplayName: { nodes: ResolvedUser[] };
+  }>(apiKey, `query ResolveUserByIdentity($reference: String!) {
+  byEmail: users(first: 2, filter: { email: { eq: $reference } }) { nodes { ${selection} } }
+  byName: users(first: 2, filter: { name: { eq: $reference } }) { nodes { ${selection} } }
+  byDisplayName: users(first: 2, filter: { displayName: { eq: $reference } }) { nodes { ${selection} } }
+}`, { reference }, signal);
+  const exact = [...data.byEmail.nodes, ...data.byName.nodes, ...data.byDisplayName.nodes].filter((user) =>
+    user.email === reference || user.name === reference || user.displayName === reference,
+  );
+  const users = [...new Map(exact.map((user) => [user.id, user])).values()];
+  return requireSingle(users, `user "${reference}"`);
 }

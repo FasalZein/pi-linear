@@ -10,6 +10,10 @@ import {
   switchWorkspace,
   setAuthPreference,
   linearGraphQL,
+  resolveIssueReference,
+  resolveTeamReference,
+  resolveStateReference,
+  resolveUserReference,
   type WorkspaceCredentials,
 } from '../extensions/client';
 
@@ -232,6 +236,131 @@ describe('linearGraphQL error surfacing', () => {
 
     await expect(linearGraphQL('key', 'query { viewer { id } }')).resolves.toEqual({ viewer: { id: 'user-1' } });
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('strict reference resolvers', () => {
+  const ISSUE_ID = '11111111-1111-4111-8111-111111111111';
+  const OTHER_ID = '22222222-2222-4222-8222-222222222222';
+  const TEAM_ID = '33333333-3333-4333-8333-333333333333';
+  const STATE_ID = '44444444-4444-4444-8444-444444444444';
+  const USER_ID = '55555555-5555-4555-8555-555555555555';
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  function graphqlStub(handler: (query: string, variables: Record<string, unknown>) => unknown) {
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const request = JSON.parse(String(init.body)) as { query: string; variables: Record<string, unknown> };
+      return {
+        ok: true, status: 200, statusText: 'OK', headers: new Headers(),
+        json: async () => ({ data: handler(request.query, request.variables) }),
+      };
+    });
+    vi.stubGlobal('fetch', fetch);
+    return fetch;
+  }
+
+  const issue = (id = ISSUE_ID, identifier = 'AEO-258') => ({
+    id, identifier, team: { id: TEAM_ID, key: 'AEO' },
+  });
+
+  it.each(['AEO-258', 'aeo-258'])('resolves exact identifier %s without search', async (reference) => {
+    const fetch = graphqlStub((query, variables) => {
+      expect(query).toContain('issues(first: 2');
+      expect(query).not.toContain('searchIssues');
+      expect(variables).toEqual({ teamKey: 'AEO', number: 258 });
+      return { issues: { nodes: [issue()] } };
+    });
+    await expect(resolveIssueReference('key', reference)).resolves.toEqual({
+      id: ISSUE_ID, identifier: 'AEO-258', teamId: TEAM_ID, teamKey: 'AEO',
+    });
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it('resolves an exact issue UUID', async () => {
+    graphqlStub((query, variables) => {
+      expect(query).toContain('issue(id: $id)');
+      expect(query).not.toContain('searchIssues');
+      expect(variables).toEqual({ id: ISSUE_ID });
+      return { issue: issue() };
+    });
+    await expect(resolveIssueReference('key', ISSUE_ID)).resolves.toMatchObject({ id: ISSUE_ID, identifier: 'AEO-258' });
+  });
+
+  it('rejects missing, ambiguous, identifier-mismatched, and UUID-mismatched issues', async () => {
+    graphqlStub((_query, variables) => {
+      if ('teamKey' in variables) {
+        if (variables.number === 1) return { issues: { nodes: [] } };
+        if (variables.number === 2) return { issues: { nodes: [issue(), issue(OTHER_ID)] } };
+        return { issues: { nodes: [issue(ISSUE_ID, 'AEO-999')] } };
+      }
+      return { issue: issue(OTHER_ID) };
+    });
+    await expect(resolveIssueReference('key', 'AEO-1')).rejects.toThrow('0 matches');
+    await expect(resolveIssueReference('key', 'AEO-2')).rejects.toThrow('2 matches');
+    await expect(resolveIssueReference('key', 'AEO-3')).rejects.toThrow('mismatched identifier');
+    await expect(resolveIssueReference('key', ISSUE_ID)).rejects.toThrow('mismatched id');
+  });
+
+  it('rejects invalid issue input before network access', async () => {
+    const fetch = graphqlStub(() => ({}));
+    await expect(resolveIssueReference('key', 'some title')).rejects.toThrow('Use TEAM-123 or a UUID');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('resolves team keys and UUIDs exactly', async () => {
+    graphqlStub((query) => query.includes('ResolveTeamByKey')
+      ? { teams: { nodes: [{ id: TEAM_ID, key: 'AEO' }] } }
+      : { team: { id: TEAM_ID, key: 'AEO' } });
+    await expect(resolveTeamReference('key', 'aeo')).resolves.toEqual({ id: TEAM_ID, key: 'AEO' });
+    await expect(resolveTeamReference('key', TEAM_ID)).resolves.toEqual({ id: TEAM_ID, key: 'AEO' });
+  });
+
+  it('rejects mismatched team keys and UUIDs', async () => {
+    graphqlStub((query) => query.includes('ResolveTeamByKey')
+      ? { teams: { nodes: [{ id: TEAM_ID, key: 'OTHER' }] } }
+      : { team: { id: OTHER_ID, key: 'AEO' } });
+    await expect(resolveTeamReference('key', 'AEO')).rejects.toThrow('mismatched key');
+    await expect(resolveTeamReference('key', TEAM_ID)).rejects.toThrow('mismatched id');
+  });
+
+  it('resolves exact state names and UUIDs within the issue team', async () => {
+    graphqlStub((query) => query.includes('ResolveStateByName')
+      ? { workflowStates: { nodes: [{ id: STATE_ID, name: 'Backlog', team: { id: TEAM_ID } }] } }
+      : { workflowState: { id: STATE_ID, name: 'Backlog', team: { id: TEAM_ID } } });
+    await expect(resolveStateReference('key', TEAM_ID, 'backlog')).resolves.toEqual({ id: STATE_ID, name: 'Backlog', teamId: TEAM_ID });
+    await expect(resolveStateReference('key', TEAM_ID, STATE_ID)).resolves.toEqual({ id: STATE_ID, name: 'Backlog', teamId: TEAM_ID });
+  });
+
+  it('rejects wrong-team and ambiguous duplicate state names', async () => {
+    graphqlStub((query) => query.includes('ResolveStateByName')
+      ? { workflowStates: { nodes: [
+          { id: STATE_ID, name: 'Backlog', team: { id: TEAM_ID } },
+          { id: OTHER_ID, name: 'BACKLOG', team: { id: TEAM_ID } },
+        ] } }
+      : { workflowState: { id: STATE_ID, name: 'Backlog', team: { id: OTHER_ID } } });
+    await expect(resolveStateReference('key', TEAM_ID, 'Backlog')).rejects.toThrow('2 matches');
+    await expect(resolveStateReference('key', TEAM_ID, STATE_ID)).rejects.toThrow('does not belong');
+  });
+
+  it('resolves me through viewer and exact supported user identities', async () => {
+    graphqlStub((query) => query.includes('ResolveViewer')
+      ? { viewer: { id: USER_ID, name: 'Ada', displayName: 'Ada L', email: 'ada@example.com' } }
+      : {
+          byEmail: { nodes: [{ id: USER_ID, name: 'Ada', displayName: 'Ada L', email: 'ada@example.com' }] },
+          byName: { nodes: [] }, byDisplayName: { nodes: [] },
+        });
+    await expect(resolveUserReference('key', 'me')).resolves.toMatchObject({ id: USER_ID });
+    await expect(resolveUserReference('key', 'ada@example.com')).resolves.toMatchObject({ id: USER_ID, name: 'Ada' });
+  });
+
+  it('rejects ambiguous exact user identities', async () => {
+    graphqlStub(() => ({
+      byEmail: { nodes: [] },
+      byName: { nodes: [{ id: USER_ID, name: 'Ada' }, { id: OTHER_ID, name: 'Ada' }] },
+      byDisplayName: { nodes: [] },
+    }));
+    await expect(resolveUserReference('key', 'Ada')).rejects.toThrow('2 matches');
   });
 });
 

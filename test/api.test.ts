@@ -17,6 +17,7 @@ import { DOMAINS, getOperation, operations } from '../extensions/operations';
 
 const originalArtifactRoot = process.env.PI_ARTIFACT_PROJECT_ROOT;
 const originalSpillBytes = process.env.LINEAR_SPILL_BYTES;
+const originalApiKey = process.env.LINEAR_API_KEY;
 const temporaryRoots: string[] = [];
 
 afterEach(async () => {
@@ -25,6 +26,8 @@ afterEach(async () => {
   else process.env.PI_ARTIFACT_PROJECT_ROOT = originalArtifactRoot;
   if (originalSpillBytes === undefined) delete process.env.LINEAR_SPILL_BYTES;
   else process.env.LINEAR_SPILL_BYTES = originalSpillBytes;
+  if (originalApiKey === undefined) delete process.env.LINEAR_API_KEY;
+  else process.env.LINEAR_API_KEY = originalApiKey;
   await Promise.all(temporaryRoots.splice(0).map((path) => rm(path, { recursive: true, force: true })));
 });
 
@@ -81,8 +84,8 @@ describe('named operations', () => {
 
   it('accepts old names and variable shapes as hidden aliases', () => {
     const aliases = [
-      ['add_comment', { issueId: 'issue-id', body: 'Comment text' }, 'create_comment'],
-      ['create_relation', { issueId: 'issue-id', relatedIssueId: 'related-issue-id', type: 'related' }, 'create_issue_relation'],
+      ['add_comment', { issueId: '11111111-1111-4111-8111-111111111111', body: 'Comment text' }, 'create_comment'],
+      ['create_relation', { issueId: '11111111-1111-4111-8111-111111111111', relatedIssueId: '22222222-2222-4222-8222-222222222222', type: 'related' }, 'create_issue_relation'],
       ['list_workflow_states', {}, 'list_issue_statuses'],
     ] as const;
 
@@ -96,7 +99,7 @@ describe('named operations', () => {
   });
 
   it('teaches the exact valid request shapes for invalid request selection', () => {
-    const message = 'Invalid request. Send exactly one of: { "operation": "get_issue", "variables": { "teamKey": "AEO", "number": 258 } }, { "operation": "help" }, or { "query": "query { viewer { id } }", "variables": {} }.';
+    const message = 'Invalid request. Send exactly one of: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }, { "operation": "help" }, or { "query": "query { viewer { id } }", "variables": {} }.';
     expect(() => resolveRequest({})).toThrow(message);
     expect(() => resolveRequest({ operation: 'get_issue', query: 'query { viewer { id } }' })).toThrow(message);
   });
@@ -106,7 +109,7 @@ describe('named operations', () => {
       'Unknown Linear operation "missing". Send { "operation": "help" }.',
     );
     expect(() => resolveRequest({ operation: 'get_issue', variables: { teamKey: 'AEO', extra: true } })).toThrow(
-      'Invalid parameters for "get_issue": missing number; unknown extra. Valid parameters: teamKey: String (required), number: Float (required). Example: { "operation": "get_issue", "variables": { "teamKey": "AEO", "number": 258 } }.',
+      'Invalid parameters for "get_issue": missing issue; unknown teamKey, extra. Valid parameters: issue: IssueReference (required). Example: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }.',
     );
   });
 });
@@ -138,19 +141,19 @@ describe('runtime discovery', () => {
 
     const domain = await execute(tool, { operation: 'help', variables: { domain: 'issues' } });
     expect(domain.details.operations).toEqual([
-      { name: 'get_issue', signature: 'get_issue(teamKey: String!, number: Float!)' },
+      { name: 'get_issue', signature: 'get_issue(issue: IssueReference!)' },
       { name: 'search_issues', signature: 'search_issues(term: String!, after?: String)' },
       { name: 'create_issue', signature: 'create_issue(input: IssueCreateInput!)' },
-      { name: 'update_issue_state', signature: 'update_issue_state(issueId: String!, stateId: String!)' },
+      { name: 'update_issue_state', signature: 'update_issue_state(issue: IssueReference!, state: StateReference!)' },
     ]);
 
     const comments = await execute(tool, { operation: 'help', variables: { domain: 'comments' } });
     expect(comments.details.operations).toEqual([
-      { name: 'create_comment', signature: 'create_comment(issueId: String!, body: String!)' },
+      { name: 'create_comment', signature: 'create_comment(issue: IssueReference!, body: String!)' },
     ]);
     const relations = await execute(tool, { operation: 'help', variables: { domain: 'relations' } });
     expect(relations.details.operations).toEqual([
-      { name: 'create_issue_relation', signature: 'create_issue_relation(issueId: String!, relatedIssueId: String!, type: IssueRelationType!)' },
+      { name: 'create_issue_relation', signature: 'create_issue_relation(issue: IssueReference!, relatedIssue: IssueReference!, type: IssueRelationType!)' },
     ]);
     const workspace = await execute(tool, { operation: 'help', variables: { domain: 'workspace' } });
     expect(workspace.details.operations).toEqual([
@@ -171,7 +174,7 @@ describe('runtime discovery', () => {
       'list_issue_statuses',
     ]);
     expect(aliasCards[0].details).toMatchObject({
-      example: { operation: 'create_comment', variables: { issueId: 'issue-id', body: 'Comment text' } },
+      example: { operation: 'create_comment', variables: { issue: 'AEO-258', body: 'Comment text' } },
     });
     for (const card of aliasCards) expect(card.details).not.toHaveProperty('aliases');
     expect(fetch).not.toHaveBeenCalled();
@@ -199,9 +202,108 @@ describe('runtime discovery', () => {
       'Unknown Linear operation "missing". Send { "operation": "help" }.',
     );
     await expect(execute(tool, { operation: 'get_issue', variables: { teamKey: 'AEO' } })).rejects.toThrow(
-      'Valid parameters: teamKey: String (required), number: Float (required). Example: { "operation": "get_issue", "variables": { "teamKey": "AEO", "number": 258 } }.',
+      'Valid parameters: issue: IssueReference (required). Example: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }.',
     );
     expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('reference preparation pipeline', () => {
+  const ISSUE_ID = '11111111-1111-4111-8111-111111111111';
+  const RELATED_ID = '22222222-2222-4222-8222-222222222222';
+  const TEAM_ID = '33333333-3333-4333-8333-333333333333';
+  const STATE_ID = '44444444-4444-4444-8444-444444444444';
+
+  function execute(tool: any, params: Record<string, unknown>) {
+    return tool.execute('call-1', params, undefined, undefined, { hasUI: false });
+  }
+
+  function installGraphqlServer() {
+    const requests: Array<{ query: string; variables: Record<string, unknown> }> = [];
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const request = JSON.parse(String(init.body)) as { query: string; variables: Record<string, unknown> };
+      requests.push(request);
+      const { query, variables } = request;
+      let data: Record<string, unknown>;
+      if (query.includes('ResolveIssueByIdentifier')) {
+        const number = Number(variables.number);
+        const id = number === 259 ? RELATED_ID : ISSUE_ID;
+        data = { issues: { nodes: [{ id, identifier: `AEO-${number}`, team: { id: TEAM_ID, key: 'AEO' } }] } };
+      } else if (query.includes('ResolveIssueById')) {
+        const id = String(variables.id);
+        data = { issue: { id, identifier: id === RELATED_ID ? 'AEO-259' : 'AEO-258', team: { id: TEAM_ID, key: 'AEO' } } };
+      } else if (query.includes('ResolveStateByName')) {
+        data = { workflowStates: { nodes: [{ id: STATE_ID, name: 'Backlog', team: { id: TEAM_ID } }] } };
+      } else if (query.includes('ResolveStateById')) {
+        data = { workflowState: { id: STATE_ID, name: 'Backlog', team: { id: TEAM_ID } } };
+      } else if (query.includes('mutation AddComment')) {
+        data = { commentCreate: { success: true, comment: { id: 'comment-1', body: variables.body } } };
+      } else if (query.includes('mutation CreateRelation')) {
+        data = { issueRelationCreate: { success: true, issueRelation: { id: 'relation-1', type: variables.type } } };
+      } else if (query.includes('mutation UpdateIssueState')) {
+        data = { issueUpdate: { success: true, issue: { id: variables.issueId, identifier: 'AEO-258' } } };
+      } else {
+        data = { issue: { id: variables.issueId, identifier: 'AEO-258' } };
+      }
+      return { ok: true, status: 200, statusText: 'OK', headers: new Headers(), json: async () => ({ data }) };
+    });
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = 'test-key';
+    return requests;
+  }
+
+  it('normalizes canonical and legacy variable shapes to final GraphQL variables', async () => {
+    const requests = installGraphqlServer();
+    const tool = linearApiTool() as any;
+    const calls = [
+      { operation: 'get_issue', variables: { issue: 'AEO-258' } },
+      { operation: 'get_issue', variables: { teamKey: 'AEO', number: 258 } },
+      { operation: 'create_comment', variables: { issue: 'AEO-258', body: 'canonical' } },
+      { operation: 'add_comment', variables: { issueId: ISSUE_ID, body: 'legacy' } },
+      { operation: 'create_issue_relation', variables: { issue: 'AEO-258', relatedIssue: 'AEO-259', type: 'related' } },
+      { operation: 'create_relation', variables: { issueId: ISSUE_ID, relatedIssueId: RELATED_ID, type: 'blocks' } },
+      { operation: 'update_issue_state', variables: { issue: 'AEO-258', state: 'Backlog' } },
+      { operation: 'update_issue_state', variables: { issueId: ISSUE_ID, stateId: STATE_ID } },
+    ];
+    const results = [];
+    for (const call of calls) results.push(await execute(tool, call));
+
+    const final = requests.filter(({ query }) => !query.includes('Resolve'));
+    expect(final.map(({ variables }) => variables)).toEqual([
+      { issueId: ISSUE_ID },
+      { issueId: ISSUE_ID },
+      { issueId: ISSUE_ID, body: 'canonical' },
+      { issueId: ISSUE_ID, body: 'legacy' },
+      { issueId: ISSUE_ID, relatedIssueId: RELATED_ID, type: 'related' },
+      { issueId: ISSUE_ID, relatedIssueId: RELATED_ID, type: 'blocks' },
+      { issueId: ISSUE_ID, stateId: STATE_ID },
+      { issueId: ISSUE_ID, stateId: STATE_ID },
+    ]);
+    expect(results[2].details.resolution.target).toEqual({
+      requested: 'AEO-258', resolvedId: ISSUE_ID, identifier: 'AEO-258',
+    });
+    expect(results[4].details.resolution.relatedTarget).toMatchObject({
+      requested: 'AEO-259', resolvedId: RELATED_ID, identifier: 'AEO-259',
+    });
+  });
+
+  it.each([
+    ['create_comment', { issue: 'AEO-404', body: 'no' }],
+    ['create_issue_relation', { issue: 'AEO-404', relatedIssue: 'AEO-405', type: 'related' }],
+    ['update_issue_state', { issue: 'AEO-404', state: 'Backlog' }],
+  ])('prevents %s mutation when issue resolution fails', async (operation, variables) => {
+    process.env.LINEAR_API_KEY = 'test-key';
+    const queries: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
+      const request = JSON.parse(String(init.body)) as { query: string };
+      queries.push(request.query);
+      return {
+        ok: true, status: 200, statusText: 'OK', headers: new Headers(),
+        json: async () => ({ data: { issues: { nodes: [] } } }),
+      };
+    }));
+    await expect(execute(linearApiTool() as any, { operation, variables })).rejects.toThrow('0 matches');
+    expect(queries.some((query) => query.trimStart().startsWith('mutation'))).toBe(false);
   });
 });
 

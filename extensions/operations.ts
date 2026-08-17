@@ -1,3 +1,9 @@
+import {
+  resolveIssueReference,
+  resolveStateReference,
+  type ResolvedIssue,
+} from './client';
+
 export const DOMAINS = [
   'issues',
   'comments',
@@ -17,16 +23,37 @@ export const DOMAINS = [
 export type OperationDomain = typeof DOMAINS[number];
 export type OperationParameter = { name: string; type: string; required: boolean };
 export type OperationExample = { operation: string; variables: Record<string, unknown> };
+export type OperationPreparation = {
+  variables: Record<string, unknown>;
+  resolution?: Record<string, unknown>;
+};
 export type LinearOperation = {
   name: string;
   aliases: readonly string[];
   domain: OperationDomain;
   purpose: string;
   parameters: readonly OperationParameter[];
+  legacyParameters?: readonly (readonly OperationParameter[])[];
+  aliasParameters?: Readonly<Record<string, readonly OperationParameter[]>>;
   example: OperationExample;
   document: string;
   mutationRoots: readonly string[];
+  prepare?: (
+    apiKey: string,
+    variables: Record<string, unknown>,
+    signal: AbortSignal | undefined,
+  ) => Promise<OperationPreparation>;
 };
+
+function issueTarget(requested: string, issue: ResolvedIssue) {
+  return { requested, resolvedId: issue.id, identifier: issue.identifier };
+}
+
+function issueReference(variables: Record<string, unknown>): string {
+  if (typeof variables.issue === 'string') return variables.issue;
+  if (typeof variables.issueId === 'string') return variables.issueId;
+  return `${String(variables.teamKey)}-${String(variables.number)}`;
+}
 
 export function operationSignature(operation: LinearOperation): string {
   const parameters = operation.parameters.map(({ name, type, required }) =>
@@ -49,20 +76,24 @@ export const operations = {
   get_issue: {
     name: 'get_issue', aliases: [], domain: 'issues',
     purpose: 'Fetch one issue brief with comments, relations, project, state, and labels.',
-    parameters: [{ name: 'teamKey', type: 'String', required: true }, { name: 'number', type: 'Float', required: true }],
-    example: { operation: 'get_issue', variables: { teamKey: 'AEO', number: 258 } },
+    parameters: [{ name: 'issue', type: 'IssueReference', required: true }],
+    legacyParameters: [[{ name: 'teamKey', type: 'String', required: true }, { name: 'number', type: 'Float', required: true }]],
+    example: { operation: 'get_issue', variables: { issue: 'AEO-258' } },
     mutationRoots: [],
-    document: `query GetIssue($teamKey: String!, $number: Float!) {
-  issues(first: 1, filter: { team: { key: { eq: $teamKey } }, number: { eq: $number } }) {
-    nodes {
-      id identifier title description url priority createdAt updatedAt
-      team { id key name }
-      state { id name type }
-      project { id name }
-      labels(first: 25) { nodes { id name color } }
-      comments(first: 50) { nodes { id body createdAt updatedAt user { id name } } pageInfo { hasNextPage endCursor } }
-      relations(first: 50) { nodes { id type relatedIssue { id identifier title } } pageInfo { hasNextPage endCursor } }
-    }
+    async prepare(apiKey, variables, signal) {
+      const requested = issueReference(variables);
+      const issue = await resolveIssueReference(apiKey, requested, signal);
+      return { variables: { issueId: issue.id }, resolution: { target: issueTarget(requested, issue) } };
+    },
+    document: `query GetIssue($issueId: String!) {
+  issue(id: $issueId) {
+    id identifier title description url priority createdAt updatedAt
+    team { id key name }
+    state { id name type }
+    project { id name }
+    labels(first: 25) { nodes { id name color } }
+    comments(first: 50) { nodes { id body createdAt updatedAt user { id name } } pageInfo { hasNextPage endCursor } }
+    relations(first: 50) { nodes { id type relatedIssue { id identifier title } } pageInfo { hasNextPage endCursor } }
   }
 }`,
   },
@@ -92,9 +123,23 @@ export const operations = {
   update_issue_state: {
     name: 'update_issue_state', aliases: [], domain: 'issues',
     purpose: 'Move one issue to a workflow state.',
-    parameters: [{ name: 'issueId', type: 'String', required: true }, { name: 'stateId', type: 'String', required: true }],
-    example: { operation: 'update_issue_state', variables: { issueId: 'issue-id', stateId: 'state-id' } },
+    parameters: [{ name: 'issue', type: 'IssueReference', required: true }, { name: 'state', type: 'StateReference', required: true }],
+    legacyParameters: [[{ name: 'issueId', type: 'String', required: true }, { name: 'stateId', type: 'String', required: true }]],
+    example: { operation: 'update_issue_state', variables: { issue: 'AEO-258', state: 'Backlog' } },
     mutationRoots: ['issueUpdate'],
+    async prepare(apiKey, variables, signal) {
+      const requested = issueReference(variables);
+      const requestedState = String(variables.state ?? variables.stateId);
+      const issue = await resolveIssueReference(apiKey, requested, signal);
+      const state = await resolveStateReference(apiKey, issue.teamId, requestedState, signal);
+      return {
+        variables: { issueId: issue.id, stateId: state.id },
+        resolution: {
+          target: issueTarget(requested, issue),
+          state: { requested: requestedState, resolvedId: state.id, name: state.name },
+        },
+      };
+    },
     document: `mutation UpdateIssueState($issueId: String!, $stateId: String!) {
   issueUpdate(id: $issueId, input: { stateId: $stateId }) { success issue { id identifier title state { id name type } } }
 }`,
@@ -102,9 +147,19 @@ export const operations = {
   create_comment: {
     name: 'create_comment', aliases: ['add_comment'], domain: 'comments',
     purpose: 'Add one comment to an issue.',
-    parameters: [{ name: 'issueId', type: 'String', required: true }, { name: 'body', type: 'String', required: true }],
-    example: { operation: 'create_comment', variables: { issueId: 'issue-id', body: 'Comment text' } },
+    parameters: [{ name: 'issue', type: 'IssueReference', required: true }, { name: 'body', type: 'String', required: true }],
+    legacyParameters: [[{ name: 'issueId', type: 'String', required: true }, { name: 'body', type: 'String', required: true }]],
+    aliasParameters: { add_comment: [{ name: 'issueId', type: 'String', required: true }, { name: 'body', type: 'String', required: true }] },
+    example: { operation: 'create_comment', variables: { issue: 'AEO-258', body: 'Comment text' } },
     mutationRoots: ['commentCreate'],
+    async prepare(apiKey, variables, signal) {
+      const requested = issueReference(variables);
+      const issue = await resolveIssueReference(apiKey, requested, signal);
+      return {
+        variables: { issueId: issue.id, body: variables.body },
+        resolution: { target: issueTarget(requested, issue) },
+      };
+    },
     document: `mutation AddComment($issueId: String!, $body: String!) {
   commentCreate(input: { issueId: $issueId, body: $body }) { success comment { id body createdAt user { id name } } }
 }`,
@@ -113,12 +168,37 @@ export const operations = {
     name: 'create_issue_relation', aliases: ['create_relation'], domain: 'relations',
     purpose: 'Create a relation between two issues.',
     parameters: [
+      { name: 'issue', type: 'IssueReference', required: true },
+      { name: 'relatedIssue', type: 'IssueReference', required: true },
+      { name: 'type', type: 'IssueRelationType', required: true },
+    ],
+    legacyParameters: [[
       { name: 'issueId', type: 'String', required: true },
       { name: 'relatedIssueId', type: 'String', required: true },
       { name: 'type', type: 'IssueRelationType', required: true },
-    ],
-    example: { operation: 'create_issue_relation', variables: { issueId: 'issue-id', relatedIssueId: 'related-issue-id', type: 'related' } },
+    ]],
+    aliasParameters: { create_relation: [
+      { name: 'issueId', type: 'String', required: true },
+      { name: 'relatedIssueId', type: 'String', required: true },
+      { name: 'type', type: 'IssueRelationType', required: true },
+    ] },
+    example: { operation: 'create_issue_relation', variables: { issue: 'AEO-258', relatedIssue: 'AEO-259', type: 'related' } },
     mutationRoots: ['issueRelationCreate'],
+    async prepare(apiKey, variables, signal) {
+      const requested = issueReference(variables);
+      const relatedRequested = String(variables.relatedIssue ?? variables.relatedIssueId);
+      const [issue, relatedIssue] = await Promise.all([
+        resolveIssueReference(apiKey, requested, signal),
+        resolveIssueReference(apiKey, relatedRequested, signal),
+      ]);
+      return {
+        variables: { issueId: issue.id, relatedIssueId: relatedIssue.id, type: variables.type },
+        resolution: {
+          target: issueTarget(requested, issue),
+          relatedTarget: issueTarget(relatedRequested, relatedIssue),
+        },
+      };
+    },
     document: `mutation CreateRelation($issueId: String!, $relatedIssueId: String!, $type: IssueRelationType!) {
   issueRelationCreate(input: { issueId: $issueId, relatedIssueId: $relatedIssueId, type: $type }) {
     success issueRelation { id type relatedIssue { id identifier title } }
@@ -190,6 +270,12 @@ export function getOperation(name: string): LinearOperation {
   const operation = (operations as Record<string, LinearOperation>)[name] ?? aliases.get(name);
   if (!operation) throw new Error(`Unknown Linear operation "${name}". Send { "operation": "help" }.`);
   return operation;
+}
+
+export function parameterShapes(operation: LinearOperation, requestedName: string): readonly (readonly OperationParameter[])[] {
+  const aliasShape = operation.aliasParameters?.[requestedName];
+  if (aliasShape) return [aliasShape];
+  return [operation.parameters, ...(operation.legacyParameters ?? [])];
 }
 
 export function operationsForDomain(domain: OperationDomain): LinearOperation[] {
