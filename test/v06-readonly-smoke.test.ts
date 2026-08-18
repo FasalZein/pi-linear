@@ -118,6 +118,22 @@ describe('read-only schema comparator', () => {
     );
   });
 
+  it('rejects added and removed live root arguments before signature checks', () => {
+    const { usage, fixture } = testContract();
+    const added = introspectionFromSchema(buildSchema(
+      schemaText.replace('mode: ThingMode): ThingConnection!', 'mode: ThingMode, added: String): ThingConnection!'),
+    ));
+    expect(() => compareReadonlySchema(added, fixture, usage, scope)).toThrow(
+      'schema.Query.things.arguments: expected ["filter","ids","mode"], actual ["added","filter","ids","mode"]',
+    );
+    const removed = introspectionFromSchema(buildSchema(
+      schemaText.replace(', mode: ThingMode): ThingConnection!', '): ThingConnection!'),
+    ));
+    expect(() => compareReadonlySchema(removed, fixture, usage, scope)).toThrow(
+      'schema.Query.things.arguments: expected ["filter","ids","mode"], actual ["filter","ids"]',
+    );
+  });
+
   it('reports credential-free expected and actual signatures on wrapper drift', () => {
     const { usage, fixture } = testContract();
     const drift = introspectionFromSchema(buildSchema(schemaText.replace('ids: [[ID!]!]!', 'ids: [ID!]!')));

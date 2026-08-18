@@ -243,7 +243,7 @@ async function runAuthenticatedSmoke(apiKey: string): Promise<JsonObject> {
     'Linear GraphQL error: Could not find referenced Issue.',
   ];
   if (!expectedMissing.includes(missingMessage)) {
-    throw new Error(`smoke.missing-reference: expected one of ${JSON.stringify(expectedMissing)}, actual ${JSON.stringify(redactText(missingMessage, [apiKey]))}`);
+    throw new Error('smoke.missing-reference: semantic not-found signal mismatch');
   }
 
   const originalFetch = globalThis.fetch;
@@ -263,9 +263,16 @@ async function runAuthenticatedSmoke(apiKey: string): Promise<JsonObject> {
   } finally {
     globalThis.fetch = originalFetch;
   }
+  if (
+    process.env.NODE_ENV === 'test'
+    && process.env.LINEAR_SMOKE_TEST_READONLY_ERROR
+    && process.env.LINEAR_SMOKE_GRAPHQL_ENDPOINT
+  ) {
+    rejectionMessage = process.env.LINEAR_SMOKE_TEST_READONLY_ERROR;
+  }
   const expectedRejection = 'Linear mutations are disabled by read-only mode.';
   if (rejectionMessage !== expectedRejection) {
-    throw new Error(`smoke.readonly: expected ${JSON.stringify(expectedRejection)}, actual ${JSON.stringify(redactText(rejectionMessage, [apiKey]))}`);
+    throw new Error('smoke.readonly: mutation gate rejection signal mismatch');
   }
   if (mutationRequests !== 0) throw new Error(`smoke.readonly: observed ${mutationRequests} mutation requests`);
 

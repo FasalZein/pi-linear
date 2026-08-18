@@ -65,8 +65,12 @@ function responseFor(query, variables) {
   const kind = query.includes('__schema') ? 'introspection' : (definition?.operation || 'query');
   appendFileSync(logPath, `${JSON.stringify({ operationName, root, kind, variables })}\n`);
   if (kind === 'introspection') return { data: introspection };
+  const largeError = `lin_api_server_secret_123456789 ${'{"workspace":{"issues":["private-record"]}} '.repeat(400)}`;
   if (mode === 'fail' && operationName !== 'IntrospectionQuery') {
-    return { errors: [{ message: `lin_api_server_secret_123456789 ${'workspace-record '.repeat(400)}` }] };
+    return { errors: [{ message: largeError }] };
+  }
+  if (mode === 'late-missing' && root === 'issue' && variables.id === '00000000-0000-4000-8000-000000000000') {
+    return { errors: [{ message: largeError }] };
   }
   if (root in listEntities) {
     const hasNext = root === 'issues' && variables.first === 1 && !variables.after;

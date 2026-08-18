@@ -314,6 +314,11 @@ export function compareReadonlySchema(
       const found = actual.roots[kind][rootName];
       if (!found) throw signatureError(`schema.${kind}.${rootName}`, expected, undefined);
       if (found.returns !== expected.returns) throw signatureError(`schema.${kind}.${rootName}.returns`, expected.returns, found.returns);
+      const expectedArgumentNames = Object.keys(expected.arguments).sort();
+      const actualArgumentNames = Object.keys(found.arguments).sort();
+      if (!sameSet(actualArgumentNames, expectedArgumentNames)) {
+        throw signatureError(`schema.${kind}.${rootName}.arguments`, expectedArgumentNames, actualArgumentNames);
+      }
       for (const [argument, signature] of Object.entries(expected.arguments)) {
         if (found.arguments[argument] !== signature) {
           throw signatureError(`schema.${kind}.${rootName}.arguments.${argument}`, signature, found.arguments[argument]);
