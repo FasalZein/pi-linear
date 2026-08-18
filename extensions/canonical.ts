@@ -194,11 +194,8 @@ export const CANONICAL_OPERATIONS: Record<string, CanonicalOperation> = {
       body: 'String',
       bodyData: 'JsonObject',
       quotedText: 'String',
-      subscriberIds: '[UUID!]',
       doNotSubscribeToIssue: 'Boolean',
       createOnSyncedSlackThread: 'Boolean',
-      createAsUser: 'String',
-      displayIconUrl: 'Url',
       createdAt: 'DateTime',
       id: 'UUID',
     },
@@ -214,10 +211,7 @@ export const CANONICAL_OPERATIONS: Record<string, CanonicalOperation> = {
       body: 'String',
       bodyData: 'JsonObject',
       quotedText: 'String',
-      doNotSubscribeToIssue: 'Boolean',
-      resolvingCommentId: 'UUID',
-      resolvingUserId: 'UUID',
-      subscriberIds: '[UUID!]',
+      skipEditedAt: 'Boolean',
     },
     branches: [],
   },
@@ -520,8 +514,8 @@ export const CANONICAL_OPERATIONS: Record<string, CanonicalOperation> = {
  * plus any one content field is a valid update, and the create branches are listed
  * once here rather than repeated for every field.
  */
-const DERIVED_BRANCHES: Record<string, { identity: string; create: readonly (readonly string[])[] }> = {
-  update_comment: { identity: 'id', create: [] },
+const DERIVED_BRANCHES: Record<string, { identity: string; create: readonly (readonly string[])[]; content?: readonly string[] }> = {
+  update_comment: { identity: 'id', create: [], content: ['body', 'bodyData', 'quotedText'] },
   update_view: { identity: 'id', create: [] },
   update_cycle: { identity: 'id', create: [] },
   update_document: { identity: 'documentId', create: [] },
@@ -537,7 +531,10 @@ const DERIVED_BRANCHES: Record<string, { identity: string; create: readonly (rea
 
 for (const [operationName, rule] of Object.entries(DERIVED_BRANCHES)) {
   const contract = CANONICAL_OPERATIONS[operationName]!;
-  const update = updateBranches(rule.identity, contentOf(operationName, contract.fields, rule.identity));
+  const update = updateBranches(
+    rule.identity,
+    rule.content ?? contentOf(operationName, contract.fields, rule.identity),
+  );
   contract.branches = [...rule.create, ...update];
 
   if (rule.create.length) {

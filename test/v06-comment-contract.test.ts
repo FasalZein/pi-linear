@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { parse, print } from 'graphql';
 import { validateToolArguments } from '@earendil-works/pi-ai';
 import { convertTools } from '../node_modules/@earendil-works/pi-ai/dist/api/google-shared.js';
 import { resolveJsonSchemaStrictSampling } from '../node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.js';
 import { resolveRequest } from '../extensions/api';
 import { operations } from '../extensions/operations';
 import { typedLinearTools } from '../extensions/typed-tools';
+import { LIVE_COMMENT_SCHEMA_2026_08_19 } from './fixtures/comment-schema';
 import { isolateLinearCredentials } from './helpers/credentials';
 
 isolateLinearCredentials();
@@ -87,14 +89,12 @@ describe('canonical comment schemas', () => {
       body: 'Text',
       bodyData: { type: 'doc' },
       quotedText: 'quote',
-      doNotSubscribeToIssue: true,
-      resolvingCommentId: TARGET_ID,
-      resolvingUserId: TARGET_ID,
-      subscriberIds: [TARGET_ID],
     };
     for (const [field, value] of Object.entries(fields)) {
       expect(rawAccepts(update, { id: 'comment-id', [field]: value }), field).toBe(true);
     }
+    expect(rawAccepts(update, { id: 'comment-id', skipEditedAt: true })).toBe(false);
+    expect(rawAccepts(update, { id: 'comment-id', body: 'Text', skipEditedAt: true })).toBe(true);
     expect(rawAccepts(update, { id: 'comment-id' })).toBe(false);
     expect(rawAccepts(update, { id: 'comment-id', trashed: true })).toBe(false);
     expect(rawAccepts(update, { id: 'comment-id', issueId: ISSUE_ID })).toBe(false);
@@ -103,15 +103,13 @@ describe('canonical comment schemas', () => {
   it('publishes an independent dated field fixture and excludes unsafe or unsupported fields', () => {
     expect(Object.keys((create.parameters as any).properties)).toEqual([
       'issue', 'projectId', 'initiativeId', 'projectUpdateId', 'initiativeUpdateId', 'postId',
-      'documentContentId', 'parentId', 'body', 'bodyData', 'quotedText', 'subscriberIds',
-      'doNotSubscribeToIssue', 'createOnSyncedSlackThread', 'createAsUser', 'displayIconUrl',
-      'createdAt', 'id', 'workspace',
+      'documentContentId', 'parentId', 'body', 'bodyData', 'quotedText',
+      'doNotSubscribeToIssue', 'createOnSyncedSlackThread', 'createdAt', 'id', 'workspace',
     ]);
     expect(Object.keys((update.parameters as any).properties)).toEqual([
-      'id', 'body', 'bodyData', 'quotedText', 'doNotSubscribeToIssue', 'resolvingCommentId',
-      'resolvingUserId', 'subscriberIds', 'workspace',
+      'id', 'body', 'bodyData', 'quotedText', 'skipEditedAt', 'workspace',
     ]);
-    for (const field of ['input', 'issueId', 'trashed', 'archivedAt', 'externalUserId']) {
+    for (const field of ['input', 'issueId', 'subscriberIds', 'createAsUser', 'displayIconUrl', 'resolvingCommentId', 'resolvingUserId', 'resolved', 'trashed', 'archivedAt', 'externalUserId']) {
       expect((create.parameters as any).properties).not.toHaveProperty(field);
       expect((update.parameters as any).properties).not.toHaveProperty(field);
     }
@@ -119,6 +117,102 @@ describe('canonical comment schemas', () => {
 });
 
 describe('comment compatibility validation and preparation', () => {
+  it('records exact authenticated introspection wrappers and payload fields independently', () => {
+    expect(LIVE_COMMENT_SCHEMA_2026_08_19.payload).toEqual({
+      lastSyncId: 'Float!', comment: 'Comment!', success: 'Boolean!',
+    });
+    expect(LIVE_COMMENT_SCHEMA_2026_08_19.mutations.commentResolve).toEqual({
+      arguments: { id: 'String!', resolvingCommentId: 'String' }, returns: 'CommentPayload!',
+    });
+    expect(LIVE_COMMENT_SCHEMA_2026_08_19.mutations.commentUnresolve).toEqual({
+      arguments: { id: 'String!' }, returns: 'CommentPayload!',
+    });
+
+    for (const [operationName, mutationName] of [
+      ['create_comment', 'commentCreate'],
+      ['update_comment', 'commentUpdate'],
+    ] as const) {
+      const document = parse(operations[operationName].document);
+      const definition = document.definitions[0] as any;
+      const variables = Object.fromEntries(definition.variableDefinitions.map((variable: any) => [
+        variable.variable.name.value, print(variable.type),
+      ]));
+      const field = definition.selectionSet.selections[0];
+      const argumentsByName = Object.fromEntries(field.arguments.map((argument: any) => [
+        argument.name.value, `$${argument.value.name.value}`,
+      ]));
+      expect(field.name.value).toBe(mutationName);
+      expect(variables).toEqual(LIVE_COMMENT_SCHEMA_2026_08_19.mutations[mutationName].arguments);
+      expect(Object.keys(argumentsByName).sort()).toEqual(Object.keys(variables).sort());
+      expect(operations[operationName].variants?.[0]).toMatchObject({
+        root: mutationName,
+        mutationResult: { requiredEntityPaths: ['comment'] },
+      });
+    }
+  });
+
+  it('keeps every live input field in raw compatibility and gates non-canonical fields', () => {
+    const createValues: Record<string, unknown> = {
+      id: TARGET_ID,
+      body: 'Text',
+      bodyData: { type: 'doc' },
+      issueId: 'AEO-258',
+      projectUpdateId: TARGET_ID,
+      initiativeUpdateId: TARGET_ID,
+      postId: TARGET_ID,
+      documentContentId: TARGET_ID,
+      projectId: TARGET_ID,
+      initiativeId: TARGET_ID,
+      parentId: TARGET_ID,
+      createAsUser: 'Linear Importer',
+      displayIconUrl: 'https://example.com/icon.png',
+      createdAt: '2026-08-18T00:00:00Z',
+      doNotSubscribeToIssue: true,
+      createOnSyncedSlackThread: true,
+      quotedText: 'quote',
+      subscriberIds: [TARGET_ID],
+    };
+    const targetFields = new Set<string>(TARGETS.map(([field]) => field === 'issue' ? 'issueId' : field));
+    for (const field of Object.keys(LIVE_COMMENT_SCHEMA_2026_08_19.inputs.CommentCreateInput)) {
+      const input: Record<string, unknown> = targetFields.has(field)
+        ? { [field]: createValues[field], body: 'Text' }
+        : field === 'bodyData'
+          ? { issueId: 'AEO-258', bodyData: createValues.bodyData }
+          : { issueId: 'AEO-258', body: 'Text', [field]: createValues[field] };
+      if (field === 'displayIconUrl') input.createAsUser = 'Linear Importer';
+      expect(() => resolveRequest({ operation: 'create_comment', variables: { input } }), field).not.toThrow();
+    }
+
+    const updateValues: Record<string, unknown> = {
+      body: 'Text',
+      bodyData: { type: 'doc' },
+      resolvingUserId: TARGET_ID,
+      resolvingCommentId: TARGET_ID,
+      quotedText: 'quote',
+      subscriberIds: [TARGET_ID],
+      doNotSubscribeToIssue: true,
+    };
+    for (const field of Object.keys(LIVE_COMMENT_SCHEMA_2026_08_19.inputs.CommentUpdateInput)) {
+      expect(() => resolveRequest({
+        operation: 'update_comment', variables: { id: 'comment-id', input: { [field]: updateValues[field] } },
+      }), field).not.toThrow();
+    }
+
+    for (const field of ['createAsUser', 'displayIconUrl', 'subscriberIds']) {
+      expect(() => resolveRequest({
+        operation: 'create_comment', variables: { issue: 'AEO-258', body: 'Text', [field]: createValues[field] },
+      })).toThrow();
+    }
+    for (const field of ['resolvingUserId', 'resolvingCommentId', 'subscriberIds', 'doNotSubscribeToIssue', 'resolved']) {
+      expect(() => resolveRequest({
+        operation: 'update_comment', variables: { id: 'comment-id', [field]: updateValues[field] ?? true },
+      })).toThrow();
+    }
+    expect(() => resolveRequest({
+      operation: 'update_comment', variables: { id: 'comment-id', input: { resolved: true } },
+    })).toThrow();
+  });
+
   it.each(TARGETS.slice(1))('accepts named compatibility target %s', (target, value) => {
     expect(() => resolveRequest({ operation: 'create_comment', variables: { [target]: value, body: 'Text' } })).not.toThrow();
     expect(() => resolveRequest({ operation: 'create_comment', variables: { input: { [target]: value, bodyData: { type: 'doc' } } } })).not.toThrow();
@@ -126,14 +220,12 @@ describe('comment compatibility validation and preparation', () => {
 
   it('keeps independent compatibility metadata in parity with the dated safe inputs', () => {
     expect((operations.create_comment.acceptedParameters ?? []).map(({ name }) => name)).toEqual([
-      'issue', 'body', 'bodyData', 'createAsUser', 'createOnSyncedSlackThread', 'createdAt',
-      'displayIconUrl', 'doNotSubscribeToIssue', 'documentContentId', 'id', 'initiativeId',
-      'initiativeUpdateId', 'issueId', 'parentId', 'postId', 'projectId', 'projectUpdateId',
-      'quotedText', 'subscriberIds', 'input',
+      'issue', 'body', 'bodyData', 'createOnSyncedSlackThread', 'createdAt',
+      'doNotSubscribeToIssue', 'documentContentId', 'id', 'initiativeId', 'initiativeUpdateId',
+      'issueId', 'parentId', 'postId', 'projectId', 'projectUpdateId', 'quotedText', 'input',
     ]);
     expect(operations.update_comment.parameters.map(({ name }) => name)).toEqual([
-      'id', 'body', 'bodyData', 'doNotSubscribeToIssue', 'quotedText', 'resolvingCommentId',
-      'resolvingUserId', 'subscriberIds', 'input',
+      'id', 'body', 'bodyData', 'quotedText', 'skipEditedAt', 'input',
     ]);
   });
 
@@ -226,11 +318,10 @@ describe('comment compatibility validation and preparation', () => {
         .toEqual({ input: { [target]: value, bodyData, subscriberIds: [OTHER_ID] } });
     }
     expect((await prepare('update_comment', {
-      id: 'comment-id', bodyData, doNotSubscribeToIssue: true,
-      resolvingCommentId: TARGET_ID, resolvingUserId: OTHER_ID, subscriberIds: [TARGET_ID],
+      id: 'comment-id', bodyData, skipEditedAt: true,
     })).variables).toEqual({
-      id: 'comment-id',
-      input: { bodyData, doNotSubscribeToIssue: true, resolvingCommentId: TARGET_ID, resolvingUserId: OTHER_ID, subscriberIds: [TARGET_ID] },
+      id: 'comment-id', skipEditedAt: true,
+      input: { bodyData },
     });
   });
 });

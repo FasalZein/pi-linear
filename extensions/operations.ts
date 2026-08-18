@@ -356,7 +356,7 @@ const COMMENT_TARGETS = [
 	"documentContentId",
 	"parentId",
 ] as const;
-const COMMENT_CREATE_FIELDS = [
+const COMMENT_CREATE_INPUT_FIELDS = [
 	"body",
 	"bodyData",
 	"createAsUser",
@@ -376,7 +376,10 @@ const COMMENT_CREATE_FIELDS = [
 	"quotedText",
 	"subscriberIds",
 ] as const;
-const COMMENT_UPDATE_FIELDS = [
+const COMMENT_CREATE_COMPATIBILITY_FIELDS = COMMENT_CREATE_INPUT_FIELDS.filter(
+	(field) => !["createAsUser", "displayIconUrl", "subscriberIds"].includes(field),
+);
+const COMMENT_UPDATE_INPUT_FIELDS = [
 	"body",
 	"bodyData",
 	"doNotSubscribeToIssue",
@@ -385,8 +388,12 @@ const COMMENT_UPDATE_FIELDS = [
 	"resolvingUserId",
 	"subscriberIds",
 ] as const;
-const commentCreateInput = COMMENT_CREATE_FIELDS.map((name) => p(name));
-const commentUpdateInput = COMMENT_UPDATE_FIELDS.map((name) => p(name));
+const COMMENT_UPDATE_COMPATIBILITY_FIELDS = ["body", "bodyData", "quotedText"] as const;
+const commentCreateInput = COMMENT_CREATE_COMPATIBILITY_FIELDS.map((name) => p(name));
+const commentUpdateInput = [
+	...COMMENT_UPDATE_COMPATIBILITY_FIELDS.map((name) => p(name)),
+	p("skipEditedAt", "Boolean"),
+];
 
 function has(value: Record<string, unknown>, key: string): boolean {
 	return Object.prototype.hasOwnProperty.call(value, key) && value[key] !== undefined;
@@ -414,7 +421,7 @@ function assertCommentBodyData(sources: readonly Record<string, unknown>[]): voi
 }
 
 function assertCommentCreateVariables(variables: Record<string, unknown>): void {
-	const raw = commentInputObject(variables, COMMENT_CREATE_FIELDS);
+	const raw = commentInputObject(variables, COMMENT_CREATE_INPUT_FIELDS);
 	const sources = [variables, raw];
 	assertCommentBodyData(sources);
 	const targets =
@@ -432,9 +439,9 @@ function assertCommentCreateVariables(variables: Record<string, unknown>): void 
 }
 
 function assertCommentUpdateVariables(variables: Record<string, unknown>): void {
-	const raw = commentInputObject(variables, COMMENT_UPDATE_FIELDS);
+	const raw = commentInputObject(variables, COMMENT_UPDATE_INPUT_FIELDS);
 	assertCommentBodyData([variables, raw]);
-	const updates = COMMENT_UPDATE_FIELDS.reduce(
+	const updates = COMMENT_UPDATE_INPUT_FIELDS.reduce(
 		(count, field) => count + Number(has(variables, field) || has(raw, field)),
 		0,
 	);
@@ -481,6 +488,12 @@ const createIssueLabelDocument = `mutation CreateIssueLabel($input: IssueLabelCr
   issueLabelCreate(input: $input, replaceTeamLabels: $replaceTeamLabels) {
     success
     issueLabel { ${ISSUE_LABEL_SELECTION} }
+  }
+}`;
+const updateCommentDocument = `mutation UpdateComment($id: String!, $input: CommentUpdateInput!, $skipEditedAt: Boolean) {
+  commentUpdate(id: $id, input: $input, skipEditedAt: $skipEditedAt) {
+    success
+    comment { ${COMMENT_SELECTION} }
   }
 }`;
 const updateIssueLabelDocument = `mutation UpdateIssueLabel($id: String!, $input: IssueLabelUpdateInput!, $replaceTeamLabels: Boolean) {
@@ -601,13 +614,20 @@ const entries: LinearOperation[] = [
 		root: "commentUpdate",
 		inputType: "CommentUpdateInput",
 		selection: `comment { ${COMMENT_SELECTION} }`,
+		document: updateCommentDocument,
 		parameters: [p("id", "String", true), ...commentUpdateInput, input],
 		example: { id: "comment-id", body: "Updated text" },
 		idKey: "id",
 		validateVariables: assertCommentUpdateVariables,
 		async prepare(_apiKey, variables) {
 			assertCommentUpdateVariables(variables);
-			return { variables: { id: variables.id, input: mergedInput(variables, ["id"]) } };
+			return {
+				variables: compactObject({
+					id: variables.id,
+					input: mergedInput(variables, ["id", "skipEditedAt"]),
+					skipEditedAt: variables.skipEditedAt,
+				}),
+			};
 		},
 	}),
 
