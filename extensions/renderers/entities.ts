@@ -456,3 +456,7 @@ export function entityKind(operationName: string): string {
 export function specFor(operationName: string): EntitySpec {
   return ENTITY_SPECS[entityKind(operationName)]!;
 }
+
+export function specForKind(kind: string): EntitySpec {
+  return ENTITY_SPECS[kind] ?? ENTITY_SPECS.issue!;
+}

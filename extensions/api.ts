@@ -6,6 +6,7 @@ import {
   DOMAINS,
   formatInvocation,
   getOperation,
+  operationDefinitions,
   operationSignature,
   operationsForDomain,
   parameterShapes,
@@ -38,6 +39,8 @@ export {
 
 const REQUEST_SHAPES = 'Invalid request. Send exactly one of: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }, { "operation": "help" }, or { "query": "query { viewer { id } }", "variables": {} }.';
 const HELP_SHAPES = 'Send exactly one of: { "operation": "help" }, { "operation": "help", "variables": { "domain": "issues" } }, or { "operation": "help", "variables": { "operation": "get_issue" } }. For natural search, send exactly one of: { "operation": "help", "variables": { "query": "issue lookup by identifier" } } or { "operation": "help", "variables": { "search": "comment issue create comment" } }.';
+const definitionDomainSet = new Set(operationDefinitions.map(({ domain }) => domain));
+const DEFINITION_DOMAINS = DOMAINS.filter((domain) => definitionDomainSet.has(domain));
 
 function parameterList(operation: LinearOperation): string {
   return operation.parameters.map(({ name, type, required }) =>
@@ -148,7 +151,7 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
   const keys = Object.keys(variables);
   if (!keys.length) {
     return {
-      domains: DOMAINS,
+      domains: DEFINITION_DOMAINS,
       domainHelp: { operation: 'help', variables: { domain: 'issues' } },
       operationHelp: { operation: 'help', variables: { operation: 'get_issue' } },
     };
@@ -167,7 +170,7 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
     return naturalHelp(naturalQuery.trim(), activator);
   }
   if (keys.length !== 1) throw new Error(`Invalid help request. ${HELP_SHAPES}`);
-  if (typeof domain === 'string' && DOMAINS.includes(domain as OperationDomain)) {
+  if (typeof domain === 'string' && DEFINITION_DOMAINS.includes(domain as OperationDomain)) {
     return {
       domain,
       operations: operationsForDomain(domain as OperationDomain).map((operation) => ({

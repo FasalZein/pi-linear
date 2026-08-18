@@ -1,0 +1,6422 @@
+[
+  {
+    "name": "list_comments",
+    "toolName": "linear_list_comments",
+    "domain": "comments",
+    "purpose": "List comments, optionally for one exact issue.",
+    "signature": "list_comments()",
+    "example": {
+      "issue": "AEO-258"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "issue",
+          "type": "IssueReference",
+          "required": false
+        },
+        {
+          "name": "after",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "first",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "includeArchived",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "orderBy",
+          "type": "PaginationOrderBy",
+          "required": false
+        },
+        {
+          "name": "filter",
+          "type": "Filter",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": []
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "issue": "AEO-258"
+      }
+    },
+    "discovery": {
+      "action": "list",
+      "entity": "comments",
+      "actions": [
+        "list"
+      ],
+      "entities": [
+        "comment"
+      ],
+      "intents": [
+        {
+          "action": "list",
+          "entity": "comment"
+        }
+      ],
+      "phrases": [
+        "\\b(?:list|show me|enumerate)\\b",
+        "\\bcomments?\\b"
+      ],
+      "terms": [
+        "list",
+        "comments",
+        "comment"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "comment",
+      "callFields": [
+        "issue",
+        "after",
+        "before",
+        "first",
+        "last",
+        "includeArchived",
+        "orderBy",
+        "filter"
+      ],
+      "action": "list"
+    }
+  },
+  {
+    "name": "create_comment",
+    "toolName": "linear_create_comment",
+    "domain": "comments",
+    "purpose": "Create a comment on an issue or another supported target.",
+    "signature": "create_comment()",
+    "example": {
+      "issue": "AEO-258",
+      "body": "Comment text"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "issue",
+          "type": "IssueReference",
+          "required": false
+        },
+        {
+          "name": "projectId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "initiativeId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "projectUpdateId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "initiativeUpdateId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "postId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "documentContentId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "parentId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "body",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "bodyData",
+          "type": "JsonObject",
+          "required": false
+        },
+        {
+          "name": "quotedText",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "doNotSubscribeToIssue",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "createOnSyncedSlackThread",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "required": false
+        },
+        {
+          "name": "id",
+          "type": "UUID",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "issue",
+            "body"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "bodyData"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "body"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "bodyData"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "body"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "bodyData"
+          ]
+        },
+        {
+          "all": [
+            "projectUpdateId",
+            "body"
+          ]
+        },
+        {
+          "all": [
+            "projectUpdateId",
+            "bodyData"
+          ]
+        },
+        {
+          "all": [
+            "initiativeUpdateId",
+            "body"
+          ]
+        },
+        {
+          "all": [
+            "initiativeUpdateId",
+            "bodyData"
+          ]
+        },
+        {
+          "all": [
+            "postId",
+            "body"
+          ]
+        },
+        {
+          "all": [
+            "postId",
+            "bodyData"
+          ]
+        },
+        {
+          "all": [
+            "documentContentId",
+            "body"
+          ]
+        },
+        {
+          "all": [
+            "documentContentId",
+            "bodyData"
+          ]
+        },
+        {
+          "all": [
+            "parentId",
+            "body"
+          ]
+        },
+        {
+          "all": [
+            "parentId",
+            "bodyData"
+          ]
+        }
+      ],
+      "exclusiveBranches": true,
+      "strictRawArguments": true,
+      "example": {
+        "issue": "AEO-258",
+        "body": "Comment text"
+      }
+    },
+    "discovery": {
+      "action": "create",
+      "entity": "comment",
+      "actions": [
+        "comment",
+        "create"
+      ],
+      "entities": [
+        "issue",
+        "comment"
+      ],
+      "intents": [
+        {
+          "action": "comment",
+          "entity": "issue"
+        },
+        {
+          "action": "comment",
+          "entity": "comment"
+        },
+        {
+          "action": "create",
+          "entity": "comment"
+        }
+      ],
+      "phrases": [
+        "\\b(?:add|post|leave|write)\\s+(?:a\\s+)?comment\\b|\\bcomment(?:ed|ing|s)?\\b",
+        "\\b(?:create|add|new|make|file|open a new)\\b",
+        "\\b(?:child|children|sub-?issues?|subtasks?)\\b",
+        "\\bcomments?\\b",
+        "\\bissues?\\b|\\btickets?\\b|\\bbugs?\\b",
+        "\\b[A-Z][A-Z0-9]+-\\d+\\b"
+      ],
+      "terms": [
+        "create",
+        "comment",
+        "issue"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "comment",
+      "callFields": [
+        "issue",
+        "body"
+      ],
+      "action": "create"
+    }
+  },
+  {
+    "name": "update_comment",
+    "toolName": "linear_update_comment",
+    "domain": "comments",
+    "purpose": "Update a comment by id.",
+    "signature": "update_comment(id)",
+    "example": {
+      "id": "comment-id",
+      "body": "Updated text"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "id",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "body",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "bodyData",
+          "type": "JsonObject",
+          "required": false
+        },
+        {
+          "name": "quotedText",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "skipEditedAt",
+          "type": "Boolean",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "id",
+            "body"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "bodyData"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "quotedText"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "id": "comment-id",
+        "body": "Updated text"
+      }
+    },
+    "discovery": {
+      "action": "update",
+      "entity": "comment",
+      "actions": [
+        "update"
+      ],
+      "entities": [
+        "comment"
+      ],
+      "intents": [
+        {
+          "action": "update",
+          "entity": "comment"
+        }
+      ],
+      "phrases": [
+        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
+        "\\bcomments?\\b"
+      ],
+      "terms": [
+        "update",
+        "comment"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "comment",
+      "callFields": [
+        "id",
+        "body",
+        "bodyData",
+        "quotedText",
+        "skipEditedAt",
+        "input"
+      ],
+      "action": "update"
+    }
+  },
+  {
+    "name": "list_views",
+    "toolName": "linear_list_views",
+    "domain": "views",
+    "purpose": "List custom views.",
+    "signature": "list_views()",
+    "example": {},
+    "canonical": {
+      "fields": [
+        {
+          "name": "after",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "first",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "includeArchived",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "orderBy",
+          "type": "PaginationOrderBy",
+          "required": false
+        },
+        {
+          "name": "filter",
+          "type": "Filter",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": []
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {}
+    },
+    "discovery": {
+      "action": "list",
+      "entity": "views",
+      "actions": [
+        "list"
+      ],
+      "entities": [
+        "view"
+      ],
+      "intents": [
+        {
+          "action": "list",
+          "entity": "view"
+        }
+      ],
+      "phrases": [
+        "\\b(?:list|show me|enumerate)\\b",
+        "\\bviews?\\b"
+      ],
+      "terms": [
+        "list",
+        "views",
+        "view"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "view",
+      "callFields": [
+        "after",
+        "before",
+        "first",
+        "last",
+        "includeArchived",
+        "orderBy",
+        "filter"
+      ],
+      "action": "list"
+    }
+  },
+  {
+    "name": "get_view",
+    "toolName": "linear_get_view",
+    "domain": "views",
+    "purpose": "Get a custom view.",
+    "signature": "get_view(id)",
+    "example": {
+      "id": "view-id"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "id",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "id"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "id": "view-id"
+      }
+    },
+    "discovery": {
+      "action": "get",
+      "entity": "view",
+      "actions": [
+        "get"
+      ],
+      "entities": [
+        "view"
+      ],
+      "intents": [
+        {
+          "action": "get",
+          "entity": "view"
+        }
+      ],
+      "phrases": [
+        "\\b(?:read|get|show|open|view|fetch|inspect|lookup)\\b",
+        "\\bviews?\\b"
+      ],
+      "terms": [
+        "get",
+        "view"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "view",
+      "callFields": [
+        "id"
+      ],
+      "action": "get"
+    }
+  },
+  {
+    "name": "create_view",
+    "toolName": "linear_create_view",
+    "domain": "views",
+    "purpose": "Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData.",
+    "signature": "create_view(name)",
+    "example": {
+      "name": "My issues",
+      "filterData": {}
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "name",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "team",
+          "type": "TeamReference",
+          "required": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "icon",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "color",
+          "type": "Color",
+          "required": false
+        },
+        {
+          "name": "shared",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "filterData",
+          "type": "FilterData",
+          "required": false
+        },
+        {
+          "name": "projectFilterData",
+          "type": "FilterData",
+          "required": false
+        },
+        {
+          "name": "initiativeFilterData",
+          "type": "FilterData",
+          "required": false
+        },
+        {
+          "name": "feedItemFilterData",
+          "type": "FilterData",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "name"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "name": "My issues",
+        "filterData": {}
+      }
+    },
+    "discovery": {
+      "action": "create",
+      "entity": "view",
+      "actions": [
+        "create"
+      ],
+      "entities": [
+        "view"
+      ],
+      "intents": [
+        {
+          "action": "create",
+          "entity": "view"
+        }
+      ],
+      "phrases": [
+        "\\b(?:create|add|new|make|file|open a new)\\b",
+        "\\bviews?\\b"
+      ],
+      "terms": [
+        "create",
+        "view"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "view",
+      "callFields": [
+        "name",
+        "filterData",
+        "projectFilterData",
+        "initiativeFilterData",
+        "feedItemFilterData",
+        "team"
+      ],
+      "action": "create"
+    }
+  },
+  {
+    "name": "update_view",
+    "toolName": "linear_update_view",
+    "domain": "views",
+    "purpose": "Update a custom view.",
+    "signature": "update_view(id)",
+    "example": {
+      "id": "view-id",
+      "name": "New name"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "id",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "icon",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "color",
+          "type": "Color",
+          "required": false
+        },
+        {
+          "name": "shared",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "filterData",
+          "type": "FilterData",
+          "required": false
+        },
+        {
+          "name": "projectFilterData",
+          "type": "FilterData",
+          "required": false
+        },
+        {
+          "name": "initiativeFilterData",
+          "type": "FilterData",
+          "required": false
+        },
+        {
+          "name": "feedItemFilterData",
+          "type": "FilterData",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "description"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "icon"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "color"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "shared"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "filterData"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "projectFilterData"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "initiativeFilterData"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "feedItemFilterData"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "id": "view-id",
+        "name": "New name"
+      }
+    },
+    "discovery": {
+      "action": "update",
+      "entity": "view",
+      "actions": [
+        "update"
+      ],
+      "entities": [
+        "view"
+      ],
+      "intents": [
+        {
+          "action": "update",
+          "entity": "view"
+        }
+      ],
+      "phrases": [
+        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
+        "\\bviews?\\b"
+      ],
+      "terms": [
+        "update",
+        "view"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "view",
+      "callFields": [
+        "id",
+        "input"
+      ],
+      "action": "update"
+    }
+  },
+  {
+    "name": "set_view_preferences",
+    "toolName": "linear_set_view_preferences",
+    "domain": "views",
+    "purpose": "Set preferences for a custom view.",
+    "signature": "set_view_preferences(viewId, preferences)",
+    "example": {
+      "viewId": "view-id",
+      "preferences": {}
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "viewId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "preferences",
+          "type": "Preferences",
+          "required": true
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "viewId",
+            "preferences"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "viewId": "view-id",
+        "preferences": {}
+      }
+    },
+    "discovery": {
+      "action": "set",
+      "entity": "view_preferences",
+      "actions": [
+        "update"
+      ],
+      "entities": [
+        "view_preference"
+      ],
+      "intents": [
+        {
+          "action": "update",
+          "entity": "view_preference"
+        }
+      ],
+      "phrases": [
+        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
+        "\\bview preferences?\\b"
+      ],
+      "terms": [
+        "set",
+        "view",
+        "preferences",
+        "update",
+        "view_preference"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "view",
+      "callFields": [
+        "viewId",
+        "preferences"
+      ],
+      "action": "set"
+    }
+  },
+  {
+    "name": "list_cycles",
+    "toolName": "linear_list_cycles",
+    "domain": "cycles",
+    "purpose": "List cycles.",
+    "signature": "list_cycles()",
+    "example": {},
+    "canonical": {
+      "fields": [
+        {
+          "name": "team",
+          "type": "TeamReference",
+          "required": false
+        },
+        {
+          "name": "after",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "first",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "includeArchived",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "orderBy",
+          "type": "PaginationOrderBy",
+          "required": false
+        },
+        {
+          "name": "filter",
+          "type": "Filter",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": []
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {}
+    },
+    "discovery": {
+      "action": "list",
+      "entity": "cycles",
+      "actions": [
+        "list"
+      ],
+      "entities": [
+        "cycle"
+      ],
+      "intents": [
+        {
+          "action": "list",
+          "entity": "cycle"
+        }
+      ],
+      "phrases": [
+        "\\b(?:list|show me|enumerate)\\b",
+        "\\bcycles?\\b|\\bsprints?\\b"
+      ],
+      "terms": [
+        "list",
+        "cycles",
+        "cycle"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "cycle",
+      "callFields": [
+        "team",
+        "after",
+        "before",
+        "first",
+        "last",
+        "includeArchived",
+        "orderBy",
+        "filter"
+      ],
+      "action": "list"
+    }
+  },
+  {
+    "name": "get_cycle",
+    "toolName": "linear_get_cycle",
+    "domain": "cycles",
+    "purpose": "Get a cycle by exact name or UUID.",
+    "signature": "get_cycle(cycle)",
+    "example": {
+      "cycle": "Cycle 12"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "cycle",
+          "type": "CycleReference",
+          "required": true
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "cycle"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "cycle": "Cycle 12"
+      }
+    },
+    "discovery": {
+      "action": "get",
+      "entity": "cycle",
+      "actions": [
+        "get"
+      ],
+      "entities": [
+        "cycle"
+      ],
+      "intents": [
+        {
+          "action": "get",
+          "entity": "cycle"
+        }
+      ],
+      "phrases": [
+        "\\b(?:read|get|show|open|view|fetch|inspect|lookup)\\b",
+        "\\bcycles?\\b|\\bsprints?\\b"
+      ],
+      "terms": [
+        "get",
+        "cycle"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "cycle",
+      "callFields": [
+        "cycle"
+      ],
+      "action": "get"
+    }
+  },
+  {
+    "name": "create_cycle",
+    "toolName": "linear_create_cycle",
+    "domain": "cycles",
+    "purpose": "Create a cycle.",
+    "signature": "create_cycle(team, startsAt, endsAt)",
+    "example": {
+      "team": "AEO",
+      "startsAt": "2026-08-17",
+      "endsAt": "2026-08-31"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "team",
+          "type": "TeamReference",
+          "required": true
+        },
+        {
+          "name": "startsAt",
+          "type": "DateTime",
+          "required": true
+        },
+        {
+          "name": "endsAt",
+          "type": "DateTime",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "team",
+            "startsAt",
+            "endsAt"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "team": "AEO",
+        "startsAt": "2026-08-17",
+        "endsAt": "2026-08-31"
+      }
+    },
+    "discovery": {
+      "action": "create",
+      "entity": "cycle",
+      "actions": [
+        "create"
+      ],
+      "entities": [
+        "cycle"
+      ],
+      "intents": [
+        {
+          "action": "create",
+          "entity": "cycle"
+        }
+      ],
+      "phrases": [
+        "\\b(?:create|add|new|make|file|open a new)\\b",
+        "\\bcycles?\\b|\\bsprints?\\b"
+      ],
+      "terms": [
+        "create",
+        "cycle"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "cycle",
+      "callFields": [
+        "team",
+        "startsAt",
+        "endsAt"
+      ],
+      "action": "create"
+    }
+  },
+  {
+    "name": "update_cycle",
+    "toolName": "linear_update_cycle",
+    "domain": "cycles",
+    "purpose": "Update a cycle.",
+    "signature": "update_cycle(id)",
+    "example": {
+      "id": "cycle-id",
+      "name": "Cycle 12"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "id",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "startsAt",
+          "type": "DateTime",
+          "required": false
+        },
+        {
+          "name": "endsAt",
+          "type": "DateTime",
+          "required": false
+        },
+        {
+          "name": "completedAt",
+          "type": "DateTime",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "description"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "startsAt"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "endsAt"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "completedAt"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "id": "cycle-id",
+        "name": "Cycle 12"
+      }
+    },
+    "discovery": {
+      "action": "update",
+      "entity": "cycle",
+      "actions": [
+        "update"
+      ],
+      "entities": [
+        "cycle"
+      ],
+      "intents": [
+        {
+          "action": "update",
+          "entity": "cycle"
+        }
+      ],
+      "phrases": [
+        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
+        "\\bcycles?\\b|\\bsprints?\\b"
+      ],
+      "terms": [
+        "update",
+        "cycle"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "cycle",
+      "callFields": [
+        "id",
+        "name",
+        "description",
+        "startsAt",
+        "endsAt",
+        "completedAt"
+      ],
+      "action": "update"
+    }
+  },
+  {
+    "name": "list_documents",
+    "toolName": "linear_list_documents",
+    "domain": "documents",
+    "purpose": "List documents.",
+    "signature": "list_documents()",
+    "example": {},
+    "canonical": {
+      "fields": [
+        {
+          "name": "sort",
+          "type": "[DocumentSort!]",
+          "required": false
+        },
+        {
+          "name": "after",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "first",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "includeArchived",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "orderBy",
+          "type": "PaginationOrderBy",
+          "required": false
+        },
+        {
+          "name": "filter",
+          "type": "Filter",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": []
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {}
+    },
+    "discovery": {
+      "action": "list",
+      "entity": "documents",
+      "actions": [
+        "list"
+      ],
+      "entities": [
+        "document"
+      ],
+      "intents": [
+        {
+          "action": "list",
+          "entity": "document"
+        }
+      ],
+      "phrases": [
+        "\\b(?:list|show me|enumerate)\\b",
+        "\\bdocuments?\\b|\\bdocs?\\b"
+      ],
+      "terms": [
+        "list",
+        "documents",
+        "document"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "document",
+      "callFields": [
+        "after",
+        "before",
+        "first",
+        "last",
+        "includeArchived",
+        "orderBy",
+        "filter",
+        "sort"
+      ],
+      "action": "list"
+    }
+  },
+  {
+    "name": "get_document",
+    "toolName": "linear_get_document",
+    "domain": "documents",
+    "purpose": "Get a document by exact title or UUID.",
+    "signature": "get_document(document)",
+    "example": {
+      "document": "Planning notes"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "document",
+          "type": "DocumentReference",
+          "required": true
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "document"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "document": "Planning notes"
+      }
+    },
+    "discovery": {
+      "action": "get",
+      "entity": "document",
+      "actions": [
+        "get"
+      ],
+      "entities": [
+        "document"
+      ],
+      "intents": [
+        {
+          "action": "get",
+          "entity": "document"
+        }
+      ],
+      "phrases": [
+        "\\b(?:read|get|show|open|view|fetch|inspect|lookup)\\b",
+        "\\bdocuments?\\b|\\bdocs?\\b"
+      ],
+      "terms": [
+        "get",
+        "document"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "document",
+      "callFields": [
+        "document"
+      ],
+      "action": "get"
+    }
+  },
+  {
+    "name": "create_document",
+    "toolName": "linear_create_document",
+    "domain": "documents",
+    "purpose": "Create a document.",
+    "signature": "create_document(title)",
+    "example": {
+      "title": "Planning notes",
+      "content": "Notes"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "title",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "content",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "icon",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "color",
+          "type": "Color",
+          "required": false
+        },
+        {
+          "name": "issueId",
+          "type": "IssueReference",
+          "required": false
+        },
+        {
+          "name": "teamId",
+          "type": "TeamReference",
+          "required": false
+        },
+        {
+          "name": "projectId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "initiativeId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "cycleId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "releaseId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "resourceFolderId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "lastAppliedTemplateId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "ownerId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "subscriberIds",
+          "type": "[UUID!]",
+          "required": false
+        },
+        {
+          "name": "sortOrder",
+          "type": "Float",
+          "required": false
+        },
+        {
+          "name": "id",
+          "type": "UUID",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "title"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "title": "Planning notes",
+        "content": "Notes"
+      }
+    },
+    "discovery": {
+      "action": "create",
+      "entity": "document",
+      "actions": [
+        "create"
+      ],
+      "entities": [
+        "document"
+      ],
+      "intents": [
+        {
+          "action": "create",
+          "entity": "document"
+        }
+      ],
+      "phrases": [
+        "\\b(?:create|add|new|make|file|open a new)\\b",
+        "\\bdocuments?\\b|\\bdocs?\\b"
+      ],
+      "terms": [
+        "create",
+        "document"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "document",
+      "callFields": [
+        "title",
+        "input"
+      ],
+      "action": "create"
+    }
+  },
+  {
+    "name": "update_document",
+    "toolName": "linear_update_document",
+    "domain": "documents",
+    "purpose": "Update a document.",
+    "signature": "update_document(documentId)",
+    "example": {
+      "documentId": "document-id",
+      "title": "Updated notes"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "documentId",
+          "type": "DocumentReference",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "content",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "icon",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "color",
+          "type": "Color",
+          "required": false
+        },
+        {
+          "name": "issueId",
+          "type": "IssueReference",
+          "required": false
+        },
+        {
+          "name": "teamId",
+          "type": "TeamReference",
+          "required": false
+        },
+        {
+          "name": "projectId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "initiativeId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "cycleId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "releaseId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "resourceFolderId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "lastAppliedTemplateId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "ownerId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "subscriberIds",
+          "type": "[UUID!]",
+          "required": false
+        },
+        {
+          "name": "sortOrder",
+          "type": "Float",
+          "required": false
+        },
+        {
+          "name": "hiddenAt",
+          "type": "NullableDateTime",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "documentId",
+            "title"
+          ]
+        },
+        {
+          "all": [
+            "documentId",
+            "content"
+          ]
+        },
+        {
+          "all": [
+            "documentId",
+            "icon"
+          ]
+        },
+        {
+          "all": [
+            "documentId",
+            "color"
+          ]
+        },
+        {
+          "all": [
+            "documentId",
+            "issueId"
+          ]
+        },
+        {
+          "all": [
+            "documentId",
+            "teamId"
+          ]
+        },
+        {
+          "all": [
+            "documentId",
+            "projectId"
+          ]
+        },
+        {
+          "all": [
+            "documentId",
+            "initiativeId"
+          ]
+        },
+        {
+          "all": [
+            "documentId",
+            "cycleId"
+          ]
+        },
+        {
+          "all": [
+            "documentId",
+            "releaseId"
+          ]
+        },
+        {
+          "all": [
+            "documentId",
+            "resourceFolderId"
+          ]
+        },
+        {
+          "all": [
+            "documentId",
+            "lastAppliedTemplateId"
+          ]
+        },
+        {
+          "all": [
+            "documentId",
+            "ownerId"
+          ]
+        },
+        {
+          "all": [
+            "documentId",
+            "subscriberIds"
+          ]
+        },
+        {
+          "all": [
+            "documentId",
+            "sortOrder"
+          ]
+        },
+        {
+          "all": [
+            "documentId",
+            "hiddenAt"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "documentId": "document-id",
+        "title": "Updated notes"
+      }
+    },
+    "discovery": {
+      "action": "update",
+      "entity": "document",
+      "actions": [
+        "update"
+      ],
+      "entities": [
+        "document"
+      ],
+      "intents": [
+        {
+          "action": "update",
+          "entity": "document"
+        }
+      ],
+      "phrases": [
+        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
+        "\\bdocuments?\\b|\\bdocs?\\b"
+      ],
+      "terms": [
+        "update",
+        "document"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "document",
+      "callFields": [
+        "documentId",
+        "input"
+      ],
+      "action": "update"
+    }
+  },
+  {
+    "name": "list_initiatives",
+    "toolName": "linear_list_initiatives",
+    "domain": "initiatives",
+    "purpose": "List initiatives.",
+    "signature": "list_initiatives()",
+    "example": {},
+    "canonical": {
+      "fields": [
+        {
+          "name": "sort",
+          "type": "[InitiativeSort!]",
+          "required": false
+        },
+        {
+          "name": "after",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "first",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "includeArchived",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "orderBy",
+          "type": "PaginationOrderBy",
+          "required": false
+        },
+        {
+          "name": "filter",
+          "type": "Filter",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": []
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {}
+    },
+    "discovery": {
+      "action": "list",
+      "entity": "initiatives",
+      "actions": [
+        "list"
+      ],
+      "entities": [
+        "initiative"
+      ],
+      "intents": [
+        {
+          "action": "list",
+          "entity": "initiative"
+        }
+      ],
+      "phrases": [
+        "\\b(?:list|show me|enumerate)\\b",
+        "\\binitiatives?\\b"
+      ],
+      "terms": [
+        "list",
+        "initiatives",
+        "initiative"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "initiative",
+      "callFields": [
+        "after",
+        "before",
+        "first",
+        "last",
+        "includeArchived",
+        "orderBy",
+        "filter",
+        "sort"
+      ],
+      "action": "list"
+    }
+  },
+  {
+    "name": "get_initiative",
+    "toolName": "linear_get_initiative",
+    "domain": "initiatives",
+    "purpose": "Get an initiative by exact name or UUID.",
+    "signature": "get_initiative(initiative)",
+    "example": {
+      "initiative": "Platform"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "initiative",
+          "type": "InitiativeReference",
+          "required": true
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "initiative"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "initiative": "Platform"
+      }
+    },
+    "discovery": {
+      "action": "get",
+      "entity": "initiative",
+      "actions": [
+        "get"
+      ],
+      "entities": [
+        "initiative"
+      ],
+      "intents": [
+        {
+          "action": "get",
+          "entity": "initiative"
+        }
+      ],
+      "phrases": [
+        "\\b(?:read|get|show|open|view|fetch|inspect|lookup)\\b",
+        "\\binitiatives?\\b"
+      ],
+      "terms": [
+        "get",
+        "initiative"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "initiative",
+      "callFields": [
+        "initiative"
+      ],
+      "action": "get"
+    }
+  },
+  {
+    "name": "list_issue_labels",
+    "toolName": "linear_list_issue_labels",
+    "domain": "labels",
+    "purpose": "List issue labels.",
+    "signature": "list_issue_labels()",
+    "example": {},
+    "canonical": {
+      "fields": [
+        {
+          "name": "team",
+          "type": "TeamReference",
+          "required": false
+        },
+        {
+          "name": "after",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "first",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "includeArchived",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "orderBy",
+          "type": "PaginationOrderBy",
+          "required": false
+        },
+        {
+          "name": "filter",
+          "type": "Filter",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": []
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {}
+    },
+    "discovery": {
+      "action": "list",
+      "entity": "issue_labels",
+      "actions": [
+        "list"
+      ],
+      "entities": [
+        "issue_label"
+      ],
+      "intents": [
+        {
+          "action": "list",
+          "entity": "issue_label"
+        }
+      ],
+      "phrases": [
+        "\\b(?:list|show me|enumerate)\\b",
+        "\\bissue labels?\\b",
+        "\\blabels?\\b"
+      ],
+      "terms": [
+        "list",
+        "issue",
+        "labels",
+        "issue_label"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "label",
+      "callFields": [
+        "team",
+        "after",
+        "before",
+        "first",
+        "last",
+        "includeArchived",
+        "orderBy",
+        "filter"
+      ],
+      "action": "list"
+    }
+  },
+  {
+    "name": "create_issue_label",
+    "toolName": "linear_create_issue_label",
+    "domain": "labels",
+    "purpose": "Create an issue label.",
+    "signature": "create_issue_label(name)",
+    "example": {
+      "name": "needs-review",
+      "color": "#ff0000"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "name",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "team",
+          "type": "TeamReference",
+          "required": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "color",
+          "type": "Color",
+          "required": false
+        },
+        {
+          "name": "isGroup",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "parentId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "retiredAt",
+          "type": "DateTime",
+          "required": false
+        },
+        {
+          "name": "replaceTeamLabels",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "id",
+          "type": "UUID",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "name"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "name": "needs-review",
+        "color": "#ff0000"
+      }
+    },
+    "discovery": {
+      "action": "create",
+      "entity": "issue_label",
+      "actions": [
+        "create"
+      ],
+      "entities": [
+        "issue_label"
+      ],
+      "intents": [
+        {
+          "action": "create",
+          "entity": "issue_label"
+        }
+      ],
+      "phrases": [
+        "\\b(?:create|add|new|make|file|open a new)\\b",
+        "\\bissue labels?\\b",
+        "\\blabels?\\b"
+      ],
+      "terms": [
+        "create",
+        "issue",
+        "label",
+        "issue_label"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "label",
+      "callFields": [
+        "name",
+        "team",
+        "input"
+      ],
+      "action": "create"
+    }
+  },
+  {
+    "name": "update_issue_label",
+    "toolName": "linear_update_issue_label",
+    "domain": "labels",
+    "purpose": "Update an issue label.",
+    "signature": "update_issue_label(id)",
+    "example": {
+      "id": "label-id",
+      "name": "review"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "id",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "color",
+          "type": "Color",
+          "required": false
+        },
+        {
+          "name": "isGroup",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "parentId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "retiredAt",
+          "type": "NullableDateTime",
+          "required": false
+        },
+        {
+          "name": "replaceTeamLabels",
+          "type": "Boolean",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "description"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "color"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "isGroup"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "parentId"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "retiredAt"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "replaceTeamLabels"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "id": "label-id",
+        "name": "review"
+      }
+    },
+    "discovery": {
+      "action": "update",
+      "entity": "issue_label",
+      "actions": [
+        "update"
+      ],
+      "entities": [
+        "issue_label"
+      ],
+      "intents": [
+        {
+          "action": "update",
+          "entity": "issue_label"
+        }
+      ],
+      "phrases": [
+        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
+        "\\bissue labels?\\b",
+        "\\blabels?\\b"
+      ],
+      "terms": [
+        "update",
+        "issue",
+        "label",
+        "issue_label"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "label",
+      "callFields": [
+        "id",
+        "input"
+      ],
+      "action": "update"
+    }
+  },
+  {
+    "name": "list_issue_relations",
+    "toolName": "linear_list_issue_relations",
+    "domain": "relations",
+    "purpose": "List issue relations.",
+    "signature": "list_issue_relations()",
+    "example": {},
+    "canonical": {
+      "fields": [
+        {
+          "name": "after",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "first",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "includeArchived",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "orderBy",
+          "type": "PaginationOrderBy",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": []
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {}
+    },
+    "discovery": {
+      "action": "list",
+      "entity": "issue_relations",
+      "actions": [
+        "list"
+      ],
+      "entities": [
+        "issue_relation"
+      ],
+      "intents": [
+        {
+          "action": "list",
+          "entity": "issue_relation"
+        }
+      ],
+      "phrases": [
+        "\\b(?:list|show me|enumerate)\\b",
+        "\\bissue relations?\\b|\\bblocking relations?\\b"
+      ],
+      "terms": [
+        "list",
+        "issue",
+        "relations",
+        "issue_relation"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "issue_relation",
+      "callFields": [
+        "after",
+        "before",
+        "first",
+        "last",
+        "includeArchived",
+        "orderBy"
+      ],
+      "action": "list"
+    }
+  },
+  {
+    "name": "create_issue_relation",
+    "toolName": "linear_create_issue_relation",
+    "domain": "relations",
+    "purpose": "Create a relation between two issues.",
+    "signature": "create_issue_relation(issue, relatedIssue, type)",
+    "example": {
+      "issue": "AEO-258",
+      "relatedIssue": "AEO-259",
+      "type": "related"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "issue",
+          "type": "IssueReference",
+          "required": true
+        },
+        {
+          "name": "relatedIssue",
+          "type": "IssueReference",
+          "required": true
+        },
+        {
+          "name": "type",
+          "type": "IssueRelationType",
+          "required": true
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "issue",
+            "relatedIssue",
+            "type"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "issue": "AEO-258",
+        "relatedIssue": "AEO-259",
+        "type": "related"
+      }
+    },
+    "discovery": {
+      "action": "create",
+      "entity": "issue_relation",
+      "actions": [
+        "create"
+      ],
+      "entities": [
+        "issue_relation"
+      ],
+      "intents": [
+        {
+          "action": "create",
+          "entity": "issue_relation"
+        }
+      ],
+      "phrases": [
+        "\\b(?:create|add|new|make|file|open a new)\\b",
+        "\\bissue relations?\\b|\\bblocking relations?\\b"
+      ],
+      "terms": [
+        "create",
+        "issue",
+        "relation",
+        "issue_relation"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "issue_relation",
+      "callFields": [
+        "issue",
+        "relatedIssue",
+        "type"
+      ],
+      "action": "create"
+    }
+  },
+  {
+    "name": "update_issue_relation",
+    "toolName": "linear_update_issue_relation",
+    "domain": "relations",
+    "purpose": "Update an issue relation.",
+    "signature": "update_issue_relation(id)",
+    "example": {
+      "id": "relation-id",
+      "type": "blocks"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "id",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "type",
+          "type": "IssueRelationType",
+          "required": false
+        },
+        {
+          "name": "issueId",
+          "type": "IssueReference",
+          "required": false
+        },
+        {
+          "name": "relatedIssueId",
+          "type": "IssueReference",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "id",
+            "type"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "issueId"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "relatedIssueId"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "id": "relation-id",
+        "type": "blocks"
+      }
+    },
+    "discovery": {
+      "action": "update",
+      "entity": "issue_relation",
+      "actions": [
+        "update"
+      ],
+      "entities": [
+        "issue_relation"
+      ],
+      "intents": [
+        {
+          "action": "update",
+          "entity": "issue_relation"
+        }
+      ],
+      "phrases": [
+        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
+        "\\bissue relations?\\b|\\bblocking relations?\\b"
+      ],
+      "terms": [
+        "update",
+        "issue",
+        "relation",
+        "issue_relation"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "issue_relation",
+      "callFields": [
+        "id",
+        "input"
+      ],
+      "action": "update"
+    }
+  },
+  {
+    "name": "list_issue_statuses",
+    "toolName": "linear_list_issue_statuses",
+    "domain": "workspace",
+    "purpose": "List issue workflow states.",
+    "signature": "list_issue_statuses()",
+    "example": {},
+    "canonical": {
+      "fields": [
+        {
+          "name": "after",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "first",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "includeArchived",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "orderBy",
+          "type": "PaginationOrderBy",
+          "required": false
+        },
+        {
+          "name": "filter",
+          "type": "Filter",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": []
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {}
+    },
+    "discovery": {
+      "action": "list",
+      "entity": "issue_statuses",
+      "actions": [
+        "list"
+      ],
+      "entities": [
+        "issue_status"
+      ],
+      "intents": [
+        {
+          "action": "list",
+          "entity": "issue_status"
+        }
+      ],
+      "phrases": [
+        "\\b(?:list|show me|enumerate)\\b",
+        "\\bissue statuses\\b|\\bworkflow states?\\b|\\bstatuses\\b"
+      ],
+      "terms": [
+        "list",
+        "issue",
+        "statuses",
+        "issue_status"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "issue_status",
+      "callFields": [
+        "after",
+        "before",
+        "first",
+        "last",
+        "includeArchived",
+        "orderBy",
+        "filter"
+      ],
+      "action": "list"
+    }
+  },
+  {
+    "name": "list_issues",
+    "toolName": "linear_list_issues",
+    "domain": "issues",
+    "purpose": "List issues with exact convenience filters.",
+    "signature": "list_issues()",
+    "example": {
+      "assignee": "me",
+      "stateType": "started"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "query",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "team",
+          "type": "TeamReference",
+          "required": false
+        },
+        {
+          "name": "state",
+          "type": "StateReference",
+          "required": false
+        },
+        {
+          "name": "stateType",
+          "type": "WorkflowStateType",
+          "required": false
+        },
+        {
+          "name": "assignee",
+          "type": "UserReference",
+          "required": false
+        },
+        {
+          "name": "sort",
+          "type": "[IssueSort!]",
+          "required": false
+        },
+        {
+          "name": "after",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "first",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "includeArchived",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "orderBy",
+          "type": "PaginationOrderBy",
+          "required": false
+        },
+        {
+          "name": "filter",
+          "type": "Filter",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": []
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "assignee": "me",
+        "stateType": "started"
+      }
+    },
+    "discovery": {
+      "action": "list",
+      "entity": "issues",
+      "actions": [
+        "list"
+      ],
+      "entities": [
+        "issue"
+      ],
+      "intents": [
+        {
+          "action": "list",
+          "entity": "issue"
+        }
+      ],
+      "phrases": [
+        "\\b(?:list|show me|enumerate)\\b",
+        "\\b(?:child|children|sub-?issues?|subtasks?)\\b",
+        "\\bissues?\\b|\\btickets?\\b|\\bbugs?\\b",
+        "\\b[A-Z][A-Z0-9]+-\\d+\\b"
+      ],
+      "terms": [
+        "list",
+        "issues",
+        "issue"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "issue",
+      "callFields": [
+        "query",
+        "team",
+        "state",
+        "stateType",
+        "assignee",
+        "after",
+        "before",
+        "first",
+        "last",
+        "includeArchived",
+        "orderBy",
+        "filter",
+        "sort"
+      ],
+      "action": "list"
+    }
+  },
+  {
+    "name": "get_issue",
+    "toolName": "linear_get_issue",
+    "domain": "issues",
+    "purpose": "Get one issue by exact identifier or UUID.",
+    "signature": "get_issue(issue)",
+    "example": {
+      "issue": "AEO-258"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "issue",
+          "type": "IssueReference",
+          "required": true
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "issue"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "issue": "AEO-258"
+      }
+    },
+    "discovery": {
+      "action": "get",
+      "entity": "issue",
+      "actions": [
+        "get"
+      ],
+      "entities": [
+        "issue"
+      ],
+      "intents": [
+        {
+          "action": "get",
+          "entity": "issue"
+        }
+      ],
+      "phrases": [
+        "\\b(?:read|get|show|open|view|fetch|inspect|lookup)\\b",
+        "\\b(?:child|children|sub-?issues?|subtasks?)\\b",
+        "\\bissues?\\b|\\btickets?\\b|\\bbugs?\\b",
+        "\\b[A-Z][A-Z0-9]+-\\d+\\b"
+      ],
+      "terms": [
+        "get",
+        "issue"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "issue",
+      "callFields": [
+        "issue"
+      ],
+      "action": "get"
+    }
+  },
+  {
+    "name": "create_issue",
+    "toolName": "linear_create_issue",
+    "domain": "issues",
+    "purpose": "Create an issue. A parent reference supplies the team when team is omitted.",
+    "signature": "create_issue(title)",
+    "example": {
+      "title": "v0.4 trial child",
+      "parent": "AEO-258"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "title",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "team",
+          "type": "TeamReference",
+          "required": false
+        },
+        {
+          "name": "parent",
+          "type": "IssueReference",
+          "required": false
+        },
+        {
+          "name": "state",
+          "type": "StateReference",
+          "required": false
+        },
+        {
+          "name": "assignee",
+          "type": "UserReference",
+          "required": false
+        },
+        {
+          "name": "dueDate",
+          "type": "Date",
+          "required": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "descriptionData",
+          "type": "JsonString",
+          "required": false
+        },
+        {
+          "name": "priority",
+          "type": "Priority",
+          "required": false
+        },
+        {
+          "name": "estimate",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "projectId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "projectMilestoneId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "cycleId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "labelIds",
+          "type": "[UUID!]",
+          "required": false
+        },
+        {
+          "name": "subscriberIds",
+          "type": "[UUID!]",
+          "required": false
+        },
+        {
+          "name": "delegateId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "lastAppliedTemplateId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "slaType",
+          "type": "SlaDayCountType",
+          "required": false
+        },
+        {
+          "name": "slaBreachesAt",
+          "type": "NullableDateTime",
+          "required": false
+        },
+        {
+          "name": "slaStartedAt",
+          "type": "NullableDateTime",
+          "required": false
+        },
+        {
+          "name": "sortOrder",
+          "type": "Float",
+          "required": false
+        },
+        {
+          "name": "subIssueSortOrder",
+          "type": "Float",
+          "required": false
+        },
+        {
+          "name": "prioritySortOrder",
+          "type": "Float",
+          "required": false
+        },
+        {
+          "name": "templateId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "useDefaultTemplate",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "preserveSortOrderOnCreate",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "referenceCommentId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "sourceCommentId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "sourcePullRequestCommentId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "createAsUser",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "displayIconUrl",
+          "type": "Url",
+          "required": false
+        },
+        {
+          "name": "completedAt",
+          "type": "NullableDateTime",
+          "required": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "required": false
+        },
+        {
+          "name": "id",
+          "type": "UUID",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "title",
+            "team"
+          ]
+        },
+        {
+          "all": [
+            "title",
+            "parent"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "title": "v0.4 trial child",
+        "parent": "AEO-258"
+      }
+    },
+    "discovery": {
+      "action": "create",
+      "entity": "issue",
+      "actions": [
+        "create"
+      ],
+      "entities": [
+        "issue"
+      ],
+      "intents": [
+        {
+          "action": "create",
+          "entity": "issue"
+        }
+      ],
+      "phrases": [
+        "\\b(?:create|add|new|make|file|open a new)\\b",
+        "\\b(?:child|children|sub-?issues?|subtasks?)\\b",
+        "\\bissues?\\b|\\btickets?\\b|\\bbugs?\\b",
+        "\\b[A-Z][A-Z0-9]+-\\d+\\b"
+      ],
+      "terms": [
+        "create",
+        "issue"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "issue",
+      "callFields": [
+        "title",
+        "parent",
+        "team",
+        "state",
+        "assignee",
+        "input"
+      ],
+      "action": "create"
+    }
+  },
+  {
+    "name": "update_issue",
+    "toolName": "linear_update_issue",
+    "domain": "issues",
+    "purpose": "Update an issue by exact identifier or UUID.",
+    "signature": "update_issue(issue)",
+    "example": {
+      "issue": "AEO-258",
+      "state": "Backlog"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "issue",
+          "type": "IssueReference",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "state",
+          "type": "StateReference",
+          "required": false
+        },
+        {
+          "name": "assignee",
+          "type": "UserReference",
+          "required": false
+        },
+        {
+          "name": "parent",
+          "type": "IssueReference",
+          "required": false
+        },
+        {
+          "name": "teamId",
+          "type": "TeamReference",
+          "required": false
+        },
+        {
+          "name": "dueDate",
+          "type": "NullableDate",
+          "required": false
+        },
+        {
+          "name": "addedLabelIds",
+          "type": "[UUID!]",
+          "required": false
+        },
+        {
+          "name": "removedLabelIds",
+          "type": "[UUID!]",
+          "required": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "descriptionData",
+          "type": "JsonString",
+          "required": false
+        },
+        {
+          "name": "priority",
+          "type": "Priority",
+          "required": false
+        },
+        {
+          "name": "estimate",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "projectId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "projectMilestoneId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "cycleId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "labelIds",
+          "type": "[UUID!]",
+          "required": false
+        },
+        {
+          "name": "subscriberIds",
+          "type": "[UUID!]",
+          "required": false
+        },
+        {
+          "name": "delegateId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "lastAppliedTemplateId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "slaType",
+          "type": "SlaDayCountType",
+          "required": false
+        },
+        {
+          "name": "slaBreachesAt",
+          "type": "NullableDateTime",
+          "required": false
+        },
+        {
+          "name": "slaStartedAt",
+          "type": "NullableDateTime",
+          "required": false
+        },
+        {
+          "name": "sortOrder",
+          "type": "Float",
+          "required": false
+        },
+        {
+          "name": "subIssueSortOrder",
+          "type": "Float",
+          "required": false
+        },
+        {
+          "name": "prioritySortOrder",
+          "type": "Float",
+          "required": false
+        },
+        {
+          "name": "autoClosedByParentClosing",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "snoozedById",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "snoozedUntilAt",
+          "type": "NullableDateTime",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "issue",
+            "title"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "state"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "assignee"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "parent"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "teamId"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "dueDate"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "addedLabelIds"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "removedLabelIds"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "description"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "descriptionData"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "priority"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "estimate"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "projectId"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "projectMilestoneId"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "cycleId"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "labelIds"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "subscriberIds"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "delegateId"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "lastAppliedTemplateId"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "slaType"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "slaBreachesAt"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "slaStartedAt"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "sortOrder"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "subIssueSortOrder"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "prioritySortOrder"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "autoClosedByParentClosing"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "snoozedById"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "snoozedUntilAt"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "issue": "AEO-258",
+        "state": "Backlog"
+      }
+    },
+    "discovery": {
+      "action": "update",
+      "entity": "issue",
+      "actions": [
+        "update"
+      ],
+      "entities": [
+        "issue"
+      ],
+      "intents": [
+        {
+          "action": "update",
+          "entity": "issue"
+        }
+      ],
+      "phrases": [
+        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
+        "\\b(?:child|children|sub-?issues?|subtasks?)\\b",
+        "\\bissues?\\b|\\btickets?\\b|\\bbugs?\\b",
+        "\\b[A-Z][A-Z0-9]+-\\d+\\b"
+      ],
+      "terms": [
+        "update",
+        "issue"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "issue",
+      "callFields": [
+        "issue",
+        "state",
+        "assignee",
+        "parent",
+        "input"
+      ],
+      "action": "update"
+    }
+  },
+  {
+    "name": "search_issues",
+    "toolName": "linear_search_issues",
+    "domain": "issues",
+    "purpose": "Search issues by text.",
+    "signature": "search_issues(term)",
+    "example": {
+      "term": "authentication"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "term",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "includeComments",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "team",
+          "type": "TeamReference",
+          "required": false
+        },
+        {
+          "name": "after",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "first",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "includeArchived",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "orderBy",
+          "type": "PaginationOrderBy",
+          "required": false
+        },
+        {
+          "name": "filter",
+          "type": "Filter",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "term"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "term": "authentication"
+      }
+    },
+    "discovery": {
+      "action": "search",
+      "entity": "issues",
+      "actions": [
+        "search"
+      ],
+      "entities": [
+        "issue"
+      ],
+      "intents": [
+        {
+          "action": "search",
+          "entity": "issue"
+        }
+      ],
+      "phrases": [
+        "\\bsearch\\b",
+        "\\b(?:child|children|sub-?issues?|subtasks?)\\b",
+        "\\bissues?\\b|\\btickets?\\b|\\bbugs?\\b",
+        "\\b[A-Z][A-Z0-9]+-\\d+\\b"
+      ],
+      "terms": [
+        "search",
+        "issues",
+        "issue"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "issue",
+      "callFields": [
+        "term",
+        "includeComments",
+        "team",
+        "after",
+        "before",
+        "first",
+        "last",
+        "includeArchived",
+        "orderBy",
+        "filter"
+      ],
+      "action": "search"
+    }
+  },
+  {
+    "name": "list_milestones",
+    "toolName": "linear_list_milestones",
+    "domain": "milestones",
+    "purpose": "List project milestones.",
+    "signature": "list_milestones()",
+    "example": {},
+    "canonical": {
+      "fields": [
+        {
+          "name": "after",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "first",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "includeArchived",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "orderBy",
+          "type": "PaginationOrderBy",
+          "required": false
+        },
+        {
+          "name": "filter",
+          "type": "Filter",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": []
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {}
+    },
+    "discovery": {
+      "action": "list",
+      "entity": "milestones",
+      "actions": [
+        "list"
+      ],
+      "entities": [
+        "milestone"
+      ],
+      "intents": [
+        {
+          "action": "list",
+          "entity": "milestone"
+        }
+      ],
+      "phrases": [
+        "\\b(?:list|show me|enumerate)\\b",
+        "\\bmilestones?\\b"
+      ],
+      "terms": [
+        "list",
+        "milestones",
+        "milestone"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "milestone",
+      "callFields": [
+        "after",
+        "before",
+        "first",
+        "last",
+        "includeArchived",
+        "orderBy",
+        "filter"
+      ],
+      "action": "list"
+    }
+  },
+  {
+    "name": "get_milestone",
+    "toolName": "linear_get_milestone",
+    "domain": "milestones",
+    "purpose": "Get a milestone by exact name or UUID.",
+    "signature": "get_milestone(milestone)",
+    "example": {
+      "milestone": "Beta"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "milestone",
+          "type": "MilestoneReference",
+          "required": true
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "milestone"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "milestone": "Beta"
+      }
+    },
+    "discovery": {
+      "action": "get",
+      "entity": "milestone",
+      "actions": [
+        "get"
+      ],
+      "entities": [
+        "milestone"
+      ],
+      "intents": [
+        {
+          "action": "get",
+          "entity": "milestone"
+        }
+      ],
+      "phrases": [
+        "\\b(?:read|get|show|open|view|fetch|inspect|lookup)\\b",
+        "\\bmilestones?\\b"
+      ],
+      "terms": [
+        "get",
+        "milestone"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "milestone",
+      "callFields": [
+        "milestone"
+      ],
+      "action": "get"
+    }
+  },
+  {
+    "name": "list_project_labels",
+    "toolName": "linear_list_project_labels",
+    "domain": "labels",
+    "purpose": "List project labels.",
+    "signature": "list_project_labels()",
+    "example": {},
+    "canonical": {
+      "fields": [
+        {
+          "name": "after",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "first",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "includeArchived",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "orderBy",
+          "type": "PaginationOrderBy",
+          "required": false
+        },
+        {
+          "name": "filter",
+          "type": "Filter",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": []
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {}
+    },
+    "discovery": {
+      "action": "list",
+      "entity": "project_labels",
+      "actions": [
+        "list"
+      ],
+      "entities": [
+        "project_label"
+      ],
+      "intents": [
+        {
+          "action": "list",
+          "entity": "project_label"
+        }
+      ],
+      "phrases": [
+        "\\b(?:list|show me|enumerate)\\b",
+        "\\bproject labels?\\b"
+      ],
+      "terms": [
+        "list",
+        "project",
+        "labels",
+        "project_label"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "label",
+      "callFields": [
+        "after",
+        "before",
+        "first",
+        "last",
+        "includeArchived",
+        "orderBy",
+        "filter"
+      ],
+      "action": "list"
+    }
+  },
+  {
+    "name": "create_project_label",
+    "toolName": "linear_create_project_label",
+    "domain": "labels",
+    "purpose": "Create a project label.",
+    "signature": "create_project_label(name)",
+    "example": {
+      "name": "Strategic"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "name",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "color",
+          "type": "Color",
+          "required": false
+        },
+        {
+          "name": "isGroup",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "parentId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "retiredAt",
+          "type": "DateTime",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "name"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "name": "Strategic"
+      }
+    },
+    "discovery": {
+      "action": "create",
+      "entity": "project_label",
+      "actions": [
+        "create"
+      ],
+      "entities": [
+        "project_label"
+      ],
+      "intents": [
+        {
+          "action": "create",
+          "entity": "project_label"
+        }
+      ],
+      "phrases": [
+        "\\b(?:create|add|new|make|file|open a new)\\b",
+        "\\bproject labels?\\b"
+      ],
+      "terms": [
+        "create",
+        "project",
+        "label",
+        "project_label"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "label",
+      "callFields": [
+        "name",
+        "input"
+      ],
+      "action": "create"
+    }
+  },
+  {
+    "name": "update_project_label",
+    "toolName": "linear_update_project_label",
+    "domain": "labels",
+    "purpose": "Update a project label.",
+    "signature": "update_project_label(id)",
+    "example": {
+      "id": "label-id",
+      "name": "Strategy"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "id",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "color",
+          "type": "Color",
+          "required": false
+        },
+        {
+          "name": "isGroup",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "parentId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "retiredAt",
+          "type": "NullableDateTime",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "id",
+            "name"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "description"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "color"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "isGroup"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "parentId"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "retiredAt"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "id": "label-id",
+        "name": "Strategy"
+      }
+    },
+    "discovery": {
+      "action": "update",
+      "entity": "project_label",
+      "actions": [
+        "update"
+      ],
+      "entities": [
+        "project_label"
+      ],
+      "intents": [
+        {
+          "action": "update",
+          "entity": "project_label"
+        }
+      ],
+      "phrases": [
+        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
+        "\\bproject labels?\\b"
+      ],
+      "terms": [
+        "update",
+        "project",
+        "label",
+        "project_label"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "label",
+      "callFields": [
+        "id",
+        "input"
+      ],
+      "action": "update"
+    }
+  },
+  {
+    "name": "list_project_relations",
+    "toolName": "linear_list_project_relations",
+    "domain": "relations",
+    "purpose": "List project relations.",
+    "signature": "list_project_relations()",
+    "example": {},
+    "canonical": {
+      "fields": [
+        {
+          "name": "after",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "first",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "includeArchived",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "orderBy",
+          "type": "PaginationOrderBy",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": []
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {}
+    },
+    "discovery": {
+      "action": "list",
+      "entity": "project_relations",
+      "actions": [
+        "list"
+      ],
+      "entities": [
+        "project_relation"
+      ],
+      "intents": [
+        {
+          "action": "list",
+          "entity": "project_relation"
+        }
+      ],
+      "phrases": [
+        "\\b(?:list|show me|enumerate)\\b",
+        "\\bproject relations?\\b"
+      ],
+      "terms": [
+        "list",
+        "project",
+        "relations",
+        "project_relation"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "project_relation",
+      "callFields": [
+        "after",
+        "before",
+        "first",
+        "last",
+        "includeArchived",
+        "orderBy"
+      ],
+      "action": "list"
+    }
+  },
+  {
+    "name": "create_project_relation",
+    "toolName": "linear_create_project_relation",
+    "domain": "relations",
+    "purpose": "Create a relation between two projects.",
+    "signature": "create_project_relation(projectId, relatedProjectId, type, anchorType, relatedAnchorType)",
+    "example": {
+      "projectId": "project-id",
+      "relatedProjectId": "other-project-id",
+      "type": "related",
+      "anchorType": "project",
+      "relatedAnchorType": "project"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "projectId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "relatedProjectId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "type",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "anchorType",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "relatedAnchorType",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "projectMilestoneId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "relatedProjectMilestoneId",
+          "type": "UUID",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "projectId",
+            "relatedProjectId",
+            "type",
+            "anchorType",
+            "relatedAnchorType"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "projectId": "project-id",
+        "relatedProjectId": "other-project-id",
+        "type": "related",
+        "anchorType": "project",
+        "relatedAnchorType": "project"
+      }
+    },
+    "discovery": {
+      "action": "create",
+      "entity": "project_relation",
+      "actions": [
+        "create"
+      ],
+      "entities": [
+        "project_relation"
+      ],
+      "intents": [
+        {
+          "action": "create",
+          "entity": "project_relation"
+        }
+      ],
+      "phrases": [
+        "\\b(?:create|add|new|make|file|open a new)\\b",
+        "\\bproject relations?\\b"
+      ],
+      "terms": [
+        "create",
+        "project",
+        "relation",
+        "project_relation"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "project_relation",
+      "callFields": [
+        "projectId",
+        "relatedProjectId",
+        "type",
+        "anchorType",
+        "relatedAnchorType"
+      ],
+      "action": "create"
+    }
+  },
+  {
+    "name": "update_project_relation",
+    "toolName": "linear_update_project_relation",
+    "domain": "relations",
+    "purpose": "Update a project relation.",
+    "signature": "update_project_relation(id)",
+    "example": {
+      "id": "relation-id",
+      "type": "related"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "id",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "type",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "anchorType",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "relatedAnchorType",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "projectId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "relatedProjectId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "projectMilestoneId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "relatedProjectMilestoneId",
+          "type": "UUID",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "id",
+            "type"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "anchorType"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "relatedAnchorType"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "projectId"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "relatedProjectId"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "projectMilestoneId"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "relatedProjectMilestoneId"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "id": "relation-id",
+        "type": "related"
+      }
+    },
+    "discovery": {
+      "action": "update",
+      "entity": "project_relation",
+      "actions": [
+        "update"
+      ],
+      "entities": [
+        "project_relation"
+      ],
+      "intents": [
+        {
+          "action": "update",
+          "entity": "project_relation"
+        }
+      ],
+      "phrases": [
+        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
+        "\\bproject relations?\\b"
+      ],
+      "terms": [
+        "update",
+        "project",
+        "relation",
+        "project_relation"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "project_relation",
+      "callFields": [
+        "id",
+        "input"
+      ],
+      "action": "update"
+    }
+  },
+  {
+    "name": "list_projects",
+    "toolName": "linear_list_projects",
+    "domain": "projects",
+    "purpose": "List projects.",
+    "signature": "list_projects()",
+    "example": {},
+    "canonical": {
+      "fields": [
+        {
+          "name": "sort",
+          "type": "[ProjectSort!]",
+          "required": false
+        },
+        {
+          "name": "after",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "first",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "includeArchived",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "orderBy",
+          "type": "PaginationOrderBy",
+          "required": false
+        },
+        {
+          "name": "filter",
+          "type": "Filter",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": []
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {}
+    },
+    "discovery": {
+      "action": "list",
+      "entity": "projects",
+      "actions": [
+        "list"
+      ],
+      "entities": [
+        "project"
+      ],
+      "intents": [
+        {
+          "action": "list",
+          "entity": "project"
+        }
+      ],
+      "phrases": [
+        "\\b(?:list|show me|enumerate)\\b",
+        "\\bprojects?\\b"
+      ],
+      "terms": [
+        "list",
+        "projects",
+        "project"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "project",
+      "callFields": [
+        "after",
+        "before",
+        "first",
+        "last",
+        "includeArchived",
+        "orderBy",
+        "filter",
+        "sort"
+      ],
+      "action": "list"
+    }
+  },
+  {
+    "name": "get_project",
+    "toolName": "linear_get_project",
+    "domain": "projects",
+    "purpose": "Get a project by exact name or UUID.",
+    "signature": "get_project(project)",
+    "example": {
+      "project": "Platform"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "project",
+          "type": "ProjectReference",
+          "required": true
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "project"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "project": "Platform"
+      }
+    },
+    "discovery": {
+      "action": "get",
+      "entity": "project",
+      "actions": [
+        "get"
+      ],
+      "entities": [
+        "project"
+      ],
+      "intents": [
+        {
+          "action": "get",
+          "entity": "project"
+        }
+      ],
+      "phrases": [
+        "\\b(?:read|get|show|open|view|fetch|inspect|lookup)\\b",
+        "\\bprojects?\\b"
+      ],
+      "terms": [
+        "get",
+        "project"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "project",
+      "callFields": [
+        "project"
+      ],
+      "action": "get"
+    }
+  },
+  {
+    "name": "list_teams",
+    "toolName": "linear_list_teams",
+    "domain": "teams",
+    "purpose": "List teams and workflow states.",
+    "signature": "list_teams()",
+    "example": {},
+    "canonical": {
+      "fields": [
+        {
+          "name": "after",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "first",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "includeArchived",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "orderBy",
+          "type": "PaginationOrderBy",
+          "required": false
+        },
+        {
+          "name": "filter",
+          "type": "Filter",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": []
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {}
+    },
+    "discovery": {
+      "action": "list",
+      "entity": "teams",
+      "actions": [
+        "list"
+      ],
+      "entities": [
+        "team"
+      ],
+      "intents": [
+        {
+          "action": "list",
+          "entity": "team"
+        }
+      ],
+      "phrases": [
+        "\\b(?:list|show me|enumerate)\\b",
+        "\\bteams?\\b"
+      ],
+      "terms": [
+        "list",
+        "teams",
+        "team"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "team",
+      "callFields": [
+        "after",
+        "before",
+        "first",
+        "last",
+        "includeArchived",
+        "orderBy",
+        "filter"
+      ],
+      "action": "list"
+    }
+  },
+  {
+    "name": "get_team",
+    "toolName": "linear_get_team",
+    "domain": "teams",
+    "purpose": "Get a team by exact key or UUID.",
+    "signature": "get_team(team)",
+    "example": {
+      "team": "AEO"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "team",
+          "type": "TeamReference",
+          "required": true
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "team"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "team": "AEO"
+      }
+    },
+    "discovery": {
+      "action": "get",
+      "entity": "team",
+      "actions": [
+        "get"
+      ],
+      "entities": [
+        "team"
+      ],
+      "intents": [
+        {
+          "action": "get",
+          "entity": "team"
+        }
+      ],
+      "phrases": [
+        "\\b(?:read|get|show|open|view|fetch|inspect|lookup)\\b",
+        "\\bteams?\\b"
+      ],
+      "terms": [
+        "get",
+        "team"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "team",
+      "callFields": [
+        "team"
+      ],
+      "action": "get"
+    }
+  },
+  {
+    "name": "list_users",
+    "toolName": "linear_list_users",
+    "domain": "users",
+    "purpose": "List users.",
+    "signature": "list_users()",
+    "example": {},
+    "canonical": {
+      "fields": [
+        {
+          "name": "includeDisabled",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "sort",
+          "type": "[UserSort!]",
+          "required": false
+        },
+        {
+          "name": "after",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "first",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        },
+        {
+          "name": "includeArchived",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "orderBy",
+          "type": "PaginationOrderBy",
+          "required": false
+        },
+        {
+          "name": "filter",
+          "type": "Filter",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": []
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {}
+    },
+    "discovery": {
+      "action": "list",
+      "entity": "users",
+      "actions": [
+        "list"
+      ],
+      "entities": [
+        "user"
+      ],
+      "intents": [
+        {
+          "action": "list",
+          "entity": "user"
+        }
+      ],
+      "phrases": [
+        "\\b(?:list|show me|enumerate)\\b",
+        "\\busers?\\b|\\bmembers?\\b|\\bpeople\\b"
+      ],
+      "terms": [
+        "list",
+        "users",
+        "user"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "user",
+      "callFields": [
+        "includeDisabled",
+        "after",
+        "before",
+        "first",
+        "last",
+        "includeArchived",
+        "orderBy",
+        "filter",
+        "sort"
+      ],
+      "action": "list"
+    }
+  },
+  {
+    "name": "get_user",
+    "toolName": "linear_get_user",
+    "domain": "users",
+    "purpose": "Get a user by me, UUID, email, name, or display name.",
+    "signature": "get_user(user)",
+    "example": {
+      "user": "me"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "user",
+          "type": "UserReference",
+          "required": true
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "user"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "user": "me"
+      }
+    },
+    "discovery": {
+      "action": "get",
+      "entity": "user",
+      "actions": [
+        "get"
+      ],
+      "entities": [
+        "user"
+      ],
+      "intents": [
+        {
+          "action": "get",
+          "entity": "user"
+        }
+      ],
+      "phrases": [
+        "\\b(?:read|get|show|open|view|fetch|inspect|lookup)\\b",
+        "\\busers?\\b|\\bmembers?\\b|\\bpeople\\b"
+      ],
+      "terms": [
+        "get",
+        "user"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "user",
+      "callFields": [
+        "user"
+      ],
+      "action": "get"
+    }
+  },
+  {
+    "name": "switch_workspace",
+    "toolName": "linear_switch_workspace",
+    "domain": "workspace",
+    "purpose": "Switch the active stored workspace without exposing credentials.",
+    "signature": "switch_workspace(name)",
+    "example": {
+      "name": "work"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "name",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "name"
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "name": "work"
+      }
+    },
+    "discovery": {
+      "action": "switch",
+      "entity": "workspace",
+      "actions": [
+        "switch"
+      ],
+      "entities": [
+        "workspace"
+      ],
+      "intents": [
+        {
+          "action": "switch",
+          "entity": "workspace"
+        }
+      ],
+      "phrases": [
+        "\\b(?:switch|use)\\b",
+        "\\bworkspaces?\\b"
+      ],
+      "terms": [
+        "switch",
+        "workspace"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "workspace",
+      "callFields": [
+        "name"
+      ],
+      "action": "switch"
+    }
+  },
+  {
+    "name": "save_initiative",
+    "toolName": "linear_save_initiative",
+    "domain": "initiatives",
+    "purpose": "Create or update a initiative.",
+    "signature": "save_initiative()",
+    "example": {
+      "name": "Platform"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "initiativeId",
+          "type": "InitiativeReference",
+          "required": false
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "content",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "icon",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "color",
+          "type": "Color",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "InitiativeStatus",
+          "required": false
+        },
+        {
+          "name": "targetDate",
+          "type": "NullableDate",
+          "required": false
+        },
+        {
+          "name": "targetDateResolution",
+          "type": "DateResolutionType",
+          "required": false
+        },
+        {
+          "name": "ownerId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "leadTeamId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "sortOrder",
+          "type": "Float",
+          "required": false
+        },
+        {
+          "name": "prioritySortOrder",
+          "type": "Float",
+          "required": false
+        },
+        {
+          "name": "priority",
+          "type": "Priority",
+          "required": false
+        },
+        {
+          "name": "labelIds",
+          "type": "[UUID!]",
+          "required": false
+        },
+        {
+          "name": "id",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "customIdentifier",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "frequencyResolution",
+          "type": "FrequencyResolutionType",
+          "required": false
+        },
+        {
+          "name": "updateReminderFrequency",
+          "type": "Float",
+          "required": false
+        },
+        {
+          "name": "updateReminderFrequencyInWeeks",
+          "type": "Float",
+          "required": false
+        },
+        {
+          "name": "updateRemindersDay",
+          "type": "Day",
+          "required": false
+        },
+        {
+          "name": "updateRemindersHour",
+          "type": "Float",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "name"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "name"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "description"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "content"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "icon"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "color"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "status"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "targetDate"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "targetDateResolution"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "ownerId"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "leadTeamId"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "sortOrder"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "prioritySortOrder"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "priority"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "labelIds"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "customIdentifier"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "frequencyResolution"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "updateReminderFrequency"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "updateReminderFrequencyInWeeks"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "updateRemindersDay"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "updateRemindersHour"
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "fields": [
+            "name",
+            "description",
+            "content",
+            "icon",
+            "color",
+            "status",
+            "targetDate",
+            "targetDateResolution",
+            "ownerId",
+            "leadTeamId",
+            "sortOrder",
+            "prioritySortOrder",
+            "priority",
+            "labelIds",
+            "id"
+          ],
+          "branches": [
+            {
+              "all": [
+                "name"
+              ]
+            }
+          ]
+        },
+        {
+          "fields": [
+            "initiativeId",
+            "name",
+            "description",
+            "content",
+            "icon",
+            "color",
+            "status",
+            "targetDate",
+            "targetDateResolution",
+            "ownerId",
+            "leadTeamId",
+            "sortOrder",
+            "prioritySortOrder",
+            "priority",
+            "labelIds",
+            "customIdentifier",
+            "frequencyResolution",
+            "updateReminderFrequency",
+            "updateReminderFrequencyInWeeks",
+            "updateRemindersDay",
+            "updateRemindersHour"
+          ],
+          "branches": [
+            {
+              "all": [
+                "initiativeId",
+                "name"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "description"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "content"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "icon"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "color"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "status"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "targetDate"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "targetDateResolution"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "ownerId"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "leadTeamId"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "sortOrder"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "prioritySortOrder"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "priority"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "labelIds"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "customIdentifier"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "frequencyResolution"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "updateReminderFrequency"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "updateReminderFrequencyInWeeks"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "updateRemindersDay"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "updateRemindersHour"
+              ]
+            }
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "name": "Platform"
+      }
+    },
+    "discovery": {
+      "action": "save",
+      "entity": "initiative",
+      "actions": [
+        "create",
+        "update",
+        "save"
+      ],
+      "entities": [
+        "initiative"
+      ],
+      "intents": [
+        {
+          "action": "create",
+          "entity": "initiative"
+        },
+        {
+          "action": "update",
+          "entity": "initiative"
+        },
+        {
+          "action": "save",
+          "entity": "initiative"
+        }
+      ],
+      "phrases": [
+        "\\b(?:create|add|new|make|file|open a new)\\b",
+        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
+        "\\b(?:save)\\b",
+        "\\binitiatives?\\b"
+      ],
+      "terms": [
+        "save",
+        "initiative",
+        "create",
+        "update"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "initiative",
+      "callFields": [
+        "initiativeId",
+        "name",
+        "input"
+      ],
+      "action": "save"
+    }
+  },
+  {
+    "name": "save_milestone",
+    "toolName": "linear_save_milestone",
+    "domain": "milestones",
+    "purpose": "Create or update a projectmilestone.",
+    "signature": "save_milestone()",
+    "example": {
+      "name": "Beta",
+      "projectId": "project-id"
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "milestoneId",
+          "type": "MilestoneReference",
+          "required": false
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "projectId",
+          "type": "ProjectReference",
+          "required": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "descriptionData",
+          "type": "JsonString",
+          "required": false
+        },
+        {
+          "name": "targetDate",
+          "type": "NullableDate",
+          "required": false
+        },
+        {
+          "name": "sortOrder",
+          "type": "Float",
+          "required": false
+        },
+        {
+          "name": "id",
+          "type": "UUID",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "name",
+            "projectId"
+          ]
+        },
+        {
+          "all": [
+            "milestoneId",
+            "name"
+          ]
+        },
+        {
+          "all": [
+            "milestoneId",
+            "projectId"
+          ]
+        },
+        {
+          "all": [
+            "milestoneId",
+            "description"
+          ]
+        },
+        {
+          "all": [
+            "milestoneId",
+            "descriptionData"
+          ]
+        },
+        {
+          "all": [
+            "milestoneId",
+            "targetDate"
+          ]
+        },
+        {
+          "all": [
+            "milestoneId",
+            "sortOrder"
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "fields": [
+            "name",
+            "projectId",
+            "description",
+            "descriptionData",
+            "targetDate",
+            "sortOrder",
+            "id"
+          ],
+          "branches": [
+            {
+              "all": [
+                "name",
+                "projectId"
+              ]
+            }
+          ]
+        },
+        {
+          "fields": [
+            "milestoneId",
+            "name",
+            "projectId",
+            "description",
+            "descriptionData",
+            "targetDate",
+            "sortOrder"
+          ],
+          "branches": [
+            {
+              "all": [
+                "milestoneId",
+                "name"
+              ]
+            },
+            {
+              "all": [
+                "milestoneId",
+                "projectId"
+              ]
+            },
+            {
+              "all": [
+                "milestoneId",
+                "description"
+              ]
+            },
+            {
+              "all": [
+                "milestoneId",
+                "descriptionData"
+              ]
+            },
+            {
+              "all": [
+                "milestoneId",
+                "targetDate"
+              ]
+            },
+            {
+              "all": [
+                "milestoneId",
+                "sortOrder"
+              ]
+            }
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "name": "Beta",
+        "projectId": "project-id"
+      }
+    },
+    "discovery": {
+      "action": "save",
+      "entity": "milestone",
+      "actions": [
+        "create",
+        "update",
+        "save"
+      ],
+      "entities": [
+        "milestone"
+      ],
+      "intents": [
+        {
+          "action": "create",
+          "entity": "milestone"
+        },
+        {
+          "action": "update",
+          "entity": "milestone"
+        },
+        {
+          "action": "save",
+          "entity": "milestone"
+        }
+      ],
+      "phrases": [
+        "\\b(?:create|add|new|make|file|open a new)\\b",
+        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
+        "\\b(?:save)\\b",
+        "\\bmilestones?\\b"
+      ],
+      "terms": [
+        "save",
+        "milestone",
+        "create",
+        "update"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "milestone",
+      "callFields": [
+        "milestoneId",
+        "name",
+        "projectId",
+        "input"
+      ],
+      "action": "save"
+    }
+  },
+  {
+    "name": "save_project",
+    "toolName": "linear_save_project",
+    "domain": "projects",
+    "purpose": "Create or update a project.",
+    "signature": "save_project()",
+    "example": {
+      "name": "Platform",
+      "teamIds": [
+        "team-id"
+      ]
+    },
+    "canonical": {
+      "fields": [
+        {
+          "name": "projectId",
+          "type": "ProjectReference",
+          "required": false
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "teamIds",
+          "type": "[ID!]",
+          "required": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "content",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "icon",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "color",
+          "type": "Color",
+          "required": false
+        },
+        {
+          "name": "priority",
+          "type": "Priority",
+          "required": false
+        },
+        {
+          "name": "startDate",
+          "type": "Date",
+          "required": false
+        },
+        {
+          "name": "startDateResolution",
+          "type": "DateResolutionType",
+          "required": false
+        },
+        {
+          "name": "targetDate",
+          "type": "NullableDate",
+          "required": false
+        },
+        {
+          "name": "targetDateResolution",
+          "type": "DateResolutionType",
+          "required": false
+        },
+        {
+          "name": "statusId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "leadId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "leadTeamId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "memberIds",
+          "type": "[UUID!]",
+          "required": false
+        },
+        {
+          "name": "labelIds",
+          "type": "[UUID!]",
+          "required": false
+        },
+        {
+          "name": "convertedFromIssueId",
+          "type": "IssueReference",
+          "required": false
+        },
+        {
+          "name": "lastAppliedTemplateId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "sortOrder",
+          "type": "Float",
+          "required": false
+        },
+        {
+          "name": "prioritySortOrder",
+          "type": "Float",
+          "required": false
+        },
+        {
+          "name": "canceledAt",
+          "type": "NullableDateTime",
+          "required": false
+        },
+        {
+          "name": "completedAt",
+          "type": "NullableDateTime",
+          "required": false
+        },
+        {
+          "name": "projectUpdateRemindersPausedUntilAt",
+          "type": "NullableDateTime",
+          "required": false
+        },
+        {
+          "name": "slackIssueComments",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "slackIssueStatuses",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "slackNewIssue",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "slackChannelName",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "templateId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "useDefaultTemplate",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "id",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "frequencyResolution",
+          "type": "FrequencyResolutionType",
+          "required": false
+        },
+        {
+          "name": "updateReminderFrequency",
+          "type": "Float",
+          "required": false
+        },
+        {
+          "name": "updateReminderFrequencyInWeeks",
+          "type": "Float",
+          "required": false
+        },
+        {
+          "name": "updateRemindersDay",
+          "type": "Day",
+          "required": false
+        },
+        {
+          "name": "updateRemindersHour",
+          "type": "Float",
+          "required": false
+        }
+      ],
+      "branches": [
+        {
+          "all": [
+            "name",
+            "teamIds"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "name"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "teamIds"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "description"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "content"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "icon"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "color"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "priority"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "startDate"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "startDateResolution"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "targetDate"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "targetDateResolution"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "statusId"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "leadId"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "leadTeamId"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "memberIds"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "labelIds"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "convertedFromIssueId"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "lastAppliedTemplateId"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "sortOrder"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "prioritySortOrder"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "canceledAt"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "completedAt"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "projectUpdateRemindersPausedUntilAt"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "slackIssueComments"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "slackIssueStatuses"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "slackNewIssue"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "frequencyResolution"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "updateReminderFrequency"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "updateReminderFrequencyInWeeks"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "updateRemindersDay"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "updateRemindersHour"
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "fields": [
+            "name",
+            "teamIds",
+            "description",
+            "content",
+            "icon",
+            "color",
+            "priority",
+            "startDate",
+            "startDateResolution",
+            "targetDate",
+            "targetDateResolution",
+            "statusId",
+            "leadId",
+            "leadTeamId",
+            "memberIds",
+            "labelIds",
+            "convertedFromIssueId",
+            "lastAppliedTemplateId",
+            "sortOrder",
+            "prioritySortOrder",
+            "slackChannelName",
+            "templateId",
+            "useDefaultTemplate",
+            "id"
+          ],
+          "branches": [
+            {
+              "all": [
+                "name",
+                "teamIds"
+              ]
+            }
+          ]
+        },
+        {
+          "fields": [
+            "projectId",
+            "name",
+            "teamIds",
+            "description",
+            "content",
+            "icon",
+            "color",
+            "priority",
+            "startDate",
+            "startDateResolution",
+            "targetDate",
+            "targetDateResolution",
+            "statusId",
+            "leadId",
+            "leadTeamId",
+            "memberIds",
+            "labelIds",
+            "convertedFromIssueId",
+            "lastAppliedTemplateId",
+            "sortOrder",
+            "prioritySortOrder",
+            "canceledAt",
+            "completedAt",
+            "projectUpdateRemindersPausedUntilAt",
+            "slackIssueComments",
+            "slackIssueStatuses",
+            "slackNewIssue",
+            "frequencyResolution",
+            "updateReminderFrequency",
+            "updateReminderFrequencyInWeeks",
+            "updateRemindersDay",
+            "updateRemindersHour"
+          ],
+          "branches": [
+            {
+              "all": [
+                "projectId",
+                "name"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "teamIds"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "description"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "content"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "icon"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "color"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "priority"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "startDate"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "startDateResolution"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "targetDate"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "targetDateResolution"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "statusId"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "leadId"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "leadTeamId"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "memberIds"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "labelIds"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "convertedFromIssueId"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "lastAppliedTemplateId"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "sortOrder"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "prioritySortOrder"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "canceledAt"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "completedAt"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "projectUpdateRemindersPausedUntilAt"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "slackIssueComments"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "slackIssueStatuses"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "slackNewIssue"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "frequencyResolution"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "updateReminderFrequency"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "updateReminderFrequencyInWeeks"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "updateRemindersDay"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "updateRemindersHour"
+              ]
+            }
+          ]
+        }
+      ],
+      "strictRawArguments": true,
+      "example": {
+        "name": "Platform",
+        "teamIds": [
+          "team-id"
+        ]
+      }
+    },
+    "discovery": {
+      "action": "save",
+      "entity": "project",
+      "actions": [
+        "create",
+        "update",
+        "save"
+      ],
+      "entities": [
+        "project"
+      ],
+      "intents": [
+        {
+          "action": "create",
+          "entity": "project"
+        },
+        {
+          "action": "update",
+          "entity": "project"
+        },
+        {
+          "action": "save",
+          "entity": "project"
+        }
+      ],
+      "phrases": [
+        "\\b(?:create|add|new|make|file|open a new)\\b",
+        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
+        "\\b(?:save)\\b",
+        "\\bprojects?\\b"
+      ],
+      "terms": [
+        "save",
+        "project",
+        "create",
+        "update"
+      ],
+      "exactHelp": true
+    },
+    "render": {
+      "entityKind": "project",
+      "callFields": [
+        "projectId",
+        "name",
+        "input"
+      ],
+      "action": "save"
+    }
+  }
+]

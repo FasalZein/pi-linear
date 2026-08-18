@@ -28,126 +28,78 @@ Every typed schema has a provider-safe object root. Save operations enforce excl
 
 Accepted domains are `issues`, `comments`, `users`, `teams`, `projects`, `cycles`, `milestones`, `initiatives`, `documents`, `views`, `labels`, `relations`, and `workspace`. Invalid requests direct the caller to a valid help request instead of returning the full catalog.
 
-## Canonical operation catalog
+<!-- BEGIN GENERATED LINEAR OPERATIONS -->
+## Generated operation catalog
 
-The catalog contains these 48 non-destructive operations. Delete and archive operations are not present.
+| Operation | Typed tool | Domain | Always required | Purpose | First call |
+| --- | --- | --- | --- | --- | --- |
+| `list_comments` | `linear_list_comments` | comments | none | List comments, optionally for one exact issue. | `{"operation":"list_comments","variables":{"issue":"AEO-258"}}` |
+| `create_comment` | `linear_create_comment` | comments | none | Create a comment on an issue or another supported target. | `{"operation":"create_comment","variables":{"issue":"AEO-258","body":"Comment text"}}` |
+| `update_comment` | `linear_update_comment` | comments | id | Update a comment by id. | `{"operation":"update_comment","variables":{"id":"comment-id","body":"Updated text"}}` |
+| `list_views` | `linear_list_views` | views | none | List custom views. | `{"operation":"list_views","variables":{}}` |
+| `get_view` | `linear_get_view` | views | id | Get a custom view. | `{"operation":"get_view","variables":{"id":"view-id"}}` |
+| `create_view` | `linear_create_view` | views | name | Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData. | `{"operation":"create_view","variables":{"name":"My issues","filterData":{}}}` |
+| `update_view` | `linear_update_view` | views | id | Update a custom view. | `{"operation":"update_view","variables":{"id":"view-id","name":"New name"}}` |
+| `set_view_preferences` | `linear_set_view_preferences` | views | viewId, preferences | Set preferences for a custom view. | `{"operation":"set_view_preferences","variables":{"viewId":"view-id","preferences":{}}}` |
+| `list_cycles` | `linear_list_cycles` | cycles | none | List cycles. | `{"operation":"list_cycles","variables":{}}` |
+| `get_cycle` | `linear_get_cycle` | cycles | cycle | Get a cycle by exact name or UUID. | `{"operation":"get_cycle","variables":{"cycle":"Cycle 12"}}` |
+| `create_cycle` | `linear_create_cycle` | cycles | team, startsAt, endsAt | Create a cycle. | `{"operation":"create_cycle","variables":{"team":"AEO","startsAt":"2026-08-17","endsAt":"2026-08-31"}}` |
+| `update_cycle` | `linear_update_cycle` | cycles | id | Update a cycle. | `{"operation":"update_cycle","variables":{"id":"cycle-id","name":"Cycle 12"}}` |
+| `list_documents` | `linear_list_documents` | documents | none | List documents. | `{"operation":"list_documents","variables":{}}` |
+| `get_document` | `linear_get_document` | documents | document | Get a document by exact title or UUID. | `{"operation":"get_document","variables":{"document":"Planning notes"}}` |
+| `create_document` | `linear_create_document` | documents | title | Create a document. | `{"operation":"create_document","variables":{"title":"Planning notes","content":"Notes"}}` |
+| `update_document` | `linear_update_document` | documents | documentId | Update a document. | `{"operation":"update_document","variables":{"documentId":"document-id","title":"Updated notes"}}` |
+| `list_initiatives` | `linear_list_initiatives` | initiatives | none | List initiatives. | `{"operation":"list_initiatives","variables":{}}` |
+| `get_initiative` | `linear_get_initiative` | initiatives | initiative | Get an initiative by exact name or UUID. | `{"operation":"get_initiative","variables":{"initiative":"Platform"}}` |
+| `list_issue_labels` | `linear_list_issue_labels` | labels | none | List issue labels. | `{"operation":"list_issue_labels","variables":{}}` |
+| `create_issue_label` | `linear_create_issue_label` | labels | name | Create an issue label. | `{"operation":"create_issue_label","variables":{"name":"needs-review","color":"#ff0000"}}` |
+| `update_issue_label` | `linear_update_issue_label` | labels | id | Update an issue label. | `{"operation":"update_issue_label","variables":{"id":"label-id","name":"review"}}` |
+| `list_issue_relations` | `linear_list_issue_relations` | relations | none | List issue relations. | `{"operation":"list_issue_relations","variables":{}}` |
+| `create_issue_relation` | `linear_create_issue_relation` | relations | issue, relatedIssue, type | Create a relation between two issues. | `{"operation":"create_issue_relation","variables":{"issue":"AEO-258","relatedIssue":"AEO-259","type":"related"}}` |
+| `update_issue_relation` | `linear_update_issue_relation` | relations | id | Update an issue relation. | `{"operation":"update_issue_relation","variables":{"id":"relation-id","type":"blocks"}}` |
+| `list_issue_statuses` | `linear_list_issue_statuses` | workspace | none | List issue workflow states. | `{"operation":"list_issue_statuses","variables":{}}` |
+| `list_issues` | `linear_list_issues` | issues | none | List issues with exact convenience filters. | `{"operation":"list_issues","variables":{"assignee":"me","stateType":"started"}}` |
+| `get_issue` | `linear_get_issue` | issues | issue | Get one issue by exact identifier or UUID. | `{"operation":"get_issue","variables":{"issue":"AEO-258"}}` |
+| `create_issue` | `linear_create_issue` | issues | title | Create an issue. A parent reference supplies the team when team is omitted. | `{"operation":"create_issue","variables":{"title":"v0.4 trial child","parent":"AEO-258"}}` |
+| `update_issue` | `linear_update_issue` | issues | issue | Update an issue by exact identifier or UUID. | `{"operation":"update_issue","variables":{"issue":"AEO-258","state":"Backlog"}}` |
+| `search_issues` | `linear_search_issues` | issues | term | Search issues by text. | `{"operation":"search_issues","variables":{"term":"authentication"}}` |
+| `list_milestones` | `linear_list_milestones` | milestones | none | List project milestones. | `{"operation":"list_milestones","variables":{}}` |
+| `get_milestone` | `linear_get_milestone` | milestones | milestone | Get a milestone by exact name or UUID. | `{"operation":"get_milestone","variables":{"milestone":"Beta"}}` |
+| `list_project_labels` | `linear_list_project_labels` | labels | none | List project labels. | `{"operation":"list_project_labels","variables":{}}` |
+| `create_project_label` | `linear_create_project_label` | labels | name | Create a project label. | `{"operation":"create_project_label","variables":{"name":"Strategic"}}` |
+| `update_project_label` | `linear_update_project_label` | labels | id | Update a project label. | `{"operation":"update_project_label","variables":{"id":"label-id","name":"Strategy"}}` |
+| `list_project_relations` | `linear_list_project_relations` | relations | none | List project relations. | `{"operation":"list_project_relations","variables":{}}` |
+| `create_project_relation` | `linear_create_project_relation` | relations | projectId, relatedProjectId, type, anchorType, relatedAnchorType | Create a relation between two projects. | `{"operation":"create_project_relation","variables":{"projectId":"project-id","relatedProjectId":"other-project-id","type":"related","anchorType":"project","relatedAnchorType":"project"}}` |
+| `update_project_relation` | `linear_update_project_relation` | relations | id | Update a project relation. | `{"operation":"update_project_relation","variables":{"id":"relation-id","type":"related"}}` |
+| `list_projects` | `linear_list_projects` | projects | none | List projects. | `{"operation":"list_projects","variables":{}}` |
+| `get_project` | `linear_get_project` | projects | project | Get a project by exact name or UUID. | `{"operation":"get_project","variables":{"project":"Platform"}}` |
+| `list_teams` | `linear_list_teams` | teams | none | List teams and workflow states. | `{"operation":"list_teams","variables":{}}` |
+| `get_team` | `linear_get_team` | teams | team | Get a team by exact key or UUID. | `{"operation":"get_team","variables":{"team":"AEO"}}` |
+| `list_users` | `linear_list_users` | users | none | List users. | `{"operation":"list_users","variables":{}}` |
+| `get_user` | `linear_get_user` | users | user | Get a user by me, UUID, email, name, or display name. | `{"operation":"get_user","variables":{"user":"me"}}` |
+| `switch_workspace` | `linear_switch_workspace` | workspace | name | Switch the active stored workspace without exposing credentials. | `{"operation":"switch_workspace","variables":{"name":"work"}}` |
+| `save_initiative` | `linear_save_initiative` | initiatives | none | Create or update a initiative. | `{"operation":"save_initiative","variables":{"name":"Platform"}}` |
+| `save_milestone` | `linear_save_milestone` | milestones | none | Create or update a projectmilestone. | `{"operation":"save_milestone","variables":{"name":"Beta","projectId":"project-id"}}` |
+| `save_project` | `linear_save_project` | projects | none | Create or update a project. | `{"operation":"save_project","variables":{"name":"Platform","teamIds":["team-id"]}}` |
 
-### Issues
-
-- `list_issues`
-- `get_issue`
-- `create_issue`
-- `update_issue`
-- `search_issues`
-
-### Comments
-
-- `list_comments`
-- `create_comment`
-- `update_comment`
-
-### Users
-
-- `list_users`
-- `get_user`
-
-### Teams
-
-- `list_teams`
-- `get_team`
-
-### Projects
-
-- `list_projects`
-- `get_project`
-- `save_project`
-
-### Cycles
-
-- `list_cycles`
-- `get_cycle`
-- `create_cycle`
-- `update_cycle`
-
-### Milestones
-
-- `list_milestones`
-- `get_milestone`
-- `save_milestone`
-
-### Initiatives
-
-- `list_initiatives`
-- `get_initiative`
-- `save_initiative`
-
-### Documents
-
-- `list_documents`
-- `get_document`
-- `create_document`
-- `update_document`
-
-### Views
-
-- `list_views`
-- `get_view`
-- `create_view`
-- `update_view`
-- `set_view_preferences`
-
-### Labels
-
-- `list_issue_labels`
-- `create_issue_label`
-- `update_issue_label`
-- `list_project_labels`
-- `create_project_label`
-- `update_project_label`
-
-### Relations
-
-- `list_issue_relations`
-- `create_issue_relation`
-- `update_issue_relation`
-- `list_project_relations`
-- `create_project_relation`
-- `update_project_relation`
-
-### Workspace
-
-- `list_issue_statuses`
-- `switch_workspace`
-
-## Canonical first calls
-
-Read an issue:
+### Loader envelopes
 
 ```json
-{ "operation": "get_issue", "variables": { "issue": "AEO-258" } }
+{ "operation": "help" }
 ```
-
-Comment on an issue:
 
 ```json
-{ "operation": "create_comment", "variables": { "issue": "AEO-258", "body": "Status update" } }
+{ "operation": "help", "variables": { "domain": "issues" } }
 ```
-
-List the current user's in-progress issues across teams:
 
 ```json
-{ "operation": "list_issues", "variables": { "assignee": "me", "stateType": "started" } }
+{ "operation": "help", "variables": { "operation": "get_issue" } }
 ```
-
-Exact state names require a team, for example `{ "operation": "list_issues", "variables": { "team": "AEO", "state": "In Progress" } }`.
-
-Create a child issue under `AEO-258` in Backlog. The parent supplies the team for exact state resolution:
 
 ```json
-{ "operation": "create_issue", "variables": { "title": "Child issue", "parent": "AEO-258", "state": "Backlog" } }
+{ "operation": "help", "variables": { "query": "list comments on AEO-258" } }
 ```
-
-Use operation help before changing these shapes. For example, `{ "operation": "help", "variables": { "operation": "create_issue" } }` returns all accepted create fields.
+<!-- END GENERATED LINEAR OPERATIONS -->
 
 ## Exact references and fail-closed behavior
 

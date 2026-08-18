@@ -1,0 +1,300 @@
+{
+  "schemaVersion": 1,
+  "package": "@tothemoon/pi-linear-lite",
+  "initialActiveTools": [
+    "linear_api"
+  ],
+  "lazyTools": [
+    {
+      "name": "linear_list_comments",
+      "operation": "list_comments",
+      "domain": "comments"
+    },
+    {
+      "name": "linear_create_comment",
+      "operation": "create_comment",
+      "domain": "comments"
+    },
+    {
+      "name": "linear_update_comment",
+      "operation": "update_comment",
+      "domain": "comments"
+    },
+    {
+      "name": "linear_list_views",
+      "operation": "list_views",
+      "domain": "views"
+    },
+    {
+      "name": "linear_get_view",
+      "operation": "get_view",
+      "domain": "views"
+    },
+    {
+      "name": "linear_create_view",
+      "operation": "create_view",
+      "domain": "views"
+    },
+    {
+      "name": "linear_update_view",
+      "operation": "update_view",
+      "domain": "views"
+    },
+    {
+      "name": "linear_set_view_preferences",
+      "operation": "set_view_preferences",
+      "domain": "views"
+    },
+    {
+      "name": "linear_list_cycles",
+      "operation": "list_cycles",
+      "domain": "cycles"
+    },
+    {
+      "name": "linear_get_cycle",
+      "operation": "get_cycle",
+      "domain": "cycles"
+    },
+    {
+      "name": "linear_create_cycle",
+      "operation": "create_cycle",
+      "domain": "cycles"
+    },
+    {
+      "name": "linear_update_cycle",
+      "operation": "update_cycle",
+      "domain": "cycles"
+    },
+    {
+      "name": "linear_list_documents",
+      "operation": "list_documents",
+      "domain": "documents"
+    },
+    {
+      "name": "linear_get_document",
+      "operation": "get_document",
+      "domain": "documents"
+    },
+    {
+      "name": "linear_create_document",
+      "operation": "create_document",
+      "domain": "documents"
+    },
+    {
+      "name": "linear_update_document",
+      "operation": "update_document",
+      "domain": "documents"
+    },
+    {
+      "name": "linear_list_initiatives",
+      "operation": "list_initiatives",
+      "domain": "initiatives"
+    },
+    {
+      "name": "linear_get_initiative",
+      "operation": "get_initiative",
+      "domain": "initiatives"
+    },
+    {
+      "name": "linear_list_issue_labels",
+      "operation": "list_issue_labels",
+      "domain": "labels"
+    },
+    {
+      "name": "linear_create_issue_label",
+      "operation": "create_issue_label",
+      "domain": "labels"
+    },
+    {
+      "name": "linear_update_issue_label",
+      "operation": "update_issue_label",
+      "domain": "labels"
+    },
+    {
+      "name": "linear_list_issue_relations",
+      "operation": "list_issue_relations",
+      "domain": "relations"
+    },
+    {
+      "name": "linear_create_issue_relation",
+      "operation": "create_issue_relation",
+      "domain": "relations"
+    },
+    {
+      "name": "linear_update_issue_relation",
+      "operation": "update_issue_relation",
+      "domain": "relations"
+    },
+    {
+      "name": "linear_list_issue_statuses",
+      "operation": "list_issue_statuses",
+      "domain": "workspace"
+    },
+    {
+      "name": "linear_list_issues",
+      "operation": "list_issues",
+      "domain": "issues"
+    },
+    {
+      "name": "linear_get_issue",
+      "operation": "get_issue",
+      "domain": "issues"
+    },
+    {
+      "name": "linear_create_issue",
+      "operation": "create_issue",
+      "domain": "issues"
+    },
+    {
+      "name": "linear_update_issue",
+      "operation": "update_issue",
+      "domain": "issues"
+    },
+    {
+      "name": "linear_search_issues",
+      "operation": "search_issues",
+      "domain": "issues"
+    },
+    {
+      "name": "linear_list_milestones",
+      "operation": "list_milestones",
+      "domain": "milestones"
+    },
+    {
+      "name": "linear_get_milestone",
+      "operation": "get_milestone",
+      "domain": "milestones"
+    },
+    {
+      "name": "linear_list_project_labels",
+      "operation": "list_project_labels",
+      "domain": "labels"
+    },
+    {
+      "name": "linear_create_project_label",
+      "operation": "create_project_label",
+      "domain": "labels"
+    },
+    {
+      "name": "linear_update_project_label",
+      "operation": "update_project_label",
+      "domain": "labels"
+    },
+    {
+      "name": "linear_list_project_relations",
+      "operation": "list_project_relations",
+      "domain": "relations"
+    },
+    {
+      "name": "linear_create_project_relation",
+      "operation": "create_project_relation",
+      "domain": "relations"
+    },
+    {
+      "name": "linear_update_project_relation",
+      "operation": "update_project_relation",
+      "domain": "relations"
+    },
+    {
+      "name": "linear_list_projects",
+      "operation": "list_projects",
+      "domain": "projects"
+    },
+    {
+      "name": "linear_get_project",
+      "operation": "get_project",
+      "domain": "projects"
+    },
+    {
+      "name": "linear_list_teams",
+      "operation": "list_teams",
+      "domain": "teams"
+    },
+    {
+      "name": "linear_get_team",
+      "operation": "get_team",
+      "domain": "teams"
+    },
+    {
+      "name": "linear_list_users",
+      "operation": "list_users",
+      "domain": "users"
+    },
+    {
+      "name": "linear_get_user",
+      "operation": "get_user",
+      "domain": "users"
+    },
+    {
+      "name": "linear_switch_workspace",
+      "operation": "switch_workspace",
+      "domain": "workspace"
+    },
+    {
+      "name": "linear_save_initiative",
+      "operation": "save_initiative",
+      "domain": "initiatives"
+    },
+    {
+      "name": "linear_save_milestone",
+      "operation": "save_milestone",
+      "domain": "milestones"
+    },
+    {
+      "name": "linear_save_project",
+      "operation": "save_project",
+      "domain": "projects"
+    }
+  ],
+  "allowedTools": [
+    "linear_api",
+    "linear_list_comments",
+    "linear_create_comment",
+    "linear_update_comment",
+    "linear_list_views",
+    "linear_get_view",
+    "linear_create_view",
+    "linear_update_view",
+    "linear_set_view_preferences",
+    "linear_list_cycles",
+    "linear_get_cycle",
+    "linear_create_cycle",
+    "linear_update_cycle",
+    "linear_list_documents",
+    "linear_get_document",
+    "linear_create_document",
+    "linear_update_document",
+    "linear_list_initiatives",
+    "linear_get_initiative",
+    "linear_list_issue_labels",
+    "linear_create_issue_label",
+    "linear_update_issue_label",
+    "linear_list_issue_relations",
+    "linear_create_issue_relation",
+    "linear_update_issue_relation",
+    "linear_list_issue_statuses",
+    "linear_list_issues",
+    "linear_get_issue",
+    "linear_create_issue",
+    "linear_update_issue",
+    "linear_search_issues",
+    "linear_list_milestones",
+    "linear_get_milestone",
+    "linear_list_project_labels",
+    "linear_create_project_label",
+    "linear_update_project_label",
+    "linear_list_project_relations",
+    "linear_create_project_relation",
+    "linear_update_project_relation",
+    "linear_list_projects",
+    "linear_get_project",
+    "linear_list_teams",
+    "linear_get_team",
+    "linear_list_users",
+    "linear_get_user",
+    "linear_switch_workspace",
+    "linear_save_initiative",
+    "linear_save_milestone",
+    "linear_save_project"
+  ]
+}

@@ -33,6 +33,7 @@ function fakePi(builtIns: string[] = ['read', 'bash']) {
   const registered: any[] = [];
   const sessionHandlers: Array<() => void> = [];
   let active = [...builtIns];
+  let blockedTool: string | undefined;
   const history: string[][] = [];
   const pi = {
     registerCommand: () => undefined,
@@ -41,9 +42,9 @@ function fakePi(builtIns: string[] = ['read', 'bash']) {
       active.push(tool.name);
     },
     getActiveTools: () => [...active],
-    getAllTools: () => registered.map((tool) => ({ name: tool.name })),
+    getAllTools: () => registered.map((tool) => ({ name: tool.name, parameters: tool.parameters })),
     setActiveTools: (names: string[]) => {
-      active = [...names];
+      active = blockedTool ? names.filter((name) => name !== blockedTool) : [...names];
       history.push([...names]);
     },
     on: (event: string, handler: () => void) => {
@@ -57,6 +58,8 @@ function fakePi(builtIns: string[] = ['read', 'bash']) {
     startSession: () => sessionHandlers.forEach((handler) => handler()),
     activeTools: () => [...active],
     tool: (name: string) => registered.find((entry) => entry.name === name),
+    removeRegistration: (name: string) => registered.splice(registered.findIndex((entry) => entry.name === name), 1),
+    blockActivation: (name: string) => { blockedTool = name; },
   };
 }
 
@@ -123,6 +126,23 @@ describe('deterministic activation', () => {
     const after = harness.activeTools();
     for (const name of before) expect(after).toContain(name);
     expect(after.length).toBe(before.length + 1);
+  });
+
+  it('reports a missing requested registration as a configuration error', async () => {
+    const harness = setup();
+    harness.removeRegistration('linear_get_issue');
+    await expect(execute(harness.tool('linear_api'), {
+      operation: 'help', variables: { operation: 'get_issue' },
+    })).rejects.toThrow('manifest entries are not registered: linear_get_issue');
+  });
+
+  it('reports policy-blocked activation and does not claim the tool loaded', async () => {
+    const harness = setup();
+    harness.blockActivation('linear_get_issue');
+    await expect(execute(harness.tool('linear_api'), {
+      operation: 'help', variables: { operation: 'get_issue' },
+    })).rejects.toThrow('policy blocked manifest entries: linear_get_issue');
+    expect(harness.activeTools()).not.toContain('linear_get_issue');
   });
 
   it('activates nothing for a domain listing', async () => {

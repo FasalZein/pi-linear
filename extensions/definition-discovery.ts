@@ -1,4 +1,4 @@
-/** Ordered activation contract owned by S7 operation discovery definitions. */
+/** Ordered phrase precedence used to project natural discovery metadata. */
 export const DEFINITION_ACTIONS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\b(?:list|show me|enumerate)\b/, 'list'],
   [/\b(?:add|post|leave|write)\s+(?:a\s+)?comment\b|\bcomment(?:ed|ing|s)?\b/, 'comment'],
@@ -33,51 +33,32 @@ export const DEFINITION_ENTITIES: ReadonlyArray<readonly [RegExp, string]> = [
   [/\b[A-Z][A-Z0-9]+-\d+\b/, 'issue'],
 ];
 
-export const DEFINITION_OPERATION_BY_INTENT: Readonly<Record<string, string>> = {
-  'get issue': 'get_issue', 'get project': 'get_project', 'get team': 'get_team',
-  'get user': 'get_user', 'get cycle': 'get_cycle', 'get document': 'get_document',
-  'get initiative': 'get_initiative', 'get milestone': 'get_milestone', 'get view': 'get_view',
-  'list issue': 'list_issues', 'list comment': 'list_comments', 'list project': 'list_projects',
-  'list team': 'list_teams', 'list user': 'list_users', 'list cycle': 'list_cycles',
-  'list document': 'list_documents', 'list initiative': 'list_initiatives',
-  'list milestone': 'list_milestones', 'list view': 'list_views',
-  'list issue_label': 'list_issue_labels', 'list project_label': 'list_project_labels',
-  'list issue_status': 'list_issue_statuses', 'list issue_relation': 'list_issue_relations',
-  'list project_relation': 'list_project_relations', 'search issue': 'search_issues',
-  'comment issue': 'create_comment', 'comment comment': 'create_comment',
-  'create issue': 'create_issue', 'create comment': 'create_comment', 'create cycle': 'create_cycle',
-  'create document': 'create_document', 'create view': 'create_view',
-  'create issue_label': 'create_issue_label', 'create project_label': 'create_project_label',
-  'create issue_relation': 'create_issue_relation', 'create project_relation': 'create_project_relation',
-  'create project': 'save_project', 'create milestone': 'save_milestone',
-  'create initiative': 'save_initiative', 'update issue': 'update_issue',
-  'update comment': 'update_comment', 'update cycle': 'update_cycle',
-  'update document': 'update_document', 'update view': 'update_view',
-  'update issue_label': 'update_issue_label', 'update project_label': 'update_project_label',
-  'update issue_relation': 'update_issue_relation', 'update project_relation': 'update_project_relation',
-  'update project': 'save_project', 'update milestone': 'save_milestone',
-  'update initiative': 'save_initiative', 'update view_preference': 'set_view_preferences',
-  'save project': 'save_project', 'save milestone': 'save_milestone',
-  'save initiative': 'save_initiative', 'switch workspace': 'switch_workspace',
-};
+function singular(value: string): string {
+  if (value.endsWith('statuses')) return `${value.slice(0, -8)}status`;
+  if (value.endsWith('ies')) return `${value.slice(0, -3)}y`;
+  return value.endsWith('s') ? value.slice(0, -1) : value;
+}
 
-export const DEFINITION_PLAN_PROBES: ReadonlyArray<readonly [string, readonly string[]]> = [
-  ['List comments on AEO-258', ['list_comments']],
-  ['comment on AEO-258', ['create_comment']],
-  ['create a child under AEO-258 in Backlog', ['create_issue']],
-  ['read AEO-258 then update it', ['get_issue', 'update_issue']],
-  ['list issue labels', ['list_issue_labels']],
-  ['update view preferences', ['get_view']],
-  ['switch workspace', ['switch_workspace']],
-];
+function intentsFor(name: string): Array<{ action: string; entity: string }> {
+  if (name === 'create_comment') {
+    return [
+      { action: 'comment', entity: 'issue' },
+      { action: 'comment', entity: 'comment' },
+      { action: 'create', entity: 'comment' },
+    ];
+  }
+  if (name === 'set_view_preferences') return [{ action: 'update', entity: 'view_preference' }];
+  const [operationAction, ...parts] = name.split('_');
+  const entity = singular(parts.join('_'));
+  if (operationAction === 'save') {
+    return ['create', 'update', 'save'].map((action) => ({ action, entity }));
+  }
+  return [{ action: operationAction!, entity }];
+}
 
+/** Project exact intents and phrases from the canonical operation name. */
 export function discoveryForOperation(name: string) {
-  const intents = Object.entries(DEFINITION_OPERATION_BY_INTENT)
-    .filter(([, operation]) => operation === name)
-    .map(([intent]) => {
-      const [action, ...entity] = intent.split(' ');
-      return { action: action!, entity: entity.join(' ') };
-    });
+  const intents = intentsFor(name);
   const actions = [...new Set(intents.map(({ action }) => action))];
   const entities = [...new Set(intents.map(({ entity }) => entity))];
   const phrases = [

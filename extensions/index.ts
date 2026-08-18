@@ -101,19 +101,46 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
    * pi can record the added names on the result and defer the schemas.
    */
   const activate = (toolNames: string[]): string[] => {
-    const wanted = toolNames.filter((name) => lazyToolNames.has(name));
-    const active = pi.getActiveTools();
-    const added = wanted.filter((name) => !active.includes(name));
-    if (added.length) pi.setActiveTools([...new Set([...active, ...added])]);
-    return added;
+    const wanted = [...new Set(toolNames.filter((name) => lazyToolNames.has(name)))];
+    const registered = new Set(pi.getAllTools().map(({ name }) => name));
+    const missing = wanted.filter((name) => !registered.has(name));
+    if (missing.length) {
+      throw new Error(`Linear tool configuration error: manifest entries are not registered: ${missing.join(', ')}.`);
+    }
+    const before = pi.getActiveTools();
+    const requested = wanted.filter((name) => !before.includes(name));
+    if (requested.length) pi.setActiveTools([...new Set([...before, ...requested])]);
+    const after = pi.getActiveTools();
+    const removed = before.filter((name) => !after.includes(name));
+    if (removed.length) {
+      throw new Error(`Linear tool configuration error: activation policy removed active tools: ${removed.join(', ')}.`);
+    }
+    const blocked = requested.filter((name) => !after.includes(name));
+    if (blocked.length) {
+      throw new Error(`Linear tool configuration error: policy blocked manifest entries: ${blocked.join(', ')}.`);
+    }
+    return requested.filter((name) => after.includes(name));
   };
 
   pi.registerTool(linearApiTool(mode, activate));
-  for (const tool of typedLinearTools(mode)) pi.registerTool(tool);
+  const generatedTypedTools = typedLinearTools(mode);
+  for (const tool of generatedTypedTools) pi.registerTool(tool);
 
   // Register all 48 typed tools, start with none of them active: linear_api alone
   // carries the always-on schema cost, and help loads only what the task needs.
   pi.on('session_start', () => {
+    const allTools = pi.getAllTools();
+    const registered = new Set(allTools.map(({ name }) => name));
+    const missing = ['linear_api', ...lazyToolNames].filter((name) => !registered.has(name));
+    if (missing.length) {
+      throw new Error(`Linear tool configuration error: manifest entries are not registered: ${missing.join(', ')}.`);
+    }
+    for (const expected of generatedTypedTools) {
+      const registeredTool = allTools.find(({ name }) => name === expected.name);
+      if (registeredTool?.parameters && JSON.stringify(registeredTool.parameters) !== JSON.stringify(expected.parameters)) {
+        throw new Error(`Linear tool configuration error: generated schema drift for manifest entry ${expected.name}.`);
+      }
+    }
     pi.setActiveTools(pi.getActiveTools().filter((name) => !lazyToolNames.has(name)));
   });
 }

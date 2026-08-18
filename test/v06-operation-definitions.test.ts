@@ -2,8 +2,6 @@ import { readFileSync } from 'node:fs';
 import { Kind, parse } from 'graphql';
 import { describe, expect, it } from 'vitest';
 import { helpResult, resolveRequest } from '../extensions/api';
-import { assertActivationAdapterParity } from '../extensions/activation';
-import { assertCanonicalAdapterParity } from '../extensions/canonical';
 import {
   getOperation,
   operationDefinitions,
@@ -168,24 +166,12 @@ describe('v0.6 operation definition authority', () => {
     })).toThrow('Params not valid in update mode: id.');
   });
 
-  it('detects deliberate compatibility, discovery, canonical, and renderer drift', () => {
+  it('detects deliberate independent compatibility and renderer fixture drift', () => {
     const issue = definition('create_issue');
     const branches = issue.compatibility.branches;
     issue.compatibility.branches = [{ all: [] }];
     expect(assertCreateIssueBranchFixtureParity).toThrow();
     issue.compatibility.branches = branches;
-
-    const discovery = definition('get_issue').discovery;
-    const intents = discovery.intents;
-    discovery.intents = [{ action: 'broken', entity: 'issue' }];
-    expect(assertActivationAdapterParity).toThrow('Discovery metadata drift');
-    discovery.intents = intents;
-
-    const canonical = definition('get_issue').canonical.fields.find(({ name }) => name === 'issue')!;
-    const canonicalType = canonical.type;
-    canonical.type = 'Float';
-    expect(assertCanonicalAdapterParity).toThrow('Canonical adapter drift');
-    canonical.type = canonicalType;
 
     const render = definition('get_issue').render;
     const renderKind = render.entityKind;
@@ -195,15 +181,13 @@ describe('v0.6 operation definition authority', () => {
 
     assertCreateIssueBranchFixtureParity();
     assertRendererFixtureParity();
-    expect(() => assertActivationAdapterParity()).not.toThrow();
-    expect(() => assertCanonicalAdapterParity()).not.toThrow();
   });
 
   it('matches renderer kind and call fields against an independent fixture', () => {
     assertRendererFixtureParity();
   });
 
-  it('projects help, examples, preparation, raw fallback, and adapter parity without behavior changes', () => {
+  it('projects help, examples, preparation, and raw fallback without behavior changes', () => {
     for (const definition of operationDefinitions) {
       expect(helpResult({ operation: definition.name })).toMatchObject({
         name: definition.name,
@@ -214,7 +198,5 @@ describe('v0.6 operation definition authority', () => {
       expect(() => resolveRequest(definition.compatibility.example)).not.toThrow();
     }
     expect(resolveRequest({ query: 'query { viewer { id } }', variables: {} }).named).toBe(false);
-    expect(() => assertCanonicalAdapterParity()).not.toThrow();
-    expect(() => assertActivationAdapterParity()).not.toThrow();
   });
 });

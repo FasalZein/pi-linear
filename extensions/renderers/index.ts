@@ -4,7 +4,7 @@ import type {
   ToolRenderResultOptions,
 } from '@earendil-works/pi-coding-agent';
 import { Text } from '@earendil-works/pi-tui';
-import { getOperation, type LinearOperation } from '../operations';
+import { getOperation, operationDefinitions, type LinearOperation } from '../operations';
 import { canonicalFieldNames } from '../canonical';
 import { typedToolName } from '../tool-names';
 import {
@@ -24,7 +24,7 @@ import {
   truncate,
   type ToolArgs,
 } from './common';
-import { specFor, type Entity, type EntitySpec } from './entities';
+import { specFor, specForKind, type Entity, type EntitySpec } from './entities';
 
 const PREVIEW_LIMIT = 20;
 
@@ -268,9 +268,10 @@ export type OperationRenderers = {
 
 /** Renderers for one typed tool, derived from the catalog entry. */
 export function operationRenderers(operation: LinearOperation): OperationRenderers {
-  const spec = specFor(operation.name);
+  const definition = operationDefinitions.find(({ name }) => name === operation.name);
+  const spec = definition ? specForKind(definition.result.renderKind) : specFor(operation.name);
   const verb = verbFor(operation.name);
-  const keys = callKeys(operation);
+  const keys = definition ? [...definition.canonical.fields.map(({ name }) => name), 'workspace'] : callKeys(operation);
   const toolName = typedToolName(operation.name);
 
   return {

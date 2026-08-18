@@ -124,6 +124,7 @@ function extensionHarness() {
     registerCommand: () => undefined,
     registerTool: (tool: Tool) => { tools.set(tool.name, tool); active.push(tool.name); },
     getActiveTools: () => [...active],
+    getAllTools: () => [...tools.values()],
     setActiveTools: (names: string[]) => { active = [...names]; },
     on: (event: string, handler: () => void) => { if (event === 'session_start') start = handler; },
   } as any;

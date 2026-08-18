@@ -14,7 +14,12 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "smoke:readonly": "node scripts/smoke-readonly.mjs",
-    "capture:readonly-schema": "node scripts/capture-readonly-schema.mjs"
+    "capture:readonly-schema": "node scripts/capture-readonly-schema.mjs",
+    "generate": "vite-node scripts/generate-cli.ts",
+    "generate:check": "vite-node scripts/generate-cli.ts --check",
+    "sync:linear-agent-allowlists": "vite-node scripts/generate-cli.ts --allowlists-sync",
+    "check:linear-agent-allowlists": "vite-node scripts/generate-cli.ts --allowlists-check",
+    "test:schema-bytes": "vite-node scripts/schema-bytes.ts"
   },
   "pi": {
     "extensions": [

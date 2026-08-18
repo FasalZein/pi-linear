@@ -2,7 +2,7 @@ import { StringEnum } from '@earendil-works/pi-ai';
 import { defineTool, type ToolDefinition } from '@earendil-works/pi-coding-agent';
 import { Type, type TSchema } from 'typebox';
 import { Compile } from 'typebox/compile';
-import { formatInvocation, operations, type LinearOperation } from './operations';
+import { formatInvocation, operationDefinitions, operations, type LinearOperation } from './operations';
 import { canonicalFieldNames, canonicalOperation } from './canonical';
 import { assertOperationAllowed, executeOperation, type JsonObject } from './runtime';
 import { redactError } from './redact';
@@ -371,9 +371,9 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
  * always-on; activation is not (see extensions/index.ts).
  */
 export function typedLinearTools(mode: MutationMode = 'allowlist'): ToolDefinition<any, any, any>[] {
-  return Object.values(operations).map((operation) => typedTool(operation, mode));
+  return operationDefinitions.map(({ name }) => typedTool(operations[name]!, mode));
 }
 
 export function typedToolNames(): string[] {
-  return Object.values(operations).map((operation) => typedToolName(operation.name));
+  return operationDefinitions.map(({ toolName }) => toolName);
 }
