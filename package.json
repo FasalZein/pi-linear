@@ -12,7 +12,8 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "smoke:readonly": "node scripts/smoke-readonly.mjs"
   },
   "pi": {
     "extensions": [
@@ -21,6 +22,7 @@
   },
   "files": [
     "extensions",
+    "scripts",
     "docs",
     "CHANGELOG.md",
     "CONTEXT.md",

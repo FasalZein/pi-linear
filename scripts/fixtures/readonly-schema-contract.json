@@ -1,0 +1,3491 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-18",
+  "roots": {
+    "Query": {
+      "comments": {
+        "returns": "CommentConnection!",
+        "arguments": {
+          "after": "String",
+          "before": "String",
+          "first": "Int",
+          "includeArchived": "Boolean",
+          "last": "Int",
+          "orderBy": "PaginationOrderBy",
+          "filter": "CommentFilter"
+        }
+      },
+      "customViews": {
+        "returns": "CustomViewConnection!",
+        "arguments": {
+          "after": "String",
+          "before": "String",
+          "first": "Int",
+          "includeArchived": "Boolean",
+          "last": "Int",
+          "orderBy": "PaginationOrderBy",
+          "filter": "CustomViewFilter"
+        }
+      },
+      "customView": {
+        "returns": "CustomView!",
+        "arguments": {
+          "id": "String!"
+        }
+      },
+      "cycles": {
+        "returns": "CycleConnection!",
+        "arguments": {
+          "after": "String",
+          "before": "String",
+          "first": "Int",
+          "includeArchived": "Boolean",
+          "last": "Int",
+          "orderBy": "PaginationOrderBy",
+          "filter": "CycleFilter"
+        }
+      },
+      "cycle": {
+        "returns": "Cycle!",
+        "arguments": {
+          "id": "String!"
+        }
+      },
+      "documents": {
+        "returns": "DocumentConnection!",
+        "arguments": {
+          "after": "String",
+          "before": "String",
+          "first": "Int",
+          "includeArchived": "Boolean",
+          "last": "Int",
+          "orderBy": "PaginationOrderBy",
+          "filter": "DocumentFilter",
+          "sort": "[DocumentSortInput!]"
+        }
+      },
+      "document": {
+        "returns": "Document!",
+        "arguments": {
+          "id": "String!"
+        }
+      },
+      "initiatives": {
+        "returns": "InitiativeConnection!",
+        "arguments": {
+          "after": "String",
+          "before": "String",
+          "first": "Int",
+          "includeArchived": "Boolean",
+          "last": "Int",
+          "orderBy": "PaginationOrderBy",
+          "filter": "InitiativeFilter",
+          "sort": "[InitiativeSortInput!]"
+        }
+      },
+      "initiative": {
+        "returns": "Initiative!",
+        "arguments": {
+          "id": "String!"
+        }
+      },
+      "issueLabels": {
+        "returns": "IssueLabelConnection!",
+        "arguments": {
+          "after": "String",
+          "before": "String",
+          "first": "Int",
+          "includeArchived": "Boolean",
+          "last": "Int",
+          "orderBy": "PaginationOrderBy",
+          "filter": "IssueLabelFilter"
+        }
+      },
+      "issueRelations": {
+        "returns": "IssueRelationConnection!",
+        "arguments": {
+          "after": "String",
+          "before": "String",
+          "first": "Int",
+          "includeArchived": "Boolean",
+          "last": "Int",
+          "orderBy": "PaginationOrderBy"
+        }
+      },
+      "workflowStates": {
+        "returns": "WorkflowStateConnection!",
+        "arguments": {
+          "after": "String",
+          "before": "String",
+          "first": "Int",
+          "includeArchived": "Boolean",
+          "last": "Int",
+          "orderBy": "PaginationOrderBy",
+          "filter": "WorkflowStateFilter"
+        }
+      },
+      "issues": {
+        "returns": "IssueConnection!",
+        "arguments": {
+          "after": "String",
+          "before": "String",
+          "first": "Int",
+          "includeArchived": "Boolean",
+          "last": "Int",
+          "orderBy": "PaginationOrderBy",
+          "filter": "IssueFilter",
+          "sort": "[IssueSortInput!]"
+        }
+      },
+      "issue": {
+        "returns": "Issue!",
+        "arguments": {
+          "id": "String!"
+        }
+      },
+      "searchIssues": {
+        "returns": "IssueSearchPayload!",
+        "arguments": {
+          "after": "String",
+          "before": "String",
+          "first": "Int",
+          "includeArchived": "Boolean",
+          "last": "Int",
+          "orderBy": "PaginationOrderBy",
+          "filter": "IssueFilter",
+          "term": "String!",
+          "includeComments": "Boolean",
+          "teamId": "String"
+        }
+      },
+      "projectMilestones": {
+        "returns": "ProjectMilestoneConnection!",
+        "arguments": {
+          "after": "String",
+          "before": "String",
+          "first": "Int",
+          "includeArchived": "Boolean",
+          "last": "Int",
+          "orderBy": "PaginationOrderBy",
+          "filter": "ProjectMilestoneFilter"
+        }
+      },
+      "projectMilestone": {
+        "returns": "ProjectMilestone!",
+        "arguments": {
+          "id": "String!"
+        }
+      },
+      "projectLabels": {
+        "returns": "ProjectLabelConnection!",
+        "arguments": {
+          "after": "String",
+          "before": "String",
+          "first": "Int",
+          "includeArchived": "Boolean",
+          "last": "Int",
+          "orderBy": "PaginationOrderBy",
+          "filter": "ProjectLabelFilter"
+        }
+      },
+      "projectRelations": {
+        "returns": "ProjectRelationConnection!",
+        "arguments": {
+          "after": "String",
+          "before": "String",
+          "first": "Int",
+          "includeArchived": "Boolean",
+          "last": "Int",
+          "orderBy": "PaginationOrderBy"
+        }
+      },
+      "projects": {
+        "returns": "ProjectConnection!",
+        "arguments": {
+          "after": "String",
+          "before": "String",
+          "first": "Int",
+          "includeArchived": "Boolean",
+          "last": "Int",
+          "orderBy": "PaginationOrderBy",
+          "filter": "ProjectFilter",
+          "sort": "[ProjectSortInput!]"
+        }
+      },
+      "project": {
+        "returns": "Project!",
+        "arguments": {
+          "id": "String!"
+        }
+      },
+      "teams": {
+        "returns": "TeamConnection!",
+        "arguments": {
+          "after": "String",
+          "before": "String",
+          "first": "Int",
+          "includeArchived": "Boolean",
+          "last": "Int",
+          "orderBy": "PaginationOrderBy",
+          "filter": "TeamFilter"
+        }
+      },
+      "team": {
+        "returns": "Team!",
+        "arguments": {
+          "id": "String!"
+        }
+      },
+      "users": {
+        "returns": "UserConnection!",
+        "arguments": {
+          "after": "String",
+          "before": "String",
+          "first": "Int",
+          "includeArchived": "Boolean",
+          "last": "Int",
+          "orderBy": "PaginationOrderBy",
+          "filter": "UserFilter",
+          "sort": "[UserSortInput!]",
+          "includeDisabled": "Boolean"
+        }
+      },
+      "user": {
+        "returns": "User!",
+        "arguments": {
+          "id": "String!"
+        }
+      }
+    },
+    "Mutation": {
+      "commentCreate": {
+        "returns": "CommentPayload!",
+        "arguments": {
+          "input": "CommentCreateInput!"
+        }
+      },
+      "commentUpdate": {
+        "returns": "CommentPayload!",
+        "arguments": {
+          "id": "String!",
+          "input": "CommentUpdateInput!",
+          "skipEditedAt": "Boolean"
+        }
+      },
+      "customViewCreate": {
+        "returns": "CustomViewPayload!",
+        "arguments": {
+          "input": "CustomViewCreateInput!"
+        }
+      },
+      "customViewUpdate": {
+        "returns": "CustomViewPayload!",
+        "arguments": {
+          "id": "String!",
+          "input": "CustomViewUpdateInput!"
+        }
+      },
+      "viewPreferencesCreate": {
+        "returns": "ViewPreferencesPayload!",
+        "arguments": {
+          "input": "ViewPreferencesCreateInput!"
+        }
+      },
+      "cycleCreate": {
+        "returns": "CyclePayload!",
+        "arguments": {
+          "input": "CycleCreateInput!"
+        }
+      },
+      "cycleUpdate": {
+        "returns": "CyclePayload!",
+        "arguments": {
+          "id": "String!",
+          "input": "CycleUpdateInput!"
+        }
+      },
+      "documentCreate": {
+        "returns": "DocumentPayload!",
+        "arguments": {
+          "input": "DocumentCreateInput!"
+        }
+      },
+      "documentUpdate": {
+        "returns": "DocumentPayload!",
+        "arguments": {
+          "id": "String!",
+          "input": "DocumentUpdateInput!"
+        }
+      },
+      "issueLabelCreate": {
+        "returns": "IssueLabelPayload!",
+        "arguments": {
+          "input": "IssueLabelCreateInput!",
+          "replaceTeamLabels": "Boolean"
+        }
+      },
+      "issueLabelUpdate": {
+        "returns": "IssueLabelPayload!",
+        "arguments": {
+          "id": "String!",
+          "input": "IssueLabelUpdateInput!",
+          "replaceTeamLabels": "Boolean"
+        }
+      },
+      "issueRelationCreate": {
+        "returns": "IssueRelationPayload!",
+        "arguments": {
+          "input": "IssueRelationCreateInput!"
+        }
+      },
+      "issueRelationUpdate": {
+        "returns": "IssueRelationPayload!",
+        "arguments": {
+          "id": "String!",
+          "input": "IssueRelationUpdateInput!"
+        }
+      },
+      "issueCreate": {
+        "returns": "IssuePayload!",
+        "arguments": {
+          "input": "IssueCreateInput!"
+        }
+      },
+      "issueUpdate": {
+        "returns": "IssuePayload!",
+        "arguments": {
+          "id": "String!",
+          "input": "IssueUpdateInput!"
+        }
+      },
+      "projectLabelCreate": {
+        "returns": "ProjectLabelPayload!",
+        "arguments": {
+          "input": "ProjectLabelCreateInput!"
+        }
+      },
+      "projectLabelUpdate": {
+        "returns": "ProjectLabelPayload!",
+        "arguments": {
+          "id": "String!",
+          "input": "ProjectLabelUpdateInput!"
+        }
+      },
+      "projectRelationCreate": {
+        "returns": "ProjectRelationPayload!",
+        "arguments": {
+          "input": "ProjectRelationCreateInput!"
+        }
+      },
+      "projectRelationUpdate": {
+        "returns": "ProjectRelationPayload!",
+        "arguments": {
+          "id": "String!",
+          "input": "ProjectRelationUpdateInput!"
+        }
+      },
+      "initiativeCreate": {
+        "returns": "InitiativePayload!",
+        "arguments": {
+          "input": "InitiativeCreateInput!"
+        }
+      },
+      "initiativeUpdate": {
+        "returns": "InitiativePayload!",
+        "arguments": {
+          "id": "String!",
+          "input": "InitiativeUpdateInput!"
+        }
+      },
+      "projectMilestoneCreate": {
+        "returns": "ProjectMilestonePayload!",
+        "arguments": {
+          "input": "ProjectMilestoneCreateInput!"
+        }
+      },
+      "projectMilestoneUpdate": {
+        "returns": "ProjectMilestonePayload!",
+        "arguments": {
+          "id": "String!",
+          "input": "ProjectMilestoneUpdateInput!"
+        }
+      },
+      "projectCreate": {
+        "returns": "ProjectPayload!",
+        "arguments": {
+          "input": "ProjectCreateInput!",
+          "slackChannelName": "String"
+        }
+      },
+      "projectUpdate": {
+        "returns": "ProjectPayload!",
+        "arguments": {
+          "id": "String!",
+          "input": "ProjectUpdateInput!"
+        }
+      }
+    }
+  },
+  "inputs": {
+    "CommentCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "body": "String",
+        "bodyData": "JSON",
+        "issueId": "String",
+        "projectUpdateId": "String",
+        "initiativeUpdateId": "String",
+        "postId": "String",
+        "documentContentId": "String",
+        "projectId": "String",
+        "initiativeId": "String",
+        "parentId": "String",
+        "createAsUser": "String",
+        "displayIconUrl": "String",
+        "createdAt": "DateTime",
+        "doNotSubscribeToIssue": "Boolean",
+        "createOnSyncedSlackThread": "Boolean",
+        "quotedText": "String",
+        "subscriberIds": "[String!]"
+      }
+    },
+    "CommentFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "body": "StringComparator",
+        "user": "UserFilter",
+        "issue": "NullableIssueFilter",
+        "projectUpdate": "NullableProjectUpdateFilter",
+        "initiativeUpdate": "NullableInitiativeUpdateFilter",
+        "parent": "NullableCommentFilter",
+        "documentContent": "NullableDocumentContentFilter",
+        "project": "NullableProjectFilter",
+        "initiative": "NullableInitiativeFilter",
+        "reactions": "ReactionCollectionFilter",
+        "needs": "CustomerNeedCollectionFilter",
+        "and": "[CommentFilter!]",
+        "or": "[CommentFilter!]"
+      }
+    },
+    "CommentUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "body": "String",
+        "bodyData": "JSON",
+        "resolvingUserId": "String",
+        "resolvingCommentId": "String",
+        "quotedText": "String",
+        "subscriberIds": "[String!]",
+        "doNotSubscribeToIssue": "Boolean"
+      }
+    },
+    "CustomViewCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "name": "String!",
+        "description": "String",
+        "icon": "String",
+        "color": "String",
+        "teamId": "String",
+        "projectId": "String",
+        "initiativeId": "String",
+        "ownerId": "String",
+        "filterData": "IssueFilter",
+        "projectFilterData": "ProjectFilter",
+        "initiativeFilterData": "InitiativeFilter",
+        "feedItemFilterData": "FeedItemFilter",
+        "shared": "Boolean"
+      }
+    },
+    "CustomViewFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "modelName": "StringComparator",
+        "team": "NullableTeamFilter",
+        "creator": "UserFilter",
+        "shared": "BooleanComparator",
+        "hasFacet": "Boolean",
+        "and": "[CustomViewFilter!]",
+        "or": "[CustomViewFilter!]"
+      }
+    },
+    "CustomViewUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "name": "String",
+        "description": "String",
+        "icon": "String",
+        "color": "String",
+        "teamId": "String",
+        "projectId": "String",
+        "initiativeId": "String",
+        "ownerId": "String",
+        "filterData": "IssueFilter",
+        "projectFilterData": "ProjectFilter",
+        "initiativeFilterData": "InitiativeFilter",
+        "feedItemFilterData": "FeedItemFilter",
+        "shared": "Boolean"
+      }
+    },
+    "CycleCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "name": "String",
+        "description": "String",
+        "teamId": "String!",
+        "startsAt": "DateTime!",
+        "endsAt": "DateTime!",
+        "completedAt": "DateTime"
+      }
+    },
+    "CycleFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "number": "NumberComparator",
+        "name": "StringComparator",
+        "startsAt": "DateComparator",
+        "endsAt": "DateComparator",
+        "completedAt": "DateComparator",
+        "isActive": "BooleanComparator",
+        "isInCooldown": "BooleanComparator",
+        "isNext": "BooleanComparator",
+        "isPrevious": "BooleanComparator",
+        "isFuture": "BooleanComparator",
+        "isPast": "BooleanComparator",
+        "team": "TeamFilter",
+        "issues": "IssueCollectionFilter",
+        "inheritedFromId": "IDComparator",
+        "and": "[CycleFilter!]",
+        "or": "[CycleFilter!]"
+      }
+    },
+    "CycleUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "name": "String",
+        "description": "String",
+        "startsAt": "DateTime",
+        "endsAt": "DateTime",
+        "completedAt": "DateTime"
+      }
+    },
+    "DocumentCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "title": "String!",
+        "icon": "String",
+        "color": "String",
+        "content": "String",
+        "projectId": "String",
+        "initiativeId": "String",
+        "teamId": "String",
+        "issueId": "String",
+        "releaseId": "String",
+        "cycleId": "String",
+        "resourceFolderId": "String",
+        "lastAppliedTemplateId": "String",
+        "ownerId": "String",
+        "sortOrder": "Float",
+        "subscriberIds": "[String!]"
+      }
+    },
+    "DocumentFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "title": "StringComparator",
+        "searchableContent": "ContentComparator",
+        "slugId": "StringComparator",
+        "creator": "UserFilter",
+        "owner": "NullableUserFilter",
+        "project": "ProjectFilter",
+        "issue": "IssueFilter",
+        "initiative": "InitiativeFilter",
+        "team": "NullableTeamFilter",
+        "cycle": "CycleFilter",
+        "release": "ReleaseFilter",
+        "and": "[DocumentFilter!]",
+        "or": "[DocumentFilter!]"
+      }
+    },
+    "DocumentSortInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "title": "DocumentTitleSort",
+        "creator": "DocumentCreatorSort",
+        "project": "DocumentProjectSort",
+        "createdAt": "DocumentCreatedAtSort",
+        "updatedAt": "DocumentUpdatedAtSort"
+      }
+    },
+    "DocumentUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "title": "String",
+        "icon": "String",
+        "color": "String",
+        "content": "String",
+        "projectId": "String",
+        "initiativeId": "String",
+        "teamId": "String",
+        "issueId": "String",
+        "releaseId": "String",
+        "cycleId": "String",
+        "resourceFolderId": "String",
+        "lastAppliedTemplateId": "String",
+        "ownerId": "String",
+        "hiddenAt": "DateTime",
+        "sortOrder": "Float",
+        "trashed": "Boolean",
+        "subscriberIds": "[String!]"
+      }
+    },
+    "InitiativeCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "name": "String!",
+        "description": "String",
+        "ownerId": "String",
+        "leadTeamId": "String",
+        "sortOrder": "Float",
+        "prioritySortOrder": "Float",
+        "color": "String",
+        "icon": "String",
+        "status": "InitiativeStatus",
+        "targetDate": "TimelessDate",
+        "targetDateResolution": "DateResolutionType",
+        "content": "String",
+        "priority": "Int",
+        "labelIds": "[String!]"
+      }
+    },
+    "InitiativeFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "EntityIdentifierIDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "slugId": "StringComparator",
+        "customIdentifier": "NullableStringComparator",
+        "creator": "NullableUserFilter",
+        "status": "StringComparator",
+        "priority": "NullableNumberComparator",
+        "teams": "TeamCollectionFilter",
+        "leadTeam": "NullableTeamFilter",
+        "owner": "NullableUserFilter",
+        "targetDate": "NullableDateComparator",
+        "startedAt": "NullableDateComparator",
+        "completedAt": "NullableDateComparator",
+        "canceledAt": "NullableDateComparator",
+        "health": "StringComparator",
+        "healthWithAge": "StringComparator",
+        "activityType": "StringComparator",
+        "ancestors": "InitiativeCollectionFilter",
+        "labels": "InitiativeLabelCollectionFilter",
+        "initiativeUpdates": "InitiativeUpdatesCollectionFilter",
+        "and": "[InitiativeFilter!]",
+        "or": "[InitiativeFilter!]"
+      }
+    },
+    "InitiativeSortInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "name": "InitiativeNameSort",
+        "manual": "InitiativeManualSort",
+        "updatedAt": "InitiativeUpdatedAtSort",
+        "createdAt": "InitiativeCreatedAtSort",
+        "targetDate": "InitiativeTargetDateSort",
+        "health": "InitiativeHealthSort",
+        "healthUpdatedAt": "InitiativeHealthUpdatedAtSort",
+        "owner": "InitiativeOwnerSort",
+        "priority": "InitiativePrioritySort"
+      }
+    },
+    "InitiativeUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "name": "String",
+        "description": "String",
+        "ownerId": "String",
+        "leadTeamId": "String",
+        "sortOrder": "Float",
+        "prioritySortOrder": "Float",
+        "color": "String",
+        "icon": "String",
+        "targetDate": "TimelessDate",
+        "status": "InitiativeStatus",
+        "targetDateResolution": "DateResolutionType",
+        "trashed": "Boolean",
+        "content": "String",
+        "updateReminderFrequencyInWeeks": "Float",
+        "updateReminderFrequency": "Float",
+        "frequencyResolution": "FrequencyResolutionType",
+        "updateRemindersDay": "Day",
+        "updateRemindersHour": "Int",
+        "priority": "Int",
+        "labelIds": "[String!]",
+        "customIdentifier": "String"
+      }
+    },
+    "IssueCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "title": "String",
+        "description": "String",
+        "descriptionData": "JSON",
+        "assigneeId": "String",
+        "delegateId": "String",
+        "parentId": "String",
+        "priority": "Int",
+        "estimate": "Int",
+        "subscriberIds": "[String!]",
+        "labelIds": "[String!]",
+        "teamId": "String!",
+        "cycleId": "String",
+        "projectId": "String",
+        "projectMilestoneId": "String",
+        "lastAppliedTemplateId": "String",
+        "stateId": "String",
+        "referenceCommentId": "String",
+        "sourceCommentId": "String",
+        "sourcePullRequestCommentId": "String",
+        "sortOrder": "Float",
+        "prioritySortOrder": "Float",
+        "subIssueSortOrder": "Float",
+        "dueDate": "TimelessDate",
+        "createAsUser": "String",
+        "displayIconUrl": "String",
+        "preserveSortOrderOnCreate": "Boolean",
+        "createdAt": "DateTime",
+        "slaBreachesAt": "DateTime",
+        "slaStartedAt": "DateTime",
+        "templateId": "String",
+        "completedAt": "DateTime",
+        "slaType": "SLADayCountType",
+        "useDefaultTemplate": "Boolean",
+        "releaseIds": "[String!]",
+        "inheritsSharedAccess": "Boolean"
+      }
+    },
+    "IssueFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IssueIDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "number": "NumberComparator",
+        "title": "StringComparator",
+        "description": "NullableStringComparator",
+        "priority": "NullableNumberComparator",
+        "estimate": "EstimateComparator",
+        "startedAt": "NullableDateComparator",
+        "triagedAt": "NullableDateComparator",
+        "completedAt": "NullableDateComparator",
+        "canceledAt": "NullableDateComparator",
+        "slaBreachesAt": "NullableDateComparator",
+        "archivedAt": "NullableDateComparator",
+        "autoClosedAt": "NullableDateComparator",
+        "autoArchivedAt": "NullableDateComparator",
+        "addedToCycleAt": "NullableDateComparator",
+        "addedToCyclePeriod": "CyclePeriodComparator",
+        "dueDate": "NullableTimelessDateComparator",
+        "accumulatedStateUpdatedAt": "NullableDateComparator",
+        "snoozedUntilAt": "NullableDateComparator",
+        "assignee": "NullableUserFilter",
+        "delegate": "NullableUserFilter",
+        "lastAppliedTemplate": "NullableTemplateFilter",
+        "recurringIssueTemplate": "NullableTemplateFilter",
+        "sourceMetadata": "SourceMetadataComparator",
+        "creator": "NullableUserFilter",
+        "parent": "NullableIssueFilter",
+        "snoozedBy": "NullableUserFilter",
+        "labels": "IssueLabelCollectionFilter",
+        "subscribers": "UserCollectionFilter",
+        "hasSharedUsers": "RelationExistsComparator",
+        "sharedWith": "UserCollectionFilter",
+        "team": "TeamFilter",
+        "projectMilestone": "NullableProjectMilestoneFilter",
+        "comments": "CommentCollectionFilter",
+        "activity": "ActivityCollectionFilter",
+        "suggestions": "IssueSuggestionCollectionFilter",
+        "cycle": "NullableCycleFilter",
+        "project": "NullableProjectFilter",
+        "state": "WorkflowStateFilter",
+        "children": "IssueCollectionFilter",
+        "attachments": "AttachmentCollectionFilter",
+        "searchableContent": "ContentComparator",
+        "hasRelatedRelations": "RelationExistsComparator",
+        "hasDuplicateRelations": "RelationExistsComparator",
+        "hasBlockedByRelations": "RelationExistsComparator",
+        "hasBlockingRelations": "RelationExistsComparator",
+        "hasSuggestedRelatedIssues": "RelationExistsComparator",
+        "hasSuggestedSimilarIssues": "RelationExistsComparator",
+        "hasSuggestedAssignees": "RelationExistsComparator",
+        "hasSuggestedProjects": "RelationExistsComparator",
+        "hasSuggestedLabels": "RelationExistsComparator",
+        "hasSuggestedTeams": "RelationExistsComparator",
+        "hasActiveAgentSessions": "RelationExistsComparator",
+        "hasDismissedAgentSessions": "RelationExistsComparator",
+        "hasErroredAgentSessions": "RelationExistsComparator",
+        "hasMergedAgentPullRequests": "RelationExistsComparator",
+        "slaStatus": "SlaStatusComparator",
+        "reactions": "ReactionCollectionFilter",
+        "needs": "CustomerNeedCollectionFilter",
+        "releases": "ReleaseCollectionFilter",
+        "customerCount": "NumberComparator",
+        "customerImportantCount": "NumberComparator",
+        "leadTime": "NullableDurationComparator",
+        "cycleTime": "NullableDurationComparator",
+        "ageTime": "NullableDurationComparator",
+        "triageTime": "NullableDurationComparator",
+        "and": "[IssueFilter!]",
+        "or": "[IssueFilter!]"
+      }
+    },
+    "IssueLabelCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "name": "String!",
+        "description": "String",
+        "color": "String",
+        "parentId": "String",
+        "isGroup": "Boolean",
+        "retiredAt": "DateTime",
+        "teamId": "String"
+      }
+    },
+    "IssueLabelFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "isGroup": "BooleanComparator",
+        "creator": "NullableUserFilter",
+        "team": "NullableTeamFilter",
+        "parent": "IssueLabelFilter",
+        "and": "[IssueLabelFilter!]",
+        "or": "[IssueLabelFilter!]"
+      }
+    },
+    "IssueLabelUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "name": "String",
+        "description": "String",
+        "parentId": "String",
+        "color": "String",
+        "isGroup": "Boolean",
+        "retiredAt": "DateTime"
+      }
+    },
+    "IssueRelationCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "type": "IssueRelationType!",
+        "issueId": "String!",
+        "relatedIssueId": "String!"
+      }
+    },
+    "IssueRelationUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "type": "String",
+        "issueId": "String",
+        "relatedIssueId": "String"
+      }
+    },
+    "IssueSortInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "priority": "PrioritySort",
+        "estimate": "EstimateSort",
+        "title": "TitleSort",
+        "label": "LabelSort",
+        "labelGroup": "LabelGroupSort",
+        "slaStatus": "SlaStatusSort",
+        "createdAt": "CreatedAtSort",
+        "updatedAt": "UpdatedAtSort",
+        "completedAt": "CompletedAtSort",
+        "dueDate": "DueDateSort",
+        "accumulatedStateUpdatedAt": "TimeInStatusSort",
+        "cycle": "CycleSort",
+        "milestone": "MilestoneSort",
+        "assignee": "AssigneeSort",
+        "delegate": "DelegateSort",
+        "project": "ProjectSort",
+        "team": "TeamSort",
+        "manual": "ManualSort",
+        "workflowState": "WorkflowStateSort",
+        "customer": "CustomerSort",
+        "customerRevenue": "CustomerRevenueSort",
+        "customerCount": "CustomerCountSort",
+        "customerImportantCount": "CustomerImportantCountSort",
+        "rootIssue": "RootIssueSort",
+        "linkCount": "LinkCountSort",
+        "release": "ReleaseSort"
+      }
+    },
+    "IssueUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "title": "String",
+        "description": "String",
+        "descriptionData": "JSON",
+        "assigneeId": "String",
+        "delegateId": "String",
+        "parentId": "String",
+        "priority": "Int",
+        "estimate": "Int",
+        "subscriberIds": "[String!]",
+        "labelIds": "[String!]",
+        "addedLabelIds": "[String!]",
+        "removedLabelIds": "[String!]",
+        "releaseIds": "[String!]",
+        "addedReleaseIds": "[String!]",
+        "removedReleaseIds": "[String!]",
+        "teamId": "String",
+        "cycleId": "String",
+        "projectId": "String",
+        "projectMilestoneId": "String",
+        "lastAppliedTemplateId": "String",
+        "stateId": "String",
+        "sortOrder": "Float",
+        "prioritySortOrder": "Float",
+        "subIssueSortOrder": "Float",
+        "dueDate": "TimelessDate",
+        "inheritsSharedAccess": "Boolean",
+        "trusted": "Boolean",
+        "trashed": "Boolean",
+        "slaBreachesAt": "DateTime",
+        "slaStartedAt": "DateTime",
+        "snoozedUntilAt": "DateTime",
+        "snoozedById": "String",
+        "slaType": "SLADayCountType",
+        "autoClosedByParentClosing": "Boolean"
+      }
+    },
+    "ProjectCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "name": "String!",
+        "icon": "String",
+        "color": "String",
+        "statusId": "String",
+        "description": "String",
+        "content": "String",
+        "teamIds": "[String!]!",
+        "convertedFromIssueId": "String",
+        "lastAppliedTemplateId": "String",
+        "templateId": "String",
+        "useDefaultTemplate": "Boolean",
+        "leadId": "String",
+        "leadTeamId": "String",
+        "memberIds": "[String!]",
+        "startDate": "TimelessDate",
+        "startDateResolution": "DateResolutionType",
+        "targetDate": "TimelessDate",
+        "targetDateResolution": "DateResolutionType",
+        "sortOrder": "Float",
+        "prioritySortOrder": "Float",
+        "priority": "Int",
+        "labelIds": "[String!]"
+      }
+    },
+    "ProjectFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "EntityIdentifierIDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "slugId": "StringComparator",
+        "customIdentifier": "NullableStringComparator",
+        "state": "StringComparator",
+        "status": "ProjectStatusFilter",
+        "priority": "NullableNumberComparator",
+        "labels": "ProjectLabelCollectionFilter",
+        "searchableContent": "ContentComparator",
+        "startedAt": "NullableDateComparator",
+        "completedAt": "NullableDateComparator",
+        "canceledAt": "NullableDateComparator",
+        "startDate": "NullableDateComparator",
+        "targetDate": "NullableDateComparator",
+        "health": "StringComparator",
+        "healthWithAge": "StringComparator",
+        "activityType": "StringComparator",
+        "hasRelatedRelations": "RelationExistsComparator",
+        "hasDependedOnByRelations": "RelationExistsComparator",
+        "hasDependsOnRelations": "RelationExistsComparator",
+        "hasBlockedByRelations": "RelationExistsComparator",
+        "hasBlockingRelations": "RelationExistsComparator",
+        "hasViolatedRelations": "RelationExistsComparator",
+        "projectUpdates": "ProjectUpdatesCollectionFilter",
+        "creator": "UserFilter",
+        "lead": "NullableUserFilter",
+        "members": "UserCollectionFilter",
+        "issues": "IssueCollectionFilter",
+        "roadmaps": "RoadmapCollectionFilter",
+        "initiatives": "InitiativeCollectionFilter",
+        "projectMilestones": "ProjectMilestoneCollectionFilter",
+        "completedProjectMilestones": "ProjectMilestoneCollectionFilter",
+        "nextProjectMilestone": "ProjectMilestoneFilter",
+        "accessibleTeams": "TeamCollectionFilter",
+        "leadTeam": "NullableTeamFilter",
+        "lastAppliedTemplate": "NullableTemplateFilter",
+        "needs": "CustomerNeedCollectionFilter",
+        "customerCount": "NumberComparator",
+        "customerImportantCount": "NumberComparator",
+        "and": "[ProjectFilter!]",
+        "or": "[ProjectFilter!]"
+      }
+    },
+    "ProjectLabelCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "name": "String!",
+        "description": "String",
+        "color": "String",
+        "parentId": "String",
+        "isGroup": "Boolean",
+        "retiredAt": "DateTime",
+        "teamId": "String"
+      }
+    },
+    "ProjectLabelFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "isGroup": "BooleanComparator",
+        "creator": "NullableUserFilter",
+        "parent": "ProjectLabelFilter",
+        "and": "[ProjectLabelFilter!]",
+        "or": "[ProjectLabelFilter!]"
+      }
+    },
+    "ProjectLabelUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "name": "String",
+        "description": "String",
+        "parentId": "String",
+        "color": "String",
+        "isGroup": "Boolean",
+        "retiredAt": "DateTime"
+      }
+    },
+    "ProjectMilestoneCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "name": "String!",
+        "description": "String",
+        "descriptionData": "JSONObject",
+        "targetDate": "TimelessDate",
+        "projectId": "String!",
+        "sortOrder": "Float"
+      }
+    },
+    "ProjectMilestoneFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "NullableStringComparator",
+        "targetDate": "NullableDateComparator",
+        "project": "NullableProjectFilter",
+        "and": "[ProjectMilestoneFilter!]",
+        "or": "[ProjectMilestoneFilter!]"
+      }
+    },
+    "ProjectMilestoneUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "name": "String",
+        "description": "String",
+        "descriptionData": "JSONObject",
+        "targetDate": "TimelessDate",
+        "sortOrder": "Float",
+        "projectId": "String"
+      }
+    },
+    "ProjectRelationCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "type": "String!",
+        "projectId": "String!",
+        "projectMilestoneId": "String",
+        "anchorType": "String!",
+        "relatedProjectId": "String!",
+        "relatedProjectMilestoneId": "String",
+        "relatedAnchorType": "String!"
+      }
+    },
+    "ProjectRelationUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "type": "String",
+        "projectId": "String",
+        "projectMilestoneId": "String",
+        "anchorType": "String",
+        "relatedProjectId": "String",
+        "relatedProjectMilestoneId": "String",
+        "relatedAnchorType": "String"
+      }
+    },
+    "ProjectSortInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "name": "ProjectNameSort",
+        "status": "ProjectStatusSort",
+        "priority": "ProjectPrioritySort",
+        "manual": "ProjectManualSort",
+        "targetDate": "TargetDateSort",
+        "startDate": "StartDateSort",
+        "createdAt": "ProjectCreatedAtSort",
+        "updatedAt": "ProjectUpdatedAtSort",
+        "health": "ProjectHealthSort",
+        "lead": "ProjectLeadSort"
+      }
+    },
+    "ProjectUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "statusId": "String",
+        "name": "String",
+        "description": "String",
+        "content": "String",
+        "convertedFromIssueId": "String",
+        "lastAppliedTemplateId": "String",
+        "icon": "String",
+        "color": "String",
+        "teamIds": "[String!]",
+        "projectUpdateRemindersPausedUntilAt": "DateTime",
+        "updateReminderFrequencyInWeeks": "Float",
+        "updateReminderFrequency": "Float",
+        "frequencyResolution": "FrequencyResolutionType",
+        "updateRemindersDay": "Day",
+        "updateRemindersHour": "Int",
+        "leadId": "String",
+        "leadTeamId": "String",
+        "memberIds": "[String!]",
+        "startDate": "TimelessDate",
+        "startDateResolution": "DateResolutionType",
+        "targetDate": "TimelessDate",
+        "targetDateResolution": "DateResolutionType",
+        "completedAt": "DateTime",
+        "canceledAt": "DateTime",
+        "slackNewIssue": "Boolean",
+        "slackIssueComments": "Boolean",
+        "slackIssueStatuses": "Boolean",
+        "sortOrder": "Float",
+        "prioritySortOrder": "Float",
+        "trashed": "Boolean",
+        "priority": "Int",
+        "labelIds": "[String!]"
+      }
+    },
+    "TeamFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "key": "StringComparator",
+        "description": "NullableStringComparator",
+        "private": "BooleanComparator",
+        "visibility": "TeamVisibilityComparator",
+        "members": "UserCollectionFilter",
+        "users": "UserCollectionFilter",
+        "owners": "UserCollectionFilter",
+        "retiredAt": "NullableDateComparator",
+        "issues": "IssueCollectionFilter",
+        "parent": "NullableTeamFilter",
+        "ancestors": "TeamCollectionFilter",
+        "restrictedBy": "NullableTeamFilter",
+        "releasePipelines": "ReleasePipelineCollectionFilter",
+        "and": "[TeamFilter!]",
+        "or": "[TeamFilter!]"
+      }
+    },
+    "UserFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "displayName": "StringComparator",
+        "email": "StringComparator",
+        "active": "BooleanComparator",
+        "assignedIssues": "IssueCollectionFilter",
+        "admin": "BooleanComparator",
+        "owner": "BooleanComparator",
+        "invited": "BooleanComparator",
+        "isInvited": "BooleanComparator",
+        "app": "BooleanComparator",
+        "isMe": "BooleanComparator",
+        "and": "[UserFilter!]",
+        "or": "[UserFilter!]"
+      }
+    },
+    "UserSortInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "name": "UserNameSort",
+        "displayName": "UserDisplayNameSort"
+      }
+    },
+    "ViewPreferencesCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "type": "ViewPreferencesType!",
+        "viewType": "ViewType!",
+        "preferences": "JSONObject!",
+        "insights": "JSONObject",
+        "teamId": "String",
+        "projectId": "String",
+        "initiativeId": "String",
+        "labelId": "String",
+        "projectLabelId": "String",
+        "initiativeLabelId": "String",
+        "releasePipelineId": "String",
+        "customViewId": "String",
+        "userId": "String"
+      }
+    },
+    "WorkflowStateFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "description": "StringComparator",
+        "position": "NumberComparator",
+        "type": "StringComparator",
+        "team": "TeamFilter",
+        "issues": "IssueCollectionFilter",
+        "and": "[WorkflowStateFilter!]",
+        "or": "[WorkflowStateFilter!]"
+      }
+    },
+    "IDComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "ID",
+        "neq": "ID",
+        "in": "[ID!]",
+        "nin": "[ID!]"
+      }
+    },
+    "DateComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "DateTimeOrDuration",
+        "neq": "DateTimeOrDuration",
+        "in": "[DateTimeOrDuration!]",
+        "nin": "[DateTimeOrDuration!]",
+        "lt": "DateTimeOrDuration",
+        "lte": "DateTimeOrDuration",
+        "gt": "DateTimeOrDuration",
+        "gte": "DateTimeOrDuration"
+      }
+    },
+    "StringComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "String",
+        "neq": "String",
+        "in": "[String!]",
+        "nin": "[String!]",
+        "eqIgnoreCase": "String",
+        "neqIgnoreCase": "String",
+        "startsWith": "String",
+        "startsWithIgnoreCase": "String",
+        "notStartsWith": "String",
+        "endsWith": "String",
+        "notEndsWith": "String",
+        "contains": "String",
+        "containsIgnoreCase": "String",
+        "notContains": "String",
+        "notContainsIgnoreCase": "String",
+        "containsIgnoreCaseAndAccent": "String"
+      }
+    },
+    "NullableIssueFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IssueIDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "number": "NumberComparator",
+        "title": "StringComparator",
+        "description": "NullableStringComparator",
+        "priority": "NullableNumberComparator",
+        "estimate": "EstimateComparator",
+        "startedAt": "NullableDateComparator",
+        "triagedAt": "NullableDateComparator",
+        "completedAt": "NullableDateComparator",
+        "canceledAt": "NullableDateComparator",
+        "slaBreachesAt": "NullableDateComparator",
+        "archivedAt": "NullableDateComparator",
+        "autoClosedAt": "NullableDateComparator",
+        "autoArchivedAt": "NullableDateComparator",
+        "addedToCycleAt": "NullableDateComparator",
+        "addedToCyclePeriod": "CyclePeriodComparator",
+        "dueDate": "NullableTimelessDateComparator",
+        "accumulatedStateUpdatedAt": "NullableDateComparator",
+        "snoozedUntilAt": "NullableDateComparator",
+        "assignee": "NullableUserFilter",
+        "delegate": "NullableUserFilter",
+        "lastAppliedTemplate": "NullableTemplateFilter",
+        "recurringIssueTemplate": "NullableTemplateFilter",
+        "sourceMetadata": "SourceMetadataComparator",
+        "creator": "NullableUserFilter",
+        "parent": "NullableIssueFilter",
+        "snoozedBy": "NullableUserFilter",
+        "labels": "IssueLabelCollectionFilter",
+        "subscribers": "UserCollectionFilter",
+        "hasSharedUsers": "RelationExistsComparator",
+        "sharedWith": "UserCollectionFilter",
+        "team": "TeamFilter",
+        "projectMilestone": "NullableProjectMilestoneFilter",
+        "comments": "CommentCollectionFilter",
+        "activity": "ActivityCollectionFilter",
+        "suggestions": "IssueSuggestionCollectionFilter",
+        "cycle": "NullableCycleFilter",
+        "project": "NullableProjectFilter",
+        "state": "WorkflowStateFilter",
+        "children": "IssueCollectionFilter",
+        "attachments": "AttachmentCollectionFilter",
+        "searchableContent": "ContentComparator",
+        "hasRelatedRelations": "RelationExistsComparator",
+        "hasDuplicateRelations": "RelationExistsComparator",
+        "hasBlockedByRelations": "RelationExistsComparator",
+        "hasBlockingRelations": "RelationExistsComparator",
+        "hasSuggestedRelatedIssues": "RelationExistsComparator",
+        "hasSuggestedSimilarIssues": "RelationExistsComparator",
+        "hasSuggestedAssignees": "RelationExistsComparator",
+        "hasSuggestedProjects": "RelationExistsComparator",
+        "hasSuggestedLabels": "RelationExistsComparator",
+        "hasSuggestedTeams": "RelationExistsComparator",
+        "hasActiveAgentSessions": "RelationExistsComparator",
+        "hasDismissedAgentSessions": "RelationExistsComparator",
+        "hasErroredAgentSessions": "RelationExistsComparator",
+        "hasMergedAgentPullRequests": "RelationExistsComparator",
+        "slaStatus": "SlaStatusComparator",
+        "reactions": "ReactionCollectionFilter",
+        "needs": "CustomerNeedCollectionFilter",
+        "releases": "ReleaseCollectionFilter",
+        "customerCount": "NumberComparator",
+        "customerImportantCount": "NumberComparator",
+        "leadTime": "NullableDurationComparator",
+        "cycleTime": "NullableDurationComparator",
+        "ageTime": "NullableDurationComparator",
+        "triageTime": "NullableDurationComparator",
+        "null": "Boolean",
+        "and": "[NullableIssueFilter!]",
+        "or": "[NullableIssueFilter!]"
+      }
+    },
+    "NullableProjectUpdateFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "user": "UserFilter",
+        "project": "ProjectFilter",
+        "reactions": "ReactionCollectionFilter",
+        "null": "Boolean",
+        "and": "[NullableProjectUpdateFilter!]",
+        "or": "[NullableProjectUpdateFilter!]"
+      }
+    },
+    "NullableInitiativeUpdateFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "user": "UserFilter",
+        "initiative": "InitiativeFilter",
+        "reactions": "ReactionCollectionFilter",
+        "null": "Boolean",
+        "and": "[NullableInitiativeUpdateFilter!]",
+        "or": "[NullableInitiativeUpdateFilter!]"
+      }
+    },
+    "NullableCommentFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "body": "StringComparator",
+        "user": "UserFilter",
+        "issue": "NullableIssueFilter",
+        "projectUpdate": "NullableProjectUpdateFilter",
+        "initiativeUpdate": "NullableInitiativeUpdateFilter",
+        "parent": "NullableCommentFilter",
+        "documentContent": "NullableDocumentContentFilter",
+        "project": "NullableProjectFilter",
+        "initiative": "NullableInitiativeFilter",
+        "reactions": "ReactionCollectionFilter",
+        "needs": "CustomerNeedCollectionFilter",
+        "null": "Boolean",
+        "and": "[NullableCommentFilter!]",
+        "or": "[NullableCommentFilter!]"
+      }
+    },
+    "NullableDocumentContentFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "content": "NullableStringComparator",
+        "project": "ProjectFilter",
+        "initiative": "InitiativeFilter",
+        "issue": "IssueFilter",
+        "document": "DocumentFilter",
+        "projectMilestone": "ProjectMilestoneFilter",
+        "null": "Boolean",
+        "and": "[NullableDocumentContentFilter!]",
+        "or": "[NullableDocumentContentFilter!]"
+      }
+    },
+    "NullableProjectFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "EntityIdentifierIDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "slugId": "StringComparator",
+        "customIdentifier": "NullableStringComparator",
+        "state": "StringComparator",
+        "status": "ProjectStatusFilter",
+        "priority": "NullableNumberComparator",
+        "labels": "ProjectLabelCollectionFilter",
+        "searchableContent": "ContentComparator",
+        "startedAt": "NullableDateComparator",
+        "completedAt": "NullableDateComparator",
+        "canceledAt": "NullableDateComparator",
+        "startDate": "NullableDateComparator",
+        "targetDate": "NullableDateComparator",
+        "health": "StringComparator",
+        "healthWithAge": "StringComparator",
+        "activityType": "StringComparator",
+        "hasRelatedRelations": "RelationExistsComparator",
+        "hasDependedOnByRelations": "RelationExistsComparator",
+        "hasDependsOnRelations": "RelationExistsComparator",
+        "hasBlockedByRelations": "RelationExistsComparator",
+        "hasBlockingRelations": "RelationExistsComparator",
+        "hasViolatedRelations": "RelationExistsComparator",
+        "projectUpdates": "ProjectUpdatesCollectionFilter",
+        "creator": "UserFilter",
+        "lead": "NullableUserFilter",
+        "members": "UserCollectionFilter",
+        "issues": "IssueCollectionFilter",
+        "roadmaps": "RoadmapCollectionFilter",
+        "initiatives": "InitiativeCollectionFilter",
+        "projectMilestones": "ProjectMilestoneCollectionFilter",
+        "completedProjectMilestones": "ProjectMilestoneCollectionFilter",
+        "nextProjectMilestone": "ProjectMilestoneFilter",
+        "accessibleTeams": "TeamCollectionFilter",
+        "leadTeam": "NullableTeamFilter",
+        "lastAppliedTemplate": "NullableTemplateFilter",
+        "needs": "CustomerNeedCollectionFilter",
+        "customerCount": "NumberComparator",
+        "customerImportantCount": "NumberComparator",
+        "null": "Boolean",
+        "and": "[NullableProjectFilter!]",
+        "or": "[NullableProjectFilter!]"
+      }
+    },
+    "NullableInitiativeFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "EntityIdentifierIDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "slugId": "StringComparator",
+        "customIdentifier": "NullableStringComparator",
+        "creator": "NullableUserFilter",
+        "status": "StringComparator",
+        "priority": "NullableNumberComparator",
+        "teams": "TeamCollectionFilter",
+        "leadTeam": "NullableTeamFilter",
+        "owner": "NullableUserFilter",
+        "targetDate": "NullableDateComparator",
+        "startedAt": "NullableDateComparator",
+        "completedAt": "NullableDateComparator",
+        "canceledAt": "NullableDateComparator",
+        "health": "StringComparator",
+        "healthWithAge": "StringComparator",
+        "activityType": "StringComparator",
+        "ancestors": "InitiativeCollectionFilter",
+        "labels": "InitiativeLabelCollectionFilter",
+        "initiativeUpdates": "InitiativeUpdatesCollectionFilter",
+        "null": "Boolean",
+        "and": "[NullableInitiativeFilter!]",
+        "or": "[NullableInitiativeFilter!]"
+      }
+    },
+    "ReactionCollectionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "emoji": "StringComparator",
+        "customEmojiId": "IDComparator",
+        "and": "[ReactionCollectionFilter!]",
+        "or": "[ReactionCollectionFilter!]",
+        "some": "ReactionFilter",
+        "every": "ReactionFilter",
+        "length": "NumberComparator"
+      }
+    },
+    "CustomerNeedCollectionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "priority": "NumberComparator",
+        "project": "NullableProjectFilter",
+        "issue": "NullableIssueFilter",
+        "comment": "NullableCommentFilter",
+        "customer": "NullableCustomerFilter",
+        "and": "[CustomerNeedCollectionFilter!]",
+        "or": "[CustomerNeedCollectionFilter!]",
+        "some": "CustomerNeedFilter",
+        "every": "CustomerNeedFilter",
+        "length": "NumberComparator"
+      }
+    },
+    "FeedItemFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "author": "UserFilter",
+        "updateType": "StringComparator",
+        "updateHealth": "StringComparator",
+        "projectUpdate": "ProjectUpdateFilter",
+        "relatedInitiatives": "InitiativeCollectionFilter",
+        "relatedTeams": "TeamCollectionFilter",
+        "and": "[FeedItemFilter!]",
+        "or": "[FeedItemFilter!]"
+      }
+    },
+    "NullableTeamFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "key": "StringComparator",
+        "description": "NullableStringComparator",
+        "private": "BooleanComparator",
+        "visibility": "TeamVisibilityComparator",
+        "members": "UserCollectionFilter",
+        "users": "UserCollectionFilter",
+        "owners": "UserCollectionFilter",
+        "retiredAt": "NullableDateComparator",
+        "issues": "IssueCollectionFilter",
+        "parent": "NullableTeamFilter",
+        "ancestors": "TeamCollectionFilter",
+        "restrictedBy": "NullableTeamFilter",
+        "releasePipelines": "ReleasePipelineCollectionFilter",
+        "null": "Boolean",
+        "and": "[NullableTeamFilter!]",
+        "or": "[NullableTeamFilter!]"
+      }
+    },
+    "BooleanComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "Boolean",
+        "neq": "Boolean"
+      }
+    },
+    "NumberComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "Float",
+        "neq": "Float",
+        "in": "[Float!]",
+        "nin": "[Float!]",
+        "lt": "Float",
+        "lte": "Float",
+        "gt": "Float",
+        "gte": "Float"
+      }
+    },
+    "IssueCollectionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IssueIDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "number": "NumberComparator",
+        "title": "StringComparator",
+        "description": "NullableStringComparator",
+        "priority": "NullableNumberComparator",
+        "estimate": "EstimateComparator",
+        "startedAt": "NullableDateComparator",
+        "triagedAt": "NullableDateComparator",
+        "completedAt": "NullableDateComparator",
+        "canceledAt": "NullableDateComparator",
+        "slaBreachesAt": "NullableDateComparator",
+        "archivedAt": "NullableDateComparator",
+        "autoClosedAt": "NullableDateComparator",
+        "autoArchivedAt": "NullableDateComparator",
+        "addedToCycleAt": "NullableDateComparator",
+        "addedToCyclePeriod": "CyclePeriodComparator",
+        "dueDate": "NullableTimelessDateComparator",
+        "accumulatedStateUpdatedAt": "NullableDateComparator",
+        "snoozedUntilAt": "NullableDateComparator",
+        "assignee": "NullableUserFilter",
+        "delegate": "NullableUserFilter",
+        "lastAppliedTemplate": "NullableTemplateFilter",
+        "recurringIssueTemplate": "NullableTemplateFilter",
+        "sourceMetadata": "SourceMetadataComparator",
+        "creator": "NullableUserFilter",
+        "parent": "NullableIssueFilter",
+        "snoozedBy": "NullableUserFilter",
+        "labels": "IssueLabelCollectionFilter",
+        "subscribers": "UserCollectionFilter",
+        "hasSharedUsers": "RelationExistsComparator",
+        "sharedWith": "UserCollectionFilter",
+        "team": "TeamFilter",
+        "projectMilestone": "NullableProjectMilestoneFilter",
+        "comments": "CommentCollectionFilter",
+        "activity": "ActivityCollectionFilter",
+        "suggestions": "IssueSuggestionCollectionFilter",
+        "cycle": "NullableCycleFilter",
+        "project": "NullableProjectFilter",
+        "state": "WorkflowStateFilter",
+        "children": "IssueCollectionFilter",
+        "attachments": "AttachmentCollectionFilter",
+        "searchableContent": "ContentComparator",
+        "hasRelatedRelations": "RelationExistsComparator",
+        "hasDuplicateRelations": "RelationExistsComparator",
+        "hasBlockedByRelations": "RelationExistsComparator",
+        "hasBlockingRelations": "RelationExistsComparator",
+        "hasSuggestedRelatedIssues": "RelationExistsComparator",
+        "hasSuggestedSimilarIssues": "RelationExistsComparator",
+        "hasSuggestedAssignees": "RelationExistsComparator",
+        "hasSuggestedProjects": "RelationExistsComparator",
+        "hasSuggestedLabels": "RelationExistsComparator",
+        "hasSuggestedTeams": "RelationExistsComparator",
+        "hasActiveAgentSessions": "RelationExistsComparator",
+        "hasDismissedAgentSessions": "RelationExistsComparator",
+        "hasErroredAgentSessions": "RelationExistsComparator",
+        "hasMergedAgentPullRequests": "RelationExistsComparator",
+        "slaStatus": "SlaStatusComparator",
+        "reactions": "ReactionCollectionFilter",
+        "needs": "CustomerNeedCollectionFilter",
+        "releases": "ReleaseCollectionFilter",
+        "customerCount": "NumberComparator",
+        "customerImportantCount": "NumberComparator",
+        "leadTime": "NullableDurationComparator",
+        "cycleTime": "NullableDurationComparator",
+        "ageTime": "NullableDurationComparator",
+        "triageTime": "NullableDurationComparator",
+        "and": "[IssueCollectionFilter!]",
+        "or": "[IssueCollectionFilter!]",
+        "some": "IssueFilter",
+        "every": "IssueFilter",
+        "length": "NumberComparator"
+      }
+    },
+    "ContentComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "contains": "String",
+        "notContains": "String"
+      }
+    },
+    "NullableUserFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "displayName": "StringComparator",
+        "email": "StringComparator",
+        "active": "BooleanComparator",
+        "assignedIssues": "IssueCollectionFilter",
+        "admin": "BooleanComparator",
+        "owner": "BooleanComparator",
+        "invited": "BooleanComparator",
+        "isInvited": "BooleanComparator",
+        "app": "BooleanComparator",
+        "isMe": "BooleanComparator",
+        "null": "Boolean",
+        "and": "[NullableUserFilter!]",
+        "or": "[NullableUserFilter!]"
+      }
+    },
+    "ReleaseFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "version": "StringComparator",
+        "pipeline": "ReleasePipelineFilter",
+        "stage": "ReleaseStageFilter",
+        "completedAt": "NullableDateComparator",
+        "hasReleaseNotes": "BooleanComparator",
+        "and": "[ReleaseFilter!]",
+        "or": "[ReleaseFilter!]"
+      }
+    },
+    "DocumentTitleSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "DocumentCreatorSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "DocumentProjectSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "DocumentCreatedAtSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "DocumentUpdatedAtSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "EntityIdentifierIDComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "ID",
+        "neq": "ID",
+        "in": "[ID!]",
+        "nin": "[ID!]"
+      }
+    },
+    "NullableStringComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "String",
+        "neq": "String",
+        "in": "[String!]",
+        "nin": "[String!]",
+        "null": "Boolean",
+        "eqIgnoreCase": "String",
+        "neqIgnoreCase": "String",
+        "startsWith": "String",
+        "startsWithIgnoreCase": "String",
+        "notStartsWith": "String",
+        "endsWith": "String",
+        "notEndsWith": "String",
+        "contains": "String",
+        "containsIgnoreCase": "String",
+        "notContains": "String",
+        "notContainsIgnoreCase": "String",
+        "containsIgnoreCaseAndAccent": "String"
+      }
+    },
+    "NullableNumberComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "Float",
+        "neq": "Float",
+        "in": "[Float!]",
+        "nin": "[Float!]",
+        "null": "Boolean",
+        "lt": "Float",
+        "lte": "Float",
+        "gt": "Float",
+        "gte": "Float"
+      }
+    },
+    "TeamCollectionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "and": "[TeamCollectionFilter!]",
+        "or": "[TeamCollectionFilter!]",
+        "some": "TeamFilter",
+        "every": "TeamFilter",
+        "length": "NumberComparator",
+        "parent": "NullableTeamFilter",
+        "ancestors": "TeamCollectionFilter"
+      }
+    },
+    "NullableDateComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "DateTimeOrDuration",
+        "neq": "DateTimeOrDuration",
+        "in": "[DateTimeOrDuration!]",
+        "nin": "[DateTimeOrDuration!]",
+        "null": "Boolean",
+        "lt": "DateTimeOrDuration",
+        "lte": "DateTimeOrDuration",
+        "gt": "DateTimeOrDuration",
+        "gte": "DateTimeOrDuration"
+      }
+    },
+    "InitiativeCollectionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "EntityIdentifierIDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "slugId": "StringComparator",
+        "customIdentifier": "NullableStringComparator",
+        "creator": "NullableUserFilter",
+        "status": "StringComparator",
+        "priority": "NullableNumberComparator",
+        "teams": "TeamCollectionFilter",
+        "leadTeam": "NullableTeamFilter",
+        "owner": "NullableUserFilter",
+        "targetDate": "NullableDateComparator",
+        "startedAt": "NullableDateComparator",
+        "completedAt": "NullableDateComparator",
+        "canceledAt": "NullableDateComparator",
+        "health": "StringComparator",
+        "healthWithAge": "StringComparator",
+        "activityType": "StringComparator",
+        "ancestors": "InitiativeCollectionFilter",
+        "labels": "InitiativeLabelCollectionFilter",
+        "initiativeUpdates": "InitiativeUpdatesCollectionFilter",
+        "and": "[InitiativeCollectionFilter!]",
+        "or": "[InitiativeCollectionFilter!]",
+        "some": "InitiativeFilter",
+        "every": "InitiativeFilter",
+        "length": "NumberComparator"
+      }
+    },
+    "InitiativeLabelCollectionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "isGroup": "BooleanComparator",
+        "creator": "NullableUserFilter",
+        "parent": "InitiativeLabelFilter",
+        "null": "Boolean",
+        "and": "[InitiativeLabelCollectionFilter!]",
+        "or": "[InitiativeLabelCollectionFilter!]",
+        "some": "InitiativeLabelCollectionFilter",
+        "every": "InitiativeLabelFilter",
+        "length": "NumberComparator"
+      }
+    },
+    "InitiativeUpdatesCollectionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "and": "[InitiativeUpdatesCollectionFilter!]",
+        "or": "[InitiativeUpdatesCollectionFilter!]",
+        "some": "InitiativeUpdatesFilter",
+        "every": "InitiativeUpdatesFilter",
+        "length": "NumberComparator"
+      }
+    },
+    "InitiativeNameSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "InitiativeManualSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "InitiativeUpdatedAtSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "InitiativeCreatedAtSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "InitiativeTargetDateSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "InitiativeHealthSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "InitiativeHealthUpdatedAtSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "InitiativeOwnerSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "InitiativePrioritySort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder",
+        "noPriorityFirst": "Boolean"
+      }
+    },
+    "IssueIDComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "ID",
+        "neq": "ID",
+        "in": "[ID!]",
+        "nin": "[ID!]"
+      }
+    },
+    "EstimateComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "Float",
+        "neq": "Float",
+        "in": "[Float!]",
+        "nin": "[Float!]",
+        "null": "Boolean",
+        "lt": "Float",
+        "lte": "Float",
+        "gt": "Float",
+        "gte": "Float",
+        "or": "[NullableNumberComparator!]",
+        "and": "[NullableNumberComparator!]"
+      }
+    },
+    "CyclePeriodComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "CyclePeriod",
+        "neq": "CyclePeriod",
+        "in": "[CyclePeriod!]",
+        "nin": "[CyclePeriod!]",
+        "null": "Boolean"
+      }
+    },
+    "NullableTimelessDateComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "TimelessDateOrDuration",
+        "neq": "TimelessDateOrDuration",
+        "in": "[TimelessDateOrDuration!]",
+        "nin": "[TimelessDateOrDuration!]",
+        "null": "Boolean",
+        "lt": "TimelessDateOrDuration",
+        "lte": "TimelessDateOrDuration",
+        "gt": "TimelessDateOrDuration",
+        "gte": "TimelessDateOrDuration"
+      }
+    },
+    "NullableTemplateFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "type": "StringComparator",
+        "inheritedFromId": "IDComparator",
+        "null": "Boolean",
+        "and": "[NullableTemplateFilter!]",
+        "or": "[NullableTemplateFilter!]"
+      }
+    },
+    "SourceMetadataComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "null": "Boolean",
+        "subType": "SubTypeComparator",
+        "workflowDefinitionId": "WorkflowDefinitionIdComparator",
+        "salesforceMetadata": "SalesforceMetadataIntegrationComparator"
+      }
+    },
+    "IssueLabelCollectionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "isGroup": "BooleanComparator",
+        "creator": "NullableUserFilter",
+        "team": "NullableTeamFilter",
+        "parent": "IssueLabelFilter",
+        "null": "Boolean",
+        "and": "[IssueLabelCollectionFilter!]",
+        "or": "[IssueLabelCollectionFilter!]",
+        "some": "IssueLabelFilter",
+        "every": "IssueLabelFilter",
+        "length": "NumberComparator"
+      }
+    },
+    "UserCollectionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "displayName": "StringComparator",
+        "email": "StringComparator",
+        "active": "BooleanComparator",
+        "assignedIssues": "IssueCollectionFilter",
+        "admin": "BooleanComparator",
+        "owner": "BooleanComparator",
+        "invited": "BooleanComparator",
+        "isInvited": "BooleanComparator",
+        "app": "BooleanComparator",
+        "isMe": "BooleanComparator",
+        "and": "[UserCollectionFilter!]",
+        "or": "[UserCollectionFilter!]",
+        "some": "UserFilter",
+        "every": "UserFilter",
+        "length": "NumberComparator"
+      }
+    },
+    "RelationExistsComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "Boolean",
+        "neq": "Boolean"
+      }
+    },
+    "NullableProjectMilestoneFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "NullableStringComparator",
+        "targetDate": "NullableDateComparator",
+        "project": "NullableProjectFilter",
+        "null": "Boolean",
+        "and": "[NullableProjectMilestoneFilter!]",
+        "or": "[NullableProjectMilestoneFilter!]"
+      }
+    },
+    "CommentCollectionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "body": "StringComparator",
+        "user": "UserFilter",
+        "issue": "NullableIssueFilter",
+        "projectUpdate": "NullableProjectUpdateFilter",
+        "initiativeUpdate": "NullableInitiativeUpdateFilter",
+        "parent": "NullableCommentFilter",
+        "documentContent": "NullableDocumentContentFilter",
+        "project": "NullableProjectFilter",
+        "initiative": "NullableInitiativeFilter",
+        "reactions": "ReactionCollectionFilter",
+        "needs": "CustomerNeedCollectionFilter",
+        "and": "[CommentCollectionFilter!]",
+        "or": "[CommentCollectionFilter!]",
+        "some": "CommentFilter",
+        "every": "CommentFilter",
+        "length": "NumberComparator"
+      }
+    },
+    "ActivityCollectionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "user": "UserFilter",
+        "and": "[ActivityCollectionFilter!]",
+        "or": "[ActivityCollectionFilter!]",
+        "some": "ActivityFilter",
+        "every": "ActivityFilter",
+        "length": "NumberComparator"
+      }
+    },
+    "IssueSuggestionCollectionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "type": "StringComparator",
+        "state": "StringComparator",
+        "suggestedUser": "NullableUserFilter",
+        "suggestedProject": "NullableProjectFilter",
+        "suggestedTeam": "NullableTeamFilter",
+        "suggestedLabel": "IssueLabelFilter",
+        "and": "[IssueSuggestionCollectionFilter!]",
+        "or": "[IssueSuggestionCollectionFilter!]",
+        "some": "IssueSuggestionFilter",
+        "every": "IssueSuggestionFilter",
+        "length": "NumberComparator"
+      }
+    },
+    "NullableCycleFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "number": "NumberComparator",
+        "name": "StringComparator",
+        "startsAt": "DateComparator",
+        "endsAt": "DateComparator",
+        "completedAt": "DateComparator",
+        "isActive": "BooleanComparator",
+        "isInCooldown": "BooleanComparator",
+        "isNext": "BooleanComparator",
+        "isPrevious": "BooleanComparator",
+        "isFuture": "BooleanComparator",
+        "isPast": "BooleanComparator",
+        "team": "TeamFilter",
+        "issues": "IssueCollectionFilter",
+        "inheritedFromId": "IDComparator",
+        "null": "Boolean",
+        "and": "[NullableCycleFilter!]",
+        "or": "[NullableCycleFilter!]"
+      }
+    },
+    "AttachmentCollectionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "title": "StringComparator",
+        "subtitle": "NullableStringComparator",
+        "url": "StringComparator",
+        "creator": "NullableUserFilter",
+        "sourceType": "SourceTypeComparator",
+        "and": "[AttachmentCollectionFilter!]",
+        "or": "[AttachmentCollectionFilter!]",
+        "some": "AttachmentFilter",
+        "every": "AttachmentFilter",
+        "length": "NumberComparator"
+      }
+    },
+    "SlaStatusComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "SlaStatus",
+        "neq": "SlaStatus",
+        "in": "[SlaStatus!]",
+        "nin": "[SlaStatus!]",
+        "null": "Boolean"
+      }
+    },
+    "ReleaseCollectionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "version": "StringComparator",
+        "pipeline": "ReleasePipelineFilter",
+        "stage": "ReleaseStageFilter",
+        "completedAt": "NullableDateComparator",
+        "hasReleaseNotes": "BooleanComparator",
+        "and": "[ReleaseCollectionFilter!]",
+        "or": "[ReleaseCollectionFilter!]",
+        "some": "ReleaseFilter",
+        "every": "ReleaseFilter",
+        "length": "NumberComparator"
+      }
+    },
+    "NullableDurationComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "Duration",
+        "neq": "Duration",
+        "in": "[Duration!]",
+        "nin": "[Duration!]",
+        "null": "Boolean",
+        "lt": "Duration",
+        "lte": "Duration",
+        "gt": "Duration",
+        "gte": "Duration"
+      }
+    },
+    "PrioritySort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder",
+        "noPriorityFirst": "Boolean",
+        "usePrioritySortOrderTiebreaker": "Boolean"
+      }
+    },
+    "EstimateSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "TitleSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "LabelSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "LabelGroupSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder",
+        "labelGroupId": "String!"
+      }
+    },
+    "SlaStatusSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "CreatedAtSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "UpdatedAtSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "CompletedAtSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "DueDateSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "TimeInStatusSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "CycleSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder",
+        "currentCycleFirst": "Boolean"
+      }
+    },
+    "MilestoneSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "AssigneeSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "DelegateSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "ProjectSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "TeamSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "ManualSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "WorkflowStateSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder",
+        "closedIssuesOrderedByRecency": "Boolean"
+      }
+    },
+    "CustomerSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "CustomerRevenueSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "CustomerCountSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "CustomerImportantCountSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "RootIssueSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder",
+        "sort": "IssueSortInput!"
+      }
+    },
+    "LinkCountSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "ReleaseSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "ProjectStatusFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "description": "StringComparator",
+        "position": "NumberComparator",
+        "type": "StringComparator",
+        "projects": "ProjectCollectionFilter",
+        "and": "[ProjectStatusFilter!]",
+        "or": "[ProjectStatusFilter!]"
+      }
+    },
+    "ProjectLabelCollectionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "isGroup": "BooleanComparator",
+        "creator": "NullableUserFilter",
+        "parent": "ProjectLabelFilter",
+        "null": "Boolean",
+        "and": "[ProjectLabelCollectionFilter!]",
+        "or": "[ProjectLabelCollectionFilter!]",
+        "some": "ProjectLabelCollectionFilter",
+        "every": "ProjectLabelFilter",
+        "length": "NumberComparator"
+      }
+    },
+    "ProjectUpdatesCollectionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "health": "StringComparator",
+        "and": "[ProjectUpdatesCollectionFilter!]",
+        "or": "[ProjectUpdatesCollectionFilter!]",
+        "some": "ProjectUpdatesFilter",
+        "every": "ProjectUpdatesFilter",
+        "length": "NumberComparator"
+      }
+    },
+    "RoadmapCollectionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "slugId": "StringComparator",
+        "creator": "UserFilter",
+        "and": "[RoadmapCollectionFilter!]",
+        "or": "[RoadmapCollectionFilter!]",
+        "some": "RoadmapFilter",
+        "every": "RoadmapFilter",
+        "length": "NumberComparator"
+      }
+    },
+    "ProjectMilestoneCollectionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "NullableStringComparator",
+        "targetDate": "NullableDateComparator",
+        "project": "NullableProjectFilter",
+        "and": "[ProjectMilestoneCollectionFilter!]",
+        "or": "[ProjectMilestoneCollectionFilter!]",
+        "some": "ProjectMilestoneFilter",
+        "every": "ProjectMilestoneFilter",
+        "length": "NumberComparator"
+      }
+    },
+    "ProjectNameSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "ProjectStatusSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "ProjectPrioritySort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder",
+        "noPriorityFirst": "Boolean"
+      }
+    },
+    "ProjectManualSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "TargetDateSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "StartDateSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "ProjectCreatedAtSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "ProjectUpdatedAtSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "ProjectHealthSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "ProjectLeadSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "TeamVisibilityComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "TeamVisibility",
+        "neq": "TeamVisibility",
+        "in": "[TeamVisibility!]",
+        "nin": "[TeamVisibility!]"
+      }
+    },
+    "ReleasePipelineCollectionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "isProduction": "BooleanComparator",
+        "type": "ReleasePipelineTypeComparator",
+        "teams": "TeamCollectionFilter",
+        "and": "[ReleasePipelineCollectionFilter!]",
+        "or": "[ReleasePipelineCollectionFilter!]",
+        "some": "ReleasePipelineFilter",
+        "every": "ReleasePipelineFilter",
+        "length": "NumberComparator"
+      }
+    },
+    "UserNameSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "UserDisplayNameSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "ReactionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "emoji": "StringComparator",
+        "customEmojiId": "IDComparator",
+        "and": "[ReactionFilter!]",
+        "or": "[ReactionFilter!]"
+      }
+    },
+    "NullableCustomerFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "slackChannelId": "StringComparator",
+        "domains": "StringArrayComparator",
+        "externalIds": "StringArrayComparator",
+        "owner": "NullableUserFilter",
+        "needs": "CustomerNeedCollectionFilter",
+        "revenue": "NumberComparator",
+        "size": "NumberComparator",
+        "status": "CustomerStatusFilter",
+        "tier": "CustomerTierFilter",
+        "null": "Boolean",
+        "and": "[NullableCustomerFilter!]",
+        "or": "[NullableCustomerFilter!]"
+      }
+    },
+    "CustomerNeedFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "priority": "NumberComparator",
+        "project": "NullableProjectFilter",
+        "issue": "NullableIssueFilter",
+        "comment": "NullableCommentFilter",
+        "customer": "NullableCustomerFilter",
+        "and": "[CustomerNeedFilter!]",
+        "or": "[CustomerNeedFilter!]"
+      }
+    },
+    "ProjectUpdateFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "user": "UserFilter",
+        "project": "ProjectFilter",
+        "reactions": "ReactionCollectionFilter",
+        "and": "[ProjectUpdateFilter!]",
+        "or": "[ProjectUpdateFilter!]"
+      }
+    },
+    "ReleasePipelineFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "isProduction": "BooleanComparator",
+        "type": "ReleasePipelineTypeComparator",
+        "teams": "TeamCollectionFilter",
+        "and": "[ReleasePipelineFilter!]",
+        "or": "[ReleasePipelineFilter!]"
+      }
+    },
+    "ReleaseStageFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "type": "ReleaseStageTypeComparator",
+        "name": "StringComparator",
+        "and": "[ReleaseStageFilter!]",
+        "or": "[ReleaseStageFilter!]"
+      }
+    },
+    "InitiativeLabelFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "isGroup": "BooleanComparator",
+        "creator": "NullableUserFilter",
+        "parent": "InitiativeLabelFilter",
+        "and": "[InitiativeLabelFilter!]",
+        "or": "[InitiativeLabelFilter!]"
+      }
+    },
+    "InitiativeUpdatesFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "and": "[InitiativeUpdatesFilter!]",
+        "or": "[InitiativeUpdatesFilter!]"
+      }
+    },
+    "SubTypeComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "String",
+        "neq": "String",
+        "in": "[String!]",
+        "nin": "[String!]",
+        "null": "Boolean"
+      }
+    },
+    "WorkflowDefinitionIdComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "ID",
+        "neq": "ID",
+        "in": "[ID!]",
+        "nin": "[ID!]",
+        "null": "Boolean"
+      }
+    },
+    "SalesforceMetadataIntegrationComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "caseMetadata": "JSONObject"
+      }
+    },
+    "ActivityFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "user": "UserFilter",
+        "and": "[ActivityFilter!]",
+        "or": "[ActivityFilter!]"
+      }
+    },
+    "IssueSuggestionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "type": "StringComparator",
+        "state": "StringComparator",
+        "suggestedUser": "NullableUserFilter",
+        "suggestedProject": "NullableProjectFilter",
+        "suggestedTeam": "NullableTeamFilter",
+        "suggestedLabel": "IssueLabelFilter",
+        "and": "[IssueSuggestionFilter!]",
+        "or": "[IssueSuggestionFilter!]"
+      }
+    },
+    "SourceTypeComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "String",
+        "neq": "String",
+        "in": "[String!]",
+        "nin": "[String!]",
+        "eqIgnoreCase": "String",
+        "neqIgnoreCase": "String",
+        "startsWith": "String",
+        "startsWithIgnoreCase": "String",
+        "notStartsWith": "String",
+        "endsWith": "String",
+        "notEndsWith": "String",
+        "contains": "String",
+        "containsIgnoreCase": "String",
+        "notContains": "String",
+        "notContainsIgnoreCase": "String",
+        "containsIgnoreCaseAndAccent": "String"
+      }
+    },
+    "AttachmentFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "title": "StringComparator",
+        "subtitle": "NullableStringComparator",
+        "url": "StringComparator",
+        "creator": "NullableUserFilter",
+        "sourceType": "SourceTypeComparator",
+        "and": "[AttachmentFilter!]",
+        "or": "[AttachmentFilter!]"
+      }
+    },
+    "ProjectCollectionFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "EntityIdentifierIDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "slugId": "StringComparator",
+        "customIdentifier": "NullableStringComparator",
+        "state": "StringComparator",
+        "status": "ProjectStatusFilter",
+        "priority": "NullableNumberComparator",
+        "labels": "ProjectLabelCollectionFilter",
+        "searchableContent": "ContentComparator",
+        "startedAt": "NullableDateComparator",
+        "completedAt": "NullableDateComparator",
+        "canceledAt": "NullableDateComparator",
+        "startDate": "NullableDateComparator",
+        "targetDate": "NullableDateComparator",
+        "health": "StringComparator",
+        "healthWithAge": "StringComparator",
+        "activityType": "StringComparator",
+        "hasRelatedRelations": "RelationExistsComparator",
+        "hasDependedOnByRelations": "RelationExistsComparator",
+        "hasDependsOnRelations": "RelationExistsComparator",
+        "hasBlockedByRelations": "RelationExistsComparator",
+        "hasBlockingRelations": "RelationExistsComparator",
+        "hasViolatedRelations": "RelationExistsComparator",
+        "projectUpdates": "ProjectUpdatesCollectionFilter",
+        "creator": "UserFilter",
+        "lead": "NullableUserFilter",
+        "members": "UserCollectionFilter",
+        "issues": "IssueCollectionFilter",
+        "roadmaps": "RoadmapCollectionFilter",
+        "initiatives": "InitiativeCollectionFilter",
+        "projectMilestones": "ProjectMilestoneCollectionFilter",
+        "completedProjectMilestones": "ProjectMilestoneCollectionFilter",
+        "nextProjectMilestone": "ProjectMilestoneFilter",
+        "accessibleTeams": "TeamCollectionFilter",
+        "leadTeam": "NullableTeamFilter",
+        "lastAppliedTemplate": "NullableTemplateFilter",
+        "needs": "CustomerNeedCollectionFilter",
+        "customerCount": "NumberComparator",
+        "customerImportantCount": "NumberComparator",
+        "and": "[ProjectCollectionFilter!]",
+        "or": "[ProjectCollectionFilter!]",
+        "some": "ProjectFilter",
+        "every": "ProjectFilter",
+        "length": "NumberComparator"
+      }
+    },
+    "ProjectUpdatesFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "health": "StringComparator",
+        "and": "[ProjectUpdatesFilter!]",
+        "or": "[ProjectUpdatesFilter!]"
+      }
+    },
+    "RoadmapFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "slugId": "StringComparator",
+        "creator": "UserFilter",
+        "and": "[RoadmapFilter!]",
+        "or": "[RoadmapFilter!]"
+      }
+    },
+    "ReleasePipelineTypeComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "ReleasePipelineType",
+        "neq": "ReleasePipelineType",
+        "in": "[ReleasePipelineType!]",
+        "nin": "[ReleasePipelineType!]",
+        "null": "Boolean"
+      }
+    },
+    "StringArrayComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "length": "NumberComparator",
+        "every": "StringItemComparator",
+        "some": "StringItemComparator"
+      }
+    },
+    "CustomerStatusFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "description": "StringComparator",
+        "position": "NumberComparator",
+        "type": "StringComparator",
+        "color": "StringComparator",
+        "and": "[CustomerStatusFilter!]",
+        "or": "[CustomerStatusFilter!]"
+      }
+    },
+    "CustomerTierFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "displayName": "StringComparator",
+        "description": "StringComparator",
+        "position": "NumberComparator",
+        "color": "StringComparator",
+        "and": "[CustomerTierFilter!]",
+        "or": "[CustomerTierFilter!]"
+      }
+    },
+    "ReleaseStageTypeComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "ReleaseStageType",
+        "neq": "ReleaseStageType",
+        "in": "[ReleaseStageType!]",
+        "nin": "[ReleaseStageType!]",
+        "null": "Boolean"
+      }
+    },
+    "StringItemComparator": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "eq": "String",
+        "neq": "String",
+        "in": "[String!]",
+        "nin": "[String!]",
+        "eqIgnoreCase": "String",
+        "neqIgnoreCase": "String",
+        "startsWith": "String",
+        "startsWithIgnoreCase": "String",
+        "notStartsWith": "String",
+        "endsWith": "String",
+        "notEndsWith": "String",
+        "contains": "String",
+        "containsIgnoreCase": "String",
+        "notContains": "String",
+        "notContainsIgnoreCase": "String",
+        "containsIgnoreCaseAndAccent": "String"
+      }
+    }
+  },
+  "enums": {
+    "PaginationOrderBy": {
+      "kind": "ENUM",
+      "values": [
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "InitiativeStatus": {
+      "kind": "ENUM",
+      "values": [
+        "Active",
+        "Canceled",
+        "Completed",
+        "Planned",
+        "Proposed"
+      ]
+    },
+    "DateResolutionType": {
+      "kind": "ENUM",
+      "values": [
+        "halfYear",
+        "month",
+        "quarter",
+        "year"
+      ]
+    },
+    "FrequencyResolutionType": {
+      "kind": "ENUM",
+      "values": [
+        "daily",
+        "weekly"
+      ]
+    },
+    "Day": {
+      "kind": "ENUM",
+      "values": [
+        "Friday",
+        "Monday",
+        "Saturday",
+        "Sunday",
+        "Thursday",
+        "Tuesday",
+        "Wednesday"
+      ]
+    },
+    "SLADayCountType": {
+      "kind": "ENUM",
+      "values": [
+        "all",
+        "onlyBusinessDays"
+      ]
+    },
+    "IssueRelationType": {
+      "kind": "ENUM",
+      "values": [
+        "blocks",
+        "duplicate",
+        "related",
+        "similar"
+      ]
+    },
+    "ViewPreferencesType": {
+      "kind": "ENUM",
+      "values": [
+        "organization",
+        "user"
+      ]
+    },
+    "ViewType": {
+      "kind": "ENUM",
+      "values": [
+        "activeIssues",
+        "agents",
+        "allIssues",
+        "archive",
+        "automationRunHistory",
+        "automations",
+        "backlog",
+        "board",
+        "completedCycle",
+        "continuousPipelineReleases",
+        "createdReviews",
+        "customView",
+        "customViews",
+        "customer",
+        "customers",
+        "cycle",
+        "dashboards",
+        "embeddedCustomerNeeds",
+        "feedAll",
+        "feedCreated",
+        "feedFollowing",
+        "feedPopular",
+        "focus",
+        "inbox",
+        "inboxOther",
+        "inboxPriority",
+        "initiative",
+        "initiativeLabel",
+        "initiativeOverview",
+        "initiativeOverviewSubInitiatives",
+        "initiatives",
+        "initiativesAll",
+        "initiativesCanceled",
+        "initiativesCompleted",
+        "initiativesPlanned",
+        "initiativesProposed",
+        "issueIdentifiers",
+        "label",
+        "myIssues",
+        "myIssuesActivity",
+        "myIssuesCreatedByMe",
+        "myIssuesSharedWithMe",
+        "myIssuesSubscribedTo",
+        "myReviews",
+        "project",
+        "projectCustomerNeeds",
+        "projectDocuments",
+        "projectLabel",
+        "projects",
+        "projectsAll",
+        "projectsBacklog",
+        "projectsClosed",
+        "quickView",
+        "release",
+        "releaseOverviewIssues",
+        "releasePipelines",
+        "reviews",
+        "roadmap",
+        "roadmapAll",
+        "roadmapBacklog",
+        "roadmapClosed",
+        "roadmaps",
+        "scheduledPipelineReleases",
+        "search",
+        "splitSearch",
+        "subIssues",
+        "teams",
+        "triage",
+        "userProfile",
+        "userProfileCreatedByUser",
+        "workspaceMembers"
+      ]
+    },
+    "PaginationNulls": {
+      "kind": "ENUM",
+      "values": [
+        "first",
+        "last"
+      ]
+    },
+    "PaginationSortOrder": {
+      "kind": "ENUM",
+      "values": [
+        "Ascending",
+        "Descending"
+      ]
+    },
+    "CyclePeriod": {
+      "kind": "ENUM",
+      "values": [
+        "after",
+        "before",
+        "during"
+      ]
+    },
+    "SlaStatus": {
+      "kind": "ENUM",
+      "values": [
+        "Breached",
+        "Completed",
+        "Failed",
+        "HighRisk",
+        "LowRisk",
+        "MediumRisk"
+      ]
+    },
+    "TeamVisibility": {
+      "kind": "ENUM",
+      "values": [
+        "private",
+        "public",
+        "restricted"
+      ]
+    },
+    "ReleasePipelineType": {
+      "kind": "ENUM",
+      "values": [
+        "continuous",
+        "scheduled"
+      ]
+    },
+    "ReleaseStageType": {
+      "kind": "ENUM",
+      "values": [
+        "canceled",
+        "completed",
+        "planned",
+        "started"
+      ]
+    }
+  },
+  "objects": {
+    "CommentConnection": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "CustomViewConnection": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "CustomView": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "CycleConnection": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "Cycle": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "DocumentConnection": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "Document": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "InitiativeConnection": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "Initiative": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "IssueLabelConnection": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "IssueRelationConnection": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "WorkflowStateConnection": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "IssueConnection": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "Issue": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "IssueSearchPayload": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "ProjectMilestoneConnection": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "ProjectMilestone": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "ProjectLabelConnection": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "ProjectRelationConnection": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "ProjectConnection": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "Project": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "TeamConnection": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "Team": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "UserConnection": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "User": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "CommentPayload": {
+      "kind": "OBJECT",
+      "fields": {
+        "comment": "Comment!",
+        "success": "Boolean!"
+      }
+    },
+    "CustomViewPayload": {
+      "kind": "OBJECT",
+      "fields": {
+        "customView": "CustomView!",
+        "success": "Boolean!"
+      }
+    },
+    "ViewPreferencesPayload": {
+      "kind": "OBJECT",
+      "fields": {
+        "success": "Boolean!",
+        "viewPreferences": "ViewPreferences!"
+      }
+    },
+    "CyclePayload": {
+      "kind": "OBJECT",
+      "fields": {
+        "cycle": "Cycle",
+        "success": "Boolean!"
+      }
+    },
+    "DocumentPayload": {
+      "kind": "OBJECT",
+      "fields": {
+        "document": "Document!",
+        "success": "Boolean!"
+      }
+    },
+    "IssueLabelPayload": {
+      "kind": "OBJECT",
+      "fields": {
+        "issueLabel": "IssueLabel!",
+        "success": "Boolean!"
+      }
+    },
+    "IssueRelationPayload": {
+      "kind": "OBJECT",
+      "fields": {
+        "issueRelation": "IssueRelation!",
+        "success": "Boolean!"
+      }
+    },
+    "IssuePayload": {
+      "kind": "OBJECT",
+      "fields": {
+        "issue": "Issue",
+        "success": "Boolean!"
+      }
+    },
+    "ProjectLabelPayload": {
+      "kind": "OBJECT",
+      "fields": {
+        "projectLabel": "ProjectLabel!",
+        "success": "Boolean!"
+      }
+    },
+    "ProjectRelationPayload": {
+      "kind": "OBJECT",
+      "fields": {
+        "projectRelation": "ProjectRelation!",
+        "success": "Boolean!"
+      }
+    },
+    "InitiativePayload": {
+      "kind": "OBJECT",
+      "fields": {
+        "initiative": "Initiative!",
+        "success": "Boolean!"
+      }
+    },
+    "ProjectMilestonePayload": {
+      "kind": "OBJECT",
+      "fields": {
+        "projectMilestone": "ProjectMilestone!",
+        "success": "Boolean!"
+      }
+    },
+    "ProjectPayload": {
+      "kind": "OBJECT",
+      "fields": {
+        "project": "Project",
+        "success": "Boolean!"
+      }
+    },
+    "Comment": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "ViewPreferences": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "IssueLabel": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "IssueRelation": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "ProjectLabel": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "ProjectRelation": {
+      "kind": "OBJECT",
+      "fields": {}
+    }
+  },
+  "scalars": {
+    "Boolean": {
+      "kind": "SCALAR"
+    },
+    "Int": {
+      "kind": "SCALAR"
+    },
+    "String": {
+      "kind": "SCALAR"
+    },
+    "JSON": {
+      "kind": "SCALAR"
+    },
+    "DateTime": {
+      "kind": "SCALAR"
+    },
+    "Float": {
+      "kind": "SCALAR"
+    },
+    "TimelessDate": {
+      "kind": "SCALAR"
+    },
+    "JSONObject": {
+      "kind": "SCALAR"
+    },
+    "ID": {
+      "kind": "SCALAR"
+    },
+    "DateTimeOrDuration": {
+      "kind": "SCALAR"
+    },
+    "TimelessDateOrDuration": {
+      "kind": "SCALAR"
+    },
+    "Duration": {
+      "kind": "SCALAR"
+    }
+  }
+}
