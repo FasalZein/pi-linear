@@ -313,6 +313,50 @@ describe('runtime discovery', () => {
     );
     expect(fetch).not.toHaveBeenCalled();
   });
+
+  it('redacts credential forms from natural help content and details', async () => {
+    const token = 'lin_api_secret123456789';
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const result = await execute(linearApiTool() as any, {
+      operation: 'help',
+      variables: { query: token },
+    });
+
+    expect(result.details.query).toBe('[REDACTED]');
+    expect(JSON.stringify(result.details)).not.toContain(token);
+    expect(result.content[0].text).not.toContain(token);
+    expect(result.content[0].text).toContain('[REDACTED]');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('redacts credential forms from help failures', async () => {
+    const token = 'lin_api_secret123456789';
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const failure = await execute(linearApiTool() as any, {
+      operation: 'help',
+      variables: { operation: token },
+    }).catch((error: Error) => error);
+
+    expect(failure).toBeInstanceOf(Error);
+    expect((failure as Error).message).toContain('[REDACTED]');
+    expect((failure as Error).message).not.toContain(token);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('redacts credential forms from malformed raw GraphQL failures', async () => {
+    const token = 'lin_api_secret123456789';
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const failure = await execute(linearApiTool() as any, { query: token })
+      .catch((error: Error) => error);
+
+    expect(failure).toBeInstanceOf(Error);
+    expect((failure as Error).message).toContain('[REDACTED]');
+    expect((failure as Error).message).not.toContain(token);
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });
 
 describe('reference preparation pipeline', () => {

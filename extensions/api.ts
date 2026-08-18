@@ -22,7 +22,7 @@ import {
   type JsonObject,
 } from './runtime';
 import { candidateSummary, planActivation } from './activation';
-import { redactError, withRedactedErrors } from './redact';
+import { redactDeep, redactError, withRedactedErrors } from './redact';
 import { renderLinearApiCall, renderLinearApiResult } from './renderers';
 import { typedToolName } from './tool-names';
 import { assertMutationAllowed, type MutationMode } from './safety';
@@ -192,8 +192,9 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
   throw new Error(`Invalid help request. ${HELP_SHAPES}`);
 }
 
-function toolResult(details: JsonObject) {
-  return { content: [{ type: 'text' as const, text: JSON.stringify(details) }], details };
+function toolResult(details: JsonObject, secrets: readonly string[] = []) {
+  const redacted = redactDeep(details, secrets);
+  return { content: [{ type: 'text' as const, text: JSON.stringify(redacted) }], details: redacted };
 }
 
 export function linearApiTool(mode: MutationMode = 'allowlist', activator?: ToolActivator) {
@@ -214,35 +215,35 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
     renderCall: renderLinearApiCall,
     renderResult: renderLinearApiResult,
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-      if (signal?.aborted) throw new Error('Request cancelled.');
-      if (params.operation === 'help' && !params.query) {
-        return toolResult(helpResult(params.variables, activator));
-      }
-
-      const request = resolveRequest(params, mode);
-      if (request.named) {
-        return toolResult(await executeOperation(
-          request.operation,
-          { variables: params.variables ?? {}, workspace: params.workspace, sink: params.sink },
-          mode,
-          ctx,
-          signal,
-        ));
-      }
-
-      assertMutationAllowed(request.query, mode);
       const secrets: string[] = [];
-      return toolResult(await withRedactedErrors(async () => {
+      return withRedactedErrors(async () => {
+        if (signal?.aborted) throw new Error('Request cancelled.');
+        if (params.operation === 'help' && !params.query) {
+          return toolResult(helpResult(params.variables, activator));
+        }
+
+        const request = resolveRequest(params, mode);
+        if (request.named) {
+          return toolResult(await executeOperation(
+            request.operation,
+            { variables: params.variables ?? {}, workspace: params.workspace, sink: params.sink },
+            mode,
+            ctx,
+            signal,
+          ));
+        }
+
+        assertMutationAllowed(request.query, mode);
         const apiKey = await apiKeyForWorkspace(ctx, params.workspace);
         secrets.push(apiKey);
         const data = await linearGraphQL<JsonObject>(apiKey, request.query, params.variables ?? {}, signal);
-        return routeLinearResult(data, {
+        return toolResult(await routeLinearResult(data, {
           label: 'query',
           sink: params.sink,
           nodeCap: NODE_CAP,
           secrets,
-        });
-      }, secrets));
+        }), secrets);
+      }, secrets);
     },
   });
 }
