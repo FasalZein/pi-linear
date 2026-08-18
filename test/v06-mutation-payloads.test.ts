@@ -127,15 +127,11 @@ describe('mutation document result contracts', () => {
     expect(() => validateMutationResult('acknowledge', { acknowledge: { success: true } }, variant)).not.toThrow();
   });
 
-  it('rejects a selected mutation variant without metadata but permits a query variant without it', async () => {
-    process.env.LINEAR_API_KEY = 'test-key';
+  it('rejects missing mutation metadata before real resolver preparation but permits a query variant without it', async () => {
+    delete process.env.LINEAR_API_KEY;
     const mutationVariant = {
       document: operations.create_issue.variants![0]!.document,
       root: 'issueCreate',
-    };
-    const queryVariant = {
-      document: 'query VariantQuery { viewer { id } }',
-      root: 'viewer',
     };
     const fetch = vi.fn(async () => new Response(JSON.stringify({ data: { viewer: { id: 'viewer-1' } } }), {
       status: 200,
@@ -144,12 +140,8 @@ describe('mutation document result contracts', () => {
     vi.stubGlobal('fetch', fetch);
 
     await expect(executeOperation(
-      {
-        ...operations.create_issue,
-        variants: [mutationVariant],
-        prepare: async () => ({ variant: mutationVariant, variables: { input: {} } }),
-      },
-      { variables: {} },
+      { ...operations.create_issue, variants: [mutationVariant] },
+      { variables: { title: 'Missing metadata', parent: 'AEO-279' } },
       'allowlist',
       { hasUI: false } as any,
       undefined,
@@ -158,6 +150,11 @@ describe('mutation document result contracts', () => {
     );
     expect(fetch).not.toHaveBeenCalled();
 
+    process.env.LINEAR_API_KEY = 'test-key';
+    const queryVariant = {
+      document: 'query VariantQuery { viewer { id } }',
+      root: 'viewer',
+    };
     await expect(executeOperation(
       {
         ...operations.get_issue,

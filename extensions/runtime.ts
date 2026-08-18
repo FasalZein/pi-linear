@@ -159,6 +159,11 @@ export function assertOperationAllowed(
     assertMutationAllowed(operation.document, mode, []);
   }
   assertNamedInputAllowed(variables);
+  if (operation.variants) {
+    for (const variant of operation.variants) {
+      mutationExpectation(operation.name, variant);
+    }
+  }
 }
 
 function objectAtPath(value: unknown, path: string): JsonObject | undefined {
