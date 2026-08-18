@@ -4,7 +4,56 @@
     "tool": {
       "name": "linear_list_comments",
       "label": "Linear list comments",
-      "description": "List comments, optionally for one exact issue."
+      "description": "List comments, optionally for one exact issue. Equivalent to linear_api { \"operation\": \"list_comments\", \"variables\": { \"issue\": \"AEO-258\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issue": {
+            "type": "string",
+            "description": "Issue identifier such as ABC-123, or an issue UUID.",
+            "minLength": 1
+          },
+          "after": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before": {
+            "type": "string",
+            "minLength": 1
+          },
+          "first": {
+            "type": "integer"
+          },
+          "last": {
+            "type": "integer"
+          },
+          "includeArchived": {
+            "type": "boolean"
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": [
+              "createdAt",
+              "updatedAt"
+            ],
+            "description": "createdAt or updatedAt."
+          },
+          "filter": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear filter object for this entity; must name at least one field.",
+            "minProperties": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "domain": "comments",
     "purpose": "List comments, optionally for one exact issue.",
@@ -221,7 +270,188 @@
     "tool": {
       "name": "linear_create_comment",
       "label": "Linear create comment",
-      "description": "Create a comment on an issue or another supported target."
+      "description": "Create a comment on an issue or another supported target. Equivalent to linear_api { \"operation\": \"create_comment\", \"variables\": { \"issue\": \"AEO-258\", \"body\": \"Comment text\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issue": {
+            "type": "string",
+            "description": "Issue identifier such as ABC-123, or an issue UUID.",
+            "minLength": 1
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "initiativeId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "projectUpdateId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "initiativeUpdateId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "postId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "documentContentId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "parentId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1
+          },
+          "bodyData": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear document JSON object."
+          },
+          "quotedText": {
+            "type": "string",
+            "minLength": 1
+          },
+          "doNotSubscribeToIssue": {
+            "type": "boolean"
+          },
+          "createOnSyncedSlackThread": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "ISO 8601 date-time.",
+            "minLength": 1
+          },
+          "id": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "required": [
+              "issue",
+              "body"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "bodyData"
+            ]
+          },
+          {
+            "required": [
+              "projectId",
+              "body"
+            ]
+          },
+          {
+            "required": [
+              "projectId",
+              "bodyData"
+            ]
+          },
+          {
+            "required": [
+              "initiativeId",
+              "body"
+            ]
+          },
+          {
+            "required": [
+              "initiativeId",
+              "bodyData"
+            ]
+          },
+          {
+            "required": [
+              "projectUpdateId",
+              "body"
+            ]
+          },
+          {
+            "required": [
+              "projectUpdateId",
+              "bodyData"
+            ]
+          },
+          {
+            "required": [
+              "initiativeUpdateId",
+              "body"
+            ]
+          },
+          {
+            "required": [
+              "initiativeUpdateId",
+              "bodyData"
+            ]
+          },
+          {
+            "required": [
+              "postId",
+              "body"
+            ]
+          },
+          {
+            "required": [
+              "postId",
+              "bodyData"
+            ]
+          },
+          {
+            "required": [
+              "documentContentId",
+              "body"
+            ]
+          },
+          {
+            "required": [
+              "documentContentId",
+              "bodyData"
+            ]
+          },
+          {
+            "required": [
+              "parentId",
+              "body"
+            ]
+          },
+          {
+            "required": [
+              "parentId",
+              "bodyData"
+            ]
+          }
+        ]
+      },
+      "constrainedSampling": false
     },
     "domain": "comments",
     "purpose": "Create a comment on an issue or another supported target.",
@@ -700,7 +930,61 @@
     "tool": {
       "name": "linear_update_comment",
       "label": "Linear update comment",
-      "description": "Update a comment by id."
+      "description": "Update a comment by id. Equivalent to linear_api { \"operation\": \"update_comment\", \"variables\": { \"id\": \"comment-id\", \"body\": \"Updated text\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1
+          },
+          "bodyData": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear document JSON object."
+          },
+          "quotedText": {
+            "type": "string",
+            "minLength": 1
+          },
+          "skipEditedAt": {
+            "type": "boolean"
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "required": [
+              "id",
+              "body"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "bodyData"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "quotedText"
+            ]
+          }
+        ]
+      },
+      "constrainedSampling": false
     },
     "domain": "comments",
     "purpose": "Update a comment by id.",
@@ -924,7 +1208,51 @@
     "tool": {
       "name": "linear_list_views",
       "label": "Linear list views",
-      "description": "List custom views."
+      "description": "List custom views. Equivalent to linear_api { \"operation\": \"list_views\", \"variables\": {  } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "after": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before": {
+            "type": "string",
+            "minLength": 1
+          },
+          "first": {
+            "type": "integer"
+          },
+          "last": {
+            "type": "integer"
+          },
+          "includeArchived": {
+            "type": "boolean"
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": [
+              "createdAt",
+              "updatedAt"
+            ],
+            "description": "createdAt or updatedAt."
+          },
+          "filter": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear filter object for this entity; must name at least one field.",
+            "minProperties": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "domain": "views",
     "purpose": "List custom views.",
@@ -1119,7 +1447,25 @@
     "tool": {
       "name": "linear_get_view",
       "label": "Linear get view",
-      "description": "Get a custom view."
+      "description": "Get a custom view. Equivalent to linear_api { \"operation\": \"get_view\", \"variables\": { \"id\": \"view-id\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id"
+        ]
+      }
     },
     "domain": "views",
     "purpose": "Get a custom view.",
@@ -1248,7 +1594,78 @@
     "tool": {
       "name": "linear_create_view",
       "label": "Linear create view",
-      "description": "Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData."
+      "description": "Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData. Equivalent to linear_api { \"operation\": \"create_view\", \"variables\": { \"name\": \"My issues\", \"filterData\": {  } } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "team": {
+            "type": "string",
+            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "icon": {
+            "type": "string",
+            "minLength": 1
+          },
+          "color": {
+            "type": "string",
+            "description": "Hex color such as #ff0000.",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "shared": {
+            "type": "boolean"
+          },
+          "filterData": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear view filter object; must name at least one field.",
+            "minProperties": 1
+          },
+          "projectFilterData": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear view filter object; must name at least one field.",
+            "minProperties": 1
+          },
+          "initiativeFilterData": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear view filter object; must name at least one field.",
+            "minProperties": 1
+          },
+          "feedItemFilterData": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear view filter object; must name at least one field.",
+            "minProperties": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ]
+      }
     },
     "domain": "views",
     "purpose": "Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData.",
@@ -1534,7 +1951,130 @@
     "tool": {
       "name": "linear_update_view",
       "label": "Linear update view",
-      "description": "Update a custom view."
+      "description": "Update a custom view. Equivalent to linear_api { \"operation\": \"update_view\", \"variables\": { \"id\": \"view-id\", \"name\": \"New name\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "icon": {
+            "type": "string",
+            "minLength": 1
+          },
+          "color": {
+            "type": "string",
+            "description": "Hex color such as #ff0000.",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "shared": {
+            "type": "boolean"
+          },
+          "filterData": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear view filter object; must name at least one field.",
+            "minProperties": 1
+          },
+          "projectFilterData": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear view filter object; must name at least one field.",
+            "minProperties": 1
+          },
+          "initiativeFilterData": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear view filter object; must name at least one field.",
+            "minProperties": 1
+          },
+          "feedItemFilterData": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear view filter object; must name at least one field.",
+            "minProperties": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "required": [
+              "id",
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "description"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "icon"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "color"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "shared"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "filterData"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "projectFilterData"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "initiativeFilterData"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "feedItemFilterData"
+            ]
+          }
+        ]
+      }
     },
     "domain": "views",
     "purpose": "Update a custom view.",
@@ -1830,7 +2370,85 @@
     "tool": {
       "name": "linear_set_view_preferences",
       "label": "Linear set view preferences",
-      "description": "Set preferences for a custom view."
+      "description": "Set preferences for a custom view. Equivalent to linear_api { \"operation\": \"set_view_preferences\", \"variables\": { \"viewId\": \"view-id\", \"preferences\": {  } } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "viewId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "preferences": {
+            "type": "object",
+            "properties": {
+              "issueGrouping": {
+                "type": "string",
+                "enum": [
+                  "assignee",
+                  "status",
+                  "priority",
+                  "cycle",
+                  "project",
+                  "labels",
+                  "none"
+                ],
+                "description": "Primary grouping."
+              },
+              "issueSubGrouping": {
+                "type": "string",
+                "enum": [
+                  "assignee",
+                  "status",
+                  "priority",
+                  "cycle",
+                  "project",
+                  "labels",
+                  "none"
+                ],
+                "description": "Secondary grouping."
+              },
+              "showEmptyGroups": {
+                "type": "boolean"
+              },
+              "fieldEstimate": {
+                "type": "boolean"
+              },
+              "fieldPriority": {
+                "type": "boolean"
+              },
+              "fieldDueDate": {
+                "type": "boolean"
+              },
+              "fieldStatus": {
+                "type": "boolean"
+              },
+              "fieldProject": {
+                "type": "boolean"
+              },
+              "fieldAssignee": {
+                "type": "boolean"
+              },
+              "fieldLabels": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false,
+            "minProperties": 1,
+            "description": "View preference object; must name at least one field.",
+            "~optional": true
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "viewId",
+          "preferences"
+        ]
+      }
     },
     "domain": "views",
     "purpose": "Set preferences for a custom view.",
@@ -1986,7 +2604,56 @@
     "tool": {
       "name": "linear_list_cycles",
       "label": "Linear list cycles",
-      "description": "List cycles."
+      "description": "List cycles. Equivalent to linear_api { \"operation\": \"list_cycles\", \"variables\": {  } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team": {
+            "type": "string",
+            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "minLength": 1
+          },
+          "after": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before": {
+            "type": "string",
+            "minLength": 1
+          },
+          "first": {
+            "type": "integer"
+          },
+          "last": {
+            "type": "integer"
+          },
+          "includeArchived": {
+            "type": "boolean"
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": [
+              "createdAt",
+              "updatedAt"
+            ],
+            "description": "createdAt or updatedAt."
+          },
+          "filter": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear filter object for this entity; must name at least one field.",
+            "minProperties": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "domain": "cycles",
     "purpose": "List cycles.",
@@ -2248,7 +2915,26 @@
     "tool": {
       "name": "linear_get_cycle",
       "label": "Linear get cycle",
-      "description": "Get a cycle by exact name or UUID."
+      "description": "Get a cycle by exact name or UUID. Equivalent to linear_api { \"operation\": \"get_cycle\", \"variables\": { \"cycle\": \"Cycle 12\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cycle": {
+            "type": "string",
+            "description": "Exact cycle name, or a cycle UUID.",
+            "minLength": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "cycle"
+        ]
+      }
     },
     "domain": "cycles",
     "purpose": "Get a cycle by exact name or UUID.",
@@ -2394,7 +3080,46 @@
     "tool": {
       "name": "linear_create_cycle",
       "label": "Linear create cycle",
-      "description": "Create a cycle."
+      "description": "Create a cycle. Equivalent to linear_api { \"operation\": \"create_cycle\", \"variables\": { \"team\": \"AEO\", \"startsAt\": \"2026-08-17\", \"endsAt\": \"2026-08-31\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team": {
+            "type": "string",
+            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "minLength": 1
+          },
+          "startsAt": {
+            "type": "string",
+            "description": "ISO 8601 date-time.",
+            "minLength": 1
+          },
+          "endsAt": {
+            "type": "string",
+            "description": "ISO 8601 date-time.",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "team",
+          "startsAt",
+          "endsAt"
+        ]
+      }
     },
     "domain": "cycles",
     "purpose": "Create a cycle.",
@@ -2673,7 +3398,77 @@
     "tool": {
       "name": "linear_update_cycle",
       "label": "Linear update cycle",
-      "description": "Update a cycle."
+      "description": "Update a cycle. Equivalent to linear_api { \"operation\": \"update_cycle\", \"variables\": { \"id\": \"cycle-id\", \"name\": \"Cycle 12\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "startsAt": {
+            "type": "string",
+            "description": "ISO 8601 date-time.",
+            "minLength": 1
+          },
+          "endsAt": {
+            "type": "string",
+            "description": "ISO 8601 date-time.",
+            "minLength": 1
+          },
+          "completedAt": {
+            "type": "string",
+            "description": "ISO 8601 date-time.",
+            "minLength": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "required": [
+              "id",
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "description"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "startsAt"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "endsAt"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "completedAt"
+            ]
+          }
+        ]
+      }
     },
     "domain": "cycles",
     "purpose": "Update a cycle.",
@@ -2897,7 +3692,82 @@
     "tool": {
       "name": "linear_list_documents",
       "label": "Linear list documents",
-      "description": "List documents."
+      "description": "List documents. Equivalent to linear_api { \"operation\": \"list_documents\", \"variables\": {  } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sort": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "key"
+              ],
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "enum": [
+                    "title",
+                    "creator",
+                    "project",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "description": "Sort key."
+                },
+                "order": {
+                  "type": "string",
+                  "enum": [
+                    "Ascending",
+                    "Descending"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "minItems": 1
+          },
+          "after": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before": {
+            "type": "string",
+            "minLength": 1
+          },
+          "first": {
+            "type": "integer"
+          },
+          "last": {
+            "type": "integer"
+          },
+          "includeArchived": {
+            "type": "boolean"
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": [
+              "createdAt",
+              "updatedAt"
+            ],
+            "description": "createdAt or updatedAt."
+          },
+          "filter": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear filter object for this entity; must name at least one field.",
+            "minProperties": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "domain": "documents",
     "purpose": "List documents.",
@@ -3112,7 +3982,26 @@
     "tool": {
       "name": "linear_get_document",
       "label": "Linear get document",
-      "description": "Get a document by exact title or UUID."
+      "description": "Get a document by exact title or UUID. Equivalent to linear_api { \"operation\": \"get_document\", \"variables\": { \"document\": \"Planning notes\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document": {
+            "type": "string",
+            "description": "Exact document title, or a document UUID.",
+            "minLength": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "document"
+        ]
+      }
     },
     "domain": "documents",
     "purpose": "Get a document by exact title or UUID.",
@@ -3258,7 +4147,101 @@
     "tool": {
       "name": "linear_create_document",
       "label": "Linear create document",
-      "description": "Create a document."
+      "description": "Create a document. Equivalent to linear_api { \"operation\": \"create_document\", \"variables\": { \"title\": \"Planning notes\", \"content\": \"Notes\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1
+          },
+          "icon": {
+            "type": "string",
+            "minLength": 1
+          },
+          "color": {
+            "type": "string",
+            "description": "Hex color such as #ff0000.",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "issueId": {
+            "type": "string",
+            "description": "Issue identifier such as ABC-123, or an issue UUID.",
+            "minLength": 1
+          },
+          "teamId": {
+            "type": "string",
+            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "minLength": 1
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "initiativeId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "cycleId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "releaseId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "resourceFolderId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "lastAppliedTemplateId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "ownerId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "subscriberIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "description": "One or more Linear UUIDs.",
+            "minItems": 1
+          },
+          "sortOrder": {
+            "type": "number",
+            "description": "Number."
+          },
+          "id": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "title"
+        ]
+      }
     },
     "domain": "documents",
     "purpose": "Create a document.",
@@ -3588,7 +4571,208 @@
     "tool": {
       "name": "linear_update_document",
       "label": "Linear update document",
-      "description": "Update a document."
+      "description": "Update a document. Equivalent to linear_api { \"operation\": \"update_document\", \"variables\": { \"documentId\": \"document-id\", \"title\": \"Updated notes\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "description": "Exact document title, or a document UUID.",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1
+          },
+          "icon": {
+            "type": "string",
+            "minLength": 1
+          },
+          "color": {
+            "type": "string",
+            "description": "Hex color such as #ff0000.",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "issueId": {
+            "type": "string",
+            "description": "Issue identifier such as ABC-123, or an issue UUID.",
+            "minLength": 1
+          },
+          "teamId": {
+            "type": "string",
+            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "minLength": 1
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "initiativeId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "cycleId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "releaseId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "resourceFolderId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "lastAppliedTemplateId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "ownerId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "subscriberIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "description": "One or more Linear UUIDs.",
+            "minItems": 1
+          },
+          "sortOrder": {
+            "type": "number",
+            "description": "Number."
+          },
+          "hiddenAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO 8601 date-time, or null to clear it."
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "required": [
+              "documentId",
+              "title"
+            ]
+          },
+          {
+            "required": [
+              "documentId",
+              "content"
+            ]
+          },
+          {
+            "required": [
+              "documentId",
+              "icon"
+            ]
+          },
+          {
+            "required": [
+              "documentId",
+              "color"
+            ]
+          },
+          {
+            "required": [
+              "documentId",
+              "issueId"
+            ]
+          },
+          {
+            "required": [
+              "documentId",
+              "teamId"
+            ]
+          },
+          {
+            "required": [
+              "documentId",
+              "projectId"
+            ]
+          },
+          {
+            "required": [
+              "documentId",
+              "initiativeId"
+            ]
+          },
+          {
+            "required": [
+              "documentId",
+              "cycleId"
+            ]
+          },
+          {
+            "required": [
+              "documentId",
+              "releaseId"
+            ]
+          },
+          {
+            "required": [
+              "documentId",
+              "resourceFolderId"
+            ]
+          },
+          {
+            "required": [
+              "documentId",
+              "lastAppliedTemplateId"
+            ]
+          },
+          {
+            "required": [
+              "documentId",
+              "ownerId"
+            ]
+          },
+          {
+            "required": [
+              "documentId",
+              "subscriberIds"
+            ]
+          },
+          {
+            "required": [
+              "documentId",
+              "sortOrder"
+            ]
+          },
+          {
+            "required": [
+              "documentId",
+              "hiddenAt"
+            ]
+          }
+        ]
+      }
     },
     "domain": "documents",
     "purpose": "Update a document.",
@@ -4016,7 +5200,86 @@
     "tool": {
       "name": "linear_list_initiatives",
       "label": "Linear list initiatives",
-      "description": "List initiatives."
+      "description": "List initiatives. Equivalent to linear_api { \"operation\": \"list_initiatives\", \"variables\": {  } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sort": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "key"
+              ],
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "enum": [
+                    "name",
+                    "manual",
+                    "updatedAt",
+                    "createdAt",
+                    "targetDate",
+                    "health",
+                    "healthUpdatedAt",
+                    "owner",
+                    "priority"
+                  ],
+                  "description": "Sort key."
+                },
+                "order": {
+                  "type": "string",
+                  "enum": [
+                    "Ascending",
+                    "Descending"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "minItems": 1
+          },
+          "after": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before": {
+            "type": "string",
+            "minLength": 1
+          },
+          "first": {
+            "type": "integer"
+          },
+          "last": {
+            "type": "integer"
+          },
+          "includeArchived": {
+            "type": "boolean"
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": [
+              "createdAt",
+              "updatedAt"
+            ],
+            "description": "createdAt or updatedAt."
+          },
+          "filter": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear filter object for this entity; must name at least one field.",
+            "minProperties": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "domain": "initiatives",
     "purpose": "List initiatives.",
@@ -4235,7 +5498,26 @@
     "tool": {
       "name": "linear_get_initiative",
       "label": "Linear get initiative",
-      "description": "Get an initiative by exact name or UUID."
+      "description": "Get an initiative by exact name or UUID. Equivalent to linear_api { \"operation\": \"get_initiative\", \"variables\": { \"initiative\": \"Platform\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "initiative": {
+            "type": "string",
+            "description": "Exact initiative name, or an initiative UUID.",
+            "minLength": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "initiative"
+        ]
+      }
     },
     "domain": "initiatives",
     "purpose": "Get an initiative by exact name or UUID.",
@@ -4381,7 +5663,56 @@
     "tool": {
       "name": "linear_list_issue_labels",
       "label": "Linear list issue labels",
-      "description": "List issue labels."
+      "description": "List issue labels. Equivalent to linear_api { \"operation\": \"list_issue_labels\", \"variables\": {  } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team": {
+            "type": "string",
+            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "minLength": 1
+          },
+          "after": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before": {
+            "type": "string",
+            "minLength": 1
+          },
+          "first": {
+            "type": "integer"
+          },
+          "last": {
+            "type": "integer"
+          },
+          "includeArchived": {
+            "type": "boolean"
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": [
+              "createdAt",
+              "updatedAt"
+            ],
+            "description": "createdAt or updatedAt."
+          },
+          "filter": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear filter object for this entity; must name at least one field.",
+            "minProperties": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "domain": "labels",
     "purpose": "List issue labels.",
@@ -4645,7 +5976,60 @@
     "tool": {
       "name": "linear_create_issue_label",
       "label": "Linear create issue label",
-      "description": "Create an issue label."
+      "description": "Create an issue label. Equivalent to linear_api { \"operation\": \"create_issue_label\", \"variables\": { \"name\": \"needs-review\", \"color\": \"#ff0000\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "team": {
+            "type": "string",
+            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "color": {
+            "type": "string",
+            "description": "Hex color such as #ff0000.",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "isGroup": {
+            "type": "boolean"
+          },
+          "parentId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "retiredAt": {
+            "type": "string",
+            "description": "ISO 8601 date-time.",
+            "minLength": 1
+          },
+          "replaceTeamLabels": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ]
+      }
     },
     "domain": "labels",
     "purpose": "Create an issue label.",
@@ -4916,7 +6300,102 @@
     "tool": {
       "name": "linear_update_issue_label",
       "label": "Linear update issue label",
-      "description": "Update an issue label."
+      "description": "Update an issue label. Equivalent to linear_api { \"operation\": \"update_issue_label\", \"variables\": { \"id\": \"label-id\", \"name\": \"review\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "color": {
+            "type": "string",
+            "description": "Hex color such as #ff0000.",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "isGroup": {
+            "type": "boolean"
+          },
+          "parentId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "retiredAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO 8601 date-time, or null to clear it."
+          },
+          "replaceTeamLabels": {
+            "type": "boolean"
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "required": [
+              "id",
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "description"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "color"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "isGroup"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "parentId"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "retiredAt"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "replaceTeamLabels"
+            ]
+          }
+        ]
+      }
     },
     "domain": "labels",
     "purpose": "Update an issue label.",
@@ -5183,7 +6662,43 @@
     "tool": {
       "name": "linear_list_issue_relations",
       "label": "Linear list issue relations",
-      "description": "List issue relations."
+      "description": "List issue relations. Equivalent to linear_api { \"operation\": \"list_issue_relations\", \"variables\": {  } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "after": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before": {
+            "type": "string",
+            "minLength": 1
+          },
+          "first": {
+            "type": "integer"
+          },
+          "last": {
+            "type": "integer"
+          },
+          "includeArchived": {
+            "type": "boolean"
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": [
+              "createdAt",
+              "updatedAt"
+            ],
+            "description": "createdAt or updatedAt."
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "domain": "relations",
     "purpose": "List issue relations.",
@@ -5366,7 +6881,43 @@
     "tool": {
       "name": "linear_create_issue_relation",
       "label": "Linear create issue relation",
-      "description": "Create a relation between two issues."
+      "description": "Create a relation between two issues. Equivalent to linear_api { \"operation\": \"create_issue_relation\", \"variables\": { \"issue\": \"AEO-258\", \"relatedIssue\": \"AEO-259\", \"type\": \"related\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issue": {
+            "type": "string",
+            "description": "Issue identifier such as ABC-123, or an issue UUID.",
+            "minLength": 1
+          },
+          "relatedIssue": {
+            "type": "string",
+            "description": "Issue identifier such as ABC-123, or an issue UUID.",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "blocks",
+              "duplicate",
+              "related",
+              "similar"
+            ],
+            "description": "blocks, duplicate, related, or similar."
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "issue",
+          "relatedIssue",
+          "type"
+        ]
+      }
     },
     "domain": "relations",
     "purpose": "Create a relation between two issues.",
@@ -5596,7 +7147,62 @@
     "tool": {
       "name": "linear_update_issue_relation",
       "label": "Linear update issue relation",
-      "description": "Update an issue relation."
+      "description": "Update an issue relation. Equivalent to linear_api { \"operation\": \"update_issue_relation\", \"variables\": { \"id\": \"relation-id\", \"type\": \"blocks\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "blocks",
+              "duplicate",
+              "related",
+              "similar"
+            ],
+            "description": "blocks, duplicate, related, or similar."
+          },
+          "issueId": {
+            "type": "string",
+            "description": "Issue identifier such as ABC-123, or an issue UUID.",
+            "minLength": 1
+          },
+          "relatedIssueId": {
+            "type": "string",
+            "description": "Issue identifier such as ABC-123, or an issue UUID.",
+            "minLength": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "required": [
+              "id",
+              "type"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "issueId"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "relatedIssueId"
+            ]
+          }
+        ]
+      }
     },
     "domain": "relations",
     "purpose": "Update an issue relation.",
@@ -5804,7 +7410,51 @@
     "tool": {
       "name": "linear_list_issue_statuses",
       "label": "Linear list issue statuses",
-      "description": "List issue workflow states."
+      "description": "List issue workflow states. Equivalent to linear_api { \"operation\": \"list_issue_statuses\", \"variables\": {  } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "after": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before": {
+            "type": "string",
+            "minLength": 1
+          },
+          "first": {
+            "type": "integer"
+          },
+          "last": {
+            "type": "integer"
+          },
+          "includeArchived": {
+            "type": "boolean"
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": [
+              "createdAt",
+              "updatedAt"
+            ],
+            "description": "createdAt or updatedAt."
+          },
+          "filter": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear filter object for this entity; must name at least one field.",
+            "minProperties": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "domain": "workspace",
     "purpose": "List issue workflow states.",
@@ -6002,7 +7652,134 @@
     "tool": {
       "name": "linear_list_issues",
       "label": "Linear list issues",
-      "description": "List issues with exact convenience filters."
+      "description": "List issues with exact convenience filters. Equivalent to linear_api { \"operation\": \"list_issues\", \"variables\": { \"assignee\": \"me\", \"stateType\": \"started\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1
+          },
+          "team": {
+            "type": "string",
+            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "minLength": 1
+          },
+          "state": {
+            "type": "string",
+            "description": "Workflow state name, or a state UUID.",
+            "minLength": 1
+          },
+          "stateType": {
+            "type": "string",
+            "enum": [
+              "triage",
+              "backlog",
+              "unstarted",
+              "started",
+              "completed",
+              "canceled"
+            ],
+            "description": "triage, backlog, unstarted, started, completed, or canceled."
+          },
+          "assignee": {
+            "type": "string",
+            "description": "User email, exact name, display name, \"me\", or a user UUID.",
+            "minLength": 1
+          },
+          "sort": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "key"
+              ],
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "enum": [
+                    "priority",
+                    "estimate",
+                    "title",
+                    "label",
+                    "labelGroup",
+                    "slaStatus",
+                    "createdAt",
+                    "updatedAt",
+                    "completedAt",
+                    "dueDate",
+                    "accumulatedStateUpdatedAt",
+                    "cycle",
+                    "milestone",
+                    "assignee",
+                    "delegate",
+                    "project",
+                    "team",
+                    "manual",
+                    "workflowState",
+                    "customer",
+                    "customerRevenue",
+                    "customerCount",
+                    "customerImportantCount",
+                    "rootIssue",
+                    "linkCount",
+                    "release"
+                  ],
+                  "description": "Sort key."
+                },
+                "order": {
+                  "type": "string",
+                  "enum": [
+                    "Ascending",
+                    "Descending"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "minItems": 1
+          },
+          "after": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before": {
+            "type": "string",
+            "minLength": 1
+          },
+          "first": {
+            "type": "integer"
+          },
+          "last": {
+            "type": "integer"
+          },
+          "includeArchived": {
+            "type": "boolean"
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": [
+              "createdAt",
+              "updatedAt"
+            ],
+            "description": "createdAt or updatedAt."
+          },
+          "filter": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear filter object for this entity; must name at least one field.",
+            "minProperties": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "domain": "issues",
     "purpose": "List issues with exact convenience filters.",
@@ -6403,7 +8180,26 @@
     "tool": {
       "name": "linear_get_issue",
       "label": "Linear get issue",
-      "description": "Get one issue by exact identifier or UUID."
+      "description": "Get one issue by exact identifier or UUID. Equivalent to linear_api { \"operation\": \"get_issue\", \"variables\": { \"issue\": \"AEO-258\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issue": {
+            "type": "string",
+            "description": "Issue identifier such as ABC-123, or an issue UUID.",
+            "minLength": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "issue"
+        ]
+      }
     },
     "domain": "issues",
     "purpose": "Get one issue by exact identifier or UUID.",
@@ -6557,7 +8353,224 @@
     "tool": {
       "name": "linear_create_issue",
       "label": "Linear create issue",
-      "description": "Create an issue. A parent reference supplies the team when team is omitted."
+      "description": "Create an issue. A parent reference supplies the team when team is omitted. Equivalent to linear_api { \"operation\": \"create_issue\", \"variables\": { \"title\": \"v0.4 trial child\", \"parent\": \"AEO-258\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "team": {
+            "type": "string",
+            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "minLength": 1
+          },
+          "parent": {
+            "type": "string",
+            "description": "Issue identifier such as ABC-123, or an issue UUID.",
+            "minLength": 1
+          },
+          "state": {
+            "type": "string",
+            "description": "Workflow state name, or a state UUID.",
+            "minLength": 1
+          },
+          "assignee": {
+            "type": "string",
+            "description": "User email, exact name, display name, \"me\", or a user UUID.",
+            "minLength": 1
+          },
+          "dueDate": {
+            "type": "string",
+            "description": "Calendar date, YYYY-MM-DD.",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "descriptionData": {
+            "type": "string",
+            "description": "Serialized Linear document JSON.",
+            "minLength": 1
+          },
+          "priority": {
+            "type": "integer",
+            "description": "0 none, 1 urgent, 2 high, 3 medium, 4 low.",
+            "minimum": 0,
+            "maximum": 4
+          },
+          "estimate": {
+            "type": "integer"
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "projectMilestoneId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "cycleId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "labelIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "description": "One or more Linear UUIDs.",
+            "minItems": 1
+          },
+          "subscriberIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "description": "One or more Linear UUIDs.",
+            "minItems": 1
+          },
+          "delegateId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "lastAppliedTemplateId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "slaType": {
+            "type": "string",
+            "enum": [
+              "all",
+              "onlyBusinessDays"
+            ],
+            "description": "SlaDayCountType value."
+          },
+          "slaBreachesAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO 8601 date-time, or null to clear it."
+          },
+          "slaStartedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO 8601 date-time, or null to clear it."
+          },
+          "sortOrder": {
+            "type": "number",
+            "description": "Number."
+          },
+          "subIssueSortOrder": {
+            "type": "number",
+            "description": "Number."
+          },
+          "prioritySortOrder": {
+            "type": "number",
+            "description": "Number."
+          },
+          "templateId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "useDefaultTemplate": {
+            "type": "boolean"
+          },
+          "preserveSortOrderOnCreate": {
+            "type": "boolean"
+          },
+          "referenceCommentId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "sourceCommentId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "sourcePullRequestCommentId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "createAsUser": {
+            "type": "string",
+            "minLength": 1
+          },
+          "displayIconUrl": {
+            "type": "string",
+            "description": "Absolute http(s) URL.",
+            "minLength": 1,
+            "pattern": "^https?://"
+          },
+          "completedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO 8601 date-time, or null to clear it."
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "ISO 8601 date-time.",
+            "minLength": 1
+          },
+          "id": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "required": [
+              "title",
+              "team"
+            ]
+          },
+          {
+            "required": [
+              "title",
+              "parent"
+            ]
+          }
+        ]
+      }
     },
     "domain": "issues",
     "purpose": "Create an issue. A parent reference supplies the team when team is omitted.",
@@ -7155,7 +9168,372 @@
     "tool": {
       "name": "linear_update_issue",
       "label": "Linear update issue",
-      "description": "Update an issue by exact identifier or UUID."
+      "description": "Update an issue by exact identifier or UUID. Equivalent to linear_api { \"operation\": \"update_issue\", \"variables\": { \"issue\": \"AEO-258\", \"state\": \"Backlog\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issue": {
+            "type": "string",
+            "description": "Issue identifier such as ABC-123, or an issue UUID.",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "state": {
+            "type": "string",
+            "description": "Workflow state name, or a state UUID.",
+            "minLength": 1
+          },
+          "assignee": {
+            "type": "string",
+            "description": "User email, exact name, display name, \"me\", or a user UUID.",
+            "minLength": 1
+          },
+          "parent": {
+            "type": "string",
+            "description": "Issue identifier such as ABC-123, or an issue UUID.",
+            "minLength": 1
+          },
+          "teamId": {
+            "type": "string",
+            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "minLength": 1
+          },
+          "dueDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Calendar date YYYY-MM-DD, or null to clear it."
+          },
+          "addedLabelIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "description": "One or more Linear UUIDs.",
+            "minItems": 1
+          },
+          "removedLabelIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "description": "One or more Linear UUIDs.",
+            "minItems": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "descriptionData": {
+            "type": "string",
+            "description": "Serialized Linear document JSON.",
+            "minLength": 1
+          },
+          "priority": {
+            "type": "integer",
+            "description": "0 none, 1 urgent, 2 high, 3 medium, 4 low.",
+            "minimum": 0,
+            "maximum": 4
+          },
+          "estimate": {
+            "type": "integer"
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "projectMilestoneId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "cycleId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "labelIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "description": "One or more Linear UUIDs.",
+            "minItems": 1
+          },
+          "subscriberIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "description": "One or more Linear UUIDs.",
+            "minItems": 1
+          },
+          "delegateId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "lastAppliedTemplateId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "slaType": {
+            "type": "string",
+            "enum": [
+              "all",
+              "onlyBusinessDays"
+            ],
+            "description": "SlaDayCountType value."
+          },
+          "slaBreachesAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO 8601 date-time, or null to clear it."
+          },
+          "slaStartedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO 8601 date-time, or null to clear it."
+          },
+          "sortOrder": {
+            "type": "number",
+            "description": "Number."
+          },
+          "subIssueSortOrder": {
+            "type": "number",
+            "description": "Number."
+          },
+          "prioritySortOrder": {
+            "type": "number",
+            "description": "Number."
+          },
+          "autoClosedByParentClosing": {
+            "type": "boolean"
+          },
+          "snoozedById": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "snoozedUntilAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO 8601 date-time, or null to clear it."
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "required": [
+              "issue",
+              "title"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "state"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "assignee"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "parent"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "teamId"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "dueDate"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "addedLabelIds"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "removedLabelIds"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "description"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "descriptionData"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "priority"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "estimate"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "projectId"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "projectMilestoneId"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "cycleId"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "labelIds"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "subscriberIds"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "delegateId"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "lastAppliedTemplateId"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "slaType"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "slaBreachesAt"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "slaStartedAt"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "sortOrder"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "subIssueSortOrder"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "prioritySortOrder"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "autoClosedByParentClosing"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "snoozedById"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "snoozedUntilAt"
+            ]
+          }
+        ]
+      }
     },
     "domain": "issues",
     "purpose": "Update an issue by exact identifier or UUID.",
@@ -7844,7 +10222,66 @@
     "tool": {
       "name": "linear_search_issues",
       "label": "Linear search issues",
-      "description": "Search issues by text."
+      "description": "Search issues by text. Equivalent to linear_api { \"operation\": \"search_issues\", \"variables\": { \"term\": \"authentication\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "term": {
+            "type": "string",
+            "minLength": 1
+          },
+          "includeComments": {
+            "type": "boolean"
+          },
+          "team": {
+            "type": "string",
+            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "minLength": 1
+          },
+          "after": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before": {
+            "type": "string",
+            "minLength": 1
+          },
+          "first": {
+            "type": "integer"
+          },
+          "last": {
+            "type": "integer"
+          },
+          "includeArchived": {
+            "type": "boolean"
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": [
+              "createdAt",
+              "updatedAt"
+            ],
+            "description": "createdAt or updatedAt."
+          },
+          "filter": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear filter object for this entity; must name at least one field.",
+            "minProperties": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "term"
+        ]
+      }
     },
     "domain": "issues",
     "purpose": "Search issues by text.",
@@ -8147,7 +10584,51 @@
     "tool": {
       "name": "linear_list_milestones",
       "label": "Linear list milestones",
-      "description": "List project milestones."
+      "description": "List project milestones. Equivalent to linear_api { \"operation\": \"list_milestones\", \"variables\": {  } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "after": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before": {
+            "type": "string",
+            "minLength": 1
+          },
+          "first": {
+            "type": "integer"
+          },
+          "last": {
+            "type": "integer"
+          },
+          "includeArchived": {
+            "type": "boolean"
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": [
+              "createdAt",
+              "updatedAt"
+            ],
+            "description": "createdAt or updatedAt."
+          },
+          "filter": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear filter object for this entity; must name at least one field.",
+            "minProperties": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "domain": "milestones",
     "purpose": "List project milestones.",
@@ -8342,7 +10823,26 @@
     "tool": {
       "name": "linear_get_milestone",
       "label": "Linear get milestone",
-      "description": "Get a milestone by exact name or UUID."
+      "description": "Get a milestone by exact name or UUID. Equivalent to linear_api { \"operation\": \"get_milestone\", \"variables\": { \"milestone\": \"Beta\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "milestone": {
+            "type": "string",
+            "description": "Exact milestone name, or a milestone UUID.",
+            "minLength": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "milestone"
+        ]
+      }
     },
     "domain": "milestones",
     "purpose": "Get a milestone by exact name or UUID.",
@@ -8488,7 +10988,51 @@
     "tool": {
       "name": "linear_list_project_labels",
       "label": "Linear list project labels",
-      "description": "List project labels."
+      "description": "List project labels. Equivalent to linear_api { \"operation\": \"list_project_labels\", \"variables\": {  } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "after": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before": {
+            "type": "string",
+            "minLength": 1
+          },
+          "first": {
+            "type": "integer"
+          },
+          "last": {
+            "type": "integer"
+          },
+          "includeArchived": {
+            "type": "boolean"
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": [
+              "createdAt",
+              "updatedAt"
+            ],
+            "description": "createdAt or updatedAt."
+          },
+          "filter": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear filter object for this entity; must name at least one field.",
+            "minProperties": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "domain": "labels",
     "purpose": "List project labels.",
@@ -8684,7 +11228,47 @@
     "tool": {
       "name": "linear_create_project_label",
       "label": "Linear create project label",
-      "description": "Create a project label."
+      "description": "Create a project label. Equivalent to linear_api { \"operation\": \"create_project_label\", \"variables\": { \"name\": \"Strategic\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "color": {
+            "type": "string",
+            "description": "Hex color such as #ff0000.",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "isGroup": {
+            "type": "boolean"
+          },
+          "parentId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "retiredAt": {
+            "type": "string",
+            "description": "ISO 8601 date-time.",
+            "minLength": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ]
+      }
     },
     "domain": "labels",
     "purpose": "Create a project label.",
@@ -8900,7 +11484,93 @@
     "tool": {
       "name": "linear_update_project_label",
       "label": "Linear update project label",
-      "description": "Update a project label."
+      "description": "Update a project label. Equivalent to linear_api { \"operation\": \"update_project_label\", \"variables\": { \"id\": \"label-id\", \"name\": \"Strategy\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "color": {
+            "type": "string",
+            "description": "Hex color such as #ff0000.",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "isGroup": {
+            "type": "boolean"
+          },
+          "parentId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "retiredAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO 8601 date-time, or null to clear it."
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "required": [
+              "id",
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "description"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "color"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "isGroup"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "parentId"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "retiredAt"
+            ]
+          }
+        ]
+      }
     },
     "domain": "labels",
     "purpose": "Update a project label.",
@@ -9150,7 +11820,43 @@
     "tool": {
       "name": "linear_list_project_relations",
       "label": "Linear list project relations",
-      "description": "List project relations."
+      "description": "List project relations. Equivalent to linear_api { \"operation\": \"list_project_relations\", \"variables\": {  } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "after": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before": {
+            "type": "string",
+            "minLength": 1
+          },
+          "first": {
+            "type": "integer"
+          },
+          "last": {
+            "type": "integer"
+          },
+          "includeArchived": {
+            "type": "boolean"
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": [
+              "createdAt",
+              "updatedAt"
+            ],
+            "description": "createdAt or updatedAt."
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "domain": "relations",
     "purpose": "List project relations.",
@@ -9333,7 +12039,55 @@
     "tool": {
       "name": "linear_create_project_relation",
       "label": "Linear create project relation",
-      "description": "Create a relation between two projects."
+      "description": "Create a relation between two projects. Equivalent to linear_api { \"operation\": \"create_project_relation\", \"variables\": { \"projectId\": \"project-id\", \"relatedProjectId\": \"other-project-id\", \"type\": \"related\", \"anchorType\": \"project\", \"relatedAnchorType\": \"project\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "relatedProjectId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "anchorType": {
+            "type": "string",
+            "minLength": 1
+          },
+          "relatedAnchorType": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectMilestoneId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "relatedProjectMilestoneId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "projectId",
+          "relatedProjectId",
+          "type",
+          "anchorType",
+          "relatedAnchorType"
+        ]
+      }
     },
     "domain": "relations",
     "purpose": "Create a relation between two projects.",
@@ -9590,7 +12344,98 @@
     "tool": {
       "name": "linear_update_project_relation",
       "label": "Linear update project relation",
-      "description": "Update a project relation."
+      "description": "Update a project relation. Equivalent to linear_api { \"operation\": \"update_project_relation\", \"variables\": { \"id\": \"relation-id\", \"type\": \"related\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "anchorType": {
+            "type": "string",
+            "minLength": 1
+          },
+          "relatedAnchorType": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "relatedProjectId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "projectMilestoneId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "relatedProjectMilestoneId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "required": [
+              "id",
+              "type"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "anchorType"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "relatedAnchorType"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "projectId"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "relatedProjectId"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "projectMilestoneId"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "relatedProjectMilestoneId"
+            ]
+          }
+        ]
+      }
     },
     "domain": "relations",
     "purpose": "Update a project relation.",
@@ -9856,7 +12701,87 @@
     "tool": {
       "name": "linear_list_projects",
       "label": "Linear list projects",
-      "description": "List projects."
+      "description": "List projects. Equivalent to linear_api { \"operation\": \"list_projects\", \"variables\": {  } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sort": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "key"
+              ],
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "enum": [
+                    "name",
+                    "status",
+                    "priority",
+                    "manual",
+                    "targetDate",
+                    "startDate",
+                    "createdAt",
+                    "updatedAt",
+                    "health",
+                    "lead"
+                  ],
+                  "description": "Sort key."
+                },
+                "order": {
+                  "type": "string",
+                  "enum": [
+                    "Ascending",
+                    "Descending"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "minItems": 1
+          },
+          "after": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before": {
+            "type": "string",
+            "minLength": 1
+          },
+          "first": {
+            "type": "integer"
+          },
+          "last": {
+            "type": "integer"
+          },
+          "includeArchived": {
+            "type": "boolean"
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": [
+              "createdAt",
+              "updatedAt"
+            ],
+            "description": "createdAt or updatedAt."
+          },
+          "filter": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear filter object for this entity; must name at least one field.",
+            "minProperties": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "domain": "projects",
     "purpose": "List projects.",
@@ -10076,7 +13001,26 @@
     "tool": {
       "name": "linear_get_project",
       "label": "Linear get project",
-      "description": "Get a project by exact name or UUID."
+      "description": "Get a project by exact name or UUID. Equivalent to linear_api { \"operation\": \"get_project\", \"variables\": { \"project\": \"Platform\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "Exact project name, or a project UUID.",
+            "minLength": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "project"
+        ]
+      }
     },
     "domain": "projects",
     "purpose": "Get a project by exact name or UUID.",
@@ -10222,7 +13166,51 @@
     "tool": {
       "name": "linear_list_teams",
       "label": "Linear list teams",
-      "description": "List teams and workflow states."
+      "description": "List teams and workflow states. Equivalent to linear_api { \"operation\": \"list_teams\", \"variables\": {  } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "after": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before": {
+            "type": "string",
+            "minLength": 1
+          },
+          "first": {
+            "type": "integer"
+          },
+          "last": {
+            "type": "integer"
+          },
+          "includeArchived": {
+            "type": "boolean"
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": [
+              "createdAt",
+              "updatedAt"
+            ],
+            "description": "createdAt or updatedAt."
+          },
+          "filter": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear filter object for this entity; must name at least one field.",
+            "minProperties": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "domain": "teams",
     "purpose": "List teams and workflow states.",
@@ -10417,7 +13405,26 @@
     "tool": {
       "name": "linear_get_team",
       "label": "Linear get team",
-      "description": "Get a team by exact key or UUID."
+      "description": "Get a team by exact key or UUID. Equivalent to linear_api { \"operation\": \"get_team\", \"variables\": { \"team\": \"AEO\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team": {
+            "type": "string",
+            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "minLength": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "team"
+        ]
+      }
     },
     "domain": "teams",
     "purpose": "Get a team by exact key or UUID.",
@@ -10563,7 +13570,82 @@
     "tool": {
       "name": "linear_list_users",
       "label": "Linear list users",
-      "description": "List users."
+      "description": "List users. Equivalent to linear_api { \"operation\": \"list_users\", \"variables\": {  } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "includeDisabled": {
+            "type": "boolean"
+          },
+          "sort": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "key"
+              ],
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "enum": [
+                    "name",
+                    "displayName"
+                  ],
+                  "description": "Sort key."
+                },
+                "order": {
+                  "type": "string",
+                  "enum": [
+                    "Ascending",
+                    "Descending"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "minItems": 1
+          },
+          "after": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before": {
+            "type": "string",
+            "minLength": 1
+          },
+          "first": {
+            "type": "integer"
+          },
+          "last": {
+            "type": "integer"
+          },
+          "includeArchived": {
+            "type": "boolean"
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": [
+              "createdAt",
+              "updatedAt"
+            ],
+            "description": "createdAt or updatedAt."
+          },
+          "filter": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {}
+            },
+            "description": "Linear filter object for this entity; must name at least one field.",
+            "minProperties": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "domain": "users",
     "purpose": "List users.",
@@ -10787,7 +13869,26 @@
     "tool": {
       "name": "linear_get_user",
       "label": "Linear get user",
-      "description": "Get a user by me, UUID, email, name, or display name."
+      "description": "Get a user by me, UUID, email, name, or display name. Equivalent to linear_api { \"operation\": \"get_user\", \"variables\": { \"user\": \"me\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "description": "User email, exact name, display name, \"me\", or a user UUID.",
+            "minLength": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "user"
+        ]
+      }
     },
     "domain": "users",
     "purpose": "Get a user by me, UUID, email, name, or display name.",
@@ -10933,7 +14034,25 @@
     "tool": {
       "name": "linear_switch_workspace",
       "label": "Linear switch workspace",
-      "description": "Switch the active stored workspace without exposing credentials."
+      "description": "Switch the active stored workspace without exposing credentials. Equivalent to linear_api { \"operation\": \"switch_workspace\", \"variables\": { \"name\": \"work\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ]
+      }
     },
     "domain": "workspace",
     "purpose": "Switch the active stored workspace without exposing credentials.",
@@ -11054,7 +14173,335 @@
     "tool": {
       "name": "linear_save_initiative",
       "label": "Linear save initiative",
-      "description": "Create or update a initiative."
+      "description": "Create or update a initiative. Equivalent to linear_api { \"operation\": \"save_initiative\", \"variables\": { \"name\": \"Platform\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "initiativeId": {
+            "type": "string",
+            "description": "Exact initiative name, or an initiative UUID.",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1
+          },
+          "icon": {
+            "type": "string",
+            "minLength": 1
+          },
+          "color": {
+            "type": "string",
+            "description": "Hex color such as #ff0000.",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Proposed",
+              "Planned",
+              "Active",
+              "Completed",
+              "Canceled"
+            ],
+            "description": "InitiativeStatus value."
+          },
+          "targetDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Calendar date YYYY-MM-DD, or null to clear it."
+          },
+          "targetDateResolution": {
+            "type": "string",
+            "enum": [
+              "month",
+              "quarter",
+              "halfYear",
+              "year"
+            ],
+            "description": "DateResolutionType value."
+          },
+          "ownerId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "leadTeamId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "sortOrder": {
+            "type": "number",
+            "description": "Number."
+          },
+          "prioritySortOrder": {
+            "type": "number",
+            "description": "Number."
+          },
+          "priority": {
+            "type": "integer",
+            "description": "0 none, 1 urgent, 2 high, 3 medium, 4 low.",
+            "minimum": 0,
+            "maximum": 4
+          },
+          "labelIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "description": "One or more Linear UUIDs.",
+            "minItems": 1
+          },
+          "id": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "customIdentifier": {
+            "type": "string",
+            "minLength": 1
+          },
+          "frequencyResolution": {
+            "type": "string",
+            "enum": [
+              "daily",
+              "weekly"
+            ],
+            "description": "FrequencyResolutionType value."
+          },
+          "updateReminderFrequency": {
+            "type": "number",
+            "description": "Number."
+          },
+          "updateReminderFrequencyInWeeks": {
+            "type": "number",
+            "description": "Number."
+          },
+          "updateRemindersDay": {
+            "type": "string",
+            "enum": [
+              "Sunday",
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday"
+            ],
+            "description": "Day value."
+          },
+          "updateRemindersHour": {
+            "type": "number",
+            "description": "Number."
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "required": [
+              "name"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "initiativeId"
+                  ]
+                },
+                {
+                  "required": [
+                    "customIdentifier"
+                  ]
+                },
+                {
+                  "required": [
+                    "frequencyResolution"
+                  ]
+                },
+                {
+                  "required": [
+                    "updateReminderFrequency"
+                  ]
+                },
+                {
+                  "required": [
+                    "updateReminderFrequencyInWeeks"
+                  ]
+                },
+                {
+                  "required": [
+                    "updateRemindersDay"
+                  ]
+                },
+                {
+                  "required": [
+                    "updateRemindersHour"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "required": [
+              "initiativeId"
+            ],
+            "anyOf": [
+              {
+                "required": [
+                  "initiativeId",
+                  "name"
+                ]
+              },
+              {
+                "required": [
+                  "initiativeId",
+                  "description"
+                ]
+              },
+              {
+                "required": [
+                  "initiativeId",
+                  "content"
+                ]
+              },
+              {
+                "required": [
+                  "initiativeId",
+                  "icon"
+                ]
+              },
+              {
+                "required": [
+                  "initiativeId",
+                  "color"
+                ]
+              },
+              {
+                "required": [
+                  "initiativeId",
+                  "status"
+                ]
+              },
+              {
+                "required": [
+                  "initiativeId",
+                  "targetDate"
+                ]
+              },
+              {
+                "required": [
+                  "initiativeId",
+                  "targetDateResolution"
+                ]
+              },
+              {
+                "required": [
+                  "initiativeId",
+                  "ownerId"
+                ]
+              },
+              {
+                "required": [
+                  "initiativeId",
+                  "leadTeamId"
+                ]
+              },
+              {
+                "required": [
+                  "initiativeId",
+                  "sortOrder"
+                ]
+              },
+              {
+                "required": [
+                  "initiativeId",
+                  "prioritySortOrder"
+                ]
+              },
+              {
+                "required": [
+                  "initiativeId",
+                  "priority"
+                ]
+              },
+              {
+                "required": [
+                  "initiativeId",
+                  "labelIds"
+                ]
+              },
+              {
+                "required": [
+                  "initiativeId",
+                  "customIdentifier"
+                ]
+              },
+              {
+                "required": [
+                  "initiativeId",
+                  "frequencyResolution"
+                ]
+              },
+              {
+                "required": [
+                  "initiativeId",
+                  "updateReminderFrequency"
+                ]
+              },
+              {
+                "required": [
+                  "initiativeId",
+                  "updateReminderFrequencyInWeeks"
+                ]
+              },
+              {
+                "required": [
+                  "initiativeId",
+                  "updateRemindersDay"
+                ]
+              },
+              {
+                "required": [
+                  "initiativeId",
+                  "updateRemindersHour"
+                ]
+              }
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "id"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "constrainedSampling": false
     },
     "domain": "initiatives",
     "purpose": "Create or update a initiative.",
@@ -11854,7 +15301,132 @@
     "tool": {
       "name": "linear_save_milestone",
       "label": "Linear save milestone",
-      "description": "Create or update a projectmilestone."
+      "description": "Create or update a projectmilestone. Equivalent to linear_api { \"operation\": \"save_milestone\", \"variables\": { \"name\": \"Beta\", \"projectId\": \"project-id\" } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "milestoneId": {
+            "type": "string",
+            "description": "Exact milestone name, or a milestone UUID.",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Exact project name, or a project UUID.",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "descriptionData": {
+            "type": "string",
+            "description": "Serialized Linear document JSON.",
+            "minLength": 1
+          },
+          "targetDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Calendar date YYYY-MM-DD, or null to clear it."
+          },
+          "sortOrder": {
+            "type": "number",
+            "description": "Number."
+          },
+          "id": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "required": [
+              "name",
+              "projectId"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "milestoneId"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "required": [
+              "milestoneId"
+            ],
+            "anyOf": [
+              {
+                "required": [
+                  "milestoneId",
+                  "name"
+                ]
+              },
+              {
+                "required": [
+                  "milestoneId",
+                  "projectId"
+                ]
+              },
+              {
+                "required": [
+                  "milestoneId",
+                  "description"
+                ]
+              },
+              {
+                "required": [
+                  "milestoneId",
+                  "descriptionData"
+                ]
+              },
+              {
+                "required": [
+                  "milestoneId",
+                  "targetDate"
+                ]
+              },
+              {
+                "required": [
+                  "milestoneId",
+                  "sortOrder"
+                ]
+              }
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "id"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "constrainedSampling": false
     },
     "domain": "milestones",
     "purpose": "Create or update a projectmilestone.",
@@ -12283,7 +15855,532 @@
     "tool": {
       "name": "linear_save_project",
       "label": "Linear save project",
-      "description": "Create or update a project."
+      "description": "Create or update a project. Equivalent to linear_api { \"operation\": \"save_project\", \"variables\": { \"name\": \"Platform\", \"teamIds\": [\"team-id\"] } }.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "description": "Exact project name, or a project UUID.",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "teamIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "One or more UUIDs.",
+            "minItems": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1
+          },
+          "icon": {
+            "type": "string",
+            "minLength": 1
+          },
+          "color": {
+            "type": "string",
+            "description": "Hex color such as #ff0000.",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "priority": {
+            "type": "integer",
+            "description": "0 none, 1 urgent, 2 high, 3 medium, 4 low.",
+            "minimum": 0,
+            "maximum": 4
+          },
+          "startDate": {
+            "type": "string",
+            "description": "Calendar date, YYYY-MM-DD.",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "startDateResolution": {
+            "type": "string",
+            "enum": [
+              "month",
+              "quarter",
+              "halfYear",
+              "year"
+            ],
+            "description": "DateResolutionType value."
+          },
+          "targetDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Calendar date YYYY-MM-DD, or null to clear it."
+          },
+          "targetDateResolution": {
+            "type": "string",
+            "enum": [
+              "month",
+              "quarter",
+              "halfYear",
+              "year"
+            ],
+            "description": "DateResolutionType value."
+          },
+          "statusId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "leadId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "leadTeamId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "memberIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "description": "One or more Linear UUIDs.",
+            "minItems": 1
+          },
+          "labelIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "description": "One or more Linear UUIDs.",
+            "minItems": 1
+          },
+          "convertedFromIssueId": {
+            "type": "string",
+            "description": "Issue identifier such as ABC-123, or an issue UUID.",
+            "minLength": 1
+          },
+          "lastAppliedTemplateId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "sortOrder": {
+            "type": "number",
+            "description": "Number."
+          },
+          "prioritySortOrder": {
+            "type": "number",
+            "description": "Number."
+          },
+          "canceledAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO 8601 date-time, or null to clear it."
+          },
+          "completedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO 8601 date-time, or null to clear it."
+          },
+          "projectUpdateRemindersPausedUntilAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO 8601 date-time, or null to clear it."
+          },
+          "slackIssueComments": {
+            "type": "boolean"
+          },
+          "slackIssueStatuses": {
+            "type": "boolean"
+          },
+          "slackNewIssue": {
+            "type": "boolean"
+          },
+          "slackChannelName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "templateId": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "useDefaultTemplate": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "description": "Linear UUID.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "frequencyResolution": {
+            "type": "string",
+            "enum": [
+              "daily",
+              "weekly"
+            ],
+            "description": "FrequencyResolutionType value."
+          },
+          "updateReminderFrequency": {
+            "type": "number",
+            "description": "Number."
+          },
+          "updateReminderFrequencyInWeeks": {
+            "type": "number",
+            "description": "Number."
+          },
+          "updateRemindersDay": {
+            "type": "string",
+            "enum": [
+              "Sunday",
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday"
+            ],
+            "description": "Day value."
+          },
+          "updateRemindersHour": {
+            "type": "number",
+            "description": "Number."
+          },
+          "workspace": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stored workspace name. Omit for the active workspace."
+          }
+        },
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "required": [
+              "name",
+              "teamIds"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "projectId"
+                  ]
+                },
+                {
+                  "required": [
+                    "canceledAt"
+                  ]
+                },
+                {
+                  "required": [
+                    "completedAt"
+                  ]
+                },
+                {
+                  "required": [
+                    "projectUpdateRemindersPausedUntilAt"
+                  ]
+                },
+                {
+                  "required": [
+                    "slackIssueComments"
+                  ]
+                },
+                {
+                  "required": [
+                    "slackIssueStatuses"
+                  ]
+                },
+                {
+                  "required": [
+                    "slackNewIssue"
+                  ]
+                },
+                {
+                  "required": [
+                    "frequencyResolution"
+                  ]
+                },
+                {
+                  "required": [
+                    "updateReminderFrequency"
+                  ]
+                },
+                {
+                  "required": [
+                    "updateReminderFrequencyInWeeks"
+                  ]
+                },
+                {
+                  "required": [
+                    "updateRemindersDay"
+                  ]
+                },
+                {
+                  "required": [
+                    "updateRemindersHour"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "required": [
+              "projectId"
+            ],
+            "anyOf": [
+              {
+                "required": [
+                  "projectId",
+                  "name"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "teamIds"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "description"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "content"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "icon"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "color"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "priority"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "startDate"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "startDateResolution"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "targetDate"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "targetDateResolution"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "statusId"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "leadId"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "leadTeamId"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "memberIds"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "labelIds"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "convertedFromIssueId"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "lastAppliedTemplateId"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "sortOrder"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "prioritySortOrder"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "canceledAt"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "completedAt"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "projectUpdateRemindersPausedUntilAt"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "slackIssueComments"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "slackIssueStatuses"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "slackNewIssue"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "frequencyResolution"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "updateReminderFrequency"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "updateReminderFrequencyInWeeks"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "updateRemindersDay"
+                ]
+              },
+              {
+                "required": [
+                  "projectId",
+                  "updateRemindersHour"
+                ]
+              }
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "slackChannelName"
+                  ]
+                },
+                {
+                  "required": [
+                    "templateId"
+                  ]
+                },
+                {
+                  "required": [
+                    "useDefaultTemplate"
+                  ]
+                },
+                {
+                  "required": [
+                    "id"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "constrainedSampling": false
     },
     "domain": "projects",
     "purpose": "Create or update a project.",

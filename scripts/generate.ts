@@ -1,7 +1,8 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { operationDefinitions } from '../extensions/operations';
+import { operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
+import { buildTypedToolMetadata } from '../extensions/typed-tool-metadata';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const generated = resolve(root, 'extensions/generated');
@@ -31,13 +32,10 @@ export function contractProjection(definition: (typeof operationDefinitions)[num
   const signature = `${definition.name}(${definition.compatibility.fields
     .map(({ name, type, required }) => `${name}${required ? '' : '?'}: ${type}`).join(', ')})`;
   const compatibility = definition.compatibility;
+  const tool = buildTypedToolMetadata(projectCompatibilityOperation(definition));
   return {
     name: definition.name,
-    tool: {
-      name: definition.toolName,
-      label: `Linear ${definition.name.replace(/_/g, ' ')}`,
-      description: definition.purpose,
-    },
+    tool,
     domain: definition.domain,
     purpose: definition.purpose,
     kind: definition.kind,

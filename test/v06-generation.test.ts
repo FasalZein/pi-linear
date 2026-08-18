@@ -6,7 +6,9 @@ import { basename, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { contractProjection, generatedFiles, renderGeneratedFiles, staleGeneratedFiles, syncAllowlistFile } from '../scripts/generate';
 import manifest from '../extensions/generated/linear-tools.manifest.json';
+import contracts from '../extensions/generated/operation-contracts.json';
 import { operationDefinitions } from '../extensions/operations';
+import { typedLinearTools } from '../extensions/typed-tools';
 
 const expectedNames = ['linear_api', ...operationDefinitions.map(({ toolName }) => toolName)];
 
@@ -117,9 +119,57 @@ describe('generated products', () => {
       'toolName: `linear_${operation.name}`',
       'toolName: `linear_drift_${operation.name}`',
     ],
+    [
+      'typed tool description',
+      'extensions/typed-tool-metadata.ts',
+      'Equivalent to linear_api',
+      'Same as linear_api',
+    ],
+    [
+      'typed tool schema field',
+      'extensions/typed-tool-metadata.ts',
+      'Issue identifier such as ABC-123, or an issue UUID.',
+      'Issue UUID or identifier such as ABC-123.',
+    ],
+    [
+      'typed tool schema branches',
+      'extensions/typed-tool-metadata.ts',
+      "options[exclusive ? 'oneOf' : 'anyOf']",
+      "options[exclusive ? 'anyOf' : 'oneOf']",
+    ],
+    [
+      'typed tool label',
+      'extensions/typed-tool-metadata.ts',
+      'label: `Linear ${operation.name.replace',
+      'label: `Linear operation ${operation.name.replace',
+    ],
+    [
+      'typed tool optional metadata',
+      'extensions/typed-tool-metadata.ts',
+      'constrainedSampling: false as const',
+      'constrainedSampling: true as const',
+    ],
   ])('fails read-only generation checks for %s drift', async (_name, path, oldText, newText) => {
     await staleSourceProbe(path, oldText, newText);
   }, 60_000);
+
+  it('keeps exact runtime typed-tool metadata in every generated contract', () => {
+    const generated = new Map(contracts.map(({ name, tool }) => [name, tool]));
+    for (const runtime of typedLinearTools()) {
+      const operationName = runtime.name.slice('linear_'.length);
+      const metadata = {
+        name: runtime.name,
+        label: runtime.label,
+        description: runtime.description,
+        parameters: runtime.parameters,
+        ...('constrainedSampling' in runtime
+          ? { constrainedSampling: runtime.constrainedSampling }
+          : {}),
+      };
+      expect(generated.get(operationName), runtime.name).toEqual(metadata);
+    }
+    expect(generated).toHaveLength(48);
+  });
 
   it('serializes exhaustive compatibility and GraphQL products', () => {
     const createComment = contractProjection(operationDefinitions.find(({ name }) => name === 'create_comment')!);
