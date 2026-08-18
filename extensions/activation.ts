@@ -212,3 +212,12 @@ export function planActivation(query: string): ActivationPlan {
 export function candidateSummary(operation: LinearOperation) {
   return { name: operation.name, signature: operationSignature(operation) };
 }
+
+/** S7 shadow assertion. The hand-written activation adapter remains until S8. */
+export function assertActivationAdapterParity(): void {
+  const unknown = [...new Set(Object.values(OPERATION_BY_INTENT))]
+    .filter((name) => !operations[name]);
+  if (unknown.length) {
+    throw new Error(`Activation adapter references unknown operations: ${unknown.join(', ')}.`);
+  }
+}

@@ -574,3 +574,12 @@ export function missingCanonicalOperations(): string[] {
     ...[...declared].filter((name) => !catalog.includes(name)),
   ];
 }
+
+/** S7 shadow assertion. Canonical data remains an adapter authority until S8. */
+export function assertCanonicalAdapterParity(): void {
+  const missing = missingCanonicalOperations();
+  if (missing.length) {
+    throw new Error(`Canonical adapter does not match operation definitions: ${missing.join(', ')}.`);
+  }
+  for (const operation of Object.values(operations)) canonicalOperation(operation);
+}

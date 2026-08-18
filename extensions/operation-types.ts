@@ -72,6 +72,75 @@ export type LinearOperation = {
 	) => Promise<Record<string, unknown>>;
 };
 
+export type OperationKind = "query" | "mutation" | "local";
+
+export type OperationDocumentDefinition = GraphQLDocumentVariant & {
+	kind: "query" | "mutation";
+};
+
+export type RequirementBranch = {
+	all: readonly string[];
+	exactlyOneOf?: readonly (readonly string[])[];
+	atLeastOneOf?: readonly string[];
+	forbidden?: readonly string[];
+};
+
+export type OperationCompatibilityDefinition = {
+	operationAliases: readonly string[];
+	fields: readonly OperationParameter[];
+	branches: readonly RequirementBranch[];
+	acceptedFields?: readonly OperationParameter[];
+	legacyBranches?: readonly (readonly OperationParameter[])[];
+	aliasFields?: Readonly<Record<string, readonly OperationParameter[]>>;
+	example: OperationExample;
+	document: string;
+	pagination?: PaginationMetadata;
+	resolverPaths?: Readonly<Record<string, string>>;
+	requiresVariables?: boolean;
+	validateVariables?: LinearOperation["validateVariables"];
+	prepare?: LinearOperation["prepare"];
+	executeLocal?: LinearOperation["executeLocal"];
+};
+
+export type OperationDefinition = {
+	name: string;
+	toolName: `linear_${string}`;
+	domain: OperationDomain;
+	purpose: string;
+	kind: OperationKind;
+	compatibility: OperationCompatibilityDefinition;
+	graphql?: { documents: readonly OperationDocumentDefinition[] };
+	preparation: {
+		resolverPaths: Readonly<Record<string, string>>;
+		prepare?: LinearOperation["prepare"];
+	};
+	safety: {
+		namedInputPolicy: "non-destructive";
+		mutation: boolean;
+	};
+	discovery: {
+		action: string;
+		entity: string;
+		terms: readonly string[];
+		exactHelp: true;
+	};
+	result: {
+		renderKind: string;
+		dataPaths: readonly string[];
+	};
+	render: {
+		entityKind: string;
+		callFields: readonly string[];
+		action: string;
+	};
+	canonical: {
+		fields: readonly OperationParameter[];
+		branches: readonly RequirementBranch[];
+		strictRawArguments: true;
+		example: Record<string, unknown>;
+	};
+};
+
 export const p = (
 	name: string,
 	type = "String",

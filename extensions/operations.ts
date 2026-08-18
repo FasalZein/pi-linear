@@ -36,9 +36,15 @@ import {
 	paginationVariables,
 	type GraphQLDocumentVariant,
 	type LinearOperation,
+	type OperationDefinition,
 	type OperationDomain,
 	type OperationParameter,
 } from "./operation-types";
+import {
+	defineOperation,
+	projectCompatibilityOperation,
+} from "./operation-definition";
+export { projectCompatibilityOperation } from "./operation-definition";
 export type {
 	LinearOperation,
 	OperationDomain,
@@ -536,7 +542,7 @@ const issueUpdateFields = [
 	"trashed",
 ].map((name) => p(name));
 
-const entries: LinearOperation[] = [
+const operationDefinitionsMutable: OperationDefinition[] = ([
 	listOperation({
 		name: "list_comments",
 		domain: "comments",
@@ -2011,9 +2017,11 @@ const entries: LinearOperation[] = [
 			return { active: updated.activeWorkspace };
 		},
 	},
-];
+] satisfies LinearOperation[]).map((operation) =>
+	defineOperation(operation as LinearOperation),
+);
 
-// Save operations use one catalog name and select the upstream create or update document at runtime.
+// Save operations use one definition and select the create or update document at runtime.
 function addSaveOperation(config: {
 	name: string;
 	domain: OperationDomain;
@@ -2107,7 +2115,7 @@ function addSaveOperation(config: {
 						p("projectId", "ProjectReference"),
 						input,
 					];
-	entries.push({
+	operationDefinitionsMutable.push(defineOperation({
 		name: config.name,
 		aliases: [],
 		domain: config.domain,
@@ -2187,7 +2195,7 @@ function addSaveOperation(config: {
 				resolution,
 			};
 		},
-	});
+	}));
 }
 addSaveOperation({
 	name: "save_initiative",
@@ -2348,13 +2356,22 @@ addSaveOperation({
 	example: { name: "Platform", teamIds: ["team-id"] },
 });
 
+export const operationDefinitions: readonly OperationDefinition[] =
+	operationDefinitionsMutable;
+
 export const operations = Object.fromEntries(
-	entries.map((operation) => [operation.name, operation]),
+	operationDefinitions.map((definition) => [
+		definition.name,
+		projectCompatibilityOperation(definition),
+	]),
 ) as Record<string, LinearOperation>;
 export type OperationName = keyof typeof operations;
 const aliases = new Map<string, LinearOperation>();
-for (const operation of entries)
-	for (const alias of operation.aliases) aliases.set(alias, operation);
+for (const definition of operationDefinitions) {
+	const operation = operations[definition.name]!;
+	for (const alias of definition.compatibility.operationAliases)
+		aliases.set(alias, operation);
+}
 
 export function getOperation(name: string): LinearOperation {
 	const operation = operations[name] ?? aliases.get(name);
@@ -2364,6 +2381,16 @@ export function getOperation(name: string): LinearOperation {
 		);
 	return operation;
 }
+
+export function getOperationDefinition(name: string): OperationDefinition {
+	const operation = getOperation(name);
+	const definition = operationDefinitions.find(({ name: canonicalName }) =>
+		canonicalName === operation.name,
+	);
+	if (!definition) throw new Error(`Missing operation definition for "${operation.name}".`);
+	return definition;
+}
+
 export function operationSignature(operation: LinearOperation): string {
 	return `${operation.name}(${operation.parameters.map(({ name, type, required }) => `${name}${required ? "" : "?"}: ${type}`).join(", ")})`;
 }
@@ -2409,7 +2436,9 @@ export function parameterShapes(
 export function operationsForDomain(
 	domain: OperationDomain,
 ): LinearOperation[] {
-	return entries.filter((operation) => operation.domain === domain);
+	return operationDefinitions
+		.filter((definition) => definition.domain === domain)
+		.map(projectCompatibilityOperation);
 }
 export function operationDocuments(
 	operation: LinearOperation,
@@ -2418,5 +2447,9 @@ export function operationDocuments(
 }
 
 export const SAFE_NAMED_MUTATION_ROOTS = new Set(
-	entries.flatMap((operation) => operation.variants?.map(({ root }) => root) ?? []),
+	operationDefinitions.flatMap((definition) =>
+		definition.graphql?.documents
+			.filter(({ kind }) => kind === "mutation")
+			.map(({ root }) => root) ?? [],
+	),
 );

@@ -1,4 +1,5 @@
 import type { Theme } from '@earendil-works/pi-coding-agent';
+import { getOperationDefinition } from '../operations';
 import {
   accentStyle,
   asRecord,
@@ -442,28 +443,14 @@ export const ENTITY_SPECS: Record<string, EntitySpec> = {
   },
 };
 
-/** Entity kind for one catalog operation name. */
+/** Entity kind projected from the operation definition. */
 export function entityKind(operationName: string): string {
-  const explicit: Record<string, string> = {
-    search_issues: 'issue',
-    set_view_preferences: 'view',
-    switch_workspace: 'workspace',
-    list_issue_statuses: 'issue_status',
-    list_issue_labels: 'label',
-    create_issue_label: 'label',
-    update_issue_label: 'label',
-    list_project_labels: 'label',
-    create_project_label: 'label',
-    update_project_label: 'label',
-  };
-  if (explicit[operationName]) return explicit[operationName]!;
-  const bare = operationName.replace(/^(list|get|create|update|save|set|switch)_/, '');
-  const singular = bare.endsWith('ies')
-    ? `${bare.slice(0, -3)}y`
-    : bare.endsWith('s')
-      ? bare.slice(0, -1)
-      : bare;
-  return ENTITY_SPECS[singular] ? singular : 'issue';
+  try {
+    const kind = getOperationDefinition(operationName).result.renderKind;
+    return ENTITY_SPECS[kind] ? kind : 'issue';
+  } catch {
+    return 'issue';
+  }
 }
 
 export function specFor(operationName: string): EntitySpec {
