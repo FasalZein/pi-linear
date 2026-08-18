@@ -493,7 +493,7 @@ describe("independent upstream operation matrix", () => {
 					undefined,
 				)
 			: { variables: fixture.variables };
-		expect(root(prepared.document ?? request.query)).toBe(fixture.root);
+		expect(root(prepared.variant?.document ?? request.query)).toBe(fixture.root);
 		expect(prepared.variables).toEqual(fixture.expectedVariables);
 	});
 

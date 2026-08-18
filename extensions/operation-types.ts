@@ -23,10 +23,21 @@ export type OperationExample = {
 	operation: string;
 	variables: Record<string, unknown>;
 };
+export type MutationResultExpectation = {
+	successPath: string;
+	successValue: true;
+	requiredEntityPaths: readonly string[];
+};
+export type GraphQLDocumentVariant = {
+	when?: "create" | "update";
+	document: string;
+	root: string;
+	mutationResult?: MutationResultExpectation;
+};
 export type OperationPreparation = {
 	variables: Record<string, unknown>;
 	resolution?: Record<string, unknown>;
-	document?: string;
+	variant?: GraphQLDocumentVariant;
 };
 export type PaginationMetadata = {
 	defaultPageSize: number;
@@ -45,8 +56,7 @@ export type LinearOperation = {
 	aliasParameters?: Readonly<Record<string, readonly OperationParameter[]>>;
 	example: OperationExample;
 	document: string;
-	documents?: readonly string[];
-	mutationRoots: readonly string[];
+	variants?: readonly GraphQLDocumentVariant[];
 	pagination?: PaginationMetadata;
 	resolverPaths?: Readonly<Record<string, string>>;
 	requiresVariables?: boolean;

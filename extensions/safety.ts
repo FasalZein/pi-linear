@@ -1,35 +1,9 @@
 import { Kind, parse, type DocumentNode, type SelectionSetNode } from 'graphql';
+import { SAFE_NAMED_MUTATION_ROOTS } from './operations';
 import { redactText } from './redact';
 
+export { SAFE_NAMED_MUTATION_ROOTS } from './operations';
 export type MutationMode = 'allowlist' | 'readonly';
-
-export const SAFE_NAMED_MUTATION_ROOTS = new Set([
-  'commentCreate',
-  'commentUpdate',
-  'customViewCreate',
-  'customViewUpdate',
-  'viewPreferencesCreate',
-  'cycleCreate',
-  'cycleUpdate',
-  'documentCreate',
-  'documentUpdate',
-  'initiativeCreate',
-  'initiativeUpdate',
-  'issueLabelCreate',
-  'issueLabelUpdate',
-  'issueRelationCreate',
-  'issueRelationUpdate',
-  'issueCreate',
-  'issueUpdate',
-  'projectMilestoneCreate',
-  'projectMilestoneUpdate',
-  'projectLabelCreate',
-  'projectLabelUpdate',
-  'projectRelationCreate',
-  'projectRelationUpdate',
-  'projectCreate',
-  'projectUpdate',
-]);
 
 export function assertNamedInputAllowed(value: unknown, path = 'variables'): void {
   const seen = new WeakSet<object>();

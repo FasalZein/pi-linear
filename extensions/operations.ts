@@ -33,6 +33,7 @@ import {
 	mergedInput,
 	p,
 	paginationVariables,
+	type GraphQLDocumentVariant,
 	type LinearOperation,
 	type OperationDomain,
 	type OperationParameter,
@@ -198,6 +199,23 @@ function mutationDocument(
     ${root}(${id ? "id: $id, " : ""}input: $input) { success ${selection} }
   }`;
 }
+function mutationVariant(
+	document: string,
+	root: string,
+	entityPath: string,
+	when?: "create" | "update",
+): GraphQLDocumentVariant {
+	return {
+		...(when ? { when } : {}),
+		document,
+		root,
+		mutationResult: {
+			successPath: "success",
+			successValue: true,
+			requiredEntityPaths: [entityPath],
+		},
+	};
+}
 function listPrepare(
 	defaultPageSize: number,
 	extra?: (
@@ -267,7 +285,6 @@ function listOperation(config: {
 		acceptedParameters: config.acceptedParameters,
 		example: { operation: config.name, variables: config.example ?? {} },
 		document,
-		mutationRoots: [],
 		pagination: {
 			defaultPageSize: config.pageSize,
 			...(config.filterType ? { filterType: config.filterType } : {}),
@@ -307,6 +324,8 @@ function simpleMutation(config: {
 			config.selection,
 			Boolean(config.idKey),
 		);
+	const entityPath = config.selection.trim().match(/^(\w+)\s*\{/)?.[1];
+	if (!entityPath) throw new Error(`Mutation ${config.name} must select a result entity.`);
 	return {
 		name: config.name,
 		aliases: config.aliases ?? [],
@@ -318,7 +337,7 @@ function simpleMutation(config: {
 		aliasParameters: config.aliasParameters,
 		example: { operation: config.name, variables: config.example },
 		document,
-		mutationRoots: [config.root],
+		variants: [mutationVariant(document, config.root, entityPath)],
 		resolverPaths: config.resolverPaths,
 		validateVariables: config.validateVariables,
 		prepare:
@@ -542,7 +561,6 @@ const entries: LinearOperation[] = [
 		parameters: [p("id", "String", true)],
 		example: { operation: "get_view", variables: { id: "view-id" } },
 		document: getDocument("GetView", "customView", VIEW_SELECTION),
-		mutationRoots: [],
 		async prepare(_k, v) {
 			return { variables: { id: v.id } };
 		},
@@ -680,7 +698,6 @@ const entries: LinearOperation[] = [
 		legacyParameters: [[p("id", "String", true)]],
 		example: { operation: "get_cycle", variables: { cycle: "Cycle 12" } },
 		document: getDocument("GetCycle", "cycle", CYCLE_SELECTION),
-		mutationRoots: [],
 		resolverPaths: { cycle: "resolveNamedEntityReference" },
 		async prepare(k, v, s) {
 			const x = await resolveNamedEntityReference(
@@ -799,7 +816,6 @@ const entries: LinearOperation[] = [
 			variables: { document: "Planning notes" },
 		},
 		document: getDocument("GetDocument", "document", DOCUMENT_SELECTION),
-		mutationRoots: [],
 		resolverPaths: { document: "resolveNamedEntityReference" },
 		async prepare(k, v, s) {
 			const x = await resolveNamedEntityReference(
@@ -981,7 +997,6 @@ const entries: LinearOperation[] = [
 			variables: { initiative: "Platform" },
 		},
 		document: getDocument("GetInitiative", "initiative", INITIATIVE_SELECTION),
-		mutationRoots: [],
 		resolverPaths: { initiative: "resolveNamedEntityReference" },
 		async prepare(k, v, s) {
 			const x = await resolveNamedEntityReference(
@@ -1351,7 +1366,6 @@ const entries: LinearOperation[] = [
 		],
 		example: { operation: "get_issue", variables: { issue: "AEO-258" } },
 		document: getDocument("GetIssue", "issue", ISSUE_SELECTION),
-		mutationRoots: [],
 		resolverPaths: { issue: "resolveIssueReference" },
 		async prepare(k, v, s) {
 			const ref = issueReference(v);
@@ -1644,7 +1658,6 @@ const entries: LinearOperation[] = [
 			"projectMilestone",
 			MILESTONE_SELECTION,
 		),
-		mutationRoots: [],
 		resolverPaths: { milestone: "resolveNamedEntityReference" },
 		async prepare(k, v, s) {
 			const x = await resolveNamedEntityReference(
@@ -1799,7 +1812,6 @@ const entries: LinearOperation[] = [
 		legacyParameters: [[p("projectId", "String", true)]],
 		example: { operation: "get_project", variables: { project: "Platform" } },
 		document: getDocument("GetProject", "project", PROJECT_DETAIL_SELECTION),
-		mutationRoots: [],
 		resolverPaths: { project: "resolveNamedEntityReference" },
 		async prepare(k, v, s) {
 			const x = await resolveNamedEntityReference(
@@ -1839,7 +1851,6 @@ const entries: LinearOperation[] = [
 		legacyParameters: [[p("teamId", "String", true)]],
 		example: { operation: "get_team", variables: { team: "AEO" } },
 		document: getDocument("GetTeam", "team", TEAM_SELECTION),
-		mutationRoots: [],
 		resolverPaths: { team: "resolveTeamReference" },
 		async prepare(k, v, s) {
 			const x = await resolveTeamReference(k, String(v.team ?? v.teamId), s);
@@ -1879,7 +1890,6 @@ const entries: LinearOperation[] = [
 		legacyParameters: [[p("userId", "String", true)]],
 		example: { operation: "get_user", variables: { user: "me" } },
 		document: getDocument("GetUser", "user", USER_SELECTION),
-		mutationRoots: [],
 		resolverPaths: { user: "resolveUserReference" },
 		async prepare(k, v, s) {
 			const x = await resolveUserReference(k, String(v.user ?? v.userId), s);
@@ -1903,7 +1913,6 @@ const entries: LinearOperation[] = [
 		parameters: [p("name", "String", true)],
 		example: { operation: "switch_workspace", variables: { name: "work" } },
 		document: "query SwitchWorkspaceLocal { viewer { id } }",
-		mutationRoots: [],
 		async executeLocal(v) {
 			const updated = await switchWorkspace(String(v.name));
 			return { active: updated.activeWorkspace };
@@ -1931,11 +1940,12 @@ function addSaveOperation(config: {
 	emptyUpdateMessage: string;
 	resolverPaths?: Record<string, string>;
 }) {
+	const entityPath = config.entity[0]!.toLowerCase() + config.entity.slice(1);
 	const baseCreateDocument = mutationDocument(
 		`Create${config.documentName}`,
 		config.createRoot,
 		config.createType,
-		`${config.entity[0]!.toLowerCase() + config.entity.slice(1)} { ${config.selection} }`,
+		`${entityPath} { ${config.selection} }`,
 	);
 	const createDocument =
 		config.name === "save_project"
@@ -1953,9 +1963,11 @@ function addSaveOperation(config: {
 		`Update${config.documentName}`,
 		config.updateRoot,
 		config.updateType,
-		`${config.entity[0]!.toLowerCase() + config.entity.slice(1)} { ${config.selection} }`,
+		`${entityPath} { ${config.selection} }`,
 		true,
 	);
+	const createVariant = mutationVariant(createDocument, config.createRoot, entityPath, "create");
+	const updateVariant = mutationVariant(updateDocument, config.updateRoot, entityPath, "update");
 	const validateSaveVariables = (v: Record<string, unknown>) => {
 		const reference = v[config.idKey];
 		const update = typeof reference === "string" && reference.length > 0;
@@ -2011,8 +2023,7 @@ function addSaveOperation(config: {
 		acceptedParameters: config.parameters,
 		example: { operation: config.name, variables: config.example },
 		document: createDocument,
-		documents: [createDocument, updateDocument],
-		mutationRoots: [config.createRoot, config.updateRoot],
+		variants: [createVariant, updateVariant],
 		resolverPaths: config.resolverPaths,
 		requiresVariables: true,
 		validateVariables: validateSaveVariables,
@@ -2073,7 +2084,7 @@ function addSaveOperation(config: {
 				config.name === "save_project" ? prepared.slackChannelName : undefined;
 			if (config.name === "save_project") delete prepared.slackChannelName;
 			return {
-				document: update ? updateDocument : createDocument,
+				variant: update ? updateVariant : createVariant,
 				variables: update
 					? { id, input: prepared }
 					: {
@@ -2310,5 +2321,9 @@ export function operationsForDomain(
 export function operationDocuments(
 	operation: LinearOperation,
 ): readonly string[] {
-	return operation.documents ?? [operation.document];
+	return operation.variants?.map(({ document }) => document) ?? [operation.document];
 }
+
+export const SAFE_NAMED_MUTATION_ROOTS = new Set(
+	entries.flatMap((operation) => operation.variants?.map(({ root }) => root) ?? []),
+);

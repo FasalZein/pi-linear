@@ -87,7 +87,7 @@ describe("upstream-equivalent issue label preparation", () => {
 			color: "#f00",
 			replaceTeamLabels: true,
 		});
-		expect(topLevel.document).toBeUndefined();
+		expect(topLevel.variant).toBeUndefined();
 		expect(operations.create_issue_label.document).toContain(
 			"mutation CreateIssueLabel($input: IssueLabelCreateInput!, $replaceTeamLabels: Boolean)",
 		);
@@ -367,7 +367,7 @@ describe("save operation mode validation and branch preparation", () => {
 			name: "Platform",
 			color: "#123",
 		});
-		expect(initiative.document).toContain(
+		expect(initiative.variant?.document).toContain(
 			"mutation CreateInitiative($input: InitiativeCreateInput!)",
 		);
 		expect(initiative.variables).toEqual({
@@ -382,7 +382,7 @@ describe("save operation mode validation and branch preparation", () => {
 			},
 			slackChannelName: "linear-platform",
 		});
-		expect(project.document).toContain(
+		expect(project.variant?.document).toContain(
 			"mutation CreateProject($input: ProjectCreateInput! $slackChannelName: String)",
 		);
 		expect(project.variables).toEqual({
@@ -404,7 +404,7 @@ describe("save operation mode validation and branch preparation", () => {
 			input: { name: "Beta", projectId: PROJECT_ID, description: "Ready" },
 		});
 		expect(requests).toHaveLength(1);
-		expect(milestone.document).toContain(
+		expect(milestone.variant?.document).toContain(
 			"mutation CreateMilestone($input: ProjectMilestoneCreateInput!)",
 		);
 		expect(milestone.variables).toEqual({
@@ -426,7 +426,7 @@ describe("save operation mode validation and branch preparation", () => {
 			initiativeId: INITIATIVE_ID,
 			input: { name: "Updated" },
 		});
-		expect(initiative.document).toContain(
+		expect(initiative.variant?.document).toContain(
 			"mutation UpdateInitiative($id: String! $input: InitiativeUpdateInput!)",
 		);
 		expect(initiative.variables).toEqual({
@@ -438,7 +438,7 @@ describe("save operation mode validation and branch preparation", () => {
 			projectId: PROJECT_ID,
 			name: "Updated",
 		});
-		expect(project.document).toContain(
+		expect(project.variant?.document).toContain(
 			"mutation UpdateProject($id: String! $input: ProjectUpdateInput!)",
 		);
 		expect(project.variables).toEqual({
@@ -450,7 +450,7 @@ describe("save operation mode validation and branch preparation", () => {
 			milestoneId: MILESTONE_ID,
 			input: { targetDate: "2026-12-01" },
 		});
-		expect(milestone.document).toContain(
+		expect(milestone.variant?.document).toContain(
 			"mutation UpdateMilestone($id: String! $input: ProjectMilestoneUpdateInput!)",
 		);
 		expect(milestone.variables).toEqual({

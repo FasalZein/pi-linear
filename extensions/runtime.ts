@@ -3,7 +3,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { linearGraphQL, resolveApiKey } from './client';
-import { operationDocuments, type LinearOperation } from './operations';
+import type { GraphQLDocumentVariant } from './operation-types';
+import type { LinearOperation } from './operations';
 import { redactDeep, withRedactedErrors } from './redact';
 import { assertMutationAllowed, assertNamedInputAllowed, type MutationMode } from './safety';
 
@@ -150,10 +151,50 @@ export function assertOperationAllowed(
   variables: Record<string, unknown>,
   mode: MutationMode,
 ): void {
-  for (const document of operationDocuments(operation)) {
-    assertMutationAllowed(document, mode, operation.mutationRoots);
+  if (operation.variants) {
+    for (const variant of operation.variants) {
+      assertMutationAllowed(variant.document, mode, [variant.root]);
+    }
+  } else {
+    assertMutationAllowed(operation.document, mode, []);
   }
   assertNamedInputAllowed(variables);
+}
+
+function objectAtPath(value: unknown, path: string): JsonObject | undefined {
+  let current: unknown = value;
+  for (const part of path.split('.')) {
+    if (!current || typeof current !== 'object' || Array.isArray(current)) return undefined;
+    current = (current as JsonObject)[part];
+  }
+  return current && typeof current === 'object' && !Array.isArray(current)
+    ? current as JsonObject
+    : undefined;
+}
+
+export function validateMutationResult(
+  operationName: string,
+  data: JsonObject,
+  variant: GraphQLDocumentVariant,
+): void {
+  const expectation = variant.mutationResult;
+  if (!expectation) return;
+
+  const root = objectAtPath(data, variant.root);
+  const fail = (path: string, expected: string): never => {
+    throw new Error(
+      `Linear operation "${operationName}" failed mutation expectation: ${path} must be ${expected}.`,
+    );
+  };
+  const payload = root ?? fail(variant.root, 'an object');
+  if (payload[expectation.successPath] !== expectation.successValue) {
+    fail(`${variant.root}.${expectation.successPath}`, 'true');
+  }
+  for (const entityPath of expectation.requiredEntityPaths) {
+    if (!objectAtPath(payload, entityPath)) {
+      fail(`${variant.root}.${entityPath}`, 'an object');
+    }
+  }
 }
 
 /**
@@ -182,9 +223,11 @@ export async function executeOperation(
     const prepared = operation.prepare
       ? await operation.prepare(apiKey, options.variables, signal)
       : { variables: options.variables };
-    const document = prepared.document ?? operation.document;
-    assertMutationAllowed(document, mode, operation.mutationRoots);
+    const variant = prepared.variant ?? operation.variants?.[0];
+    const document = variant?.document ?? operation.document;
+    assertMutationAllowed(document, mode, variant ? [variant.root] : []);
     const data = await linearGraphQL<JsonObject>(apiKey, document, prepared.variables, signal);
+    if (variant) validateMutationResult(operation.name, data, variant);
     const result = await routeLinearResult(data, {
       label: operation.name,
       sink: options.sink,

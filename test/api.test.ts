@@ -81,7 +81,7 @@ describe('named operations', () => {
 
       const parsed = operationDocuments(operation).map(parsedRootOperation);
       const mutationRoots = [...new Set(parsed.filter(({ type }) => type === 'mutation').flatMap(({ roots }) => roots))].sort();
-      expect([...operation.mutationRoots].sort()).toEqual(mutationRoots);
+      expect(operation.variants?.map(({ root }) => root).sort() ?? []).toEqual(mutationRoots);
       for (const document of parsed.filter(({ type }) => type === 'query')) expect(document.roots.length).toBeGreaterThan(0);
     }
   });

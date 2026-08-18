@@ -106,7 +106,7 @@ describe("v0.4 operation inventory", () => {
 				if (operationType(document) === "query") expect(fields).toEqual([]);
 				fields.forEach((field) => actual.add(field));
 			}
-			expect([...actual].sort()).toEqual([...operation.mutationRoots].sort());
+			expect([...actual].sort()).toEqual(operation.variants?.map(({ root }) => root).sort() ?? []);
 			actual.forEach((root) => roots.add(root));
 		}
 		expect([...SAFE_NAMED_MUTATION_ROOTS].sort()).toEqual([...roots].sort());
