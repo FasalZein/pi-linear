@@ -14,6 +14,9 @@ import {
   resolveRequest,
 } from '../extensions/api';
 import { DOMAINS, getOperation, operationDocuments, operations } from '../extensions/operations';
+import { isolateLinearCredentials } from './helpers/credentials';
+
+isolateLinearCredentials();
 
 const originalArtifactRoot = process.env.PI_ARTIFACT_PROJECT_ROOT;
 const originalSpillBytes = process.env.LINEAR_SPILL_BYTES;

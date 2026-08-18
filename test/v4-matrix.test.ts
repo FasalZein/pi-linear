@@ -2,6 +2,9 @@ import { Kind, parse } from "graphql";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { linearApiTool, resolveRequest } from "../extensions/api";
 import { operations } from "../extensions/operations";
+import { isolateLinearCredentials } from "./helpers/credentials";
+
+isolateLinearCredentials();
 
 const A = "11111111-1111-4111-8111-111111111111";
 const B = "22222222-2222-4222-8222-222222222222";

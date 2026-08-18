@@ -1,4 +1,7 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { linearApiTool } from "../extensions/api";
 
 const ISSUE_ID = "11111111-1111-4111-8111-111111111111";
@@ -7,11 +10,21 @@ const TEAM_ID = "33333333-3333-4333-8333-333333333333";
 const USER_ID = "44444444-4444-4444-8444-444444444444";
 const STATE_ID = "55555555-5555-4555-8555-555555555555";
 const originalKey = process.env.LINEAR_API_KEY;
+const originalAgentDir = process.env.PI_CODING_AGENT_DIR;
+let testAgentDir: string;
 
-afterEach(() => {
+beforeEach(async () => {
+	testAgentDir = await mkdtemp(join(tmpdir(), "pi-linear-v4-blind-"));
+	process.env.PI_CODING_AGENT_DIR = testAgentDir;
+});
+
+afterEach(async () => {
 	vi.unstubAllGlobals();
 	if (originalKey === undefined) delete process.env.LINEAR_API_KEY;
 	else process.env.LINEAR_API_KEY = originalKey;
+	if (originalAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
+	else process.env.PI_CODING_AGENT_DIR = originalAgentDir;
+	await rm(testAgentDir, { recursive: true, force: true });
 });
 
 function execute(params: Record<string, unknown>) {

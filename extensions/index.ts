@@ -10,6 +10,7 @@ import {
   switchWorkspace,
 } from './client';
 import { linearApiTool } from './api';
+import { typedLinearTools, typedToolNames } from './typed-tools';
 import type { MutationMode } from './safety';
 
 function text(value: unknown): string | undefined {
@@ -93,7 +94,28 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
     },
   });
 
-  pi.registerTool(linearApiTool(mode));
+  const lazyToolNames = new Set(typedToolNames());
+
+  /**
+   * Additive activation only: the loader never removes a tool in the same call, so
+   * pi can record the added names on the result and defer the schemas.
+   */
+  const activate = (toolNames: string[]): string[] => {
+    const wanted = toolNames.filter((name) => lazyToolNames.has(name));
+    const active = pi.getActiveTools();
+    const added = wanted.filter((name) => !active.includes(name));
+    if (added.length) pi.setActiveTools([...new Set([...active, ...added])]);
+    return added;
+  };
+
+  pi.registerTool(linearApiTool(mode, activate));
+  for (const tool of typedLinearTools(mode)) pi.registerTool(tool);
+
+  // Register all 48 typed tools, start with none of them active: linear_api alone
+  // carries the always-on schema cost, and help loads only what the task needs.
+  pi.on('session_start', () => {
+    pi.setActiveTools(pi.getActiveTools().filter((name) => !lazyToolNames.has(name)));
+  });
 }
 
 export default function linearExtension(pi: ExtensionAPI) {

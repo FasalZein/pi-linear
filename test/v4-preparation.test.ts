@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { linearApiTool, resolveRequest } from "../extensions/api";
 import { operations } from "../extensions/operations";
+import { isolateLinearCredentials } from "./helpers/credentials";
+
+isolateLinearCredentials();
 
 const INITIATIVE_ID = "11111111-1111-4111-8111-111111111111";
 const PROJECT_ID = "22222222-2222-4222-8222-222222222222";
@@ -36,6 +39,46 @@ function graphqlStub(
 }
 
 afterEach(() => vi.unstubAllGlobals());
+
+describe("comment list convenience preparation", () => {
+	it("resolves an exact issue reference into a valid CommentFilter", async () => {
+		const { requests } = graphqlStub((query) =>
+			query.includes("ResolveIssueByIdentifier")
+				? {
+					issues: {
+						nodes: [
+							{
+								id: INITIATIVE_ID,
+								identifier: "AEO-258",
+								team: { id: PROJECT_ID, key: "AEO" },
+							},
+						],
+					},
+				}
+				: {},
+		);
+
+		const result = await prepare("list_comments", {
+			issue: "AEO-258",
+			first: 10,
+			orderBy: "createdAt",
+		});
+
+		expect(requests).toHaveLength(1);
+		expect(result.variables).toEqual({
+			first: 10,
+			orderBy: "createdAt",
+			filter: { issue: { id: { eq: INITIATIVE_ID } } },
+		});
+		expect(result.resolution).toEqual({
+			target: {
+				requested: "AEO-258",
+				resolvedId: INITIATIVE_ID,
+				identifier: "AEO-258",
+			},
+		});
+	});
+});
 
 describe("upstream-equivalent issue label preparation", () => {
 	it("passes replaceTeamLabels as a create root argument for top-level and raw input calls", async () => {

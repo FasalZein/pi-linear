@@ -433,9 +433,30 @@ const entries: LinearOperation[] = [
 		domain: "comments",
 		root: "comments",
 		selection: COMMENT_SELECTION,
-		purpose: "List comments.",
+		purpose: "List comments, optionally for one exact issue.",
 		pageSize: 20,
 		filterType: "CommentFilter",
+		parameters: [p("issue", "IssueReference")],
+		example: { issue: "AEO-258" },
+		resolverPaths: { issue: "resolveIssueReference" },
+		prepare: async (apiKey, variables, signal) => {
+			const requested = issueReference(variables);
+			const issue = requested
+				? await resolveIssueReference(apiKey, requested, signal)
+				: undefined;
+			return {
+				variables: {
+					...paginationVariables(variables, 20),
+					filter: mergeFilters(
+						object(variables.filter),
+						issue ? { issue: { id: { eq: issue.id } } } : undefined,
+					),
+				},
+				resolution: issue
+					? { target: issueTarget(requested, issue) }
+					: undefined,
+			};
+		},
 	}),
 	simpleMutation({
 		name: "create_comment",
@@ -807,6 +828,7 @@ const entries: LinearOperation[] = [
 			"initiativeId",
 			"issueId",
 			"lastAppliedTemplateId",
+			"ownerId",
 			"projectId",
 			"releaseId",
 			"resourceFolderId",
@@ -884,6 +906,7 @@ const entries: LinearOperation[] = [
 			"initiativeId",
 			"issueId",
 			"lastAppliedTemplateId",
+			"ownerId",
 			"projectId",
 			"releaseId",
 			"resourceFolderId",
@@ -1657,6 +1680,7 @@ const entries: LinearOperation[] = [
 			"color",
 			"parentId",
 			"isGroup",
+			"retiredAt",
 			"input",
 		].map((n) => p(n)),
 		legacyParameters: [[p("input", "ProjectLabelCreateInput", true)]],
@@ -1685,6 +1709,7 @@ const entries: LinearOperation[] = [
 			"color",
 			"parentId",
 			"isGroup",
+			"retiredAt",
 			"input",
 		].map((n) => p(n)),
 		example: { id: "label-id", name: "Strategy" },
@@ -2075,6 +2100,7 @@ addSaveOperation({
 	resolverPaths: { initiativeId: "resolveNamedEntityReference" },
 	createOnly: ["id"],
 	updateOnly: [
+		"customIdentifier",
 		"frequencyResolution",
 		"trashed",
 		"updateReminderFrequency",
@@ -2090,12 +2116,17 @@ addSaveOperation({
 		"description",
 		"icon",
 		"id",
+		"labelIds",
+		"leadTeamId",
 		"name",
 		"ownerId",
+		"priority",
+		"prioritySortOrder",
 		"sortOrder",
 		"status",
 		"targetDate",
 		"targetDateResolution",
+		"customIdentifier",
 		"frequencyResolution",
 		"trashed",
 		"updateReminderFrequency",
@@ -2182,6 +2213,7 @@ addSaveOperation({
 		"labelIds",
 		"lastAppliedTemplateId",
 		"leadId",
+		"leadTeamId",
 		"memberIds",
 		"priority",
 		"prioritySortOrder",

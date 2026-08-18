@@ -1,0 +1,188 @@
+import type { ExtensionContext } from '@earendil-works/pi-coding-agent';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { linearGraphQL, resolveApiKey } from './client';
+import { operationDocuments, type LinearOperation } from './operations';
+import { redactDeep, withRedactedErrors } from './redact';
+import { assertMutationAllowed, type MutationMode } from './safety';
+
+export const NODE_CAP = 100;
+export const STRING_CAP = 2_000;
+export const RESULT_BUDGET = 50 * 1024;
+export const AUTO_SPILL_BYTES = 8 * 1024;
+
+export type JsonObject = Record<string, unknown>;
+export type Truncation = { path: string; kept: number; endCursor?: string };
+export type ResultMeta = {
+  nodeCap?: number;
+  truncations: Truncation[];
+  stringsClipped: number;
+  resultBudget?: { maxBytes: number; truncated: true };
+};
+
+function byteLength(value: unknown): number {
+  return Buffer.byteLength(JSON.stringify(value), 'utf8');
+}
+
+function dropLastBoundary(value: unknown): boolean {
+  if (Array.isArray(value)) {
+    if (!value.length) return false;
+    value.pop();
+    return true;
+  }
+  if (!value || typeof value !== 'object') return false;
+  const object = value as JsonObject;
+  const key = Object.keys(object).at(-1);
+  if (!key) return false;
+  if (!dropLastBoundary(object[key])) delete object[key];
+  return true;
+}
+
+function spillThreshold(): number {
+  const configured = Number(process.env.LINEAR_SPILL_BYTES);
+  return Number.isFinite(configured) && configured > 0 ? configured : AUTO_SPILL_BYTES;
+}
+
+function artifactIndex(data: JsonObject): string[] {
+  const issues: string[] = [];
+  const visit = (value: unknown) => {
+    if (Array.isArray(value)) return value.forEach(visit);
+    if (!value || typeof value !== 'object') return;
+    const object = value as JsonObject;
+    if (typeof object.identifier === 'string' && typeof object.title === 'string') {
+      const state = object.state as JsonObject | undefined;
+      issues.push(`${object.identifier} · ${object.title} · ${typeof state?.name === 'string' ? state.name : ''}`);
+    }
+    Object.values(object).forEach(visit);
+  };
+  visit(data);
+  if (issues.length) return [...issues.slice(0, 50), ...(issues.length > 50 ? [`+${issues.length - 50} more`] : [])];
+
+  return Object.entries(data).map(([key, value]) => {
+    const nodes = value && typeof value === 'object' ? (value as JsonObject).nodes : undefined;
+    return Array.isArray(nodes) ? `${key} · ${nodes.length} nodes` : key;
+  });
+}
+
+export function compactLinearResult<T extends JsonObject>(
+  input: T,
+  options: { nodeCap?: number; resultBudget?: number } = { nodeCap: NODE_CAP },
+): { data: T; meta: ResultMeta } {
+  const truncations: Truncation[] = [];
+  let stringsClipped = 0;
+
+  const visit = (value: unknown, path: string, key?: string, endCursor?: string): unknown => {
+    if (typeof value === 'string' && value.length > STRING_CAP) {
+      stringsClipped++;
+      return `${value.slice(0, STRING_CAP)}…[truncated ${STRING_CAP}/${value.length} chars — refetch with a narrower query]`;
+    }
+    if (Array.isArray(value)) {
+      const cap = key === 'nodes' ? options.nodeCap : undefined;
+      const items = cap === undefined ? value : value.slice(0, cap);
+      if (items.length < value.length) {
+        truncations.push({ path, kept: items.length, ...(endCursor ? { endCursor } : {}) });
+      }
+      return items.map((item, index) => visit(item, `${path}[${index}]`));
+    }
+    if (value && typeof value === 'object') {
+      const object = value as JsonObject;
+      const cursor = typeof (object.pageInfo as JsonObject | undefined)?.endCursor === 'string'
+        ? (object.pageInfo as JsonObject).endCursor as string
+        : undefined;
+      return Object.fromEntries(Object.entries(object).map(([childKey, child]) => [
+        childKey,
+        visit(child, path ? `${path}.${childKey}` : childKey, childKey, cursor),
+      ]));
+    }
+    return value;
+  };
+
+  const data = visit(input, '') as T;
+  const meta: ResultMeta = {
+    ...(options.nodeCap === undefined ? {} : { nodeCap: options.nodeCap }),
+    truncations,
+    stringsClipped,
+  };
+  const result = { data, meta };
+  const budget = options.resultBudget ?? RESULT_BUDGET;
+  if (byteLength(result) > budget) {
+    meta.resultBudget = { maxBytes: budget, truncated: true };
+    while (byteLength(result) > budget && dropLastBoundary(data));
+  }
+  return result;
+}
+
+export async function routeLinearResult<T extends JsonObject>(
+  rawData: T,
+  options: { label: string; sink?: 'inline' | 'artifact'; nodeCap?: number; secrets?: readonly string[] },
+): Promise<{ data: T; meta: ResultMeta } | { path: string; bytes: number; index: string[]; meta: ResultMeta }> {
+  // Redact before anything is measured, compacted, serialized, or written: the model
+  // content, the details object, the artifact file, and its index all derive from here.
+  const data = redactDeep(rawData, options.secrets ?? []);
+  const full = { data, meta: { truncations: [], stringsClipped: 0 } as ResultMeta };
+  const serialized = JSON.stringify(full);
+  const bytes = Buffer.byteLength(serialized, 'utf8');
+  const spill = options.sink === 'artifact' || (options.sink !== 'inline' && bytes > spillThreshold());
+  if (!spill) return compactLinearResult(data, { nodeCap: options.nodeCap });
+
+  const directory = resolve(process.env.PI_ARTIFACT_PROJECT_ROOT ?? join(homedir(), '.pi/artifacts'), 'linear/raw');
+  const path = join(directory, `${options.label}-${new Date().toISOString()}.json`);
+  await mkdir(directory, { recursive: true });
+  await writeFile(path, serialized);
+  return { path, bytes, index: artifactIndex(data), meta: full.meta };
+}
+
+export async function apiKeyForWorkspace(ctx: ExtensionContext, workspace?: string): Promise<string> {
+  const { apiKey } = await resolveApiKey(ctx, { workspace });
+  if (!apiKey) throw new Error('Missing Linear API key. Set LINEAR_API_KEY or run /linear-auth.');
+  return apiKey;
+}
+
+export type OperationRunOptions = {
+  variables: Record<string, unknown>;
+  workspace?: string;
+  sink?: 'inline' | 'artifact';
+};
+
+/**
+ * Single execution path for one named operation. Both `linear_api` and the typed
+ * tools route through here, so mutation gating, reference resolution, spill, and
+ * result routing exist exactly once.
+ */
+export async function executeOperation(
+  operation: LinearOperation,
+  options: OperationRunOptions,
+  mode: MutationMode,
+  ctx: ExtensionContext,
+  signal: AbortSignal | undefined,
+): Promise<JsonObject> {
+  for (const document of operationDocuments(operation)) {
+    assertMutationAllowed(document, mode, operation.mutationRoots);
+  }
+  // Filled as soon as the key is known, so the same array covers results, spill, and
+  // any failure raised later in this call.
+  const secrets: string[] = [];
+  return withRedactedErrors(async () => {
+    if (operation.executeLocal) {
+      return redactDeep(await operation.executeLocal(options.variables, ctx), secrets);
+    }
+
+    const apiKey = await apiKeyForWorkspace(ctx, options.workspace);
+    secrets.push(apiKey);
+    const prepared = operation.prepare
+      ? await operation.prepare(apiKey, options.variables, signal)
+      : { variables: options.variables };
+    const document = prepared.document ?? operation.document;
+    assertMutationAllowed(document, mode, operation.mutationRoots);
+    const data = await linearGraphQL<JsonObject>(apiKey, document, prepared.variables, signal);
+    const result = await routeLinearResult(data, {
+      label: operation.name,
+      sink: options.sink,
+      secrets,
+    });
+    return prepared.resolution
+      ? { ...result, resolution: redactDeep(prepared.resolution, secrets) }
+      : result;
+  }, secrets);
+}

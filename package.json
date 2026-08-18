@@ -1,9 +1,12 @@
 {
   "name": "@tothemoon/pi-linear-lite",
-  "version": "0.4.0",
-  "description": "Linear GraphQL extension for pi with named operations and mutation safety",
+  "version": "0.5.0",
+  "description": "Linear GraphQL extension for pi with named operations, lazily loaded typed tools, and mutation safety",
   "keywords": [
-    "pi-package"
+    "pi-package",
+    "linear",
+    "graphql",
+    "pi-extension"
   ],
   "license": "MIT",
   "type": "module",
@@ -25,11 +28,15 @@
     "README.md"
   ],
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": ">=0.79.9",
-    "typebox": ">=1.1.38"
+    "@earendil-works/pi-ai": ">=0.80.7",
+    "@earendil-works/pi-coding-agent": ">=0.80.7",
+    "typebox": ">=1.1.38",
+    "@earendil-works/pi-tui": ">=0.80.7"
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "^0.84.1",
+    "@earendil-works/pi-ai": "^0.84.2",
+    "@earendil-works/pi-coding-agent": "^0.84.2",
+    "@earendil-works/pi-tui": "0.84.2",
     "typebox": "^1.1.38",
     "vitest": "^3.2.4"
   },

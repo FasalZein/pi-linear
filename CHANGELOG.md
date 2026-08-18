@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.5.0
+
+- Resolve capitalized natural help requests, prefer list intent in “list comments,” and let `list_comments` accept an exact issue reference.
+
+- Added 48 upstream-named typed tools (`linear_get_issue`, `linear_list_issues`, …) built from the existing operation catalog.
+- Registered every typed tool inactive at session start; only `linear_api` carries always-on schema cost (673 bytes against 64,033 bytes for all typed schemas).
+- Added deterministic activation: exact operation help loads that one tool, domain help loads none, and a natural query resolves clause by clause through closed action and entity maps, loading only operations a clause names exactly.
+- Added an explicit canonical typed contract for all 48 operations, separate from v0.4 `acceptedParameters`: one public name per concept, no legacy aliases, no raw `input`, and strict shapes for object, array, date, colour, and priority values.
+- Made typed schemas reject unknown fields, incomplete branches, and identity-only update or save calls inside Pi's `validateToolArguments`.
+- Added credential redaction at the data boundary (`extensions/redact.ts`): result data, spill files, artifact indexes, resolution metadata, local results, and every external error are redacted to `[REDACTED]` before they reach the model, the transcript, or disk. TUI rendering redacts as a second line of defence.
+- Completed typed coverage: all 48 tools publish 403 safe top-level parameters, including initiative and project lead teams, initiative priority and labels, document owners, label retirement dates, templates, SLA, reminders, sorting, associations, and Slack fields. Arbitrary raw `input` stays on `linear_api`; identity aliases and `trashed` stay out.
+- Gave every typed tool a provider-safe root object. Each `save_*` root enforces exclusive create and update modes through root constraints while retaining explicit root properties.
+- Made all three save target dates nullable. Kept document `id` create-only. Made label retirement dates non-null on create and nullable on update.
+- Replaced literal-union string enums with Pi's provider-compatible `StringEnum`, including sort order and `linear_api.sink`. Added `@earendil-works/pi-ai` peer and development metadata.
+- Added strict pre-conversion validation: typed calls are checked against the published schema before Pi's `Value.Convert`, so a raw `123` for a string field, a `"true"` for a boolean, or an invalid null is rejected with zero network calls, and valid arguments pass through byte-identical.
+- Extended redaction to the exact active API key, so a key in an unknown format is removed from results, spill files, indexes, resolution metadata, and errors; known-prefix patterns remain as defence in depth.
+- Replaced the open view-preferences record with the finite upstream contract: ten known keys, correct value types, no unknown keys, at least one property.
+- Raised the `@earendil-works/pi-coding-agent` peer minimum to `>=0.80.7`, the release that added cache-friendly dynamic tool loading.
+- Kept `linear_api` as the loader, the raw GraphQL escape hatch, and the v0.4 compatibility path.
+- Routed typed tools through the v0.4 execution path: mutation gating, exact resolvers, spill, and result routing exist once.
+- Added TUI renderers for both surfaces: aligned tables, one status line per record, spill digests, truncation cursors, and error recovery lines.
+- Added typed-tool, schema-builder, provider-conversion, validation-boundary, activation, upstream-compatibility, strict-coercion, credential-isolation, redaction, and renderer test coverage; 364 tests pass across twelve files.
+
 ## 0.4.0
 
 - Added evidence-driven, on-demand discovery while keeping one compact `linear_api` tool.

@@ -1,6 +1,6 @@
 # Linear API reference
 
-`pi-linear-lite` registers one tool: `linear_api`. Send exactly one of `operation` or `query`. Send operation inputs through `variables`.
+`pi-linear-lite` registers one active loader, `linear_api`, plus 48 inactive typed tools. Send exactly one of `operation` or `query` to the loader. Send operation inputs through `variables`. Help for one operation activates its typed tool.
 
 ## Help protocol
 
@@ -23,6 +23,8 @@ Domain help returns only the canonical names and compact signatures for that dom
 ```
 
 Operation help returns one parameter card and one valid invocation. That response is the authoritative parameter reference. This file does not duplicate 48 full schemas that can change or consume context unnecessarily.
+
+Every typed schema has a provider-safe object root. Save operations enforce exclusive create and update modes inside that root. All save target dates are nullable. Current live fields include initiative and project lead teams, initiative priority and labels, document owners, and create/update label retirement dates. `trashed` remains excluded from typed tools.
 
 Accepted domains are `issues`, `comments`, `users`, `teams`, `projects`, `cycles`, `milestones`, `initiatives`, `documents`, `views`, `labels`, `relations`, and `workspace`. Invalid requests direct the caller to a valid help request instead of returning the full catalog.
 

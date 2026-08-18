@@ -2,6 +2,7 @@ import type { ExtensionContext } from '@earendil-works/pi-coding-agent';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { redactText } from './redact';
 
 const LINEAR_GRAPHQL_ENDPOINT = 'https://api.linear.app/graphql';
 const ISSUE_IDENTIFIER_PATTERN = /^([A-Z][A-Z0-9]*)-(\d+)$/i;
@@ -205,7 +206,7 @@ export async function linearGraphQL<TData>(
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Linear network error: ${message}`);
+      throw new Error(`Linear network error: ${redactText(message, [apiKey])}`);
     }
     if (response.status !== 429 || attempt === 1) break;
     await new Promise((resolve) => setTimeout(resolve, retryDelay(response)));
@@ -218,9 +219,10 @@ export async function linearGraphQL<TData>(
     // Use the HTTP status below for non-JSON responses.
   }
 
-  const detail = [...new Set((body.errors ?? []).map(errorText))].join('; ');
+  const detail = redactText([...new Set((body.errors ?? []).map(errorText))].join('; '), [apiKey]);
   if (!response.ok) {
-    throw new Error(`Linear API request failed: ${detail || `${response.status} ${response.statusText}`}`);
+    const status = redactText(`${response.status} ${response.statusText}`, [apiKey]);
+    throw new Error(`Linear API request failed: ${detail || status}`);
   }
   if (body.errors?.length) throw new Error(`Linear GraphQL error: ${detail}`);
   if (!body.data) throw new Error('Linear GraphQL response did not include data.');
