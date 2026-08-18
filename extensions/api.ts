@@ -52,13 +52,10 @@ function validateVariables(
 ): void {
   const shapes = parameterShapes(operation, requestedName);
   const valid = new Set(shapes.flatMap((shape) => shape.map(({ name }) => name)));
-  const validShape = !operation.requiresVariables || Object.keys(variables).length > 0
-    ? shapes.find((shape) => {
-      const shapeKeys = new Set(shape.map(({ name }) => name));
-      return shape.every(({ name, required }) => !required || name in variables)
-        && Object.keys(variables).every((name) => shapeKeys.has(name));
-    })
-    : undefined;
+  const validShape = shapes.find((shape) => {
+    const shapeKeys = new Set(shape.map(({ name }) => name));
+    return Object.keys(variables).every((name) => shapeKeys.has(name));
+  });
   if (validShape) {
     try {
       operation.validateVariables?.(variables);

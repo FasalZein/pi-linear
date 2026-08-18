@@ -81,8 +81,11 @@ export type OperationDocumentDefinition = GraphQLDocumentVariant & {
 export type RequirementBranch = {
 	all: readonly string[];
 	exactlyOneOf?: readonly (readonly string[])[];
+	exactlyOneOfMessages?: readonly string[];
 	atLeastOneOf?: readonly string[];
+	atLeastOneOfMessage?: string;
 	forbidden?: readonly string[];
+	mode?: "create" | "update";
 };
 
 export type OperationCompatibilityDefinition = {
@@ -96,8 +99,11 @@ export type OperationCompatibilityDefinition = {
 	document: string;
 	pagination?: PaginationMetadata;
 	resolverPaths?: Readonly<Record<string, string>>;
+	/** Derived compatibility flag retained for stable v0.4 diagnostics. */
 	requiresVariables?: boolean;
-	validateVariables?: LinearOperation["validateVariables"];
+	/** Named semantic exception for checks branches cannot express, such as non-empty text. */
+	semanticException?: string;
+	semanticValidateVariables?: LinearOperation["validateVariables"];
 	prepare?: LinearOperation["prepare"];
 	executeLocal?: LinearOperation["executeLocal"];
 };
@@ -121,6 +127,10 @@ export type OperationDefinition = {
 	discovery: {
 		action: string;
 		entity: string;
+		actions: readonly string[];
+		entities: readonly string[];
+		intents: readonly { action: string; entity: string }[];
+		phrases: readonly string[];
 		terms: readonly string[];
 		exactHelp: true;
 	};
@@ -136,6 +146,11 @@ export type OperationDefinition = {
 	canonical: {
 		fields: readonly OperationParameter[];
 		branches: readonly RequirementBranch[];
+		exclusiveBranches?: true;
+		variants?: readonly {
+			fields: readonly string[];
+			branches: readonly RequirementBranch[];
+		}[];
 		strictRawArguments: true;
 		example: Record<string, unknown>;
 	};

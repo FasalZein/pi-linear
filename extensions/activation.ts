@@ -1,4 +1,10 @@
-import { operations, operationSignature, type LinearOperation } from './operations';
+import { operationDefinitions, operations, operationSignature, type LinearOperation } from './operations';
+import {
+  DEFINITION_ACTIONS,
+  DEFINITION_ENTITIES,
+  DEFINITION_PLAN_PROBES,
+  discoveryForOperation,
+} from './definition-discovery';
 
 /**
  * Deterministic activation for natural help requests.
@@ -213,11 +219,44 @@ export function candidateSummary(operation: LinearOperation) {
   return { name: operation.name, signature: operationSignature(operation) };
 }
 
+function orderedPatterns(map: ReadonlyArray<readonly [RegExp, string]>) {
+  return map.map(([pattern, value]) => ({ source: pattern.source, flags: pattern.flags, value }));
+}
+
 /** S7 shadow assertion. The hand-written activation adapter remains until S8. */
 export function assertActivationAdapterParity(): void {
-  const unknown = [...new Set(Object.values(OPERATION_BY_INTENT))]
-    .filter((name) => !operations[name]);
-  if (unknown.length) {
-    throw new Error(`Activation adapter references unknown operations: ${unknown.join(', ')}.`);
+  const definitionIntents = Object.fromEntries(operationDefinitions.flatMap((definition) =>
+    definition.discovery.intents.map(({ action, entity }) => [`${action} ${entity}`, definition.name]),
+  ));
+  for (const definition of operationDefinitions) {
+    const expected = discoveryForOperation(definition.name);
+    const actual = definition.discovery;
+    const terms = [...new Set([...definition.name.split('_'), ...expected.actions, ...expected.entities])];
+    if (JSON.stringify({
+      actions: actual.actions,
+      entities: actual.entities,
+      intents: actual.intents,
+      phrases: actual.phrases,
+      terms: actual.terms,
+    }) !== JSON.stringify({ ...expected, terms })) {
+      throw new Error(`Discovery metadata drift for operation "${definition.name}".`);
+    }
+  }
+  if (JSON.stringify(orderedPatterns(ACTIONS)) !== JSON.stringify(orderedPatterns(DEFINITION_ACTIONS))) {
+    throw new Error('Activation action precedence drift.');
+  }
+  if (JSON.stringify(orderedPatterns(ENTITIES)) !== JSON.stringify(orderedPatterns(DEFINITION_ENTITIES))) {
+    throw new Error('Activation entity precedence drift.');
+  }
+  const orderedIntents = (value: Record<string, string>) =>
+    Object.entries(value).sort(([left], [right]) => left.localeCompare(right));
+  if (JSON.stringify(orderedIntents(OPERATION_BY_INTENT)) !== JSON.stringify(orderedIntents(definitionIntents))) {
+    throw new Error('Activation intent mapping drift.');
+  }
+  for (const [query, expected] of DEFINITION_PLAN_PROBES) {
+    const actual = planActivation(query).operationNames;
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      throw new Error(`Activation plan drift for "${query}".`);
+    }
   }
 }

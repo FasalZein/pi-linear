@@ -1,9 +1,16 @@
 import { Kind, parse } from 'graphql';
+import { DEFINITION_CANONICAL_OPERATIONS } from './definition-canonical';
+import {
+  DEFINITION_COMPATIBILITY_BRANCHES,
+  DEFINITION_SEMANTIC_EXCEPTIONS,
+} from './definition-compatibility';
+import { discoveryForOperation } from './definition-discovery';
 import type {
   GraphQLDocumentVariant,
   LinearOperation,
   OperationDefinition,
   OperationDocumentDefinition,
+  RequirementBranch,
 } from './operation-types';
 
 const EXPLICIT_RENDER_KINDS: Readonly<Record<string, string>> = {
@@ -62,8 +69,59 @@ function documentDefinition(
   };
 }
 
+function pathPresent(value: Record<string, unknown>, path: string): boolean {
+  const parts = path.split('.');
+  let current: unknown = value;
+  for (const part of parts) {
+    if (!current || typeof current !== 'object' || Array.isArray(current)
+      || !Object.prototype.hasOwnProperty.call(current, part)) return false;
+    current = (current as Record<string, unknown>)[part];
+  }
+  return current !== undefined;
+}
+
+export function requirementBranchMatches(
+  branch: RequirementBranch,
+  variables: Record<string, unknown>,
+): boolean {
+  if (!branch.all.every((path) => pathPresent(variables, path))) return false;
+  if (branch.atLeastOneOf && !branch.atLeastOneOf.some((path) => pathPresent(variables, path))) return false;
+  if (branch.exactlyOneOf?.some((group) =>
+    group.filter((path) => pathPresent(variables, path)).length !== 1)) return false;
+  return !branch.forbidden?.some((path) => pathPresent(variables, path));
+}
+
+export function assertRequirementBranches(
+  branches: readonly RequirementBranch[],
+  variables: Record<string, unknown>,
+): void {
+  if (branches.some((branch) => requirementBranchMatches(branch, variables))) return;
+  const mode = branches.find(({ mode: branchMode, all }) =>
+    branchMode === 'update' && all.every((path) => pathPresent(variables, path)))?.mode ?? 'create';
+  const candidates = branches.filter((branch) => !branch.mode || branch.mode === mode);
+  const forbidden = candidates.flatMap((branch) => branch.forbidden ?? [])
+    .filter((path, index, values) => pathPresent(variables, path) && values.indexOf(path) === index)
+    .map((path) => path.replace(/^input\./, ''));
+  if (forbidden.length) throw new Error(`Params not valid in ${mode} mode: ${forbidden.join(', ')}.`);
+  for (const branch of candidates) {
+    const failedGroup = branch.exactlyOneOf?.findIndex((group) =>
+      group.filter((path) => pathPresent(variables, path)).length !== 1) ?? -1;
+    if (failedGroup >= 0 && branch.exactlyOneOfMessages?.[failedGroup]) {
+      throw new Error(branch.exactlyOneOfMessages[failedGroup]!);
+    }
+    if (branch.atLeastOneOf && !branch.atLeastOneOf.some((path) => pathPresent(variables, path))
+      && branch.atLeastOneOfMessage) throw new Error(branch.atLeastOneOfMessage);
+  }
+  const first = candidates[0] ?? branches[0];
+  const missing = first?.all.filter((path) => !pathPresent(variables, path)) ?? [];
+  if (missing.length) throw new Error(`missing ${missing.join(', ')}`);
+  throw new Error('parameters do not match one accepted requirement branch');
+}
+
 /** Build the single authority object while the v0.4-shaped input stays local to this module boundary. */
 export function defineOperation(operation: LinearOperation): OperationDefinition {
+  const branches = DEFINITION_COMPATIBILITY_BRANCHES[operation.name];
+  if (!branches) throw new Error(`Missing compatibility branches for "${operation.name}".`);
   const { action, entity } = actionAndEntity(operation.name);
   const local = Boolean(operation.executeLocal);
   const documents = local
@@ -77,14 +135,16 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
       ? 'mutation'
       : 'query';
   const entityKind = renderKind(operation.name);
-  const compatibilityBranches = [
-    operation.parameters,
-    ...(operation.legacyParameters ?? []),
-    ...Object.values(operation.aliasParameters ?? {}),
-  ].map((fields) => ({
-    all: fields.filter(({ required }) => required).map(({ name }) => name),
+  const requiresVariables = !branches.some((branch) => requirementBranchMatches(branch, {}));
+  const discovery = discoveryForOperation(operation.name);
+  const canonical = DEFINITION_CANONICAL_OPERATIONS[operation.name];
+  if (!canonical) throw new Error(`Missing canonical definition for "${operation.name}".`);
+  const canonicalFields = Object.entries(canonical.fields).map(([name, type]) => ({
+    name,
+    type,
+    required: canonical.branches.length > 0
+      && canonical.branches.every((branch) => branch.includes(name)),
   }));
-
   return {
     name: operation.name,
     toolName: `linear_${operation.name}`,
@@ -94,7 +154,7 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
     compatibility: {
       operationAliases: operation.aliases,
       fields: operation.parameters,
-      branches: compatibilityBranches,
+      branches,
       ...(operation.acceptedParameters ? { acceptedFields: operation.acceptedParameters } : {}),
       ...(operation.legacyParameters ? { legacyBranches: operation.legacyParameters } : {}),
       ...(operation.aliasParameters ? { aliasFields: operation.aliasParameters } : {}),
@@ -102,8 +162,12 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
       document: operation.document,
       ...(operation.pagination ? { pagination: operation.pagination } : {}),
       ...(operation.resolverPaths ? { resolverPaths: operation.resolverPaths } : {}),
-      ...(operation.requiresVariables ? { requiresVariables: true } : {}),
-      ...(operation.validateVariables ? { validateVariables: operation.validateVariables } : {}),
+      ...(requiresVariables ? { requiresVariables: true } : {}),
+      ...(operation.validateVariables ? {
+        semanticException: DEFINITION_SEMANTIC_EXCEPTIONS[operation.name]
+          ?? (() => { throw new Error(`Unnamed semantic validation exception for "${operation.name}".`); })(),
+        semanticValidateVariables: operation.validateVariables,
+      } : {}),
       ...(operation.prepare ? { prepare: operation.prepare } : {}),
       ...(operation.executeLocal ? { executeLocal: operation.executeLocal } : {}),
     },
@@ -119,7 +183,8 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
     discovery: {
       action,
       entity,
-      terms: operation.name.split('_'),
+      ...discovery,
+      terms: [...new Set([...operation.name.split('_'), ...discovery.actions, ...discovery.entities])],
       exactHelp: true,
     },
     result: {
@@ -132,8 +197,15 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
       action,
     },
     canonical: {
-      fields: [],
-      branches: [],
+      fields: canonicalFields,
+      branches: canonical.branches.map((all) => ({ all })),
+      ...(canonical.exclusiveBranches ? { exclusiveBranches: true } : {}),
+      ...(canonical.variants ? {
+        variants: canonical.variants.map((variant) => ({
+          fields: variant.fields,
+          branches: variant.branches.map((all) => ({ all })),
+        })),
+      } : {}),
       strictRawArguments: true,
       example: operation.example.variables,
     },
@@ -165,9 +237,24 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
     ...(compatibility.pagination ? { pagination: compatibility.pagination } : {}),
     ...(compatibility.resolverPaths ? { resolverPaths: compatibility.resolverPaths } : {}),
     ...(compatibility.requiresVariables ? { requiresVariables: true } : {}),
-    ...(compatibility.validateVariables ? { validateVariables: compatibility.validateVariables } : {}),
-    ...(compatibility.prepare ? { prepare: compatibility.prepare } : {}),
-    ...(compatibility.executeLocal ? { executeLocal: compatibility.executeLocal } : {}),
+    validateVariables(variables) {
+      assertRequirementBranches(compatibility.branches, variables);
+      compatibility.semanticValidateVariables?.(variables);
+    },
+    ...(compatibility.prepare ? {
+      prepare: async (apiKey, variables, signal) => {
+        assertRequirementBranches(compatibility.branches, variables);
+        compatibility.semanticValidateVariables?.(variables);
+        return compatibility.prepare!(apiKey, variables, signal);
+      },
+    } : {}),
+    ...(compatibility.executeLocal ? {
+      executeLocal: async (variables, ctx) => {
+        assertRequirementBranches(compatibility.branches, variables);
+        compatibility.semanticValidateVariables?.(variables);
+        return compatibility.executeLocal!(variables, ctx);
+      },
+    } : {}),
   };
   projections.set(definition, operation);
   return operation;

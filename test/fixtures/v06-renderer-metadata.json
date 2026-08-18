@@ -1,0 +1,500 @@
+{
+  "list_comments": {
+    "entityKind": "comment",
+    "callFields": [
+      "issue",
+      "after",
+      "before",
+      "first",
+      "last",
+      "includeArchived",
+      "orderBy",
+      "filter"
+    ],
+    "action": "list"
+  },
+  "create_comment": {
+    "entityKind": "comment",
+    "callFields": [
+      "issue",
+      "body"
+    ],
+    "action": "create"
+  },
+  "update_comment": {
+    "entityKind": "comment",
+    "callFields": [
+      "id",
+      "body",
+      "bodyData",
+      "quotedText",
+      "skipEditedAt",
+      "input"
+    ],
+    "action": "update"
+  },
+  "list_views": {
+    "entityKind": "view",
+    "callFields": [
+      "after",
+      "before",
+      "first",
+      "last",
+      "includeArchived",
+      "orderBy",
+      "filter"
+    ],
+    "action": "list"
+  },
+  "get_view": {
+    "entityKind": "view",
+    "callFields": [
+      "id"
+    ],
+    "action": "get"
+  },
+  "create_view": {
+    "entityKind": "view",
+    "callFields": [
+      "name",
+      "filterData",
+      "projectFilterData",
+      "initiativeFilterData",
+      "feedItemFilterData",
+      "team"
+    ],
+    "action": "create"
+  },
+  "update_view": {
+    "entityKind": "view",
+    "callFields": [
+      "id",
+      "input"
+    ],
+    "action": "update"
+  },
+  "set_view_preferences": {
+    "entityKind": "view",
+    "callFields": [
+      "viewId",
+      "preferences"
+    ],
+    "action": "set"
+  },
+  "list_cycles": {
+    "entityKind": "cycle",
+    "callFields": [
+      "team",
+      "after",
+      "before",
+      "first",
+      "last",
+      "includeArchived",
+      "orderBy",
+      "filter"
+    ],
+    "action": "list"
+  },
+  "get_cycle": {
+    "entityKind": "cycle",
+    "callFields": [
+      "cycle"
+    ],
+    "action": "get"
+  },
+  "create_cycle": {
+    "entityKind": "cycle",
+    "callFields": [
+      "team",
+      "startsAt",
+      "endsAt"
+    ],
+    "action": "create"
+  },
+  "update_cycle": {
+    "entityKind": "cycle",
+    "callFields": [
+      "id",
+      "name",
+      "description",
+      "startsAt",
+      "endsAt",
+      "completedAt"
+    ],
+    "action": "update"
+  },
+  "list_documents": {
+    "entityKind": "document",
+    "callFields": [
+      "after",
+      "before",
+      "first",
+      "last",
+      "includeArchived",
+      "orderBy",
+      "filter",
+      "sort"
+    ],
+    "action": "list"
+  },
+  "get_document": {
+    "entityKind": "document",
+    "callFields": [
+      "document"
+    ],
+    "action": "get"
+  },
+  "create_document": {
+    "entityKind": "document",
+    "callFields": [
+      "title",
+      "input"
+    ],
+    "action": "create"
+  },
+  "update_document": {
+    "entityKind": "document",
+    "callFields": [
+      "documentId",
+      "input"
+    ],
+    "action": "update"
+  },
+  "list_initiatives": {
+    "entityKind": "initiative",
+    "callFields": [
+      "after",
+      "before",
+      "first",
+      "last",
+      "includeArchived",
+      "orderBy",
+      "filter",
+      "sort"
+    ],
+    "action": "list"
+  },
+  "get_initiative": {
+    "entityKind": "initiative",
+    "callFields": [
+      "initiative"
+    ],
+    "action": "get"
+  },
+  "list_issue_labels": {
+    "entityKind": "label",
+    "callFields": [
+      "team",
+      "after",
+      "before",
+      "first",
+      "last",
+      "includeArchived",
+      "orderBy",
+      "filter"
+    ],
+    "action": "list"
+  },
+  "create_issue_label": {
+    "entityKind": "label",
+    "callFields": [
+      "name",
+      "team",
+      "input"
+    ],
+    "action": "create"
+  },
+  "update_issue_label": {
+    "entityKind": "label",
+    "callFields": [
+      "id",
+      "input"
+    ],
+    "action": "update"
+  },
+  "list_issue_relations": {
+    "entityKind": "issue_relation",
+    "callFields": [
+      "after",
+      "before",
+      "first",
+      "last",
+      "includeArchived",
+      "orderBy"
+    ],
+    "action": "list"
+  },
+  "create_issue_relation": {
+    "entityKind": "issue_relation",
+    "callFields": [
+      "issue",
+      "relatedIssue",
+      "type"
+    ],
+    "action": "create"
+  },
+  "update_issue_relation": {
+    "entityKind": "issue_relation",
+    "callFields": [
+      "id",
+      "input"
+    ],
+    "action": "update"
+  },
+  "list_issue_statuses": {
+    "entityKind": "issue_status",
+    "callFields": [
+      "after",
+      "before",
+      "first",
+      "last",
+      "includeArchived",
+      "orderBy",
+      "filter"
+    ],
+    "action": "list"
+  },
+  "list_issues": {
+    "entityKind": "issue",
+    "callFields": [
+      "query",
+      "team",
+      "state",
+      "stateType",
+      "assignee",
+      "after",
+      "before",
+      "first",
+      "last",
+      "includeArchived",
+      "orderBy",
+      "filter",
+      "sort"
+    ],
+    "action": "list"
+  },
+  "get_issue": {
+    "entityKind": "issue",
+    "callFields": [
+      "issue"
+    ],
+    "action": "get"
+  },
+  "create_issue": {
+    "entityKind": "issue",
+    "callFields": [
+      "title",
+      "parent",
+      "team",
+      "state",
+      "assignee",
+      "input"
+    ],
+    "action": "create"
+  },
+  "update_issue": {
+    "entityKind": "issue",
+    "callFields": [
+      "issue",
+      "state",
+      "assignee",
+      "parent",
+      "input"
+    ],
+    "action": "update"
+  },
+  "search_issues": {
+    "entityKind": "issue",
+    "callFields": [
+      "term",
+      "includeComments",
+      "team",
+      "after",
+      "before",
+      "first",
+      "last",
+      "includeArchived",
+      "orderBy",
+      "filter"
+    ],
+    "action": "search"
+  },
+  "list_milestones": {
+    "entityKind": "milestone",
+    "callFields": [
+      "after",
+      "before",
+      "first",
+      "last",
+      "includeArchived",
+      "orderBy",
+      "filter"
+    ],
+    "action": "list"
+  },
+  "get_milestone": {
+    "entityKind": "milestone",
+    "callFields": [
+      "milestone"
+    ],
+    "action": "get"
+  },
+  "list_project_labels": {
+    "entityKind": "label",
+    "callFields": [
+      "after",
+      "before",
+      "first",
+      "last",
+      "includeArchived",
+      "orderBy",
+      "filter"
+    ],
+    "action": "list"
+  },
+  "create_project_label": {
+    "entityKind": "label",
+    "callFields": [
+      "name",
+      "input"
+    ],
+    "action": "create"
+  },
+  "update_project_label": {
+    "entityKind": "label",
+    "callFields": [
+      "id",
+      "input"
+    ],
+    "action": "update"
+  },
+  "list_project_relations": {
+    "entityKind": "project_relation",
+    "callFields": [
+      "after",
+      "before",
+      "first",
+      "last",
+      "includeArchived",
+      "orderBy"
+    ],
+    "action": "list"
+  },
+  "create_project_relation": {
+    "entityKind": "project_relation",
+    "callFields": [
+      "projectId",
+      "relatedProjectId",
+      "type",
+      "anchorType",
+      "relatedAnchorType"
+    ],
+    "action": "create"
+  },
+  "update_project_relation": {
+    "entityKind": "project_relation",
+    "callFields": [
+      "id",
+      "input"
+    ],
+    "action": "update"
+  },
+  "list_projects": {
+    "entityKind": "project",
+    "callFields": [
+      "after",
+      "before",
+      "first",
+      "last",
+      "includeArchived",
+      "orderBy",
+      "filter",
+      "sort"
+    ],
+    "action": "list"
+  },
+  "get_project": {
+    "entityKind": "project",
+    "callFields": [
+      "project"
+    ],
+    "action": "get"
+  },
+  "list_teams": {
+    "entityKind": "team",
+    "callFields": [
+      "after",
+      "before",
+      "first",
+      "last",
+      "includeArchived",
+      "orderBy",
+      "filter"
+    ],
+    "action": "list"
+  },
+  "get_team": {
+    "entityKind": "team",
+    "callFields": [
+      "team"
+    ],
+    "action": "get"
+  },
+  "list_users": {
+    "entityKind": "user",
+    "callFields": [
+      "includeDisabled",
+      "after",
+      "before",
+      "first",
+      "last",
+      "includeArchived",
+      "orderBy",
+      "filter",
+      "sort"
+    ],
+    "action": "list"
+  },
+  "get_user": {
+    "entityKind": "user",
+    "callFields": [
+      "user"
+    ],
+    "action": "get"
+  },
+  "switch_workspace": {
+    "entityKind": "workspace",
+    "callFields": [
+      "name"
+    ],
+    "action": "switch"
+  },
+  "save_initiative": {
+    "entityKind": "initiative",
+    "callFields": [
+      "initiativeId",
+      "name",
+      "input"
+    ],
+    "action": "save"
+  },
+  "save_milestone": {
+    "entityKind": "milestone",
+    "callFields": [
+      "milestoneId",
+      "name",
+      "projectId",
+      "input"
+    ],
+    "action": "save"
+  },
+  "save_project": {
+    "entityKind": "project",
+    "callFields": [
+      "projectId",
+      "name",
+      "input"
+    ],
+    "action": "save"
+  }
+}

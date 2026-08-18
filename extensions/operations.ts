@@ -353,16 +353,6 @@ function simpleMutation(config: {
 	};
 }
 
-const COMMENT_TARGETS = [
-	"issueId",
-	"projectId",
-	"initiativeId",
-	"projectUpdateId",
-	"initiativeUpdateId",
-	"postId",
-	"documentContentId",
-	"parentId",
-] as const;
 const COMMENT_CREATE_INPUT_FIELDS = [
 	"body",
 	"bodyData",
@@ -427,32 +417,16 @@ function assertCommentBodyData(sources: readonly Record<string, unknown>[]): voi
 	}
 }
 
-function assertCommentCreateVariables(variables: Record<string, unknown>): void {
+// Branch metadata owns comment target/content requirements. This exception checks value semantics only.
+function validateCommentCreateSemantics(variables: Record<string, unknown>): void {
 	const raw = commentInputObject(variables, COMMENT_CREATE_INPUT_FIELDS);
-	const sources = [variables, raw];
-	assertCommentBodyData(sources);
-	const targets =
-		Number(has(variables, "issue")) +
-		COMMENT_TARGETS.reduce(
-			(count, target) => count + sources.filter((source) => has(source, target)).length,
-			0,
-		);
-	if (targets !== 1) throw new Error("exactly one comment target is required");
-	const content = ["body", "bodyData"].reduce(
-		(count, field) => count + sources.filter((source) => has(source, field)).length,
-		0,
-	);
-	if (content !== 1) throw new Error("exactly one of body or bodyData is required");
+	assertCommentBodyData([variables, raw]);
 }
 
-function assertCommentUpdateVariables(variables: Record<string, unknown>): void {
+// Branch metadata owns the required update set. This exception checks value semantics only.
+function validateCommentUpdateSemantics(variables: Record<string, unknown>): void {
 	const raw = commentInputObject(variables, COMMENT_UPDATE_INPUT_FIELDS);
 	assertCommentBodyData([variables, raw]);
-	const updates = COMMENT_UPDATE_INPUT_FIELDS.reduce(
-		(count, field) => count + Number(has(variables, field) || has(raw, field)),
-		0,
-	);
-	if (!updates) throw new Error("at least one comment update field is required");
 }
 const issueCreateFields = [
 	"teamId",
@@ -595,9 +569,9 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 			issue: "resolveIssueReference",
 			issueId: "resolveIssueReference",
 		},
-		validateVariables: assertCommentCreateVariables,
+		validateVariables: validateCommentCreateSemantics,
 		async prepare(apiKey, variables, signal) {
-			assertCommentCreateVariables(variables);
+			validateCommentCreateSemantics(variables);
 			const requested =
 				issueReference(variables) ||
 				String(object(variables.input)?.issueId ?? "");
@@ -625,9 +599,9 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 		parameters: [p("id", "String", true), ...commentUpdateInput, input],
 		example: { id: "comment-id", body: "Updated text" },
 		idKey: "id",
-		validateVariables: assertCommentUpdateVariables,
+		validateVariables: validateCommentUpdateSemantics,
 		async prepare(_apiKey, variables) {
-			assertCommentUpdateVariables(variables);
+			validateCommentUpdateSemantics(variables);
 			return {
 				variables: compactObject({
 					id: variables.id,
@@ -2036,9 +2010,6 @@ function addSaveOperation(config: {
 	updateType: string;
 	parameters: readonly OperationParameter[];
 	example: Record<string, unknown>;
-	createOnly: readonly string[];
-	updateOnly: readonly string[];
-	emptyUpdateMessage: string;
 	resolverPaths?: Record<string, string>;
 }) {
 	const entityPath = config.entity[0]!.toLowerCase() + config.entity.slice(1);
@@ -2069,40 +2040,29 @@ function addSaveOperation(config: {
 	);
 	const createVariant = mutationVariant(createDocument, config.createRoot, entityPath, "create");
 	const updateVariant = mutationVariant(updateDocument, config.updateRoot, entityPath, "update");
-	const validateSaveVariables = (v: Record<string, unknown>) => {
+	// Requirement branches own save mode, required content, and forbidden fields.
+	// This named exception checks non-empty and value-type semantics only.
+	const validateSaveSemantics = (v: Record<string, unknown>) => {
 		const reference = v[config.idKey];
 		const update = typeof reference === "string" && reference.length > 0;
-		const rawInput = object(v.input) ?? {};
-		const invalidForMode = (
-			update ? config.createOnly : config.updateOnly
-		).filter((key) => v[key] !== undefined || rawInput[key] !== undefined);
-		if (invalidForMode.length) {
-			throw new Error(
-				`Params not valid in ${update ? "update" : "create"} mode: ${invalidForMode.join(", ")}.`,
-			);
-		}
+		if (update) return;
 		const prepared = mergedInput(v, [config.idKey]);
-		if (update && Object.keys(prepared).length === 0) {
-			throw new Error(config.emptyUpdateMessage);
-		}
-		if (!update) {
-			if (typeof prepared.name !== "string" || !prepared.name.trim())
-				throw new Error(
-					`${config.entity} name is required for ${config.createRoot} (name).`,
-				);
-			if (
-				config.name === "save_milestone" &&
-				typeof prepared.projectId !== "string"
-			)
-				throw new Error("projectId is required for projectMilestoneCreate.");
-			if (
-				config.name === "save_project" &&
-				(!Array.isArray(prepared.teamIds) || prepared.teamIds.length === 0)
-			)
-				throw new Error(
-					"teamIds is required for projectCreate and must be a non-empty array.",
-				);
-		}
+		if (typeof prepared.name !== "string" || !prepared.name.trim())
+			throw new Error(
+				`${config.entity} name is required for ${config.createRoot} (name).`,
+			);
+		if (
+			config.name === "save_milestone" &&
+			typeof prepared.projectId !== "string"
+		)
+			throw new Error("projectId is required for projectMilestoneCreate.");
+		if (
+			config.name === "save_project" &&
+			(!Array.isArray(prepared.teamIds) || prepared.teamIds.length === 0)
+		)
+			throw new Error(
+				"teamIds is required for projectCreate and must be a non-empty array.",
+			);
 	};
 	const cardParameters =
 		config.name === "save_project"
@@ -2127,9 +2087,9 @@ function addSaveOperation(config: {
 		variants: [createVariant, updateVariant],
 		resolverPaths: config.resolverPaths,
 		requiresVariables: true,
-		validateVariables: validateSaveVariables,
+		validateVariables: validateSaveSemantics,
 		async prepare(k, v, s) {
-			validateSaveVariables(v);
+			validateSaveSemantics(v);
 			const reference = v[config.idKey];
 			const update = typeof reference === "string" && reference.length > 0;
 			const prepared = mergedInput(v, [config.idKey]);
@@ -2210,17 +2170,6 @@ addSaveOperation({
 	createType: "InitiativeCreateInput",
 	updateType: "InitiativeUpdateInput",
 	resolverPaths: { initiativeId: "resolveNamedEntityReference" },
-	createOnly: ["id"],
-	updateOnly: [
-		"customIdentifier",
-		"frequencyResolution",
-		"trashed",
-		"updateReminderFrequency",
-		"updateReminderFrequencyInWeeks",
-		"updateRemindersDay",
-		"updateRemindersHour",
-	],
-	emptyUpdateMessage: "No initiative update fields were provided.",
 	parameters: [
 		"initiativeId",
 		"color",
@@ -2265,9 +2214,6 @@ addSaveOperation({
 		milestoneId: "resolveNamedEntityReference",
 		projectId: "resolveNamedEntityReference",
 	},
-	createOnly: ["id"],
-	updateOnly: [],
-	emptyUpdateMessage: "No milestone update fields were provided.",
 	parameters: [
 		"milestoneId",
 		"description",
@@ -2297,22 +2243,6 @@ addSaveOperation({
 		projectId: "resolveNamedEntityReference",
 		convertedFromIssueId: "resolveIssueReference",
 	},
-	createOnly: ["id", "templateId", "useDefaultTemplate", "slackChannelName"],
-	updateOnly: [
-		"canceledAt",
-		"completedAt",
-		"frequencyResolution",
-		"projectUpdateRemindersPausedUntilAt",
-		"slackIssueComments",
-		"slackIssueStatuses",
-		"slackNewIssue",
-		"trashed",
-		"updateReminderFrequency",
-		"updateReminderFrequencyInWeeks",
-		"updateRemindersDay",
-		"updateRemindersHour",
-	],
-	emptyUpdateMessage: "No project update fields were provided.",
 	parameters: [
 		"projectId",
 		"id",

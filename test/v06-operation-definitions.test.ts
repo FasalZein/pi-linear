@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { Kind, parse } from 'graphql';
 import { describe, expect, it } from 'vitest';
 import { helpResult, resolveRequest } from '../extensions/api';
@@ -10,6 +11,38 @@ import {
   operations,
   projectCompatibilityOperation,
 } from '../extensions/operations';
+import { requirementBranchMatches } from '../extensions/operation-definition';
+import type { RequirementBranch } from '../extensions/operation-types';
+
+// Independent parent fixture from b5bed54. Tests never generate it from operationDefinitions.
+const RENDERER_FIXTURE = JSON.parse(readFileSync(
+  new URL('./fixtures/v06-renderer-metadata.json', import.meta.url),
+  'utf8',
+)) as Record<string, unknown>;
+
+const CREATE_ISSUE_BRANCH_FIXTURE: readonly RequirementBranch[] = [
+  {
+    all: ['title'],
+    atLeastOneOf: ['team', 'teamKey', 'teamId', 'parent', 'input.teamId', 'input.parentId'],
+  },
+  {
+    all: ['input.title'],
+    atLeastOneOf: ['team', 'teamKey', 'teamId', 'parent', 'input.teamId', 'input.parentId'],
+  },
+];
+
+function definition(name: string) {
+  return operationDefinitions.find((value) => value.name === name)!;
+}
+
+function assertRendererFixtureParity(): void {
+  expect(Object.fromEntries(operationDefinitions.map((value) => [value.name, value.render])))
+    .toEqual(RENDERER_FIXTURE);
+}
+
+function assertCreateIssueBranchFixtureParity(): void {
+  expect(definition('create_issue').compatibility.branches).toEqual(CREATE_ISSUE_BRANCH_FIXTURE);
+}
 
 const CANONICAL_NAMES = [
   'list_comments', 'create_comment', 'update_comment', 'list_views', 'get_view', 'create_view',
@@ -83,6 +116,91 @@ describe('v0.6 operation definition authority', () => {
         expect(variant.mutationResult !== undefined).toBe(variant.kind === 'mutation');
       }
     }
+  });
+
+  it('authors exact compatibility requirements and names every semantic-only exception', () => {
+    assertCreateIssueBranchFixtureParity();
+    expect(definition('create_comment').compatibility.branches[0]).toMatchObject({
+      all: [],
+      exactlyOneOf: [expect.arrayContaining(['issue', 'input.issueId']), ['body', 'bodyData', 'input.body', 'input.bodyData']],
+    });
+    expect(definition('update_comment').compatibility.branches[0]).toMatchObject({
+      all: ['id'],
+      atLeastOneOf: expect.arrayContaining(['body', 'input.bodyData']),
+    });
+    for (const name of ['save_initiative', 'save_milestone', 'save_project']) {
+      const branches = definition(name).compatibility.branches;
+      expect(branches.some(({ mode, forbidden }) => mode === 'create' && Boolean(forbidden?.length))).toBe(true);
+      expect(branches.some(({ mode, atLeastOneOf, forbidden }) =>
+        mode === 'update' && Boolean(atLeastOneOf?.length) && Boolean(forbidden?.length))).toBe(true);
+    }
+    for (const value of operationDefinitions.filter(({ compatibility }) => compatibility.requiresVariables)) {
+      expect(value.compatibility.branches.some((branch) => requirementBranchMatches(branch, {})), value.name).toBe(false);
+    }
+    expect(Object.fromEntries(operationDefinitions
+      .filter(({ compatibility }) => compatibility.semanticValidateVariables)
+      .map(({ name, compatibility }) => [name, compatibility.semanticException]))).toEqual({
+      create_comment: 'comment-value-types',
+      update_comment: 'comment-value-types',
+      create_document: 'nested-title-type',
+      create_issue_label: 'nested-name-type',
+      list_issues: 'state-name-requires-team',
+      create_issue: 'non-empty-title-and-team-or-parent',
+      create_project_label: 'nested-name-type',
+      save_initiative: 'save-value-types',
+      save_milestone: 'save-value-types',
+      save_project: 'save-value-types',
+    });
+  });
+
+  it('projects branch validation for all, atLeastOneOf, exactlyOneOf, and forbidden', () => {
+    expect(() => operations.create_issue.validateVariables?.({ title: 'T', parent: 'AEO-1' })).not.toThrow();
+    expect(() => operations.create_issue.validateVariables?.({ title: 'T' })).toThrow();
+    expect(() => operations.create_comment.validateVariables?.({ issue: 'AEO-1', body: 'ok' })).not.toThrow();
+    expect(() => operations.create_comment.validateVariables?.({ issue: 'AEO-1', projectId: 'p', body: 'ok' })).toThrow(
+      'exactly one comment target is required',
+    );
+    expect(() => operations.update_comment.validateVariables?.({ id: 'c' })).toThrow(
+      'at least one comment update field is required',
+    );
+    expect(() => operations.save_project.validateVariables?.({
+      projectId: 'p', id: 'create-only', name: 'update',
+    })).toThrow('Params not valid in update mode: id.');
+  });
+
+  it('detects deliberate compatibility, discovery, canonical, and renderer drift', () => {
+    const issue = definition('create_issue');
+    const branches = issue.compatibility.branches;
+    issue.compatibility.branches = [{ all: [] }];
+    expect(assertCreateIssueBranchFixtureParity).toThrow();
+    issue.compatibility.branches = branches;
+
+    const discovery = definition('get_issue').discovery;
+    const intents = discovery.intents;
+    discovery.intents = [{ action: 'broken', entity: 'issue' }];
+    expect(assertActivationAdapterParity).toThrow('Discovery metadata drift');
+    discovery.intents = intents;
+
+    const canonical = definition('get_issue').canonical.fields.find(({ name }) => name === 'issue')!;
+    const canonicalType = canonical.type;
+    canonical.type = 'Float';
+    expect(assertCanonicalAdapterParity).toThrow('Canonical adapter drift');
+    canonical.type = canonicalType;
+
+    const render = definition('get_issue').render;
+    const renderKind = render.entityKind;
+    render.entityKind = 'project';
+    expect(assertRendererFixtureParity).toThrow();
+    render.entityKind = renderKind;
+
+    assertCreateIssueBranchFixtureParity();
+    assertRendererFixtureParity();
+    expect(() => assertActivationAdapterParity()).not.toThrow();
+    expect(() => assertCanonicalAdapterParity()).not.toThrow();
+  });
+
+  it('matches renderer kind and call fields against an independent fixture', () => {
+    assertRendererFixtureParity();
   });
 
   it('projects help, examples, preparation, raw fallback, and adapter parity without behavior changes', () => {
