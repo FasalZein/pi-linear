@@ -1,9 +1,37 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { assertMutationAllowed, getMutationFields } from '../extensions/safety';
+import { assertMutationAllowed, assertNamedInputAllowed, getMutationFields } from '../extensions/safety';
 
 afterEach(() => {
   delete process.env.LINEAR_MUTATIONS;
   delete process.env.LINEAR_READONLY;
+});
+
+describe('named input policy', () => {
+  it.each([
+    [{ trashed: true }, 'variables.trashed'],
+    [{ input: { trashed: false } }, 'variables.input.trashed'],
+    [{ filters: [{ nested: { trashed: null } }] }, 'variables.filters[0].nested.trashed'],
+  ])('rejects destructive semantic fields at any depth', (variables, path) => {
+    expect(() => assertNamedInputAllowed(variables)).toThrow(
+      `Destructive named input is unavailable at ${path}. Use an authorized raw GraphQL mutation with LINEAR_MUTATIONS=all.`,
+    );
+  });
+
+  it('inspects only own enumerable string keys', () => {
+    const inherited = Object.create({ trashed: true }) as Record<string, unknown>;
+    Object.defineProperty(inherited, 'hidden', { value: { trashed: true }, enumerable: false });
+    inherited.body = 'ordinary trashed text';
+
+    expect(() => assertNamedInputAllowed(inherited)).not.toThrow();
+  });
+
+  it('does not infer destructive intent from ordinary string values or unrelated keys', () => {
+    expect(() => assertNamedInputAllowed({
+      body: 'The word trashed is ordinary text.',
+      trashedAt: '2026-08-18',
+      status: ['not trashed'],
+    })).not.toThrow();
+  });
 });
 
 describe('mutation detection and gating', () => {

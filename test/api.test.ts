@@ -116,6 +116,80 @@ describe('named operations', () => {
       'Invalid parameters for "get_issue": missing issue; unknown extra. Valid parameters: issue: IssueReference (required). Example: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }.',
     );
   });
+
+  it.each([
+    ['canonical', 'update_document', { documentId: 'document-id', trashed: true }],
+    ['compatibility alias', 'add_comment', { input: { issueId: 'issue-id', body: 'text', trashed: true } }],
+  ])('rejects destructive input on the %s named surface before credentials or fetch', async (_surface, operation, variables) => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const tool = linearApiTool() as any;
+
+    await expect(tool.execute(
+      'call-1',
+      { operation, variables },
+      undefined,
+      undefined,
+      { hasUI: false },
+    )).rejects.toThrow(/Destructive named input is unavailable at variables(?:\.input)?\.trashed/);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('preserves explicitly authorized raw GraphQL mutations, including raw trashed variables', async () => {
+    process.env.LINEAR_API_KEY = 'test-key';
+    process.env.LINEAR_MUTATIONS = 'all';
+    const fetch = vi.fn(async () => new Response(JSON.stringify({
+      data: { documentUpdate: { success: true } },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetch);
+    try {
+      await expect((linearApiTool() as any).execute(
+        'call-1',
+        {
+          query: 'mutation Raw($id: String!, $input: DocumentUpdateInput!) { documentUpdate(id: $id, input: $input) { success } }',
+          variables: { id: 'document-id', input: { trashed: true } },
+        },
+        undefined,
+        undefined,
+        { hasUI: false },
+      )).resolves.toMatchObject({ details: { data: { documentUpdate: { success: true } } } });
+      expect(fetch).toHaveBeenCalledOnce();
+    } finally {
+      delete process.env.LINEAR_MUTATIONS;
+    }
+  });
+
+  it('does not let LINEAR_MUTATIONS=all bypass named destructive input rejection', async () => {
+    process.env.LINEAR_MUTATIONS = 'all';
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    try {
+      await expect((linearApiTool() as any).execute(
+        'call-1',
+        { operation: 'update_document', variables: { documentId: 'document-id', trashed: true } },
+        undefined,
+        undefined,
+        { hasUI: false },
+      )).rejects.toThrow('Destructive named input is unavailable at variables.trashed');
+      expect(fetch).not.toHaveBeenCalled();
+    } finally {
+      delete process.env.LINEAR_MUTATIONS;
+    }
+  });
+
+  it('preserves read-only mutation rejection precedence for destructive named input', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+
+    await expect((linearApiTool('readonly') as any).execute(
+      'call-1',
+      { operation: 'update_document', variables: { documentId: 'document-id', trashed: true } },
+      undefined,
+      undefined,
+      { hasUI: false },
+    )).rejects.toThrow('read-only mode');
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });
 
 describe('runtime discovery', () => {

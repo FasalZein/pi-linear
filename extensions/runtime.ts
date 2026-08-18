@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { linearGraphQL, resolveApiKey } from './client';
 import { operationDocuments, type LinearOperation } from './operations';
 import { redactDeep, withRedactedErrors } from './redact';
-import { assertMutationAllowed, type MutationMode } from './safety';
+import { assertMutationAllowed, assertNamedInputAllowed, type MutationMode } from './safety';
 
 export const NODE_CAP = 100;
 export const STRING_CAP = 2_000;
@@ -145,6 +145,17 @@ export type OperationRunOptions = {
   sink?: 'inline' | 'artifact';
 };
 
+export function assertOperationAllowed(
+  operation: LinearOperation,
+  variables: Record<string, unknown>,
+  mode: MutationMode,
+): void {
+  for (const document of operationDocuments(operation)) {
+    assertMutationAllowed(document, mode, operation.mutationRoots);
+  }
+  assertNamedInputAllowed(variables);
+}
+
 /**
  * Single execution path for one named operation. Both `linear_api` and the typed
  * tools route through here, so mutation gating, reference resolution, spill, and
@@ -157,9 +168,7 @@ export async function executeOperation(
   ctx: ExtensionContext,
   signal: AbortSignal | undefined,
 ): Promise<JsonObject> {
-  for (const document of operationDocuments(operation)) {
-    assertMutationAllowed(document, mode, operation.mutationRoots);
-  }
+  assertOperationAllowed(operation, options.variables, mode);
   // Filled as soon as the key is known, so the same array covers results, spill, and
   // any failure raised later in this call.
   const secrets: string[] = [];

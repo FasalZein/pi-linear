@@ -600,6 +600,14 @@ describe('execution boundary rejects non-canonical arguments before any network 
     await expect(execute(tools.get('linear_save_project')!, { projectId: 'Roadmap' })).rejects.toThrow();
     expect(requests).toHaveLength(0);
   });
+
+  it('rejects nested destructive semantic fields on typed tools before any request', async () => {
+    const requests = installServer();
+    await expect(execute(tools.get('linear_list_issues')!, {
+      filter: { and: [{ title: { contains: 'trashed' } }, { trashed: true }] },
+    })).rejects.toThrow('Destructive named input is unavailable at variables.filter.and[1].trashed');
+    expect(requests).toHaveLength(0);
+  });
 });
 
 describe('schema cost', () => {

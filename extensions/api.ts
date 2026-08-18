@@ -15,6 +15,7 @@ import {
 } from './operations';
 import {
   apiKeyForWorkspace,
+  assertOperationAllowed,
   executeOperation,
   routeLinearResult,
   NODE_CAP,
@@ -86,11 +87,12 @@ export function resolveRequest(params: {
   operation?: string;
   query?: string;
   variables?: Record<string, unknown>;
-}): { query: string; named: false } | { query: string; named: true; operation: LinearOperation } {
+}, mode: MutationMode = 'allowlist'): { query: string; named: false } | { query: string; named: true; operation: LinearOperation } {
   if (Boolean(params.operation) === Boolean(params.query)) throw new Error(REQUEST_SHAPES);
   if (!params.operation) return { query: params.query!, named: false };
 
   const operation = getOperation(params.operation);
+  assertOperationAllowed(operation, params.variables ?? {}, mode);
   validateVariables(operation, params.operation, params.variables ?? {});
   return { query: operation.document, named: true, operation };
 }
@@ -213,7 +215,7 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
         return toolResult(helpResult(params.variables, activator));
       }
 
-      const request = resolveRequest(params);
+      const request = resolveRequest(params, mode);
       if (request.named) {
         return toolResult(await executeOperation(
           request.operation,

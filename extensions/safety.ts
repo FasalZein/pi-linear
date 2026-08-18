@@ -30,6 +30,28 @@ export const SAFE_NAMED_MUTATION_ROOTS = new Set([
   'projectUpdate',
 ]);
 
+export function assertNamedInputAllowed(value: unknown, path = 'variables'): void {
+  const seen = new WeakSet<object>();
+  const visit = (current: unknown, currentPath: string): void => {
+    if (!current || typeof current !== 'object' || seen.has(current)) return;
+    seen.add(current);
+
+    for (const key of Object.keys(current)) {
+      const childPath = Array.isArray(current)
+        ? `${currentPath}[${key}]`
+        : `${currentPath}.${key}`;
+      if (key === 'trashed') {
+        throw new Error(
+          `Destructive named input is unavailable at ${childPath}. Use an authorized raw GraphQL mutation with LINEAR_MUTATIONS=all.`,
+        );
+      }
+      visit((current as Record<string, unknown>)[key], childPath);
+    }
+  };
+
+  visit(value, path);
+}
+
 function mutationFields(document: DocumentNode): string[] {
   const fragments = new Map(
     document.definitions

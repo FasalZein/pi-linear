@@ -4,7 +4,7 @@ import { Type, type TSchema } from 'typebox';
 import { Compile } from 'typebox/compile';
 import { formatInvocation, operations, type LinearOperation } from './operations';
 import { canonicalFieldNames, canonicalOperation } from './canonical';
-import { executeOperation, type JsonObject } from './runtime';
+import { assertOperationAllowed, executeOperation, type JsonObject } from './runtime';
 import { operationRenderers } from './renderers';
 import { typedToolName } from './tool-names';
 import type { MutationMode } from './safety';
@@ -322,6 +322,7 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       if (signal?.aborted) throw new Error('Request cancelled.');
       const { workspace, ...variables } = params as JsonObject;
+      assertOperationAllowed(operation, variables, mode);
       assertCanonicalOnly(operation, variables);
       assertBranch(operation, variables);
       assertSchema(params);
