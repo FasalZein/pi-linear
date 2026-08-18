@@ -1,5 +1,4 @@
 import { Kind, parse } from 'graphql';
-import { DEFINITION_CANONICAL_OPERATIONS } from './definition-canonical';
 import {
   DEFINITION_COMPATIBILITY_BRANCHES,
   DEFINITION_SEMANTIC_EXCEPTIONS,
@@ -137,8 +136,7 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
   const entityKind = renderKind(operation.name);
   const requiresVariables = !branches.some((branch) => requirementBranchMatches(branch, {}));
   const discovery = discoveryForOperation(operation.name);
-  const canonical = DEFINITION_CANONICAL_OPERATIONS[operation.name];
-  if (!canonical) throw new Error(`Missing canonical definition for "${operation.name}".`);
+  const canonical = operation.canonical;
   const canonicalFields = Object.entries(canonical.fields).map(([name, type]) => ({
     name,
     type,
@@ -224,6 +222,17 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
     .map(({ kind: _kind, ...variant }) => variant);
   const operation: LinearOperation = {
     name: definition.name,
+    canonical: {
+      fields: Object.fromEntries(definition.canonical.fields.map(({ name, type }) => [name, type])),
+      branches: definition.canonical.branches.map(({ all }) => all),
+      ...(definition.canonical.exclusiveBranches ? { exclusiveBranches: true } : {}),
+      ...(definition.canonical.variants ? {
+        variants: definition.canonical.variants.map((variant) => ({
+          fields: variant.fields,
+          branches: variant.branches.map(({ all }) => all),
+        })) as unknown as NonNullable<LinearOperation['canonical']['variants']>,
+      } : {}),
+    },
     aliases: compatibility.operationAliases,
     domain: definition.domain,
     purpose: definition.purpose,

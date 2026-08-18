@@ -40,6 +40,7 @@ import {
 	type OperationDomain,
 	type OperationParameter,
 } from "./operation-types";
+import type { CanonicalOperation } from "./canonical-schema";
 import {
 	defineOperation,
 	projectCompatibilityOperation,
@@ -253,6 +254,7 @@ function updateInputPrepare(idKey = "id", omitted: readonly string[] = []) {
 }
 function listOperation(config: {
 	name: string;
+	canonical: CanonicalOperation;
 	domain: OperationDomain;
 	root: string;
 	selection: string;
@@ -280,6 +282,7 @@ function listOperation(config: {
 	);
 	return {
 		name: config.name,
+		canonical: config.canonical,
 		aliases: config.aliases ?? [],
 		domain: config.domain,
 		purpose: config.purpose,
@@ -305,6 +308,7 @@ function listOperation(config: {
 }
 function simpleMutation(config: {
 	name: string;
+	canonical: CanonicalOperation;
 	domain: OperationDomain;
 	purpose: string;
 	root: string;
@@ -335,6 +339,7 @@ function simpleMutation(config: {
 	if (!entityPath) throw new Error(`Mutation ${config.name} must select a result entity.`);
 	return {
 		name: config.name,
+		canonical: config.canonical,
 		aliases: config.aliases ?? [],
 		domain: config.domain,
 		purpose: config.purpose,
@@ -519,6 +524,21 @@ const issueUpdateFields = [
 const operationDefinitionsMutable: OperationDefinition[] = ([
 	listOperation({
 		name: "list_comments",
+		canonical: {
+			"fields": {
+				"issue": "IssueReference",
+				"after": "String",
+				"before": "String",
+				"first": "Int",
+				"last": "Int",
+				"includeArchived": "Boolean",
+				"orderBy": "PaginationOrderBy",
+				"filter": "Filter"
+			},
+			"branches": [
+				[]
+			]
+		},
 		domain: "comments",
 		root: "comments",
 		selection: COMMENT_SELECTION,
@@ -549,6 +569,92 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "create_comment",
+		canonical: {
+			"fields": {
+				"issue": "IssueReference",
+				"projectId": "UUID",
+				"initiativeId": "UUID",
+				"projectUpdateId": "UUID",
+				"initiativeUpdateId": "UUID",
+				"postId": "UUID",
+				"documentContentId": "UUID",
+				"parentId": "UUID",
+				"body": "String",
+				"bodyData": "JsonObject",
+				"quotedText": "String",
+				"doNotSubscribeToIssue": "Boolean",
+				"createOnSyncedSlackThread": "Boolean",
+				"createdAt": "DateTime",
+				"id": "UUID"
+			},
+			"branches": [
+				[
+					"issue",
+					"body"
+				],
+				[
+					"issue",
+					"bodyData"
+				],
+				[
+					"projectId",
+					"body"
+				],
+				[
+					"projectId",
+					"bodyData"
+				],
+				[
+					"initiativeId",
+					"body"
+				],
+				[
+					"initiativeId",
+					"bodyData"
+				],
+				[
+					"projectUpdateId",
+					"body"
+				],
+				[
+					"projectUpdateId",
+					"bodyData"
+				],
+				[
+					"initiativeUpdateId",
+					"body"
+				],
+				[
+					"initiativeUpdateId",
+					"bodyData"
+				],
+				[
+					"postId",
+					"body"
+				],
+				[
+					"postId",
+					"bodyData"
+				],
+				[
+					"documentContentId",
+					"body"
+				],
+				[
+					"documentContentId",
+					"bodyData"
+				],
+				[
+					"parentId",
+					"body"
+				],
+				[
+					"parentId",
+					"bodyData"
+				]
+			],
+			"exclusiveBranches": true
+		},
 		domain: "comments",
 		purpose: "Create a comment on an issue or another supported target.",
 		root: "commentCreate",
@@ -590,6 +696,29 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_comment",
+		canonical: {
+			"fields": {
+				"id": "String",
+				"body": "String",
+				"bodyData": "JsonObject",
+				"quotedText": "String",
+				"skipEditedAt": "Boolean"
+			},
+			"branches": [
+				[
+					"id",
+					"body"
+				],
+				[
+					"id",
+					"bodyData"
+				],
+				[
+					"id",
+					"quotedText"
+				]
+			]
+		},
 		domain: "comments",
 		purpose: "Update a comment by id.",
 		root: "commentUpdate",
@@ -614,6 +743,20 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_views",
+		canonical: {
+			"fields": {
+				"after": "String",
+				"before": "String",
+				"first": "Int",
+				"last": "Int",
+				"includeArchived": "Boolean",
+				"orderBy": "PaginationOrderBy",
+				"filter": "Filter"
+			},
+			"branches": [
+				[]
+			]
+		},
 		domain: "views",
 		root: "customViews",
 		selection: VIEW_SELECTION,
@@ -623,6 +766,16 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	{
 		name: "get_view",
+		canonical: {
+			"fields": {
+				"id": "String"
+			},
+			"branches": [
+				[
+					"id"
+				]
+			]
+		},
 		aliases: [],
 		domain: "views",
 		purpose: "Get a custom view.",
@@ -635,6 +788,25 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	},
 	simpleMutation({
 		name: "create_view",
+		canonical: {
+			"fields": {
+				"name": "String",
+				"team": "TeamReference",
+				"description": "String",
+				"icon": "String",
+				"color": "Color",
+				"shared": "Boolean",
+				"filterData": "FilterData",
+				"projectFilterData": "FilterData",
+				"initiativeFilterData": "FilterData",
+				"feedItemFilterData": "FilterData"
+			},
+			"branches": [
+				[
+					"name"
+				]
+			]
+		},
 		domain: "views",
 		purpose:
 			"Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData.",
@@ -679,6 +851,58 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_view",
+		canonical: {
+			"fields": {
+				"id": "String",
+				"name": "String",
+				"description": "String",
+				"icon": "String",
+				"color": "Color",
+				"shared": "Boolean",
+				"filterData": "FilterData",
+				"projectFilterData": "FilterData",
+				"initiativeFilterData": "FilterData",
+				"feedItemFilterData": "FilterData"
+			},
+			"branches": [
+				[
+					"id",
+					"name"
+				],
+				[
+					"id",
+					"description"
+				],
+				[
+					"id",
+					"icon"
+				],
+				[
+					"id",
+					"color"
+				],
+				[
+					"id",
+					"shared"
+				],
+				[
+					"id",
+					"filterData"
+				],
+				[
+					"id",
+					"projectFilterData"
+				],
+				[
+					"id",
+					"initiativeFilterData"
+				],
+				[
+					"id",
+					"feedItemFilterData"
+				]
+			]
+		},
 		domain: "views",
 		purpose: "Update a custom view.",
 		root: "customViewUpdate",
@@ -703,6 +927,18 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "set_view_preferences",
+		canonical: {
+			"fields": {
+				"viewId": "String",
+				"preferences": "Preferences"
+			},
+			"branches": [
+				[
+					"viewId",
+					"preferences"
+				]
+			]
+		},
 		domain: "views",
 		purpose: "Set preferences for a custom view.",
 		root: "viewPreferencesCreate",
@@ -726,6 +962,21 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_cycles",
+		canonical: {
+			"fields": {
+				"team": "TeamReference",
+				"after": "String",
+				"before": "String",
+				"first": "Int",
+				"last": "Int",
+				"includeArchived": "Boolean",
+				"orderBy": "PaginationOrderBy",
+				"filter": "Filter"
+			},
+			"branches": [
+				[]
+			]
+		},
 		domain: "cycles",
 		root: "cycles",
 		selection: CYCLE_SELECTION,
@@ -759,6 +1010,16 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	{
 		name: "get_cycle",
+		canonical: {
+			"fields": {
+				"cycle": "CycleReference"
+			},
+			"branches": [
+				[
+					"cycle"
+				]
+			]
+		},
 		aliases: [],
 		domain: "cycles",
 		purpose: "Get a cycle by exact name or UUID.",
@@ -784,6 +1045,22 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	},
 	simpleMutation({
 		name: "create_cycle",
+		canonical: {
+			"fields": {
+				"team": "TeamReference",
+				"startsAt": "DateTime",
+				"endsAt": "DateTime",
+				"name": "String",
+				"description": "String"
+			},
+			"branches": [
+				[
+					"team",
+					"startsAt",
+					"endsAt"
+				]
+			]
+		},
 		domain: "cycles",
 		purpose: "Create a cycle.",
 		root: "cycleCreate",
@@ -844,6 +1121,38 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_cycle",
+		canonical: {
+			"fields": {
+				"id": "String",
+				"name": "String",
+				"description": "String",
+				"startsAt": "DateTime",
+				"endsAt": "DateTime",
+				"completedAt": "DateTime"
+			},
+			"branches": [
+				[
+					"id",
+					"name"
+				],
+				[
+					"id",
+					"description"
+				],
+				[
+					"id",
+					"startsAt"
+				],
+				[
+					"id",
+					"endsAt"
+				],
+				[
+					"id",
+					"completedAt"
+				]
+			]
+		},
 		domain: "cycles",
 		purpose: "Update a cycle.",
 		root: "cycleUpdate",
@@ -863,6 +1172,21 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_documents",
+		canonical: {
+			"fields": {
+				"sort": "[DocumentSort!]",
+				"after": "String",
+				"before": "String",
+				"first": "Int",
+				"last": "Int",
+				"includeArchived": "Boolean",
+				"orderBy": "PaginationOrderBy",
+				"filter": "Filter"
+			},
+			"branches": [
+				[]
+			]
+		},
 		domain: "documents",
 		root: "documents",
 		selection: DOCUMENT_SELECTION,
@@ -874,6 +1198,16 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	{
 		name: "get_document",
+		canonical: {
+			"fields": {
+				"document": "DocumentReference"
+			},
+			"branches": [
+				[
+					"document"
+				]
+			]
+		},
 		aliases: [],
 		domain: "documents",
 		purpose: "Get a document by exact title or UUID.",
@@ -897,6 +1231,31 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	},
 	simpleMutation({
 		name: "create_document",
+		canonical: {
+			"fields": {
+				"title": "String",
+				"content": "String",
+				"icon": "String",
+				"color": "Color",
+				"issueId": "IssueReference",
+				"teamId": "TeamReference",
+				"projectId": "UUID",
+				"initiativeId": "UUID",
+				"cycleId": "UUID",
+				"releaseId": "UUID",
+				"resourceFolderId": "UUID",
+				"lastAppliedTemplateId": "UUID",
+				"ownerId": "UUID",
+				"subscriberIds": "[UUID!]",
+				"sortOrder": "Float",
+				"id": "UUID"
+			},
+			"branches": [
+				[
+					"title"
+				]
+			]
+		},
 		domain: "documents",
 		purpose: "Create a document.",
 		root: "documentCreate",
@@ -974,6 +1333,93 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_document",
+		canonical: {
+			"fields": {
+				"documentId": "DocumentReference",
+				"title": "String",
+				"content": "String",
+				"icon": "String",
+				"color": "Color",
+				"issueId": "IssueReference",
+				"teamId": "TeamReference",
+				"projectId": "UUID",
+				"initiativeId": "UUID",
+				"cycleId": "UUID",
+				"releaseId": "UUID",
+				"resourceFolderId": "UUID",
+				"lastAppliedTemplateId": "UUID",
+				"ownerId": "UUID",
+				"subscriberIds": "[UUID!]",
+				"sortOrder": "Float",
+				"hiddenAt": "NullableDateTime"
+			},
+			"branches": [
+				[
+					"documentId",
+					"title"
+				],
+				[
+					"documentId",
+					"content"
+				],
+				[
+					"documentId",
+					"icon"
+				],
+				[
+					"documentId",
+					"color"
+				],
+				[
+					"documentId",
+					"issueId"
+				],
+				[
+					"documentId",
+					"teamId"
+				],
+				[
+					"documentId",
+					"projectId"
+				],
+				[
+					"documentId",
+					"initiativeId"
+				],
+				[
+					"documentId",
+					"cycleId"
+				],
+				[
+					"documentId",
+					"releaseId"
+				],
+				[
+					"documentId",
+					"resourceFolderId"
+				],
+				[
+					"documentId",
+					"lastAppliedTemplateId"
+				],
+				[
+					"documentId",
+					"ownerId"
+				],
+				[
+					"documentId",
+					"subscriberIds"
+				],
+				[
+					"documentId",
+					"sortOrder"
+				],
+				[
+					"documentId",
+					"hiddenAt"
+				]
+			]
+		},
 		domain: "documents",
 		purpose: "Update a document.",
 		root: "documentUpdate",
@@ -1049,6 +1495,21 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_initiatives",
+		canonical: {
+			"fields": {
+				"sort": "[InitiativeSort!]",
+				"after": "String",
+				"before": "String",
+				"first": "Int",
+				"last": "Int",
+				"includeArchived": "Boolean",
+				"orderBy": "PaginationOrderBy",
+				"filter": "Filter"
+			},
+			"branches": [
+				[]
+			]
+		},
 		domain: "initiatives",
 		root: "initiatives",
 		selection: INITIATIVE_SELECTION,
@@ -1060,6 +1521,16 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	{
 		name: "get_initiative",
+		canonical: {
+			"fields": {
+				"initiative": "InitiativeReference"
+			},
+			"branches": [
+				[
+					"initiative"
+				]
+			]
+		},
 		aliases: [],
 		domain: "initiatives",
 		purpose: "Get an initiative by exact name or UUID.",
@@ -1084,6 +1555,21 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_issue_labels",
+		canonical: {
+			"fields": {
+				"team": "TeamReference",
+				"after": "String",
+				"before": "String",
+				"first": "Int",
+				"last": "Int",
+				"includeArchived": "Boolean",
+				"orderBy": "PaginationOrderBy",
+				"filter": "Filter"
+			},
+			"branches": [
+				[]
+			]
+		},
 		domain: "labels",
 		root: "issueLabels",
 		selection: ISSUE_LABEL_SELECTION,
@@ -1120,6 +1606,24 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "create_issue_label",
+		canonical: {
+			"fields": {
+				"name": "String",
+				"team": "TeamReference",
+				"description": "String",
+				"color": "Color",
+				"isGroup": "Boolean",
+				"parentId": "UUID",
+				"retiredAt": "DateTime",
+				"replaceTeamLabels": "Boolean",
+				"id": "UUID"
+			},
+			"branches": [
+				[
+					"name"
+				]
+			]
+		},
 		domain: "labels",
 		purpose: "Create an issue label.",
 		root: "issueLabelCreate",
@@ -1181,6 +1685,48 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_issue_label",
+		canonical: {
+			"fields": {
+				"id": "String",
+				"name": "String",
+				"description": "String",
+				"color": "Color",
+				"isGroup": "Boolean",
+				"parentId": "UUID",
+				"retiredAt": "NullableDateTime",
+				"replaceTeamLabels": "Boolean"
+			},
+			"branches": [
+				[
+					"id",
+					"name"
+				],
+				[
+					"id",
+					"description"
+				],
+				[
+					"id",
+					"color"
+				],
+				[
+					"id",
+					"isGroup"
+				],
+				[
+					"id",
+					"parentId"
+				],
+				[
+					"id",
+					"retiredAt"
+				],
+				[
+					"id",
+					"replaceTeamLabels"
+				]
+			]
+		},
 		domain: "labels",
 		purpose: "Update an issue label.",
 		root: "issueLabelUpdate",
@@ -1217,6 +1763,19 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_issue_relations",
+		canonical: {
+			"fields": {
+				"after": "String",
+				"before": "String",
+				"first": "Int",
+				"last": "Int",
+				"includeArchived": "Boolean",
+				"orderBy": "PaginationOrderBy"
+			},
+			"branches": [
+				[]
+			]
+		},
 		domain: "relations",
 		root: "issueRelations",
 		selection: ISSUE_RELATION_SELECTION,
@@ -1225,6 +1784,20 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "create_issue_relation",
+		canonical: {
+			"fields": {
+				"issue": "IssueReference",
+				"relatedIssue": "IssueReference",
+				"type": "IssueRelationType"
+			},
+			"branches": [
+				[
+					"issue",
+					"relatedIssue",
+					"type"
+				]
+			]
+		},
 		domain: "relations",
 		purpose: "Create a relation between two issues.",
 		root: "issueRelationCreate",
@@ -1275,6 +1848,28 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_issue_relation",
+		canonical: {
+			"fields": {
+				"id": "String",
+				"type": "IssueRelationType",
+				"issueId": "IssueReference",
+				"relatedIssueId": "IssueReference"
+			},
+			"branches": [
+				[
+					"id",
+					"type"
+				],
+				[
+					"id",
+					"issueId"
+				],
+				[
+					"id",
+					"relatedIssueId"
+				]
+			]
+		},
 		domain: "relations",
 		purpose: "Update an issue relation.",
 		root: "issueRelationUpdate",
@@ -1311,6 +1906,20 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_issue_statuses",
+		canonical: {
+			"fields": {
+				"after": "String",
+				"before": "String",
+				"first": "Int",
+				"last": "Int",
+				"includeArchived": "Boolean",
+				"orderBy": "PaginationOrderBy",
+				"filter": "Filter"
+			},
+			"branches": [
+				[]
+			]
+		},
 		domain: "workspace",
 		root: "workflowStates",
 		selection: WORKFLOW_STATE_SELECTION,
@@ -1322,6 +1931,26 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_issues",
+		canonical: {
+			"fields": {
+				"query": "String",
+				"team": "TeamReference",
+				"state": "StateReference",
+				"stateType": "WorkflowStateType",
+				"assignee": "UserReference",
+				"sort": "[IssueSort!]",
+				"after": "String",
+				"before": "String",
+				"first": "Int",
+				"last": "Int",
+				"includeArchived": "Boolean",
+				"orderBy": "PaginationOrderBy",
+				"filter": "Filter"
+			},
+			"branches": [
+				[]
+			]
+		},
 		domain: "issues",
 		root: "issues",
 		selection: ISSUE_SELECTION,
@@ -1430,6 +2059,16 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	{
 		name: "get_issue",
+		canonical: {
+			"fields": {
+				"issue": "IssueReference"
+			},
+			"branches": [
+				[
+					"issue"
+				]
+			]
+		},
 		aliases: [],
 		domain: "issues",
 		purpose: "Get one issue by exact identifier or UUID.",
@@ -1451,6 +2090,54 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	},
 	simpleMutation({
 		name: "create_issue",
+		canonical: {
+			"fields": {
+				"title": "String",
+				"team": "TeamReference",
+				"parent": "IssueReference",
+				"state": "StateReference",
+				"assignee": "UserReference",
+				"dueDate": "Date",
+				"description": "String",
+				"descriptionData": "JsonString",
+				"priority": "Priority",
+				"estimate": "Int",
+				"projectId": "UUID",
+				"projectMilestoneId": "UUID",
+				"cycleId": "UUID",
+				"labelIds": "[UUID!]",
+				"subscriberIds": "[UUID!]",
+				"delegateId": "UUID",
+				"lastAppliedTemplateId": "UUID",
+				"slaType": "SlaDayCountType",
+				"slaBreachesAt": "NullableDateTime",
+				"slaStartedAt": "NullableDateTime",
+				"sortOrder": "Float",
+				"subIssueSortOrder": "Float",
+				"prioritySortOrder": "Float",
+				"templateId": "UUID",
+				"useDefaultTemplate": "Boolean",
+				"preserveSortOrderOnCreate": "Boolean",
+				"referenceCommentId": "UUID",
+				"sourceCommentId": "UUID",
+				"sourcePullRequestCommentId": "UUID",
+				"createAsUser": "String",
+				"displayIconUrl": "Url",
+				"completedAt": "NullableDateTime",
+				"createdAt": "DateTime",
+				"id": "UUID"
+			},
+			"branches": [
+				[
+					"title",
+					"team"
+				],
+				[
+					"title",
+					"parent"
+				]
+			]
+		},
 		domain: "issues",
 		purpose:
 			"Create an issue. A parent reference supplies the team when team is omitted.",
@@ -1566,6 +2253,153 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_issue",
+		canonical: {
+			"fields": {
+				"issue": "IssueReference",
+				"title": "String",
+				"state": "StateReference",
+				"assignee": "UserReference",
+				"parent": "IssueReference",
+				"teamId": "TeamReference",
+				"dueDate": "NullableDate",
+				"addedLabelIds": "[UUID!]",
+				"removedLabelIds": "[UUID!]",
+				"description": "String",
+				"descriptionData": "JsonString",
+				"priority": "Priority",
+				"estimate": "Int",
+				"projectId": "UUID",
+				"projectMilestoneId": "UUID",
+				"cycleId": "UUID",
+				"labelIds": "[UUID!]",
+				"subscriberIds": "[UUID!]",
+				"delegateId": "UUID",
+				"lastAppliedTemplateId": "UUID",
+				"slaType": "SlaDayCountType",
+				"slaBreachesAt": "NullableDateTime",
+				"slaStartedAt": "NullableDateTime",
+				"sortOrder": "Float",
+				"subIssueSortOrder": "Float",
+				"prioritySortOrder": "Float",
+				"autoClosedByParentClosing": "Boolean",
+				"snoozedById": "UUID",
+				"snoozedUntilAt": "NullableDateTime"
+			},
+			"branches": [
+				[
+					"issue",
+					"title"
+				],
+				[
+					"issue",
+					"state"
+				],
+				[
+					"issue",
+					"assignee"
+				],
+				[
+					"issue",
+					"parent"
+				],
+				[
+					"issue",
+					"teamId"
+				],
+				[
+					"issue",
+					"dueDate"
+				],
+				[
+					"issue",
+					"addedLabelIds"
+				],
+				[
+					"issue",
+					"removedLabelIds"
+				],
+				[
+					"issue",
+					"description"
+				],
+				[
+					"issue",
+					"descriptionData"
+				],
+				[
+					"issue",
+					"priority"
+				],
+				[
+					"issue",
+					"estimate"
+				],
+				[
+					"issue",
+					"projectId"
+				],
+				[
+					"issue",
+					"projectMilestoneId"
+				],
+				[
+					"issue",
+					"cycleId"
+				],
+				[
+					"issue",
+					"labelIds"
+				],
+				[
+					"issue",
+					"subscriberIds"
+				],
+				[
+					"issue",
+					"delegateId"
+				],
+				[
+					"issue",
+					"lastAppliedTemplateId"
+				],
+				[
+					"issue",
+					"slaType"
+				],
+				[
+					"issue",
+					"slaBreachesAt"
+				],
+				[
+					"issue",
+					"slaStartedAt"
+				],
+				[
+					"issue",
+					"sortOrder"
+				],
+				[
+					"issue",
+					"subIssueSortOrder"
+				],
+				[
+					"issue",
+					"prioritySortOrder"
+				],
+				[
+					"issue",
+					"autoClosedByParentClosing"
+				],
+				[
+					"issue",
+					"snoozedById"
+				],
+				[
+					"issue",
+					"snoozedUntilAt"
+				]
+			]
+		},
 		domain: "issues",
 		purpose: "Update an issue by exact identifier or UUID.",
 		root: "issueUpdate",
@@ -1666,6 +2500,25 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	listOperation({
 		name: "search_issues",
+		canonical: {
+			"fields": {
+				"term": "String",
+				"includeComments": "Boolean",
+				"team": "TeamReference",
+				"after": "String",
+				"before": "String",
+				"first": "Int",
+				"last": "Int",
+				"includeArchived": "Boolean",
+				"orderBy": "PaginationOrderBy",
+				"filter": "Filter"
+			},
+			"branches": [
+				[
+					"term"
+				]
+			]
+		},
 		domain: "issues",
 		root: "searchIssues",
 		selection: ISSUE_SELECTION,
@@ -1711,6 +2564,20 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_milestones",
+		canonical: {
+			"fields": {
+				"after": "String",
+				"before": "String",
+				"first": "Int",
+				"last": "Int",
+				"includeArchived": "Boolean",
+				"orderBy": "PaginationOrderBy",
+				"filter": "Filter"
+			},
+			"branches": [
+				[]
+			]
+		},
 		domain: "milestones",
 		root: "projectMilestones",
 		selection: MILESTONE_SELECTION,
@@ -1720,6 +2587,16 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	{
 		name: "get_milestone",
+		canonical: {
+			"fields": {
+				"milestone": "MilestoneReference"
+			},
+			"branches": [
+				[
+					"milestone"
+				]
+			]
+		},
 		aliases: [],
 		domain: "milestones",
 		purpose: "Get a milestone by exact name or UUID.",
@@ -1745,6 +2622,20 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_project_labels",
+		canonical: {
+			"fields": {
+				"after": "String",
+				"before": "String",
+				"first": "Int",
+				"last": "Int",
+				"includeArchived": "Boolean",
+				"orderBy": "PaginationOrderBy",
+				"filter": "Filter"
+			},
+			"branches": [
+				[]
+			]
+		},
 		domain: "labels",
 		root: "projectLabels",
 		selection: PROJECT_LABEL_SELECTION,
@@ -1754,6 +2645,21 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "create_project_label",
+		canonical: {
+			"fields": {
+				"name": "String",
+				"description": "String",
+				"color": "Color",
+				"isGroup": "Boolean",
+				"parentId": "UUID",
+				"retiredAt": "DateTime"
+			},
+			"branches": [
+				[
+					"name"
+				]
+			]
+		},
 		domain: "labels",
 		purpose: "Create a project label.",
 		root: "projectLabelCreate",
@@ -1782,6 +2688,43 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_project_label",
+		canonical: {
+			"fields": {
+				"id": "String",
+				"name": "String",
+				"description": "String",
+				"color": "Color",
+				"isGroup": "Boolean",
+				"parentId": "UUID",
+				"retiredAt": "NullableDateTime"
+			},
+			"branches": [
+				[
+					"id",
+					"name"
+				],
+				[
+					"id",
+					"description"
+				],
+				[
+					"id",
+					"color"
+				],
+				[
+					"id",
+					"isGroup"
+				],
+				[
+					"id",
+					"parentId"
+				],
+				[
+					"id",
+					"retiredAt"
+				]
+			]
+		},
 		domain: "labels",
 		purpose: "Update a project label.",
 		root: "projectLabelUpdate",
@@ -1804,6 +2747,19 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_project_relations",
+		canonical: {
+			"fields": {
+				"after": "String",
+				"before": "String",
+				"first": "Int",
+				"last": "Int",
+				"includeArchived": "Boolean",
+				"orderBy": "PaginationOrderBy"
+			},
+			"branches": [
+				[]
+			]
+		},
 		domain: "relations",
 		root: "projectRelations",
 		selection: PROJECT_RELATION_SELECTION,
@@ -1812,6 +2768,26 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "create_project_relation",
+		canonical: {
+			"fields": {
+				"projectId": "String",
+				"relatedProjectId": "String",
+				"type": "String",
+				"anchorType": "String",
+				"relatedAnchorType": "String",
+				"projectMilestoneId": "UUID",
+				"relatedProjectMilestoneId": "UUID"
+			},
+			"branches": [
+				[
+					"projectId",
+					"relatedProjectId",
+					"type",
+					"anchorType",
+					"relatedAnchorType"
+				]
+			]
+		},
 		domain: "relations",
 		purpose: "Create a relation between two projects.",
 		root: "projectRelationCreate",
@@ -1844,6 +2820,48 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_project_relation",
+		canonical: {
+			"fields": {
+				"id": "String",
+				"type": "String",
+				"anchorType": "String",
+				"relatedAnchorType": "String",
+				"projectId": "UUID",
+				"relatedProjectId": "UUID",
+				"projectMilestoneId": "UUID",
+				"relatedProjectMilestoneId": "UUID"
+			},
+			"branches": [
+				[
+					"id",
+					"type"
+				],
+				[
+					"id",
+					"anchorType"
+				],
+				[
+					"id",
+					"relatedAnchorType"
+				],
+				[
+					"id",
+					"projectId"
+				],
+				[
+					"id",
+					"relatedProjectId"
+				],
+				[
+					"id",
+					"projectMilestoneId"
+				],
+				[
+					"id",
+					"relatedProjectMilestoneId"
+				]
+			]
+		},
 		domain: "relations",
 		purpose: "Update a project relation.",
 		root: "projectRelationUpdate",
@@ -1867,6 +2885,21 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_projects",
+		canonical: {
+			"fields": {
+				"sort": "[ProjectSort!]",
+				"after": "String",
+				"before": "String",
+				"first": "Int",
+				"last": "Int",
+				"includeArchived": "Boolean",
+				"orderBy": "PaginationOrderBy",
+				"filter": "Filter"
+			},
+			"branches": [
+				[]
+			]
+		},
 		domain: "projects",
 		root: "projects",
 		selection: PROJECT_LIST_SELECTION,
@@ -1878,6 +2911,16 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	{
 		name: "get_project",
+		canonical: {
+			"fields": {
+				"project": "ProjectReference"
+			},
+			"branches": [
+				[
+					"project"
+				]
+			]
+		},
 		aliases: [],
 		domain: "projects",
 		purpose: "Get a project by exact name or UUID.",
@@ -1908,6 +2951,20 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_teams",
+		canonical: {
+			"fields": {
+				"after": "String",
+				"before": "String",
+				"first": "Int",
+				"last": "Int",
+				"includeArchived": "Boolean",
+				"orderBy": "PaginationOrderBy",
+				"filter": "Filter"
+			},
+			"branches": [
+				[]
+			]
+		},
 		domain: "teams",
 		root: "teams",
 		selection: `${TEAM_SELECTION} states(first: 50) { nodes { id name type } }`,
@@ -1917,6 +2974,16 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	{
 		name: "get_team",
+		canonical: {
+			"fields": {
+				"team": "TeamReference"
+			},
+			"branches": [
+				[
+					"team"
+				]
+			]
+		},
 		aliases: [],
 		domain: "teams",
 		purpose: "Get a team by exact key or UUID.",
@@ -1941,6 +3008,22 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	},
 	listOperation({
 		name: "list_users",
+		canonical: {
+			"fields": {
+				"includeDisabled": "Boolean",
+				"sort": "[UserSort!]",
+				"after": "String",
+				"before": "String",
+				"first": "Int",
+				"last": "Int",
+				"includeArchived": "Boolean",
+				"orderBy": "PaginationOrderBy",
+				"filter": "Filter"
+			},
+			"branches": [
+				[]
+			]
+		},
 		domain: "users",
 		root: "users",
 		selection: USER_SELECTION,
@@ -1956,6 +3039,16 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	{
 		name: "get_user",
+		canonical: {
+			"fields": {
+				"user": "UserReference"
+			},
+			"branches": [
+				[
+					"user"
+				]
+			]
+		},
 		aliases: [],
 		domain: "users",
 		purpose: "Get a user by me, UUID, email, name, or display name.",
@@ -1980,6 +3073,16 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	},
 	{
 		name: "switch_workspace",
+		canonical: {
+			"fields": {
+				"name": "String"
+			},
+			"branches": [
+				[
+					"name"
+				]
+			]
+		},
 		aliases: [],
 		domain: "workspace",
 		purpose: "Switch the active stored workspace without exposing credentials.",
@@ -1998,6 +3101,7 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 // Save operations use one definition and select the create or update document at runtime.
 function addSaveOperation(config: {
 	name: string;
+	canonical: CanonicalOperation;
 	domain: OperationDomain;
 	entity: string;
 	entityKind: "project" | "initiative" | "projectMilestone";
@@ -2077,6 +3181,7 @@ function addSaveOperation(config: {
 					];
 	operationDefinitionsMutable.push(defineOperation({
 		name: config.name,
+		canonical: config.canonical,
 		aliases: [],
 		domain: config.domain,
 		purpose: `Create or update a ${config.entity.toLowerCase()}.`,
@@ -2159,6 +3264,250 @@ function addSaveOperation(config: {
 }
 addSaveOperation({
 	name: "save_initiative",
+	canonical: {
+		"fields": {
+			"initiativeId": "InitiativeReference",
+			"name": "String",
+			"description": "String",
+			"content": "String",
+			"icon": "String",
+			"color": "Color",
+			"status": "InitiativeStatus",
+			"targetDate": "NullableDate",
+			"targetDateResolution": "DateResolutionType",
+			"ownerId": "UUID",
+			"leadTeamId": "UUID",
+			"sortOrder": "Float",
+			"prioritySortOrder": "Float",
+			"priority": "Priority",
+			"labelIds": "[UUID!]",
+			"id": "UUID",
+			"customIdentifier": "String",
+			"frequencyResolution": "FrequencyResolutionType",
+			"updateReminderFrequency": "Float",
+			"updateReminderFrequencyInWeeks": "Float",
+			"updateRemindersDay": "Day",
+			"updateRemindersHour": "Float"
+		},
+		"branches": [
+			[
+				"name"
+			],
+			[
+				"initiativeId",
+				"name"
+			],
+			[
+				"initiativeId",
+				"description"
+			],
+			[
+				"initiativeId",
+				"content"
+			],
+			[
+				"initiativeId",
+				"icon"
+			],
+			[
+				"initiativeId",
+				"color"
+			],
+			[
+				"initiativeId",
+				"status"
+			],
+			[
+				"initiativeId",
+				"targetDate"
+			],
+			[
+				"initiativeId",
+				"targetDateResolution"
+			],
+			[
+				"initiativeId",
+				"ownerId"
+			],
+			[
+				"initiativeId",
+				"leadTeamId"
+			],
+			[
+				"initiativeId",
+				"sortOrder"
+			],
+			[
+				"initiativeId",
+				"prioritySortOrder"
+			],
+			[
+				"initiativeId",
+				"priority"
+			],
+			[
+				"initiativeId",
+				"labelIds"
+			],
+			[
+				"initiativeId",
+				"customIdentifier"
+			],
+			[
+				"initiativeId",
+				"frequencyResolution"
+			],
+			[
+				"initiativeId",
+				"updateReminderFrequency"
+			],
+			[
+				"initiativeId",
+				"updateReminderFrequencyInWeeks"
+			],
+			[
+				"initiativeId",
+				"updateRemindersDay"
+			],
+			[
+				"initiativeId",
+				"updateRemindersHour"
+			]
+		],
+		"variants": [
+			{
+				"fields": [
+					"name",
+					"description",
+					"content",
+					"icon",
+					"color",
+					"status",
+					"targetDate",
+					"targetDateResolution",
+					"ownerId",
+					"leadTeamId",
+					"sortOrder",
+					"prioritySortOrder",
+					"priority",
+					"labelIds",
+					"id"
+				],
+				"branches": [
+					[
+						"name"
+					]
+				]
+			},
+			{
+				"fields": [
+					"initiativeId",
+					"name",
+					"description",
+					"content",
+					"icon",
+					"color",
+					"status",
+					"targetDate",
+					"targetDateResolution",
+					"ownerId",
+					"leadTeamId",
+					"sortOrder",
+					"prioritySortOrder",
+					"priority",
+					"labelIds",
+					"customIdentifier",
+					"frequencyResolution",
+					"updateReminderFrequency",
+					"updateReminderFrequencyInWeeks",
+					"updateRemindersDay",
+					"updateRemindersHour"
+				],
+				"branches": [
+					[
+						"initiativeId",
+						"name"
+					],
+					[
+						"initiativeId",
+						"description"
+					],
+					[
+						"initiativeId",
+						"content"
+					],
+					[
+						"initiativeId",
+						"icon"
+					],
+					[
+						"initiativeId",
+						"color"
+					],
+					[
+						"initiativeId",
+						"status"
+					],
+					[
+						"initiativeId",
+						"targetDate"
+					],
+					[
+						"initiativeId",
+						"targetDateResolution"
+					],
+					[
+						"initiativeId",
+						"ownerId"
+					],
+					[
+						"initiativeId",
+						"leadTeamId"
+					],
+					[
+						"initiativeId",
+						"sortOrder"
+					],
+					[
+						"initiativeId",
+						"prioritySortOrder"
+					],
+					[
+						"initiativeId",
+						"priority"
+					],
+					[
+						"initiativeId",
+						"labelIds"
+					],
+					[
+						"initiativeId",
+						"customIdentifier"
+					],
+					[
+						"initiativeId",
+						"frequencyResolution"
+					],
+					[
+						"initiativeId",
+						"updateReminderFrequency"
+					],
+					[
+						"initiativeId",
+						"updateReminderFrequencyInWeeks"
+					],
+					[
+						"initiativeId",
+						"updateRemindersDay"
+					],
+					[
+						"initiativeId",
+						"updateRemindersHour"
+					]
+				]
+			}
+		]
+	},
 	domain: "initiatives",
 	entity: "Initiative",
 	entityKind: "initiative",
@@ -2200,6 +3549,104 @@ addSaveOperation({
 });
 addSaveOperation({
 	name: "save_milestone",
+	canonical: {
+		"fields": {
+			"milestoneId": "MilestoneReference",
+			"name": "String",
+			"projectId": "ProjectReference",
+			"description": "String",
+			"descriptionData": "JsonString",
+			"targetDate": "NullableDate",
+			"sortOrder": "Float",
+			"id": "UUID"
+		},
+		"branches": [
+			[
+				"name",
+				"projectId"
+			],
+			[
+				"milestoneId",
+				"name"
+			],
+			[
+				"milestoneId",
+				"projectId"
+			],
+			[
+				"milestoneId",
+				"description"
+			],
+			[
+				"milestoneId",
+				"descriptionData"
+			],
+			[
+				"milestoneId",
+				"targetDate"
+			],
+			[
+				"milestoneId",
+				"sortOrder"
+			]
+		],
+		"variants": [
+			{
+				"fields": [
+					"name",
+					"projectId",
+					"description",
+					"descriptionData",
+					"targetDate",
+					"sortOrder",
+					"id"
+				],
+				"branches": [
+					[
+						"name",
+						"projectId"
+					]
+				]
+			},
+			{
+				"fields": [
+					"milestoneId",
+					"name",
+					"projectId",
+					"description",
+					"descriptionData",
+					"targetDate",
+					"sortOrder"
+				],
+				"branches": [
+					[
+						"milestoneId",
+						"name"
+					],
+					[
+						"milestoneId",
+						"projectId"
+					],
+					[
+						"milestoneId",
+						"description"
+					],
+					[
+						"milestoneId",
+						"descriptionData"
+					],
+					[
+						"milestoneId",
+						"targetDate"
+					],
+					[
+						"milestoneId",
+						"sortOrder"
+					]
+				]
+			}
+		]
+	},
 	domain: "milestones",
 	entity: "ProjectMilestone",
 	entityKind: "projectMilestone",
@@ -2229,6 +3676,374 @@ addSaveOperation({
 });
 addSaveOperation({
 	name: "save_project",
+	canonical: {
+		"fields": {
+			"projectId": "ProjectReference",
+			"name": "String",
+			"teamIds": "[ID!]",
+			"description": "String",
+			"content": "String",
+			"icon": "String",
+			"color": "Color",
+			"priority": "Priority",
+			"startDate": "Date",
+			"startDateResolution": "DateResolutionType",
+			"targetDate": "NullableDate",
+			"targetDateResolution": "DateResolutionType",
+			"statusId": "UUID",
+			"leadId": "UUID",
+			"leadTeamId": "UUID",
+			"memberIds": "[UUID!]",
+			"labelIds": "[UUID!]",
+			"convertedFromIssueId": "IssueReference",
+			"lastAppliedTemplateId": "UUID",
+			"sortOrder": "Float",
+			"prioritySortOrder": "Float",
+			"canceledAt": "NullableDateTime",
+			"completedAt": "NullableDateTime",
+			"projectUpdateRemindersPausedUntilAt": "NullableDateTime",
+			"slackIssueComments": "Boolean",
+			"slackIssueStatuses": "Boolean",
+			"slackNewIssue": "Boolean",
+			"slackChannelName": "String",
+			"templateId": "UUID",
+			"useDefaultTemplate": "Boolean",
+			"id": "UUID",
+			"frequencyResolution": "FrequencyResolutionType",
+			"updateReminderFrequency": "Float",
+			"updateReminderFrequencyInWeeks": "Float",
+			"updateRemindersDay": "Day",
+			"updateRemindersHour": "Float"
+		},
+		"branches": [
+			[
+				"name",
+				"teamIds"
+			],
+			[
+				"projectId",
+				"name"
+			],
+			[
+				"projectId",
+				"teamIds"
+			],
+			[
+				"projectId",
+				"description"
+			],
+			[
+				"projectId",
+				"content"
+			],
+			[
+				"projectId",
+				"icon"
+			],
+			[
+				"projectId",
+				"color"
+			],
+			[
+				"projectId",
+				"priority"
+			],
+			[
+				"projectId",
+				"startDate"
+			],
+			[
+				"projectId",
+				"startDateResolution"
+			],
+			[
+				"projectId",
+				"targetDate"
+			],
+			[
+				"projectId",
+				"targetDateResolution"
+			],
+			[
+				"projectId",
+				"statusId"
+			],
+			[
+				"projectId",
+				"leadId"
+			],
+			[
+				"projectId",
+				"leadTeamId"
+			],
+			[
+				"projectId",
+				"memberIds"
+			],
+			[
+				"projectId",
+				"labelIds"
+			],
+			[
+				"projectId",
+				"convertedFromIssueId"
+			],
+			[
+				"projectId",
+				"lastAppliedTemplateId"
+			],
+			[
+				"projectId",
+				"sortOrder"
+			],
+			[
+				"projectId",
+				"prioritySortOrder"
+			],
+			[
+				"projectId",
+				"canceledAt"
+			],
+			[
+				"projectId",
+				"completedAt"
+			],
+			[
+				"projectId",
+				"projectUpdateRemindersPausedUntilAt"
+			],
+			[
+				"projectId",
+				"slackIssueComments"
+			],
+			[
+				"projectId",
+				"slackIssueStatuses"
+			],
+			[
+				"projectId",
+				"slackNewIssue"
+			],
+			[
+				"projectId",
+				"frequencyResolution"
+			],
+			[
+				"projectId",
+				"updateReminderFrequency"
+			],
+			[
+				"projectId",
+				"updateReminderFrequencyInWeeks"
+			],
+			[
+				"projectId",
+				"updateRemindersDay"
+			],
+			[
+				"projectId",
+				"updateRemindersHour"
+			]
+		],
+		"variants": [
+			{
+				"fields": [
+					"name",
+					"teamIds",
+					"description",
+					"content",
+					"icon",
+					"color",
+					"priority",
+					"startDate",
+					"startDateResolution",
+					"targetDate",
+					"targetDateResolution",
+					"statusId",
+					"leadId",
+					"leadTeamId",
+					"memberIds",
+					"labelIds",
+					"convertedFromIssueId",
+					"lastAppliedTemplateId",
+					"sortOrder",
+					"prioritySortOrder",
+					"slackChannelName",
+					"templateId",
+					"useDefaultTemplate",
+					"id"
+				],
+				"branches": [
+					[
+						"name",
+						"teamIds"
+					]
+				]
+			},
+			{
+				"fields": [
+					"projectId",
+					"name",
+					"teamIds",
+					"description",
+					"content",
+					"icon",
+					"color",
+					"priority",
+					"startDate",
+					"startDateResolution",
+					"targetDate",
+					"targetDateResolution",
+					"statusId",
+					"leadId",
+					"leadTeamId",
+					"memberIds",
+					"labelIds",
+					"convertedFromIssueId",
+					"lastAppliedTemplateId",
+					"sortOrder",
+					"prioritySortOrder",
+					"canceledAt",
+					"completedAt",
+					"projectUpdateRemindersPausedUntilAt",
+					"slackIssueComments",
+					"slackIssueStatuses",
+					"slackNewIssue",
+					"frequencyResolution",
+					"updateReminderFrequency",
+					"updateReminderFrequencyInWeeks",
+					"updateRemindersDay",
+					"updateRemindersHour"
+				],
+				"branches": [
+					[
+						"projectId",
+						"name"
+					],
+					[
+						"projectId",
+						"teamIds"
+					],
+					[
+						"projectId",
+						"description"
+					],
+					[
+						"projectId",
+						"content"
+					],
+					[
+						"projectId",
+						"icon"
+					],
+					[
+						"projectId",
+						"color"
+					],
+					[
+						"projectId",
+						"priority"
+					],
+					[
+						"projectId",
+						"startDate"
+					],
+					[
+						"projectId",
+						"startDateResolution"
+					],
+					[
+						"projectId",
+						"targetDate"
+					],
+					[
+						"projectId",
+						"targetDateResolution"
+					],
+					[
+						"projectId",
+						"statusId"
+					],
+					[
+						"projectId",
+						"leadId"
+					],
+					[
+						"projectId",
+						"leadTeamId"
+					],
+					[
+						"projectId",
+						"memberIds"
+					],
+					[
+						"projectId",
+						"labelIds"
+					],
+					[
+						"projectId",
+						"convertedFromIssueId"
+					],
+					[
+						"projectId",
+						"lastAppliedTemplateId"
+					],
+					[
+						"projectId",
+						"sortOrder"
+					],
+					[
+						"projectId",
+						"prioritySortOrder"
+					],
+					[
+						"projectId",
+						"canceledAt"
+					],
+					[
+						"projectId",
+						"completedAt"
+					],
+					[
+						"projectId",
+						"projectUpdateRemindersPausedUntilAt"
+					],
+					[
+						"projectId",
+						"slackIssueComments"
+					],
+					[
+						"projectId",
+						"slackIssueStatuses"
+					],
+					[
+						"projectId",
+						"slackNewIssue"
+					],
+					[
+						"projectId",
+						"frequencyResolution"
+					],
+					[
+						"projectId",
+						"updateReminderFrequency"
+					],
+					[
+						"projectId",
+						"updateReminderFrequencyInWeeks"
+					],
+					[
+						"projectId",
+						"updateRemindersDay"
+					],
+					[
+						"projectId",
+						"updateRemindersHour"
+					]
+				]
+			}
+		]
+	},
 	domain: "projects",
 	entity: "Project",
 	entityKind: "project",

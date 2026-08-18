@@ -1,4 +1,5 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { CanonicalOperation } from "./canonical-schema";
 
 export type OperationDomain =
 	| "issues"
@@ -47,6 +48,7 @@ export type PaginationMetadata = {
 };
 export type LinearOperation = {
 	name: string;
+	canonical: CanonicalOperation;
 	aliases: readonly string[];
 	domain: OperationDomain;
 	purpose: string;

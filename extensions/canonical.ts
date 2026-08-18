@@ -1,5 +1,5 @@
 import { operationDefinitions, type LinearOperation } from './operations';
-import { TYPED_EXCLUSIONS, type CanonicalOperation, type CanonicalVariant } from './definition-canonical';
+import { TYPED_EXCLUSIONS, type CanonicalOperation, type CanonicalVariant } from './canonical-schema';
 
 export { TYPED_EXCLUSIONS, type CanonicalOperation, type CanonicalVariant };
 

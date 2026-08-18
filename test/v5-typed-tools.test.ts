@@ -6,8 +6,8 @@ import { registerLinearExtension } from '../extensions/index';
 import { linearApiTool } from '../extensions/api';
 import { requirementBranches, typedLinearTools, typedToolNames } from '../extensions/typed-tools';
 import { CANONICAL_OPERATIONS, canonicalFieldNames, missingCanonicalOperations } from '../extensions/canonical';
-import { planActivation } from '../extensions/activation';
-import { operations } from '../extensions/operations';
+import { candidatesFor, planActivation } from '../extensions/activation';
+import { operationDefinitions, operations } from '../extensions/operations';
 // The validator Pi runs on every tool call, imported from the agent runtime itself.
 import { validateToolArguments } from '../node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/utils/validation.js';
 
@@ -172,6 +172,28 @@ describe('deterministic activation', () => {
   it('activates each step of an explicit two-step request, in clause order', async () => {
     expect(await loadedFor('create an issue then set it to Backlog'))
       .toEqual(['linear_create_issue', 'linear_update_issue']);
+  });
+
+  it('ranks natural candidates from definition terms with stable name tie-breaking', () => {
+    const names = candidatesFor('comment issue').map(({ name }) => name);
+    expect(names[0]).toBe('create_comment');
+    expect(names).toEqual([...names].sort((left, right) => {
+      const definition = (name: string) => operationDefinitions.find((entry) => entry.name === name)!;
+      const score = (name: string) => definition(name).discovery.terms
+        .filter((term) => term === 'comment' || term === 'issue').length;
+      return score(right) - score(left) || left.localeCompare(right);
+    }));
+  });
+
+  it('uses discovery terms as the live candidate index', () => {
+    const definition = operationDefinitions.find(({ name }) => name === 'get_issue')!;
+    const terms = definition.discovery.terms;
+    definition.discovery.terms = [...terms, 'needleterm'];
+    try {
+      expect(candidatesFor('needleterm').map(({ name }) => name)).toEqual(['get_issue']);
+    } finally {
+      definition.discovery.terms = terms;
+    }
   });
 
   it('activates nothing for a broad noun-only query and offers candidates', async () => {

@@ -1,12 +1,57 @@
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { cp, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { generatedFiles, renderGeneratedFiles, staleGeneratedFiles, syncAllowlistFile } from '../scripts/generate';
+import { contractProjection, generatedFiles, renderGeneratedFiles, staleGeneratedFiles, syncAllowlistFile } from '../scripts/generate';
 import manifest from '../extensions/generated/linear-tools.manifest.json';
 import { operationDefinitions } from '../extensions/operations';
 
 const expectedNames = ['linear_api', ...operationDefinitions.map(({ toolName }) => toolName)];
+
+async function treeDigest(root: string): Promise<string> {
+  const hash = createHash('sha256');
+  const walk = async (directory: string): Promise<void> => {
+    for (const name of (await readdir(directory)).sort()) {
+      if (name === 'node_modules') continue;
+      const path = join(directory, name);
+      const metadata = await stat(path);
+      if (metadata.isDirectory()) await walk(path);
+      else hash.update(path.slice(root.length)).update(await readFile(path));
+    }
+  };
+  await walk(root);
+  return hash.digest('hex');
+}
+
+async function staleSourceProbe(relativePath: string, oldText: string, newText: string): Promise<void> {
+  const parent = await mkdtemp(join(tmpdir(), 'linear-generation-probe-'));
+  const copy = join(parent, basename(process.cwd()));
+  try {
+    await cp(process.cwd(), copy, {
+      recursive: true,
+      filter: (source) => !source.endsWith('/.git') && !source.endsWith('/node_modules'),
+    });
+    await symlink(join(process.cwd(), 'node_modules'), join(copy, 'node_modules'), 'dir');
+    const path = join(copy, relativePath);
+    const source = await readFile(path, 'utf8');
+    expect(source.split(oldText)).toHaveLength(2);
+    await writeFile(path, source.replace(oldText, newText));
+    const before = await treeDigest(copy);
+    const result = spawnSync('npm', ['run', 'generate:check'], {
+      cwd: copy,
+      encoding: 'utf8',
+      env: { ...process.env, CI: '1' },
+      timeout: 30_000,
+    });
+    expect(result.status, `${result.stdout}\n${result.stderr}`).not.toBe(0);
+    expect(`${result.stdout}\n${result.stderr}`).toMatch(/Generated files are stale/);
+    expect(await treeDigest(copy)).toBe(before);
+  } finally {
+    await rm(parent, { recursive: true, force: true });
+  }
+}
 
 describe('generated products', () => {
   it('keeps every generated file current and deterministic', async () => {
@@ -27,6 +72,87 @@ describe('generated products', () => {
     );
     expect(stale).toEqual(['/tmp/generated-a']);
     expect(writes).toEqual([]);
+  });
+
+  it.each([
+    [
+      'compatibility branch',
+      'extensions/definition-compatibility.ts',
+      '"list_comments": [\n    {\n      "all": []',
+      '"list_comments": [\n    {\n      "all": ["issue"]',
+    ],
+    [
+      'mutation root',
+      'extensions/operations.ts',
+      'root: "commentCreate",',
+      'root: "commentCreateChanged",',
+    ],
+    [
+      'mutation result expectation',
+      'extensions/operations.ts',
+      'successPath: "success",',
+      'successPath: "changedSuccess",',
+    ],
+    [
+      'canonical field type',
+      'extensions/operations.ts',
+      'name: "list_comments",\n\t\tcanonical: {\n\t\t\t"fields": {\n\t\t\t\t"issue": "IssueReference",',
+      'name: "list_comments",\n\t\tcanonical: {\n\t\t\t"fields": {\n\t\t\t\t"issue": "Float",',
+    ],
+    [
+      'discovery term',
+      'extensions/operation-definition.ts',
+      'terms: [...new Set([...operation.name.split',
+      "terms: [...new Set(['drift-term', ...operation.name.split",
+    ],
+    [
+      'renderer kind',
+      'extensions/operation-definition.ts',
+      "search_issues: 'issue',",
+      "search_issues: 'project',",
+    ],
+    [
+      'manifest name',
+      'extensions/operation-definition.ts',
+      'toolName: `linear_${operation.name}`',
+      'toolName: `linear_drift_${operation.name}`',
+    ],
+  ])('fails read-only generation checks for %s drift', async (_name, path, oldText, newText) => {
+    await staleSourceProbe(path, oldText, newText);
+  }, 60_000);
+
+  it('serializes exhaustive compatibility and GraphQL products', () => {
+    const createComment = contractProjection(operationDefinitions.find(({ name }) => name === 'create_comment')!);
+    expect(createComment.compatibility).toMatchObject({
+      operationAliases: ['add_comment'],
+      fields: expect.any(Array),
+      branches: expect.any(Array),
+      acceptedFields: expect.any(Array),
+      legacyBranches: expect.any(Array),
+      aliasFields: expect.any(Object),
+      example: { operation: 'create_comment' },
+      resolverPaths: { issue: 'resolveIssueReference', issueId: 'resolveIssueReference' },
+      semanticException: 'comment-value-types',
+    });
+    expect(createComment.graphql?.documents[0]).toMatchObject({
+      kind: 'mutation',
+      root: 'commentCreate',
+      document: expect.stringContaining('commentCreate'),
+      mutationResult: {
+        successPath: 'success',
+        successValue: true,
+        requiredEntityPaths: ['comment'],
+      },
+    });
+    const listComments = contractProjection(operationDefinitions.find(({ name }) => name === 'list_comments')!);
+    expect(listComments.compatibility).toMatchObject({
+      branches: [{ all: [] }],
+      pagination: { defaultPageSize: 20, filterType: 'CommentFilter' },
+      resolverPaths: { issue: 'resolveIssueReference' },
+    });
+    expect(listComments.graphql?.documents[0]).toMatchObject({
+      kind: 'query', root: 'comments', document: expect.stringContaining('query ListComments'),
+    });
   });
 
   it('publishes one deployable manifest entry for each canonical operation', () => {

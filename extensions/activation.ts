@@ -1,4 +1,4 @@
-import { operationDefinitions, operations, operationSignature, type LinearOperation } from './operations';
+import { operationDefinitions, operationSignature, projectCompatibilityOperation, type LinearOperation } from './operations';
 import { DEFINITION_ACTIONS, DEFINITION_ENTITIES } from './definition-discovery';
 
 /**
@@ -75,20 +75,18 @@ export function candidatesFor(query: string): LinearOperation[] {
       .split(/[^a-z0-9]+/)
       .filter((word) => word.length > 2),
   );
-  const score = (operation: LinearOperation): number => {
-    const name = new Set(operation.name.split('_'));
-    const purpose = new Set(operation.purpose.toLowerCase().split(/[^a-z0-9]+/));
-    return [...words].reduce(
-      (total, word) => total + (name.has(word) ? 8 : 0) + (operation.domain === word ? 4 : 0)
-        + (purpose.has(word) ? 1 : 0),
-      0,
-    );
-  };
-  return Object.values(operations)
-    .map((operation) => ({ operation, score: score(operation) }))
-    .filter(({ score: value }) => value > 0)
-    .sort((left, right) => right.score - left.score || (left.operation.name < right.operation.name ? -1 : 1))
-    .map(({ operation }) => operation);
+  return operationDefinitions
+    .map((definition) => ({
+      definition,
+      score: definition.discovery.terms.reduce(
+        (total, term) => total + (words.has(term.toLowerCase()) ? 1 : 0),
+        0,
+      ),
+    }))
+    .filter(({ score }) => score > 0)
+    .sort((left, right) => right.score - left.score
+      || left.definition.name.localeCompare(right.definition.name))
+    .map(({ definition }) => projectCompatibilityOperation(definition));
 }
 
 export type ActivationPlan = {

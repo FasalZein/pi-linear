@@ -27,18 +27,52 @@ function manifest() {
   };
 }
 
-function contracts() {
-  return operationDefinitions.map((definition) => ({
+export function contractProjection(definition: (typeof operationDefinitions)[number]) {
+  const signature = `${definition.name}(${definition.compatibility.fields
+    .map(({ name, type, required }) => `${name}${required ? '' : '?'}: ${type}`).join(', ')})`;
+  const compatibility = definition.compatibility;
+  return {
     name: definition.name,
-    toolName: definition.toolName,
+    tool: {
+      name: definition.toolName,
+      label: `Linear ${definition.name.replace(/_/g, ' ')}`,
+      description: definition.purpose,
+    },
     domain: definition.domain,
     purpose: definition.purpose,
-    signature: `${definition.name}(${definition.canonical.fields.filter(({ required }) => required).map(({ name }) => name).join(', ')})`,
-    example: definition.canonical.example,
+    kind: definition.kind,
+    help: {
+      signature,
+      exact: definition.discovery.exactHelp,
+      example: compatibility.example,
+      callFields: definition.render.callFields,
+    },
+    compatibility: {
+      operationAliases: compatibility.operationAliases,
+      fields: compatibility.fields,
+      branches: compatibility.branches,
+      acceptedFields: compatibility.acceptedFields ?? null,
+      legacyBranches: compatibility.legacyBranches ?? null,
+      aliasFields: compatibility.aliasFields ?? null,
+      example: compatibility.example,
+      document: compatibility.document,
+      pagination: compatibility.pagination ?? null,
+      resolverPaths: compatibility.resolverPaths ?? {},
+      requiresVariables: compatibility.requiresVariables ?? false,
+      semanticException: compatibility.semanticException ?? null,
+    },
+    graphql: definition.graphql ?? null,
+    preparation: { resolverPaths: definition.preparation.resolverPaths },
+    safety: definition.safety,
     canonical: definition.canonical,
     discovery: definition.discovery,
+    result: definition.result,
     render: definition.render,
-  }));
+  };
+}
+
+function contracts() {
+  return operationDefinitions.map(contractProjection);
 }
 
 function replaceGeneratedSection(source: string, body: string): string {
