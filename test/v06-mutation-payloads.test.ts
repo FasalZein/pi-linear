@@ -1,14 +1,20 @@
-import { Kind, parse } from 'graphql';
+import { Kind, parse, type SelectionSetNode } from 'graphql';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { linearApiTool } from '../extensions/api';
 import { operationDocuments, operations } from '../extensions/operations';
-import { validateMutationResult } from '../extensions/runtime';
+import { executeOperation, validateMutationResult } from '../extensions/runtime';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
 
 isolateLinearCredentials();
 
-afterEach(() => vi.unstubAllGlobals());
+const ORIGINAL_API_KEY = process.env.LINEAR_API_KEY;
+
+afterEach(() => {
+  if (ORIGINAL_API_KEY === undefined) delete process.env.LINEAR_API_KEY;
+  else process.env.LINEAR_API_KEY = ORIGINAL_API_KEY;
+  vi.unstubAllGlobals();
+});
 
 const EXPECTED_MUTATIONS = {
   create_comment: { commentCreate: 'comment' },
@@ -35,6 +41,15 @@ const EXPECTED_MUTATIONS = {
   save_project: { projectCreate: 'project', projectUpdate: 'project' },
 } as const;
 
+function selectsPath(selectionSet: SelectionSetNode, path: readonly string[]): boolean {
+  const [field, ...rest] = path;
+  const selection = selectionSet.selections.find(
+    (value) => value.kind === Kind.FIELD && value.name.value === field,
+  );
+  if (!selection || selection.kind !== Kind.FIELD) return false;
+  return rest.length === 0 || Boolean(selection.selectionSet && selectsPath(selection.selectionSet, rest));
+}
+
 describe('mutation document result contracts', () => {
   it('co-locates one executable expectation with every current named mutation root', () => {
     const actual: Record<string, Record<string, string>> = {};
@@ -55,6 +70,16 @@ describe('mutation document result contracts', () => {
         expect(variant.mutationResult.requiredEntityPaths).toHaveLength(1);
 
         const entityPath = variant.mutationResult.requiredEntityPaths[0]!;
+        const declaredForOperation = EXPECTED_MUTATIONS[
+          name as keyof typeof EXPECTED_MUTATIONS
+        ] as Record<string, string> | undefined;
+        const declaredEntityPath = declaredForOperation?.[variant.root];
+        const payloadSelections = rootSelection.selectionSet;
+        expect(declaredEntityPath).toBe(entityPath);
+        expect(payloadSelections).toBeDefined();
+        if (!declaredEntityPath || !payloadSelections) throw new Error('Invalid mutation fixture.');
+        expect(selectsPath(payloadSelections, ['success'])).toBe(true);
+        expect(selectsPath(payloadSelections, declaredEntityPath.split('.'))).toBe(true);
         actual[name] ??= {};
         actual[name]![variant.root] = entityPath;
 
@@ -102,6 +127,50 @@ describe('mutation document result contracts', () => {
     expect(() => validateMutationResult('acknowledge', { acknowledge: { success: true } }, variant)).not.toThrow();
   });
 
+  it('rejects a selected mutation variant without metadata but permits a query variant without it', async () => {
+    process.env.LINEAR_API_KEY = 'test-key';
+    const mutationVariant = {
+      document: operations.create_issue.variants![0]!.document,
+      root: 'issueCreate',
+    };
+    const queryVariant = {
+      document: 'query VariantQuery { viewer { id } }',
+      root: 'viewer',
+    };
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ data: { viewer: { id: 'viewer-1' } } }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(executeOperation(
+      {
+        ...operations.create_issue,
+        variants: [mutationVariant],
+        prepare: async () => ({ variant: mutationVariant, variables: { input: {} } }),
+      },
+      { variables: {} },
+      'allowlist',
+      { hasUI: false } as any,
+      undefined,
+    )).rejects.toThrow(
+      'Linear operation "create_issue" selected mutation variant "issueCreate" without mutationResult metadata.',
+    );
+    expect(fetch).not.toHaveBeenCalled();
+
+    await expect(executeOperation(
+      {
+        ...operations.get_issue,
+        variants: [queryVariant],
+        prepare: async () => ({ variant: queryVariant, variables: {} }),
+      },
+      { variables: {} },
+      'allowlist',
+      { hasUI: false } as any,
+      undefined,
+    )).resolves.toMatchObject({ data: { viewer: { id: 'viewer-1' } } });
+  });
+
   it('keeps operationDocuments aligned with mutation variants', () => {
     for (const operation of Object.values(operations)) {
       expect(operationDocuments(operation)).toEqual(operation.variants?.map(({ document }) => document) ?? [operation.document]);
@@ -110,6 +179,67 @@ describe('mutation document result contracts', () => {
 });
 
 describe('shared mutation response validation', () => {
+  const SAVE_CASES = [
+    ['save_initiative', 'create', { name: 'Initiative' }, 'initiativeCreate', 'initiative'],
+    ['save_initiative', 'update', { initiativeId: '11111111-1111-4111-8111-111111111111', name: 'Initiative' }, 'initiativeUpdate', 'initiative'],
+    ['save_milestone', 'create', { name: 'Milestone', projectId: '22222222-2222-4222-8222-222222222222' }, 'projectMilestoneCreate', 'projectMilestone'],
+    ['save_milestone', 'update', { milestoneId: '33333333-3333-4333-8333-333333333333', name: 'Milestone' }, 'projectMilestoneUpdate', 'projectMilestone'],
+    ['save_project', 'create', { name: 'Project', teamIds: ['44444444-4444-4444-8444-444444444444'] }, 'projectCreate', 'project'],
+    ['save_project', 'update', { projectId: '55555555-5555-4555-8555-555555555555', name: 'Project' }, 'projectUpdate', 'project'],
+  ] as const;
+
+  it.each(SAVE_CASES)(
+    'executes %s %s through its declared variant and response root',
+    async (name, mode, variables, expectedRoot, entityPath) => {
+      process.env.LINEAR_API_KEY = 'test-key';
+      const expectedVariant = operations[name].variants!.find((variant) => variant.when === mode)!;
+      const responseEnvelope = {
+        [expectedRoot]: { success: true, [entityPath]: { id: `${name}-${mode}` } },
+      };
+      const mutationDocuments: string[] = [];
+      const mutationRoots: string[] = [];
+      vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
+        const request = JSON.parse(String(init.body)) as {
+          query: string;
+          variables: Record<string, unknown>;
+        };
+        const definition = parse(request.query).definitions.find(
+          (value) => value.kind === Kind.OPERATION_DEFINITION,
+        );
+        if (definition?.kind === Kind.OPERATION_DEFINITION && definition.operation === 'mutation') {
+          const root = definition.selectionSet.selections[0];
+          mutationDocuments.push(request.query);
+          if (root?.kind === Kind.FIELD) mutationRoots.push(root.name.value);
+          return new Response(JSON.stringify({ data: responseEnvelope }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+
+        const root = definition?.kind === Kind.OPERATION_DEFINITION
+          ? definition.selectionSet.selections[0]
+          : undefined;
+        const rootName = root?.kind === Kind.FIELD ? root.name.value : 'unknown';
+        return new Response(JSON.stringify({
+          data: { [rootName]: { id: request.variables.id, name: 'Resolved' } },
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }));
+
+      await expect(executeOperation(
+        operations[name],
+        { variables },
+        'allowlist',
+        { hasUI: false } as any,
+        undefined,
+      )).resolves.toMatchObject({ data: responseEnvelope });
+      expect(mutationDocuments).toEqual([expectedVariant.document]);
+      expect(mutationRoots).toEqual([expectedRoot]);
+    },
+  );
+
   const variables = {
     projectId: '11111111-1111-4111-8111-111111111111',
     relatedProjectId: '22222222-2222-4222-8222-222222222222',

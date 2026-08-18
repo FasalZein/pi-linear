@@ -1,6 +1,18 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getOperation } from '../extensions/operations';
 import { operationRenderers, renderLinearApiCall, renderLinearApiResult } from '../extensions/renderers';
+import { executeOperation } from '../extensions/runtime';
+import { isolateLinearCredentials } from './helpers/credentials';
+
+isolateLinearCredentials();
+
+const ORIGINAL_API_KEY = process.env.LINEAR_API_KEY;
+
+afterEach(() => {
+  if (ORIGINAL_API_KEY === undefined) delete process.env.LINEAR_API_KEY;
+  else process.env.LINEAR_API_KEY = ORIGINAL_API_KEY;
+  vi.unstubAllGlobals();
+});
 
 const theme = {
   fg: (_color: string, text: string) => text,
@@ -123,7 +135,46 @@ describe('result states', () => {
     expect(text).toContain('✓ Updated AEO-258 Fix login redirect');
   });
 
-  it('marks an unconfirmed mutation instead of claiming success', () => {
+  it('renders a failed named mutation through the execution error path', async () => {
+    process.env.LINEAR_API_KEY = 'test-key';
+    const issueId = '11111111-1111-4111-8111-111111111111';
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
+      const { query } = JSON.parse(String(init.body)) as { query: string };
+      const data = query.includes('ResolveIssueById')
+        ? { issue: { id: issueId, identifier: 'AEO-258', team: { id: 'team-1', key: 'AEO' } } }
+        : { issueUpdate: { success: false, issue: null } };
+      return new Response(JSON.stringify({ data }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }));
+
+    let error: unknown;
+    try {
+      await executeOperation(
+        getOperation('update_issue'),
+        { variables: { issue: issueId, title: 'Updated title' } },
+        'allowlist',
+        { hasUI: false } as any,
+        undefined,
+      );
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(Error);
+    const text = block(render(
+      'update_issue',
+      { error: (error as Error).message },
+      {},
+      { isError: true },
+    ));
+    expect(text).toContain('✗');
+    expect(text).toContain('issueUpdate.success must be true');
+    expect(text).not.toContain('status unknown');
+  });
+
+  it('keeps legacy pre-validation envelopes explicitly unconfirmed', () => {
     const text = block(render('update_issue', { data: { issueUpdate: { success: false } }, meta }));
     expect(text).toContain('Updated issue: status unknown');
     expect(text).toContain('Re-read the record to confirm');

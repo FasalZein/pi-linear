@@ -6,7 +6,7 @@ import { linearGraphQL, resolveApiKey } from './client';
 import type { GraphQLDocumentVariant } from './operation-types';
 import type { LinearOperation } from './operations';
 import { redactDeep, withRedactedErrors } from './redact';
-import { assertMutationAllowed, assertNamedInputAllowed, type MutationMode } from './safety';
+import { assertMutationAllowed, assertNamedInputAllowed, getMutationFields, type MutationMode } from './safety';
 
 export const NODE_CAP = 100;
 export const STRING_CAP = 2_000;
@@ -172,12 +172,25 @@ function objectAtPath(value: unknown, path: string): JsonObject | undefined {
     : undefined;
 }
 
+function mutationExpectation(
+  operationName: string,
+  variant: GraphQLDocumentVariant,
+) {
+  const expectation = variant.mutationResult;
+  if (!expectation && getMutationFields(variant.document).length) {
+    throw new Error(
+      `Linear operation "${operationName}" selected mutation variant "${variant.root}" without mutationResult metadata.`,
+    );
+  }
+  return expectation;
+}
+
 export function validateMutationResult(
   operationName: string,
   data: JsonObject,
   variant: GraphQLDocumentVariant,
 ): void {
-  const expectation = variant.mutationResult;
+  const expectation = mutationExpectation(operationName, variant);
   if (!expectation) return;
 
   const root = objectAtPath(data, variant.root);
@@ -226,6 +239,7 @@ export async function executeOperation(
     const variant = prepared.variant ?? operation.variants?.[0];
     const document = variant?.document ?? operation.document;
     assertMutationAllowed(document, mode, variant ? [variant.root] : []);
+    if (variant) mutationExpectation(operation.name, variant);
     const data = await linearGraphQL<JsonObject>(apiKey, document, prepared.variables, signal);
     if (variant) validateMutationResult(operation.name, data, variant);
     const result = await routeLinearResult(data, {
