@@ -15,6 +15,7 @@ import {
   resolveStateReference,
   resolveUserReference,
   resolveNamedEntityReference,
+  resolveDocumentReference,
   type WorkspaceCredentials,
 } from '../extensions/client';
 
@@ -246,6 +247,7 @@ describe('strict reference resolvers', () => {
   const TEAM_ID = '33333333-3333-4333-8333-333333333333';
   const STATE_ID = '44444444-4444-4444-8444-444444444444';
   const USER_ID = '55555555-5555-4555-8555-555555555555';
+  const DOCUMENT_ID = '66666666-6666-4666-8666-666666666666';
 
   afterEach(() => vi.unstubAllGlobals());
 
@@ -375,6 +377,46 @@ describe('strict reference resolvers', () => {
       id: OTHER_ID,
       name: 'Planning notes',
     });
+  });
+
+  it('resolves document titles and UUIDs through exact read queries', async () => {
+    graphqlStub((query, variables) => query.includes('ResolveDocumentByTitle')
+      ? { documents: { nodes: [{ id: OTHER_ID, title: 'Planning notes' }] } }
+      : { document: { id: DOCUMENT_ID, title: 'Planning notes' } });
+
+    await expect(resolveDocumentReference('key', 'Planning notes')).resolves.toEqual({
+      id: OTHER_ID,
+      title: 'Planning notes',
+    });
+    await expect(resolveDocumentReference('key', DOCUMENT_ID)).resolves.toEqual({
+      id: DOCUMENT_ID,
+      title: 'Planning notes',
+    });
+  });
+
+  it('fails closed for missing, ambiguous, and mismatched document references', async () => {
+    graphqlStub((query, variables) => {
+      if (query.includes('ResolveDocumentById')) return { document: { id: OTHER_ID, title: 'Wrong' } };
+      if (variables.title === 'Missing') return { documents: { nodes: [] } };
+      if (variables.title === 'Duplicate') return { documents: { nodes: [
+        { id: DOCUMENT_ID, title: 'Duplicate' },
+        { id: OTHER_ID, title: 'Duplicate' },
+      ] } };
+      return { documents: { nodes: [{ id: DOCUMENT_ID, title: 'Fuzzy result' }] } };
+    });
+
+    await expect(resolveDocumentReference('key', 'Missing')).rejects.toThrow(
+      'Linear document "Missing" resolved to 0 exact matches; expected exactly one.',
+    );
+    await expect(resolveDocumentReference('key', 'Duplicate')).rejects.toThrow(
+      'Linear document "Duplicate" resolved to 2 exact matches; expected exactly one.',
+    );
+    await expect(resolveDocumentReference('key', 'Exact title')).rejects.toThrow(
+      'Linear document resolver returned mismatched title "Fuzzy result" for "Exact title".',
+    );
+    await expect(resolveDocumentReference('key', DOCUMENT_ID)).rejects.toThrow(
+      `Linear document resolver returned mismatched id "${OTHER_ID}" for "${DOCUMENT_ID}".`,
+    );
   });
 
   it('rejects ambiguous supported entity names', async () => {

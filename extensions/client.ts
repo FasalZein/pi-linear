@@ -13,6 +13,7 @@ export type ResolvedTeam = { id: string; key: string };
 export type ResolvedState = { id: string; name: string; teamId: string };
 export type ResolvedUser = { id: string; name?: string; displayName?: string; email?: string };
 export type ResolvedNamedEntity = { id: string; name: string };
+export type ResolvedDocument = { id: string; title: string };
 
 export type AuthPreference = 'workspace' | 'env';
 
@@ -380,6 +381,37 @@ export async function resolveStateReference(
   );
   const state = requireSingle(matches, `state "${reference}" in team "${teamId}"`);
   return { id: state.id, name: state.name, teamId };
+}
+
+export async function resolveDocumentReference(
+  apiKey: string,
+  value: string,
+  signal?: AbortSignal,
+): Promise<ResolvedDocument> {
+  const reference = requireReference(value, 'document');
+  if (UUID_PATTERN.test(reference)) {
+    const data = await linearGraphQL<{ document: ResolvedDocument | null }>(apiKey, `query ResolveDocumentById($id: String!) {
+  document(id: $id) { id title }
+}`, { id: reference }, signal);
+    if (!data.document) throw new Error(`Linear document "${reference}" was not found.`);
+    if (data.document.id !== reference) {
+      throw new Error(`Linear document resolver returned mismatched id "${data.document.id}" for "${reference}".`);
+    }
+    return data.document;
+  }
+
+  const data = await linearGraphQL<{ documents: { nodes: ResolvedDocument[] } }>(apiKey, `query ResolveDocumentByTitle($title: String!) {
+  documents(first: 2, filter: { title: { eq: $title } }) { nodes { id title } }
+}`, { title: reference }, signal);
+  const nodes = data.documents?.nodes ?? [];
+  const matches = nodes.filter((document) => document.title === reference);
+  if (nodes.length === 1 && matches.length === 0) {
+    throw new Error(`Linear document resolver returned mismatched title "${nodes[0]!.title}" for "${reference}".`);
+  }
+  if (matches.length !== 1) {
+    throw new Error(`Linear document "${reference}" resolved to ${matches.length} exact matches; expected exactly one.`);
+  }
+  return matches[0]!;
 }
 
 export async function resolveNamedEntityReference(

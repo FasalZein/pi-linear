@@ -236,7 +236,13 @@ describe('mode-specific field ownership', () => {
   });
 
   it('preserves live fields and explicit nulls through runtime preparation', async () => {
-    const fetch = vi.fn(() => { throw new Error('unexpected network request'); });
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const { variables } = JSON.parse(String(init.body));
+      return new Response(JSON.stringify({ data: { document: { id: variables.id, title: 'D' } } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
     vi.stubGlobal('fetch', fetch);
     const prepare = (operation: string, variables: Record<string, unknown>) =>
       operations[operation]!.prepare!('test-key', variables, undefined);
@@ -247,7 +253,7 @@ describe('mode-specific field ownership', () => {
     expect((await prepare('update_document', { documentId: UUID, ownerId: UUID })).variables).toEqual({ id: UUID, input: { ownerId: UUID } });
     expect((await prepare('create_project_label', { name: 'L', retiredAt: '2026-08-18T12:00:00Z' })).variables).toEqual({ input: { name: 'L', retiredAt: '2026-08-18T12:00:00Z' } });
     expect((await prepare('update_project_label', { id: UUID, retiredAt: null })).variables).toEqual({ id: UUID, input: { retiredAt: null } });
-    expect(fetch).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledOnce();
   });
 
   it('adds every dated live field to named operation metadata', () => {

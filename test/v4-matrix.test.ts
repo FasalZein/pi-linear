@@ -438,6 +438,8 @@ function installResolvers() {
 					nodes: [{ id: STATE, name: variables.name, team: { id: TEAM } }],
 				},
 			};
+		else if (query.includes("ResolveDocumentById"))
+			data = { document: { id: variables.id, title: "Resolved" } };
 		else if (query.includes("ResolveNamedEntityById")) {
 			const key = query.includes("projectMilestone(")
 				? "projectMilestone"

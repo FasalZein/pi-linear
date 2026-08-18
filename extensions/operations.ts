@@ -1,4 +1,5 @@
 import {
+	resolveDocumentReference,
 	resolveIssueReference,
 	resolveNamedEntityReference,
 	resolveStateIdReference,
@@ -998,7 +999,7 @@ const entries: LinearOperation[] = [
 		root: "documentUpdate",
 		inputType: "DocumentUpdateInput",
 		selection: `document { ${DOCUMENT_SELECTION} }`,
-		parameters: [p("documentId", "String", true), input],
+		parameters: [p("documentId", "DocumentReference", true), input],
 		acceptedParameters: [
 			"documentId",
 			"color",
@@ -1024,13 +1025,18 @@ const entries: LinearOperation[] = [
 		example: { documentId: "document-id", title: "Updated notes" },
 		idKey: "documentId",
 		resolverPaths: {
+			documentId: "resolveDocumentReference",
 			issueId: "resolveIssueReference",
 			teamKey: "resolveTeamReference",
 			teamId: "resolveTeamReference",
 		},
 		async prepare(k, v, s) {
+			const requested = String(v.documentId);
+			const document = await resolveDocumentReference(k, requested, s);
 			const x = mergedInput(v, ["documentId", "teamKey"]);
-			const resolution: Record<string, unknown> = {};
+			const resolution: Record<string, unknown> = {
+				target: { requested, resolvedId: document.id, title: document.title },
+			};
 			if (typeof x.issueId === "string") {
 				const issue = await resolveIssueReference(k, x.issueId, s);
 				resolution.issue = issueTarget(x.issueId, issue);
@@ -1057,7 +1063,7 @@ const entries: LinearOperation[] = [
 			}
 			if (!Object.keys(x).length)
 				throw new Error("No update fields were provided.");
-			return { variables: { id: v.documentId, input: x }, resolution };
+			return { variables: { id: document.id, input: x }, resolution };
 		},
 	}),
 
