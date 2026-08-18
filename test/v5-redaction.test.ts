@@ -80,26 +80,94 @@ describe('redaction unit contract', () => {
     expect(redacted.d.e.f).toBe(REDACTED);
   });
 
-  it('keeps the error type and stack while redacting the message', () => {
+  it('redacts known-token and exact-secret object keys without losing collisions', () => {
+    const exact = 'workspace-secret-with-an-unknown-format';
+    const source = {
+      [TOKEN]: 'first',
+      [OAUTH]: 'second',
+      [exact]: 'third',
+      nested: { [TOKEN]: { [OAUTH]: 'nested' } },
+      list: [{ [exact]: 'array-first' }, 'unchanged', 42, true, null],
+      keep: 'safe',
+    };
+
+    const redacted = redactDeep(source, [exact]);
+    const redactedEntries = redacted as Record<string, unknown>;
+
+    expect(Object.keys(redacted).slice(0, 3)).toEqual([REDACTED, `${REDACTED}#2`, `${REDACTED}#3`]);
+    expect(redactedEntries[REDACTED]).toBe('first');
+    expect(redactedEntries[`${REDACTED}#2`]).toBe('second');
+    expect(redactedEntries[`${REDACTED}#3`]).toBe('third');
+    expect(redacted.nested).toEqual({ [REDACTED]: { [REDACTED]: 'nested' } });
+    expect(redacted.list).toEqual([{ [REDACTED]: 'array-first' }, 'unchanged', 42, true, null]);
+    expect(redacted.keep).toBe('safe');
+    expect(Object.keys(source).slice(0, 3)).toEqual([TOKEN, OAUTH, exact]);
+  });
+
+  it('keeps Error type and stack while deep-redacting its keys and values without mutation', () => {
     class LinearFailure extends Error {}
-    const error = redactError(new LinearFailure(`rejected ${TOKEN}`)) as Error;
+    const source = new LinearFailure(`rejected ${TOKEN}`) as LinearFailure & Record<string, unknown>;
+    source[TOKEN] = { [OAUTH]: TOKEN };
+    const originalStack = source.stack;
+
+    const redacted = redactDeep(source);
+
+    expect(redacted).toBeInstanceOf(LinearFailure);
+    expect(redacted).not.toBe(source);
+    expect(redacted.message).toBe(`rejected ${REDACTED}`);
+    expect(redacted.stack).not.toContain('secret123456789');
+    expect(redacted[REDACTED]).toEqual({ [REDACTED]: REDACTED });
+    expect(source.message).toBe(`rejected ${TOKEN}`);
+    expect(source.stack).toBe(originalStack);
+    expect(source[TOKEN]).toEqual({ [OAUTH]: TOKEN });
+  });
+
+  it('keeps the error type and stack while redacting the message and custom keys', () => {
+    class LinearFailure extends Error {}
+    const source = new LinearFailure(`rejected ${TOKEN}`) as LinearFailure & Record<string, unknown>;
+    source[TOKEN] = OAUTH;
+
+    const error = redactError(source) as LinearFailure & Record<string, unknown>;
+
     expect(error).toBeInstanceOf(LinearFailure);
+    expect(error).not.toBe(source);
     expect(error.message).toBe(`rejected ${REDACTED}`);
     expect(error.stack).not.toContain('secret123456789');
     expect(typeof error.stack).toBe('string');
+    expect(error[REDACTED]).toBe(REDACTED);
+    expect(source.message).toBe(`rejected ${TOKEN}`);
+    expect(source[TOKEN]).toBe(OAUTH);
   });
 });
 
 describe('redaction at the execution boundary', () => {
   it('redacts model content and details of an inline result', async () => {
-    installServer((request) => issueResponse(request, `key ${TOKEN}`));
+    installServer((request) => {
+      if (request.query.includes('ResolveIssueByIdentifier')) return issueResponse(request, `key ${TOKEN}`);
+      return {
+        data: {
+          issue: {
+            id: 'issue-1',
+            identifier: 'AEO-258',
+            title: `key ${TOKEN}`,
+            [TOKEN]: 'first-key-value',
+            [OAUTH]: 'second-key-value',
+            nested: { [TOKEN]: 'nested-key-value' },
+          },
+        },
+      };
+    });
     const result = await execute(tools.get('linear_get_issue')!, { issue: 'AEO-258' });
 
     const text = result.content.map((entry: any) => entry.text).join('');
     expect(text).not.toContain('secret123456789');
+    expect(text).not.toContain('secret987654321');
     expect(text).toContain(REDACTED);
     expect(JSON.stringify(result.details)).not.toContain('secret123456789');
-    expect(JSON.stringify(result.details)).toContain(REDACTED);
+    expect(JSON.stringify(result.details)).not.toContain('secret987654321');
+    expect(result.details.data.issue[REDACTED]).toBe('first-key-value');
+    expect(result.details.data.issue[`${REDACTED}#2`]).toBe('second-key-value');
+    expect(result.details.data.issue.nested).toEqual({ [REDACTED]: 'nested-key-value' });
   });
 
   it('redacts resolution metadata carrying resolved values', async () => {
@@ -117,18 +185,33 @@ describe('redaction at the execution boundary', () => {
   });
 
   it('redacts a forced artifact spill, its bytes and its index', async () => {
-    installServer((request) => issueResponse(request, `key ${TOKEN}`));
+    installServer(() => ({
+      data: {
+        [TOKEN]: { nodes: [{ [OAUTH]: 'nested-key-value' }] },
+        [OAUTH]: { nodes: [] },
+        safe: { nodes: [] },
+      },
+    }));
     const result = await execute(linearApiTool() as any, {
-      operation: 'get_issue',
-      variables: { issue: 'AEO-258' },
+      query: 'query { viewer { id } }',
       sink: 'artifact',
     });
 
     expect(result.details.path).toBeTruthy();
+    expect(result.details.index).toEqual([
+      `${REDACTED} · 1 nodes`,
+      `${REDACTED}#2 · 0 nodes`,
+      'safe · 0 nodes',
+    ]);
     expect(JSON.stringify(result.details.index)).not.toContain('secret123456789');
+    expect(JSON.stringify(result.details.index)).not.toContain('secret987654321');
     const contents = await spilledFile();
     expect(contents).not.toContain('secret123456789');
-    expect(contents).toContain(REDACTED);
+    expect(contents).not.toContain('secret987654321');
+    expect(contents).toContain(`"${REDACTED}"`);
+    expect(contents).toContain(`"${REDACTED}#2"`);
+    expect(contents).toContain('nested-key-value');
+    expect(Buffer.byteLength(contents, 'utf8')).toBe(result.details.bytes);
   });
 
   it('redacts an automatic spill triggered by size', async () => {
@@ -229,18 +312,21 @@ describe('exact active-secret redaction', () => {
     expect(JSON.stringify(result.details)).not.toContain(UNKNOWN_FORMAT_KEY);
   });
 
-  it('removes the active key from a forced spill, its bytes and its index', async () => {
-    installServer((request) => issueResponse(request, `leaked ${UNKNOWN_FORMAT_KEY}`));
+  it('removes the active key from nested spill keys, values, bytes, and the index', async () => {
+    installServer(() => ({
+      data: { [UNKNOWN_FORMAT_KEY]: { nodes: [{ [UNKNOWN_FORMAT_KEY]: UNKNOWN_FORMAT_KEY }] } },
+    }));
     const result = await execute(linearApiTool() as any, {
-      operation: 'get_issue',
-      variables: { issue: 'AEO-258' },
+      query: 'query { viewer { id } }',
       sink: 'artifact',
     });
 
+    expect(result.details.index).toEqual([`${REDACTED} · 1 nodes`]);
     expect(JSON.stringify(result.details.index)).not.toContain(UNKNOWN_FORMAT_KEY);
     const contents = await spilledFile();
     expect(contents).not.toContain(UNKNOWN_FORMAT_KEY);
-    expect(contents).toContain(REDACTED);
+    expect(contents).toContain(`"${REDACTED}"`);
+    expect(Buffer.byteLength(contents, 'utf8')).toBe(result.details.bytes);
   });
 
   it('removes the active key from an automatic spill', async () => {

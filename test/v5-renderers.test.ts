@@ -289,11 +289,15 @@ describe('credential safety in rendered rows', () => {
     expect(text).not.toContain('secret123456789');
   });
 
-  it('scrubs a credential nested inside a linear_api variable', () => {
+  it('scrubs a credential nested inside a linear_api variable key or value', () => {
     const text = block(renderLinearApiCall(
-      { operation: 'get_issue', variables: { headers: { Authorization: `Bearer ${token}` }, list: [token] } },
+      {
+        operation: 'get_issue',
+        variables: { headers: { Authorization: `Bearer ${token}` }, list: [token], [token]: 'safe' },
+      },
       theme,
     ));
+    expect(text).toContain('[REDACTED]');
     expect(text).not.toContain('secret123456789');
   });
 
@@ -309,8 +313,8 @@ describe('credential safety in rendered rows', () => {
     expect(text).not.toContain('secret123456789');
   });
 
-  it('scrubs a credential in the expanded JSON of both surfaces', () => {
-    const details = { data: { issue: { identifier: 'AEO-1', title: token } }, meta };
+  it('scrubs a credential in expanded JSON keys and values on both surfaces', () => {
+    const details = { data: { issue: { identifier: 'AEO-1', title: token, [token]: 'safe' } }, meta };
     const expandedTyped = block(render('get_issue', details, { expanded: true }));
     expect(expandedTyped).toContain('[REDACTED]');
     expect(expandedTyped).not.toContain('secret123456789');
