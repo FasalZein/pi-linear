@@ -1,4 +1,5 @@
 import { Kind, parse, type DocumentNode, type SelectionSetNode } from 'graphql';
+import { redactText } from './redact';
 
 export type MutationMode = 'allowlist' | 'readonly';
 
@@ -38,8 +39,8 @@ export function assertNamedInputAllowed(value: unknown, path = 'variables'): voi
 
     for (const key of Object.keys(current)) {
       const childPath = Array.isArray(current)
-        ? `${currentPath}[${key}]`
-        : `${currentPath}.${key}`;
+        ? `${currentPath}[${redactText(key)}]`
+        : `${currentPath}.${redactText(key)}`;
       if (key === 'trashed') {
         throw new Error(
           `Destructive named input is unavailable at ${childPath}. Use an authorized raw GraphQL mutation with LINEAR_MUTATIONS=all.`,

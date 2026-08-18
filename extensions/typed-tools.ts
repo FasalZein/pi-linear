@@ -5,6 +5,7 @@ import { Compile } from 'typebox/compile';
 import { formatInvocation, operations, type LinearOperation } from './operations';
 import { canonicalFieldNames, canonicalOperation } from './canonical';
 import { assertOperationAllowed, executeOperation, type JsonObject } from './runtime';
+import { redactError } from './redact';
 import { operationRenderers } from './renderers';
 import { typedToolName } from './tool-names';
 import type { MutationMode } from './safety';
@@ -297,6 +298,12 @@ function toolDescription(operation: LinearOperation): string {
   return `${operation.purpose} Equivalent to linear_api ${formatInvocation(operation.example)}.`;
 }
 
+function operationVariables(args: unknown): JsonObject {
+  if (!args || typeof args !== 'object' || Array.isArray(args)) return {};
+  const { workspace: _workspace, ...variables } = args as JsonObject;
+  return variables;
+}
+
 function typedTool(operation: LinearOperation, mode: MutationMode) {
   const renderers = operationRenderers(operation);
   const schema = parameterSchema(operation);
@@ -308,25 +315,33 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
     parameters: schema,
     ...(canonicalOperation(operation).variants ? { constrainedSampling: false as const } : {}),
     /**
-     * `prepareArguments` is the only hook that runs before Pi's converting validation,
-     * so it is used purely as a strict gate: it checks the raw arguments against the
-     * published schema and returns the very same object. It performs no compatibility
-     * transform, and it never adds, removes, or rewrites a field.
+     * `prepareArguments` is the only hook that runs before Pi's converting validation.
+     * It applies the shared operation policy, then checks the raw arguments against the
+     * published schema and returns the same object without changing any field.
      */
     prepareArguments: (args: unknown) => {
-      assertSchema(args);
-      return args as any;
+      try {
+        assertOperationAllowed(operation, operationVariables(args), mode);
+        assertSchema(args);
+        return args as any;
+      } catch (error) {
+        throw redactError(error);
+      }
     },
     renderCall: renderers.renderCall,
     renderResult: renderers.renderResult,
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       if (signal?.aborted) throw new Error('Request cancelled.');
       const { workspace, ...variables } = params as JsonObject;
-      assertOperationAllowed(operation, variables, mode);
-      assertCanonicalOnly(operation, variables);
-      assertBranch(operation, variables);
-      assertSchema(params);
-      operation.validateVariables?.(variables);
+      try {
+        assertOperationAllowed(operation, variables, mode);
+        assertCanonicalOnly(operation, variables);
+        assertBranch(operation, variables);
+        assertSchema(params);
+        operation.validateVariables?.(variables);
+      } catch (error) {
+        throw redactError(error);
+      }
       const details = await executeOperation(
         operation,
         { variables, workspace: typeof workspace === 'string' ? workspace : undefined },

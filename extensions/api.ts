@@ -22,7 +22,7 @@ import {
   type JsonObject,
 } from './runtime';
 import { candidateSummary, planActivation } from './activation';
-import { withRedactedErrors } from './redact';
+import { redactError, withRedactedErrors } from './redact';
 import { renderLinearApiCall, renderLinearApiResult } from './renderers';
 import { typedToolName } from './tool-names';
 import { assertMutationAllowed, type MutationMode } from './safety';
@@ -88,13 +88,17 @@ export function resolveRequest(params: {
   query?: string;
   variables?: Record<string, unknown>;
 }, mode: MutationMode = 'allowlist'): { query: string; named: false } | { query: string; named: true; operation: LinearOperation } {
-  if (Boolean(params.operation) === Boolean(params.query)) throw new Error(REQUEST_SHAPES);
-  if (!params.operation) return { query: params.query!, named: false };
+  try {
+    if (Boolean(params.operation) === Boolean(params.query)) throw new Error(REQUEST_SHAPES);
+    if (!params.operation) return { query: params.query!, named: false };
 
-  const operation = getOperation(params.operation);
-  assertOperationAllowed(operation, params.variables ?? {}, mode);
-  validateVariables(operation, params.operation, params.variables ?? {});
-  return { query: operation.document, named: true, operation };
+    const operation = getOperation(params.operation);
+    assertOperationAllowed(operation, params.variables ?? {}, mode);
+    validateVariables(operation, params.operation, params.variables ?? {});
+    return { query: operation.document, named: true, operation };
+  } catch (error) {
+    throw redactError(error);
+  }
 }
 
 /**

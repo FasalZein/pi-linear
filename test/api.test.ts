@@ -135,6 +135,27 @@ describe('named operations', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['policy', { issue: 'AEO-258', lin_api_secret123456789: { trashed: true } }],
+    ['validation', { issue: 'AEO-258', lin_api_secret123456789: true }],
+  ])('redacts credential-shaped keys from pre-auth named %s errors', async (_kind, variables) => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+
+    const failure = await (linearApiTool() as any).execute(
+      'call-1',
+      { operation: 'get_issue', variables },
+      undefined,
+      undefined,
+      { hasUI: false },
+    ).catch((error: Error) => error);
+
+    expect(failure).toBeInstanceOf(Error);
+    expect((failure as Error).message).toContain('[REDACTED]');
+    expect((failure as Error).message).not.toContain('secret123456789');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('preserves explicitly authorized raw GraphQL mutations, including raw trashed variables', async () => {
     process.env.LINEAR_API_KEY = 'test-key';
     process.env.LINEAR_MUTATIONS = 'all';

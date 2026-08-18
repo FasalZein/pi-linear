@@ -503,6 +503,34 @@ describe('typed schema validation across all 48 tools', () => {
     expect(prepared).toEqual({ title: 'T', team: 'AEO', priority: 2, labelIds: [UUID_SAMPLE] });
   });
 
+  it.each([
+    ['top-level', 'linear_update_document', { documentId: 'Doc', trashed: true }, 'variables.trashed'],
+    ['nested', 'linear_list_issues', { filter: { and: [{ trashed: true }] } }, 'variables.filter.and[0].trashed'],
+    ['credential-keyed', 'linear_list_issues', { filter: { lin_api_secret123456789: { trashed: true } } }, 'variables.filter.[REDACTED].trashed'],
+  ])('runs destructive-input policy before schema validation for %s input', (_case, toolName, args, path) => {
+    expect(() => tools.get(toolName)!.prepareArguments!(args)).toThrow(
+      `Destructive named input is unavailable at ${path}. Use an authorized raw GraphQL mutation with LINEAR_MUTATIONS=all.`,
+    );
+  });
+
+  it('preserves read-only precedence in prepareArguments', () => {
+    const tool = typedLinearTools('readonly').find(({ name }) => name === 'linear_update_document')!;
+    expect(() => tool.prepareArguments!({ documentId: 'Doc', trashed: true })).toThrow('read-only mode');
+  });
+
+  it('does not expose credential-shaped keys in prepareArguments schema errors', () => {
+    const failure = (() => {
+      try {
+        tools.get('linear_get_issue')!.prepareArguments!({ issue: 'AEO-258', lin_api_secret123456789: true });
+      } catch (error) {
+        return error as Error;
+      }
+    })();
+
+    expect(failure).toBeInstanceOf(Error);
+    expect((failure as Error).message).not.toContain('secret123456789');
+  });
+
   it('omits prompt metadata so lazy activation keeps the prompt prefix stable', () => {
     for (const tool of typedLinearTools()) {
       expect(tool.promptSnippet).toBeUndefined();
@@ -606,6 +634,19 @@ describe('execution boundary rejects non-canonical arguments before any network 
     await expect(execute(tools.get('linear_list_issues')!, {
       filter: { and: [{ title: { contains: 'trashed' } }, { trashed: true }] },
     })).rejects.toThrow('Destructive named input is unavailable at variables.filter.and[1].trashed');
+    expect(requests).toHaveLength(0);
+  });
+
+  it('redacts credential-shaped keys from direct typed execution errors', async () => {
+    const requests = installServer();
+    const failure = await execute(tools.get('linear_get_issue')!, {
+      issue: 'AEO-258',
+      lin_api_secret123456789: true,
+    }).catch((error: Error) => error);
+
+    expect(failure).toBeInstanceOf(Error);
+    expect((failure as Error).message).toContain('[REDACTED]');
+    expect((failure as Error).message).not.toContain('secret123456789');
     expect(requests).toHaveLength(0);
   });
 });
