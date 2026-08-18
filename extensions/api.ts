@@ -54,7 +54,8 @@ function validateVariables(
   const valid = new Set(shapes.flatMap((shape) => shape.map(({ name }) => name)));
   const validShape = shapes.find((shape) => {
     const shapeKeys = new Set(shape.map(({ name }) => name));
-    return Object.keys(variables).every((name) => shapeKeys.has(name));
+    return shape.every(({ name, required }) => !required || name in variables)
+      && Object.keys(variables).every((name) => shapeKeys.has(name));
   });
   if (validShape) {
     try {

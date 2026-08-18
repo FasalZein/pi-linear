@@ -52,7 +52,6 @@ export const DEFINITION_COMPATIBILITY_BRANCHES: Readonly<Record<string, readonly
         "body",
         "bodyData",
         "quotedText",
-        "skipEditedAt",
         "doNotSubscribeToIssue",
         "resolvingUserId",
         "resolvingCommentId",
