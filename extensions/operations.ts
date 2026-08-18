@@ -346,7 +346,17 @@ function simpleMutation(config: {
 	};
 }
 
-const commentInput = [
+const COMMENT_TARGETS = [
+	"issueId",
+	"projectId",
+	"initiativeId",
+	"projectUpdateId",
+	"initiativeUpdateId",
+	"postId",
+	"documentContentId",
+	"parentId",
+] as const;
+const COMMENT_CREATE_FIELDS = [
 	"body",
 	"bodyData",
 	"createAsUser",
@@ -356,14 +366,80 @@ const commentInput = [
 	"doNotSubscribeToIssue",
 	"documentContentId",
 	"id",
+	"initiativeId",
 	"initiativeUpdateId",
 	"issueId",
 	"parentId",
 	"postId",
+	"projectId",
 	"projectUpdateId",
 	"quotedText",
 	"subscriberIds",
-].map((name) => p(name));
+] as const;
+const COMMENT_UPDATE_FIELDS = [
+	"body",
+	"bodyData",
+	"doNotSubscribeToIssue",
+	"quotedText",
+	"resolvingCommentId",
+	"resolvingUserId",
+	"subscriberIds",
+] as const;
+const commentCreateInput = COMMENT_CREATE_FIELDS.map((name) => p(name));
+const commentUpdateInput = COMMENT_UPDATE_FIELDS.map((name) => p(name));
+
+function has(value: Record<string, unknown>, key: string): boolean {
+	return Object.prototype.hasOwnProperty.call(value, key) && value[key] !== undefined;
+}
+
+function commentInputObject(
+	variables: Record<string, unknown>,
+	allowed: readonly string[],
+): Record<string, unknown> {
+	if (!has(variables, "input")) return {};
+	const raw = object(variables.input);
+	if (!raw) throw new Error("input must be an object");
+	const unknown = Object.keys(raw).filter((key) => !allowed.includes(key));
+	if (unknown.length) throw new Error(`unknown input fields: ${unknown.join(", ")}`);
+	return raw;
+}
+
+function assertCommentBodyData(sources: readonly Record<string, unknown>[]): void {
+	for (const source of sources) {
+		if (has(source, "body") && (typeof source.body !== "string" || !source.body.length))
+			throw new Error("body must be non-empty text");
+		if (has(source, "bodyData") && !object(source.bodyData))
+			throw new Error("bodyData must be a JSON object");
+	}
+}
+
+function assertCommentCreateVariables(variables: Record<string, unknown>): void {
+	const raw = commentInputObject(variables, COMMENT_CREATE_FIELDS);
+	const sources = [variables, raw];
+	assertCommentBodyData(sources);
+	const targets =
+		Number(has(variables, "issue")) +
+		COMMENT_TARGETS.reduce(
+			(count, target) => count + sources.filter((source) => has(source, target)).length,
+			0,
+		);
+	if (targets !== 1) throw new Error("exactly one comment target is required");
+	const content = ["body", "bodyData"].reduce(
+		(count, field) => count + sources.filter((source) => has(source, field)).length,
+		0,
+	);
+	if (content !== 1) throw new Error("exactly one of body or bodyData is required");
+}
+
+function assertCommentUpdateVariables(variables: Record<string, unknown>): void {
+	const raw = commentInputObject(variables, COMMENT_UPDATE_FIELDS);
+	assertCommentBodyData([variables, raw]);
+	const updates = COMMENT_UPDATE_FIELDS.reduce(
+		(count, field) => count + Number(has(variables, field) || has(raw, field)),
+		0,
+	);
+	if (!updates) throw new Error("at least one comment update field is required");
+}
 const issueCreateFields = [
 	"teamId",
 	"teamKey",
@@ -484,8 +560,8 @@ const entries: LinearOperation[] = [
 		root: "commentCreate",
 		inputType: "CommentCreateInput",
 		selection: `comment { ${COMMENT_SELECTION} }`,
-		parameters: [p("issue", "IssueReference", true), p("body", "String", true)],
-		acceptedParameters: [p("issue"), ...commentInput, input],
+		parameters: [p("issue", "IssueReference"), p("body", "String")],
+		acceptedParameters: [p("issue"), ...commentCreateInput, input],
 		example: { issue: "AEO-258", body: "Comment text" },
 		aliases: ["add_comment"],
 		legacyParameters: [
@@ -499,19 +575,9 @@ const entries: LinearOperation[] = [
 			issue: "resolveIssueReference",
 			issueId: "resolveIssueReference",
 		},
-		validateVariables(variables) {
-			if (!variables.input) return;
-			const raw = object(variables.input) ?? {};
-			if (
-				typeof (variables.body ?? raw.body) !== "string" &&
-				!object(variables.bodyData ?? raw.bodyData)
-			) {
-				throw new Error(
-					"canonical fields or nested input require body or bodyData",
-				);
-			}
-		},
+		validateVariables: assertCommentCreateVariables,
 		async prepare(apiKey, variables, signal) {
+			assertCommentCreateVariables(variables);
 			const requested =
 				issueReference(variables) ||
 				String(object(variables.input)?.issueId ?? "");
@@ -520,10 +586,6 @@ const entries: LinearOperation[] = [
 				: undefined;
 			const prepared = mergedInput(variables, ["issue"]);
 			if (issue) prepared.issueId = issue.id;
-			if (typeof prepared.body !== "string" && !object(prepared.bodyData))
-				throw new Error(
-					"Comment body or bodyData is required for commentCreate.",
-				);
 			return {
 				variables: { input: prepared },
 				resolution: issue
@@ -539,9 +601,14 @@ const entries: LinearOperation[] = [
 		root: "commentUpdate",
 		inputType: "CommentUpdateInput",
 		selection: `comment { ${COMMENT_SELECTION} }`,
-		parameters: [p("id", "String", true), p("body"), p("quotedText"), input],
+		parameters: [p("id", "String", true), ...commentUpdateInput, input],
 		example: { id: "comment-id", body: "Updated text" },
 		idKey: "id",
+		validateVariables: assertCommentUpdateVariables,
+		async prepare(_apiKey, variables) {
+			assertCommentUpdateVariables(variables);
+			return { variables: { id: variables.id, input: mergedInput(variables, ["id"]) } };
+		},
 	}),
 
 	listOperation({

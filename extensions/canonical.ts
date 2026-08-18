@@ -21,6 +21,8 @@ export type CanonicalVariant = {
 export type CanonicalOperation = {
   fields: Record<string, string>;
   branches: readonly (readonly string[])[];
+  /** Require exactly one branch, rather than at least one branch. */
+  exclusiveBranches?: true;
   /** Closed, mutually exclusive object shapes for mode-sensitive operations. */
   variants?: readonly [CanonicalVariant, CanonicalVariant];
 };
@@ -182,26 +184,41 @@ export const CANONICAL_OPERATIONS: Record<string, CanonicalOperation> = {
   create_comment: {
     fields: {
       issue: 'IssueReference',
-      body: 'String',
-      bodyData: 'JsonString',
-      quotedText: 'String',
+      projectId: 'UUID',
+      initiativeId: 'UUID',
+      projectUpdateId: 'UUID',
+      initiativeUpdateId: 'UUID',
+      postId: 'UUID',
+      documentContentId: 'UUID',
       parentId: 'UUID',
+      body: 'String',
+      bodyData: 'JsonObject',
+      quotedText: 'String',
       subscriberIds: '[UUID!]',
       doNotSubscribeToIssue: 'Boolean',
       createOnSyncedSlackThread: 'Boolean',
       createAsUser: 'String',
       displayIconUrl: 'Url',
-      documentContentId: 'UUID',
-      initiativeUpdateId: 'UUID',
-      projectUpdateId: 'UUID',
-      postId: 'UUID',
       createdAt: 'DateTime',
       id: 'UUID',
     },
-    branches: [['issue', 'body'], ['issue', 'bodyData']],
+    branches: [
+      ...['issue', 'projectId', 'initiativeId', 'projectUpdateId', 'initiativeUpdateId', 'postId', 'documentContentId', 'parentId']
+        .flatMap((target) => [[target, 'body'], [target, 'bodyData']]),
+    ],
+    exclusiveBranches: true,
   },
   update_comment: {
-    fields: { id: 'String', body: 'String', bodyData: 'JsonString', quotedText: 'String' },
+    fields: {
+      id: 'String',
+      body: 'String',
+      bodyData: 'JsonObject',
+      quotedText: 'String',
+      doNotSubscribeToIssue: 'Boolean',
+      resolvingCommentId: 'UUID',
+      resolvingUserId: 'UUID',
+      subscriberIds: '[UUID!]',
+    },
     branches: [],
   },
 

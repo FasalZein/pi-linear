@@ -245,6 +245,8 @@ function sampleFor(type: string): unknown {
       return 1.5;
     case 'JsonString':
       return '{"type":"doc"}';
+    case 'JsonObject':
+      return { type: 'doc', content: [] };
     case 'Url':
       return 'https://example.com/icon.png';
     case 'NullableDateTime':

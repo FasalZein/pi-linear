@@ -40,6 +40,7 @@ const REFERENCE_HINTS: Record<string, string> = {
   '[SortInput!]': 'Sort clauses, each { key, order }.',
   Float: 'Number.',
   JsonString: 'Serialized Linear document JSON.',
+  JsonObject: 'Linear document JSON object.',
   Url: 'Absolute http(s) URL.',
   NullableDateTime: 'ISO 8601 date-time, or null to clear it.',
 };
@@ -136,6 +137,8 @@ function schemaFor(type: string): TSchema {
       return Type.Number(options);
     case 'JsonString':
       return Type.String({ ...options, minLength: 1 });
+    case 'JsonObject':
+      return Type.Record(Type.String(), Type.Any(), options);
     case 'Url':
       return Type.String({ ...options, minLength: 1, pattern: '^https?://' });
     case 'NullableDateTime':
@@ -185,6 +188,7 @@ function objectSchema(
   fields: Record<string, string>,
   fieldNames: readonly string[],
   branches: readonly (readonly string[])[],
+  exclusive = false,
 ) {
   const properties: Record<string, TSchema> = Object.fromEntries(
     fieldNames.map((name) => [name, Type.Optional(schemaFor(fields[name]!))]),
@@ -195,7 +199,7 @@ function objectSchema(
   if (branches.length === 1) {
     if (branches[0]!.length) options.required = [...branches[0]!];
   } else {
-    options.anyOf = branches.map((branch) => ({ required: [...branch] }));
+    options[exclusive ? 'oneOf' : 'anyOf'] = branches.map((branch) => ({ required: [...branch] }));
   }
   return Type.Object(properties, options as any);
 }
@@ -208,7 +212,12 @@ function forbiddenFields(fields: readonly string[]): Record<string, unknown> {
 export function parameterSchema(operation: LinearOperation) {
   const contract = canonicalOperation(operation);
   if (!contract.variants) {
-    return objectSchema(contract.fields, Object.keys(contract.fields), contract.branches);
+    return objectSchema(
+      contract.fields,
+      Object.keys(contract.fields),
+      contract.branches,
+      contract.exclusiveBranches,
+    );
   }
 
   const [create, update] = contract.variants;
@@ -247,8 +256,8 @@ function branchList(operation: LinearOperation): string {
  */
 function assertBranch(operation: LinearOperation, variables: JsonObject): void {
   const branches = requirementBranches(operation);
-  const satisfied = branches.some((branch) => branch.every((name) => variables[name] !== undefined));
-  if (satisfied) return;
+  const satisfied = branches.filter((branch) => branch.every((name) => variables[name] !== undefined));
+  if (canonicalOperation(operation).exclusiveBranches ? satisfied.length === 1 : satisfied.length > 0) return;
   throw new Error(
     `Invalid parameters for "${typedToolName(operation.name)}": supply ${branchList(operation)}.`,
   );
@@ -306,6 +315,7 @@ function operationVariables(args: unknown): JsonObject {
 
 function typedTool(operation: LinearOperation, mode: MutationMode) {
   const renderers = operationRenderers(operation);
+  const contract = canonicalOperation(operation);
   const schema = parameterSchema(operation);
   const assertSchema = schemaGuard(operation, schema);
   return defineTool({
@@ -313,7 +323,9 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
     label: `Linear ${operation.name.replace(/_/g, ' ')}`,
     description: toolDescription(operation),
     parameters: schema,
-    ...(canonicalOperation(operation).variants ? { constrainedSampling: false as const } : {}),
+    ...(contract.variants || contract.exclusiveBranches || Object.values(contract.fields).includes('JsonObject')
+      ? { constrainedSampling: false as const }
+      : {}),
     /**
      * `prepareArguments` is the only hook that runs before Pi's converting validation.
      * It applies the shared operation policy, then checks the raw arguments against the
