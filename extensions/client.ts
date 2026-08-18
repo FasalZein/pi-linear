@@ -404,14 +404,13 @@ export async function resolveDocumentReference(
   documents(first: 2, filter: { title: { eq: $title } }) { nodes { id title } }
 }`, { title: reference }, signal);
   const nodes = data.documents?.nodes ?? [];
-  const matches = nodes.filter((document) => document.title === reference);
-  if (nodes.length === 1 && matches.length === 0) {
+  if (nodes.length !== 1) {
+    throw new Error(`Linear document "${reference}" resolved to ${nodes.length} results; expected exactly one.`);
+  }
+  if (nodes[0]!.title !== reference) {
     throw new Error(`Linear document resolver returned mismatched title "${nodes[0]!.title}" for "${reference}".`);
   }
-  if (matches.length !== 1) {
-    throw new Error(`Linear document "${reference}" resolved to ${matches.length} exact matches; expected exactly one.`);
-  }
-  return matches[0]!;
+  return nodes[0]!;
 }
 
 export async function resolveNamedEntityReference(

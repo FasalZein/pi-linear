@@ -406,10 +406,10 @@ describe('strict reference resolvers', () => {
     });
 
     await expect(resolveDocumentReference('key', 'Missing')).rejects.toThrow(
-      'Linear document "Missing" resolved to 0 exact matches; expected exactly one.',
+      'Linear document "Missing" resolved to 0 results; expected exactly one.',
     );
     await expect(resolveDocumentReference('key', 'Duplicate')).rejects.toThrow(
-      'Linear document "Duplicate" resolved to 2 exact matches; expected exactly one.',
+      'Linear document "Duplicate" resolved to 2 results; expected exactly one.',
     );
     await expect(resolveDocumentReference('key', 'Exact title')).rejects.toThrow(
       'Linear document resolver returned mismatched title "Fuzzy result" for "Exact title".',

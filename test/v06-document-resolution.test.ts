@@ -74,15 +74,28 @@ describe('exact document resolution on public mutation paths', () => {
     ] } });
 
     await expect(execute(tool, params)).rejects.toThrow(
-      'Linear document "Planning notes" resolved to 2 exact matches; expected exactly one.',
+      'Linear document "Planning notes" resolved to 2 results; expected exactly one.',
     );
     expect(requests).toHaveLength(1);
     expect(requests.every(({ query }) => !query.includes('mutation UpdateDocument'))).toBe(true);
   });
 
+  it.each(updateTools())('does not run a %s mutation for mixed exact and mismatched results', async (_surface, tool, params) => {
+    const requests = installServer({ documents: { nodes: [
+      { id: DOCUMENT_ID, title: 'Planning notes' },
+      { id: OTHER_ID, title: 'Planning note' },
+    ] } });
+
+    await expect(execute(tool, params)).rejects.toThrow(
+      'Linear document "Planning notes" resolved to 2 results; expected exactly one.',
+    );
+    expect(requests.filter(({ query }) => query.includes('ResolveDocumentByTitle'))).toHaveLength(1);
+    expect(requests.filter(({ query }) => query.includes('mutation UpdateDocument'))).toHaveLength(0);
+  });
+
   it.each(updateTools())('does not run a %s mutation for missing or mismatched title results', async (_surface, tool, params) => {
     for (const [resolveData, message] of [
-      [{ documents: { nodes: [] } }, 'resolved to 0 exact matches'],
+      [{ documents: { nodes: [] } }, 'resolved to 0 results'],
       [{ documents: { nodes: [{ id: DOCUMENT_ID, title: 'Planning note' }] } }, 'mismatched title "Planning note"'],
     ] as const) {
       const requests = installServer(resolveData);
