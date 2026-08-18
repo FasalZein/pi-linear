@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   buildClientSchema,
   getNamedType,
@@ -6,7 +7,6 @@ import {
   isObjectType,
   isScalarType,
   parse,
-  type GraphQLInputType,
   type GraphQLSchema,
   type IntrospectionQuery,
   type OperationDefinitionNode,
@@ -15,31 +15,36 @@ import {
 import type { LinearOperation } from '../extensions/operations';
 
 export type RootKind = 'Query' | 'Mutation';
+export type ReadonlySchemaScope = {
+  schemaVersion: 1;
+  endpoint: string;
+  schemaIdentity: { queryType: string; mutationType: string };
+  roots: Record<RootKind, string[]>;
+  mutationPayloadFields: Record<string, string[]>;
+};
 export type RootContract = {
   returns: string;
   arguments: Record<string, string>;
+  selectedPayloadFields?: string[];
 };
-export type InputContract = {
-  kind: 'INPUT_OBJECT';
-  fields: Record<string, string>;
+export type ReadonlySchemaProvenance = {
+  captureDate: string;
+  endpoint: string;
+  schemaIdentity: { queryType: string; mutationType: string };
+  sourceQuery: string;
+  sourceQuerySha256: string;
+  scope: string;
+  scopeSha256: string;
+  normalizedSha256: string;
 };
-export type EnumContract = {
-  kind: 'ENUM';
-  values: string[];
-};
-export type ObjectContract = {
-  kind: 'OBJECT';
-  fields: Record<string, string>;
-};
-export type ScalarContract = { kind: 'SCALAR' };
 export type ReadonlySchemaFixture = {
   schemaVersion: 1;
-  capturedAt: string;
+  provenance: ReadonlySchemaProvenance;
   roots: Record<RootKind, Record<string, RootContract>>;
-  inputs: Record<string, InputContract>;
-  enums: Record<string, EnumContract>;
-  objects: Record<string, ObjectContract>;
-  scalars: Record<string, ScalarContract>;
+  inputs: Record<string, { kind: 'INPUT_OBJECT'; fields: Record<string, string> }>;
+  enums: Record<string, { kind: 'ENUM'; values: string[] }>;
+  objects: Record<string, { kind: 'OBJECT'; fields: Record<string, string> }>;
+  scalars: Record<string, { kind: 'SCALAR' }>;
 };
 
 type CatalogRoot = { arguments: Record<string, string>; selectedFields: string[] };
@@ -49,8 +54,20 @@ export type CatalogSchemaUsage = {
   mutationPayloadFields: Record<string, string[]>;
 };
 
-function typeSignature(type: GraphQLInputType): string {
-  return String(type);
+export function sha256(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function stableValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stableValue);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, child]) => [key, stableValue(child)]));
+}
+
+export function normalizedFixtureDigest(fixture: Omit<ReadonlySchemaFixture, 'provenance'>): string {
+  return sha256(JSON.stringify(stableValue(fixture)));
 }
 
 function astTypeSignature(type: TypeNode): string {
@@ -84,12 +101,10 @@ export function catalogSchemaUsage(operations: readonly LinearOperation[]): Cata
       );
       if (!definition) throw new Error(`catalog.${operation.name}: GraphQL operation definition is missing`);
       const rootKind: RootKind = definition.operation === 'mutation' ? 'Mutation' : 'Query';
-      const variableTypes = new Map(
-        (definition.variableDefinitions ?? []).map((entry) => {
-          namedTypes.add(terminalName(entry.type));
-          return [entry.variable.name.value, astTypeSignature(entry.type)] as const;
-        }),
-      );
+      const variableTypes = new Map((definition.variableDefinitions ?? []).map((entry) => {
+        namedTypes.add(terminalName(entry.type));
+        return [entry.variable.name.value, astTypeSignature(entry.type)] as const;
+      }));
 
       for (const selection of definition.selectionSet.selections) {
         if (selection.kind !== 'Field') continue;
@@ -121,11 +136,7 @@ export function catalogSchemaUsage(operations: readonly LinearOperation[]): Cata
     }
   }
 
-  return {
-    roots,
-    namedTypes: [...namedTypes].sort(),
-    mutationPayloadFields,
-  };
+  return { roots, namedTypes: [...namedTypes].sort(), mutationPayloadFields };
 }
 
 function schemaRoot(schema: GraphQLSchema, kind: RootKind) {
@@ -134,32 +145,40 @@ function schemaRoot(schema: GraphQLSchema, kind: RootKind) {
 
 export function schemaFixtureFromIntrospection(
   introspection: IntrospectionQuery,
-  usage: CatalogSchemaUsage,
-  capturedAt: string,
+  scope: ReadonlySchemaScope,
+  provenance: Omit<ReadonlySchemaProvenance, 'normalizedSha256'>,
 ): ReadonlySchemaFixture {
   const schema = buildClientSchema(introspection);
+  const queryType = schema.getQueryType()?.name;
+  const mutationType = schema.getMutationType()?.name;
+  if (queryType !== scope.schemaIdentity.queryType || mutationType !== scope.schemaIdentity.mutationType) {
+    throw new Error(`schema.identity: expected ${scope.schemaIdentity.queryType}/${scope.schemaIdentity.mutationType}, actual ${queryType ?? '<missing>'}/${mutationType ?? '<missing>'}`);
+  }
+
   const roots = { Query: {}, Mutation: {} } as ReadonlySchemaFixture['roots'];
-  const referencedNames = new Set(usage.namedTypes);
+  const referencedNames = new Set<string>();
   const payloadTypes = new Map<string, string[]>();
 
   for (const kind of ['Query', 'Mutation'] as const) {
-    const root = schemaRoot(schema, kind);
-    if (!root) throw new Error(`schema.${kind}: root type is missing`);
-    for (const [fieldName, expected] of Object.entries(usage.roots[kind])) {
+    const root = schemaRoot(schema, kind)!;
+    for (const fieldName of scope.roots[kind]) {
       const field = root.getFields()[fieldName];
       if (!field) throw new Error(`schema.${kind}.${fieldName}: root field is missing`);
-      const args = Object.fromEntries(Object.keys(expected.arguments).map((name) => {
-        const argument = field.args.find((entry) => entry.name === name);
-        if (!argument) throw new Error(`schema.${kind}.${fieldName}.${name}: root argument is missing`);
-        const named = getNamedType(argument.type);
-        referencedNames.add(named.name);
-        return [name, typeSignature(argument.type)];
+      const args = Object.fromEntries(field.args.map((argument) => {
+        referencedNames.add(getNamedType(argument.type).name);
+        return [argument.name, String(argument.type)];
       }));
-      roots[kind][fieldName] = { returns: String(field.type), arguments: args };
-      referencedNames.add(getNamedType(field.type).name);
-      if (kind === 'Mutation') {
-        payloadTypes.set(getNamedType(field.type).name, usage.mutationPayloadFields[fieldName] ?? []);
-      }
+      const selectedPayloadFields = kind === 'Mutation'
+        ? [...(scope.mutationPayloadFields[fieldName] ?? [])].sort()
+        : undefined;
+      roots[kind][fieldName] = {
+        returns: String(field.type),
+        arguments: args,
+        ...(selectedPayloadFields ? { selectedPayloadFields } : {}),
+      };
+      const returnName = getNamedType(field.type).name;
+      referencedNames.add(returnName);
+      if (selectedPayloadFields) payloadTypes.set(returnName, selectedPayloadFields);
     }
   }
 
@@ -167,9 +186,9 @@ export function schemaFixtureFromIntrospection(
   const enums: ReadonlySchemaFixture['enums'] = {};
   const objects: ReadonlySchemaFixture['objects'] = {};
   const scalars: ReadonlySchemaFixture['scalars'] = {};
-
   const queue = [...referencedNames];
   const visited = new Set<string>();
+
   while (queue.length) {
     const name = queue.shift()!;
     if (visited.has(name)) continue;
@@ -177,28 +196,27 @@ export function schemaFixtureFromIntrospection(
     const type = schema.getType(name);
     if (!type) throw new Error(`schema.types.${name}: named type is missing`);
     if (isInputObjectType(type)) {
-      const fields = Object.fromEntries(Object.values(type.getFields()).map((field) => {
+      inputs[name] = { kind: 'INPUT_OBJECT', fields: Object.fromEntries(Object.values(type.getFields()).map((field) => {
         queue.push(getNamedType(field.type).name);
         return [field.name, String(field.type)];
-      }));
-      inputs[name] = { kind: 'INPUT_OBJECT', fields };
+      })) };
     } else if (isEnumType(type)) {
       enums[name] = { kind: 'ENUM', values: type.getValues().map((value) => value.name).sort() };
     } else if (isScalarType(type)) {
       scalars[name] = { kind: 'SCALAR' };
     } else if (isObjectType(type)) {
       const requested = payloadTypes.get(name) ?? [];
-      const fields = Object.fromEntries(requested.map((fieldName) => {
+      objects[name] = { kind: 'OBJECT', fields: Object.fromEntries(requested.map((fieldName) => {
         const field = type.getFields()[fieldName];
         if (!field) throw new Error(`schema.objects.${name}.${fieldName}: payload field is missing`);
         queue.push(getNamedType(field.type).name);
         return [fieldName, String(field.type)];
-      }));
-      objects[name] = { kind: 'OBJECT', fields };
+      })) };
     }
   }
 
-  return { schemaVersion: 1, capturedAt, roots, inputs, enums, objects, scalars };
+  const contract = { schemaVersion: 1 as const, roots, inputs, enums, objects, scalars };
+  return { ...contract, provenance: { ...provenance, normalizedSha256: normalizedFixtureDigest(contract) } };
 }
 
 function sameSet(actual: readonly string[], expected: readonly string[]): boolean {
@@ -210,55 +228,92 @@ function signatureError(path: string, expected: unknown, actual: unknown): Error
   return new Error(`${path}: expected ${show(expected)}, actual ${show(actual)}`);
 }
 
+function fixtureScope(fixture: ReadonlySchemaFixture): ReadonlySchemaScope {
+  return {
+    schemaVersion: 1,
+    endpoint: fixture.provenance.endpoint,
+    schemaIdentity: fixture.provenance.schemaIdentity,
+    roots: {
+      Query: Object.keys(fixture.roots.Query).sort(),
+      Mutation: Object.keys(fixture.roots.Mutation).sort(),
+    },
+    mutationPayloadFields: Object.fromEntries(Object.entries(fixture.roots.Mutation)
+      .map(([root, contract]) => [root, [...(contract.selectedPayloadFields ?? [])].sort()])),
+  };
+}
+
+export function assertFixtureProvenance(
+  fixture: ReadonlySchemaFixture,
+  scope: ReadonlySchemaScope,
+  sourceQuery: string,
+  scopeSource: string,
+): void {
+  const contract = {
+    schemaVersion: fixture.schemaVersion,
+    roots: fixture.roots,
+    inputs: fixture.inputs,
+    enums: fixture.enums,
+    objects: fixture.objects,
+    scalars: fixture.scalars,
+  };
+  if (fixture.provenance.sourceQuerySha256 !== sha256(sourceQuery)) {
+    throw signatureError('fixture.provenance.sourceQuerySha256', fixture.provenance.sourceQuerySha256, sha256(sourceQuery));
+  }
+  if (fixture.provenance.scopeSha256 !== sha256(scopeSource)) {
+    throw signatureError('fixture.provenance.scopeSha256', fixture.provenance.scopeSha256, sha256(scopeSource));
+  }
+  if (fixture.provenance.normalizedSha256 !== normalizedFixtureDigest(contract)) {
+    throw signatureError('fixture.provenance.normalizedSha256', fixture.provenance.normalizedSha256, normalizedFixtureDigest(contract));
+  }
+  if (JSON.stringify(stableValue(fixtureScope(fixture))) !== JSON.stringify(stableValue(scope))) {
+    throw signatureError('fixture.provenance.scope', scope, fixtureScope(fixture));
+  }
+}
+
 export function compareReadonlySchema(
   introspection: IntrospectionQuery,
   fixture: ReadonlySchemaFixture,
   usage: CatalogSchemaUsage,
+  scope: ReadonlySchemaScope = fixtureScope(fixture),
 ): void {
   for (const kind of ['Query', 'Mutation'] as const) {
     const catalogNames = Object.keys(usage.roots[kind]).sort();
     const fixtureNames = Object.keys(fixture.roots[kind]).sort();
-    if (!sameSet(catalogNames, fixtureNames)) {
-      throw signatureError(`catalog.${kind}.roots`, fixtureNames, catalogNames);
-    }
+    if (!sameSet(catalogNames, fixtureNames)) throw signatureError(`catalog.${kind}.roots`, fixtureNames, catalogNames);
     for (const name of catalogNames) {
       const catalogArguments = usage.roots[kind][name].arguments;
       const fixtureArguments = fixture.roots[kind][name].arguments;
       const catalogArgumentNames = Object.keys(catalogArguments).sort();
-      const fixtureArgumentNames = Object.keys(fixtureArguments).sort();
-      if (!sameSet(catalogArgumentNames, fixtureArgumentNames)) {
-        throw signatureError(`catalog.${kind}.${name}.arguments`, fixtureArgumentNames, catalogArgumentNames);
-      }
       for (const argument of catalogArgumentNames) {
         if (catalogArguments[argument] !== fixtureArguments[argument]) {
-          throw signatureError(
-            `catalog.${kind}.${name}.arguments.${argument}`,
-            fixtureArguments[argument],
-            catalogArguments[argument],
-          );
+          throw signatureError(`catalog.${kind}.${name}.arguments.${argument}`, fixtureArguments[argument], catalogArguments[argument]);
+        }
+      }
+      if (kind === 'Mutation') {
+        const expectedFields = [...(fixture.roots.Mutation[name].selectedPayloadFields ?? [])].sort();
+        const actualFields = [...(usage.mutationPayloadFields[name] ?? [])].sort();
+        if (!sameSet(actualFields, expectedFields)) {
+          throw signatureError(`catalog.Mutation.${name}.payloadFields`, expectedFields, actualFields);
         }
       }
     }
   }
 
   const fixtureNames = new Set([
-    ...Object.keys(fixture.inputs),
-    ...Object.keys(fixture.enums),
-    ...Object.keys(fixture.objects),
-    ...Object.keys(fixture.scalars),
+    ...Object.keys(fixture.inputs), ...Object.keys(fixture.enums),
+    ...Object.keys(fixture.objects), ...Object.keys(fixture.scalars),
   ]);
   for (const name of usage.namedTypes) {
     if (!fixtureNames.has(name)) throw signatureError(`catalog.types.${name}.kind`, 'fixture kind', undefined);
   }
 
-  const actual = schemaFixtureFromIntrospection(introspection, usage, fixture.capturedAt);
+  const { normalizedSha256: _digest, ...provenance } = fixture.provenance;
+  const actual = schemaFixtureFromIntrospection(introspection, scope, provenance);
   for (const kind of ['Query', 'Mutation'] as const) {
     for (const [rootName, expected] of Object.entries(fixture.roots[kind])) {
       const found = actual.roots[kind][rootName];
       if (!found) throw signatureError(`schema.${kind}.${rootName}`, expected, undefined);
-      if (found.returns !== expected.returns) {
-        throw signatureError(`schema.${kind}.${rootName}.returns`, expected.returns, found.returns);
-      }
+      if (found.returns !== expected.returns) throw signatureError(`schema.${kind}.${rootName}.returns`, expected.returns, found.returns);
       for (const [argument, signature] of Object.entries(expected.arguments)) {
         if (found.arguments[argument] !== signature) {
           throw signatureError(`schema.${kind}.${rootName}.arguments.${argument}`, signature, found.arguments[argument]);
@@ -266,35 +321,29 @@ export function compareReadonlySchema(
       }
     }
   }
-
   for (const [name, expected] of Object.entries(fixture.inputs)) {
     const found = actual.inputs[name];
     if (!found) throw signatureError(`schema.types.${name}.kind`, expected.kind, undefined);
     const expectedFields = Object.keys(expected.fields).sort();
     const actualFields = Object.keys(found.fields).sort();
-    if (!sameSet(actualFields, expectedFields)) {
-      throw signatureError(`schema.types.${name}.fields`, expectedFields, actualFields);
-    }
+    if (!sameSet(actualFields, expectedFields)) throw signatureError(`schema.types.${name}.fields`, expectedFields, actualFields);
     for (const [field, signature] of Object.entries(expected.fields)) {
-      if (found.fields[field] !== signature) {
-        throw signatureError(`schema.types.${name}.fields.${field}`, signature, found.fields[field]);
-      }
+      if (found.fields[field] !== signature) throw signatureError(`schema.types.${name}.fields.${field}`, signature, found.fields[field]);
     }
   }
   for (const [name, expected] of Object.entries(fixture.enums)) {
     const found = actual.enums[name];
     if (!found) throw signatureError(`schema.types.${name}.kind`, expected.kind, undefined);
-    if (!sameSet(found.values, expected.values)) {
-      throw signatureError(`schema.types.${name}.values`, expected.values, found.values);
-    }
+    if (!sameSet(found.values, expected.values)) throw signatureError(`schema.types.${name}.values`, expected.values, found.values);
   }
   for (const [name, expected] of Object.entries(fixture.objects)) {
     const found = actual.objects[name];
     if (!found) throw signatureError(`schema.types.${name}.kind`, expected.kind, undefined);
+    const expectedFields = Object.keys(expected.fields).sort();
+    const actualFields = Object.keys(found.fields).sort();
+    if (!sameSet(actualFields, expectedFields)) throw signatureError(`schema.types.${name}.fields`, expectedFields, actualFields);
     for (const [field, signature] of Object.entries(expected.fields)) {
-      if (found.fields[field] !== signature) {
-        throw signatureError(`schema.types.${name}.fields.${field}`, signature, found.fields[field]);
-      }
+      if (found.fields[field] !== signature) throw signatureError(`schema.types.${name}.fields.${field}`, signature, found.fields[field]);
     }
   }
   for (const name of Object.keys(fixture.scalars)) {

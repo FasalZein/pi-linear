@@ -1,30 +1,17 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-08-18",
   "roots": {
     "Query": {
       "comments": {
         "returns": "CommentConnection!",
         "arguments": {
-          "after": "String",
+          "filter": "CommentFilter",
           "before": "String",
-          "first": "Int",
-          "includeArchived": "Boolean",
-          "last": "Int",
-          "orderBy": "PaginationOrderBy",
-          "filter": "CommentFilter"
-        }
-      },
-      "customViews": {
-        "returns": "CustomViewConnection!",
-        "arguments": {
           "after": "String",
-          "before": "String",
           "first": "Int",
-          "includeArchived": "Boolean",
           "last": "Int",
-          "orderBy": "PaginationOrderBy",
-          "filter": "CustomViewFilter"
+          "includeArchived": "Boolean",
+          "orderBy": "PaginationOrderBy"
         }
       },
       "customView": {
@@ -33,16 +20,17 @@
           "id": "String!"
         }
       },
-      "cycles": {
-        "returns": "CycleConnection!",
+      "customViews": {
+        "returns": "CustomViewConnection!",
         "arguments": {
-          "after": "String",
+          "filter": "CustomViewFilter",
           "before": "String",
+          "after": "String",
           "first": "Int",
-          "includeArchived": "Boolean",
           "last": "Int",
+          "includeArchived": "Boolean",
           "orderBy": "PaginationOrderBy",
-          "filter": "CycleFilter"
+          "sort": "[CustomViewSortInput!]"
         }
       },
       "cycle": {
@@ -51,17 +39,16 @@
           "id": "String!"
         }
       },
-      "documents": {
-        "returns": "DocumentConnection!",
+      "cycles": {
+        "returns": "CycleConnection!",
         "arguments": {
-          "after": "String",
+          "filter": "CycleFilter",
           "before": "String",
+          "after": "String",
           "first": "Int",
-          "includeArchived": "Boolean",
           "last": "Int",
-          "orderBy": "PaginationOrderBy",
-          "filter": "DocumentFilter",
-          "sort": "[DocumentSortInput!]"
+          "includeArchived": "Boolean",
+          "orderBy": "PaginationOrderBy"
         }
       },
       "document": {
@@ -70,17 +57,17 @@
           "id": "String!"
         }
       },
-      "initiatives": {
-        "returns": "InitiativeConnection!",
+      "documents": {
+        "returns": "DocumentConnection!",
         "arguments": {
-          "after": "String",
+          "filter": "DocumentFilter",
           "before": "String",
+          "after": "String",
           "first": "Int",
-          "includeArchived": "Boolean",
           "last": "Int",
+          "includeArchived": "Boolean",
           "orderBy": "PaginationOrderBy",
-          "filter": "InitiativeFilter",
-          "sort": "[InitiativeSortInput!]"
+          "sort": "[DocumentSortInput!]"
         }
       },
       "initiative": {
@@ -89,52 +76,17 @@
           "id": "String!"
         }
       },
-      "issueLabels": {
-        "returns": "IssueLabelConnection!",
+      "initiatives": {
+        "returns": "InitiativeConnection!",
         "arguments": {
-          "after": "String",
+          "filter": "InitiativeFilter",
           "before": "String",
+          "after": "String",
           "first": "Int",
-          "includeArchived": "Boolean",
           "last": "Int",
+          "includeArchived": "Boolean",
           "orderBy": "PaginationOrderBy",
-          "filter": "IssueLabelFilter"
-        }
-      },
-      "issueRelations": {
-        "returns": "IssueRelationConnection!",
-        "arguments": {
-          "after": "String",
-          "before": "String",
-          "first": "Int",
-          "includeArchived": "Boolean",
-          "last": "Int",
-          "orderBy": "PaginationOrderBy"
-        }
-      },
-      "workflowStates": {
-        "returns": "WorkflowStateConnection!",
-        "arguments": {
-          "after": "String",
-          "before": "String",
-          "first": "Int",
-          "includeArchived": "Boolean",
-          "last": "Int",
-          "orderBy": "PaginationOrderBy",
-          "filter": "WorkflowStateFilter"
-        }
-      },
-      "issues": {
-        "returns": "IssueConnection!",
-        "arguments": {
-          "after": "String",
-          "before": "String",
-          "first": "Int",
-          "includeArchived": "Boolean",
-          "last": "Int",
-          "orderBy": "PaginationOrderBy",
-          "filter": "IssueFilter",
-          "sort": "[IssueSortInput!]"
+          "sort": "[InitiativeSortInput!]"
         }
       },
       "issue": {
@@ -143,73 +95,40 @@
           "id": "String!"
         }
       },
-      "searchIssues": {
-        "returns": "IssueSearchPayload!",
+      "issueLabels": {
+        "returns": "IssueLabelConnection!",
         "arguments": {
-          "after": "String",
+          "filter": "IssueLabelFilter",
           "before": "String",
-          "first": "Int",
-          "includeArchived": "Boolean",
-          "last": "Int",
-          "orderBy": "PaginationOrderBy",
-          "filter": "IssueFilter",
-          "term": "String!",
-          "includeComments": "Boolean",
-          "teamId": "String"
-        }
-      },
-      "projectMilestones": {
-        "returns": "ProjectMilestoneConnection!",
-        "arguments": {
           "after": "String",
-          "before": "String",
           "first": "Int",
-          "includeArchived": "Boolean",
           "last": "Int",
-          "orderBy": "PaginationOrderBy",
-          "filter": "ProjectMilestoneFilter"
-        }
-      },
-      "projectMilestone": {
-        "returns": "ProjectMilestone!",
-        "arguments": {
-          "id": "String!"
-        }
-      },
-      "projectLabels": {
-        "returns": "ProjectLabelConnection!",
-        "arguments": {
-          "after": "String",
-          "before": "String",
-          "first": "Int",
           "includeArchived": "Boolean",
-          "last": "Int",
-          "orderBy": "PaginationOrderBy",
-          "filter": "ProjectLabelFilter"
-        }
-      },
-      "projectRelations": {
-        "returns": "ProjectRelationConnection!",
-        "arguments": {
-          "after": "String",
-          "before": "String",
-          "first": "Int",
-          "includeArchived": "Boolean",
-          "last": "Int",
           "orderBy": "PaginationOrderBy"
         }
       },
-      "projects": {
-        "returns": "ProjectConnection!",
+      "issueRelations": {
+        "returns": "IssueRelationConnection!",
         "arguments": {
-          "after": "String",
           "before": "String",
+          "after": "String",
           "first": "Int",
-          "includeArchived": "Boolean",
           "last": "Int",
+          "includeArchived": "Boolean",
+          "orderBy": "PaginationOrderBy"
+        }
+      },
+      "issues": {
+        "returns": "IssueConnection!",
+        "arguments": {
+          "filter": "IssueFilter",
+          "before": "String",
+          "after": "String",
+          "first": "Int",
+          "last": "Int",
+          "includeArchived": "Boolean",
           "orderBy": "PaginationOrderBy",
-          "filter": "ProjectFilter",
-          "sort": "[ProjectSortInput!]"
+          "sort": "[IssueSortInput!]"
         }
       },
       "project": {
@@ -218,16 +137,74 @@
           "id": "String!"
         }
       },
-      "teams": {
-        "returns": "TeamConnection!",
+      "projectLabels": {
+        "returns": "ProjectLabelConnection!",
         "arguments": {
-          "after": "String",
+          "filter": "ProjectLabelFilter",
           "before": "String",
+          "after": "String",
           "first": "Int",
-          "includeArchived": "Boolean",
           "last": "Int",
+          "includeArchived": "Boolean",
+          "orderBy": "PaginationOrderBy"
+        }
+      },
+      "projectMilestone": {
+        "returns": "ProjectMilestone!",
+        "arguments": {
+          "id": "String!"
+        }
+      },
+      "projectMilestones": {
+        "returns": "ProjectMilestoneConnection!",
+        "arguments": {
+          "filter": "ProjectMilestoneFilter",
+          "before": "String",
+          "after": "String",
+          "first": "Int",
+          "last": "Int",
+          "includeArchived": "Boolean",
+          "orderBy": "PaginationOrderBy"
+        }
+      },
+      "projectRelations": {
+        "returns": "ProjectRelationConnection!",
+        "arguments": {
+          "before": "String",
+          "after": "String",
+          "first": "Int",
+          "last": "Int",
+          "includeArchived": "Boolean",
+          "orderBy": "PaginationOrderBy"
+        }
+      },
+      "projects": {
+        "returns": "ProjectConnection!",
+        "arguments": {
+          "filter": "ProjectFilter",
+          "before": "String",
+          "after": "String",
+          "first": "Int",
+          "last": "Int",
+          "includeArchived": "Boolean",
           "orderBy": "PaginationOrderBy",
-          "filter": "TeamFilter"
+          "sort": "[ProjectSortInput!]"
+        }
+      },
+      "searchIssues": {
+        "returns": "IssueSearchPayload!",
+        "arguments": {
+          "filter": "IssueFilter",
+          "before": "String",
+          "after": "String",
+          "first": "Int",
+          "last": "Int",
+          "includeArchived": "Boolean",
+          "orderBy": "PaginationOrderBy",
+          "term": "String!",
+          "snippetSize": "Float",
+          "includeComments": "Boolean",
+          "teamId": "String"
         }
       },
       "team": {
@@ -236,24 +213,48 @@
           "id": "String!"
         }
       },
-      "users": {
-        "returns": "UserConnection!",
+      "teams": {
+        "returns": "TeamConnection!",
         "arguments": {
-          "after": "String",
+          "filter": "TeamFilter",
           "before": "String",
+          "after": "String",
           "first": "Int",
-          "includeArchived": "Boolean",
           "last": "Int",
-          "orderBy": "PaginationOrderBy",
-          "filter": "UserFilter",
-          "sort": "[UserSortInput!]",
-          "includeDisabled": "Boolean"
+          "includeArchived": "Boolean",
+          "orderBy": "PaginationOrderBy"
         }
       },
       "user": {
         "returns": "User!",
         "arguments": {
           "id": "String!"
+        }
+      },
+      "users": {
+        "returns": "UserConnection!",
+        "arguments": {
+          "filter": "UserFilter",
+          "includeDisabled": "Boolean",
+          "before": "String",
+          "after": "String",
+          "first": "Int",
+          "last": "Int",
+          "includeArchived": "Boolean",
+          "orderBy": "PaginationOrderBy",
+          "sort": "[UserSortInput!]"
+        }
+      },
+      "workflowStates": {
+        "returns": "WorkflowStateConnection!",
+        "arguments": {
+          "filter": "WorkflowStateFilter",
+          "before": "String",
+          "after": "String",
+          "first": "Int",
+          "last": "Int",
+          "includeArchived": "Boolean",
+          "orderBy": "PaginationOrderBy"
         }
       }
     },
@@ -262,194 +263,277 @@
         "returns": "CommentPayload!",
         "arguments": {
           "input": "CommentCreateInput!"
-        }
+        },
+        "selectedPayloadFields": [
+          "comment",
+          "success"
+        ]
       },
       "commentUpdate": {
         "returns": "CommentPayload!",
         "arguments": {
-          "id": "String!",
+          "skipEditedAt": "Boolean",
           "input": "CommentUpdateInput!",
-          "skipEditedAt": "Boolean"
-        }
+          "id": "String!"
+        },
+        "selectedPayloadFields": [
+          "comment",
+          "success"
+        ]
       },
       "customViewCreate": {
         "returns": "CustomViewPayload!",
         "arguments": {
           "input": "CustomViewCreateInput!"
-        }
+        },
+        "selectedPayloadFields": [
+          "customView",
+          "success"
+        ]
       },
       "customViewUpdate": {
         "returns": "CustomViewPayload!",
         "arguments": {
-          "id": "String!",
-          "input": "CustomViewUpdateInput!"
-        }
-      },
-      "viewPreferencesCreate": {
-        "returns": "ViewPreferencesPayload!",
-        "arguments": {
-          "input": "ViewPreferencesCreateInput!"
-        }
+          "input": "CustomViewUpdateInput!",
+          "id": "String!"
+        },
+        "selectedPayloadFields": [
+          "customView",
+          "success"
+        ]
       },
       "cycleCreate": {
         "returns": "CyclePayload!",
         "arguments": {
           "input": "CycleCreateInput!"
-        }
+        },
+        "selectedPayloadFields": [
+          "cycle",
+          "success"
+        ]
       },
       "cycleUpdate": {
         "returns": "CyclePayload!",
         "arguments": {
-          "id": "String!",
-          "input": "CycleUpdateInput!"
-        }
+          "input": "CycleUpdateInput!",
+          "id": "String!"
+        },
+        "selectedPayloadFields": [
+          "cycle",
+          "success"
+        ]
       },
       "documentCreate": {
         "returns": "DocumentPayload!",
         "arguments": {
           "input": "DocumentCreateInput!"
-        }
+        },
+        "selectedPayloadFields": [
+          "document",
+          "success"
+        ]
       },
       "documentUpdate": {
         "returns": "DocumentPayload!",
         "arguments": {
-          "id": "String!",
-          "input": "DocumentUpdateInput!"
-        }
-      },
-      "issueLabelCreate": {
-        "returns": "IssueLabelPayload!",
-        "arguments": {
-          "input": "IssueLabelCreateInput!",
-          "replaceTeamLabels": "Boolean"
-        }
-      },
-      "issueLabelUpdate": {
-        "returns": "IssueLabelPayload!",
-        "arguments": {
-          "id": "String!",
-          "input": "IssueLabelUpdateInput!",
-          "replaceTeamLabels": "Boolean"
-        }
-      },
-      "issueRelationCreate": {
-        "returns": "IssueRelationPayload!",
-        "arguments": {
-          "input": "IssueRelationCreateInput!"
-        }
-      },
-      "issueRelationUpdate": {
-        "returns": "IssueRelationPayload!",
-        "arguments": {
-          "id": "String!",
-          "input": "IssueRelationUpdateInput!"
-        }
-      },
-      "issueCreate": {
-        "returns": "IssuePayload!",
-        "arguments": {
-          "input": "IssueCreateInput!"
-        }
-      },
-      "issueUpdate": {
-        "returns": "IssuePayload!",
-        "arguments": {
-          "id": "String!",
-          "input": "IssueUpdateInput!"
-        }
-      },
-      "projectLabelCreate": {
-        "returns": "ProjectLabelPayload!",
-        "arguments": {
-          "input": "ProjectLabelCreateInput!"
-        }
-      },
-      "projectLabelUpdate": {
-        "returns": "ProjectLabelPayload!",
-        "arguments": {
-          "id": "String!",
-          "input": "ProjectLabelUpdateInput!"
-        }
-      },
-      "projectRelationCreate": {
-        "returns": "ProjectRelationPayload!",
-        "arguments": {
-          "input": "ProjectRelationCreateInput!"
-        }
-      },
-      "projectRelationUpdate": {
-        "returns": "ProjectRelationPayload!",
-        "arguments": {
-          "id": "String!",
-          "input": "ProjectRelationUpdateInput!"
-        }
+          "input": "DocumentUpdateInput!",
+          "id": "String!"
+        },
+        "selectedPayloadFields": [
+          "document",
+          "success"
+        ]
       },
       "initiativeCreate": {
         "returns": "InitiativePayload!",
         "arguments": {
           "input": "InitiativeCreateInput!"
-        }
+        },
+        "selectedPayloadFields": [
+          "initiative",
+          "success"
+        ]
       },
       "initiativeUpdate": {
         "returns": "InitiativePayload!",
         "arguments": {
-          "id": "String!",
-          "input": "InitiativeUpdateInput!"
-        }
+          "input": "InitiativeUpdateInput!",
+          "id": "String!"
+        },
+        "selectedPayloadFields": [
+          "initiative",
+          "success"
+        ]
+      },
+      "issueCreate": {
+        "returns": "IssuePayload!",
+        "arguments": {
+          "input": "IssueCreateInput!"
+        },
+        "selectedPayloadFields": [
+          "issue",
+          "success"
+        ]
+      },
+      "issueLabelCreate": {
+        "returns": "IssueLabelPayload!",
+        "arguments": {
+          "replaceTeamLabels": "Boolean",
+          "input": "IssueLabelCreateInput!"
+        },
+        "selectedPayloadFields": [
+          "issueLabel",
+          "success"
+        ]
+      },
+      "issueLabelUpdate": {
+        "returns": "IssueLabelPayload!",
+        "arguments": {
+          "replaceTeamLabels": "Boolean",
+          "input": "IssueLabelUpdateInput!",
+          "id": "String!"
+        },
+        "selectedPayloadFields": [
+          "issueLabel",
+          "success"
+        ]
+      },
+      "issueRelationCreate": {
+        "returns": "IssueRelationPayload!",
+        "arguments": {
+          "overrideCreatedAt": "DateTime",
+          "input": "IssueRelationCreateInput!"
+        },
+        "selectedPayloadFields": [
+          "issueRelation",
+          "success"
+        ]
+      },
+      "issueRelationUpdate": {
+        "returns": "IssueRelationPayload!",
+        "arguments": {
+          "input": "IssueRelationUpdateInput!",
+          "id": "String!"
+        },
+        "selectedPayloadFields": [
+          "issueRelation",
+          "success"
+        ]
+      },
+      "issueUpdate": {
+        "returns": "IssuePayload!",
+        "arguments": {
+          "input": "IssueUpdateInput!",
+          "id": "String!"
+        },
+        "selectedPayloadFields": [
+          "issue",
+          "success"
+        ]
+      },
+      "projectCreate": {
+        "returns": "ProjectPayload!",
+        "arguments": {
+          "aiConversationId": "String",
+          "projectDraftId": "String",
+          "slackChannelName": "String",
+          "connectSlackChannel": "Boolean",
+          "input": "ProjectCreateInput!"
+        },
+        "selectedPayloadFields": [
+          "project",
+          "success"
+        ]
+      },
+      "projectLabelCreate": {
+        "returns": "ProjectLabelPayload!",
+        "arguments": {
+          "replaceTeamLabels": "Boolean",
+          "input": "ProjectLabelCreateInput!"
+        },
+        "selectedPayloadFields": [
+          "projectLabel",
+          "success"
+        ]
+      },
+      "projectLabelUpdate": {
+        "returns": "ProjectLabelPayload!",
+        "arguments": {
+          "replaceTeamLabels": "Boolean",
+          "input": "ProjectLabelUpdateInput!",
+          "id": "String!"
+        },
+        "selectedPayloadFields": [
+          "projectLabel",
+          "success"
+        ]
       },
       "projectMilestoneCreate": {
         "returns": "ProjectMilestonePayload!",
         "arguments": {
           "input": "ProjectMilestoneCreateInput!"
-        }
+        },
+        "selectedPayloadFields": [
+          "projectMilestone",
+          "success"
+        ]
       },
       "projectMilestoneUpdate": {
         "returns": "ProjectMilestonePayload!",
         "arguments": {
-          "id": "String!",
-          "input": "ProjectMilestoneUpdateInput!"
-        }
+          "input": "ProjectMilestoneUpdateInput!",
+          "id": "String!"
+        },
+        "selectedPayloadFields": [
+          "projectMilestone",
+          "success"
+        ]
       },
-      "projectCreate": {
-        "returns": "ProjectPayload!",
+      "projectRelationCreate": {
+        "returns": "ProjectRelationPayload!",
         "arguments": {
-          "input": "ProjectCreateInput!",
-          "slackChannelName": "String"
-        }
+          "input": "ProjectRelationCreateInput!"
+        },
+        "selectedPayloadFields": [
+          "projectRelation",
+          "success"
+        ]
+      },
+      "projectRelationUpdate": {
+        "returns": "ProjectRelationPayload!",
+        "arguments": {
+          "input": "ProjectRelationUpdateInput!",
+          "id": "String!"
+        },
+        "selectedPayloadFields": [
+          "projectRelation",
+          "success"
+        ]
       },
       "projectUpdate": {
         "returns": "ProjectPayload!",
         "arguments": {
-          "id": "String!",
-          "input": "ProjectUpdateInput!"
-        }
+          "input": "ProjectUpdateInput!",
+          "id": "String!"
+        },
+        "selectedPayloadFields": [
+          "project",
+          "success"
+        ]
+      },
+      "viewPreferencesCreate": {
+        "returns": "ViewPreferencesPayload!",
+        "arguments": {
+          "input": "ViewPreferencesCreateInput!"
+        },
+        "selectedPayloadFields": [
+          "success",
+          "viewPreferences"
+        ]
       }
     }
   },
   "inputs": {
-    "CommentCreateInput": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "id": "String",
-        "body": "String",
-        "bodyData": "JSON",
-        "issueId": "String",
-        "projectUpdateId": "String",
-        "initiativeUpdateId": "String",
-        "postId": "String",
-        "documentContentId": "String",
-        "projectId": "String",
-        "initiativeId": "String",
-        "parentId": "String",
-        "createAsUser": "String",
-        "displayIconUrl": "String",
-        "createdAt": "DateTime",
-        "doNotSubscribeToIssue": "Boolean",
-        "createOnSyncedSlackThread": "Boolean",
-        "quotedText": "String",
-        "subscriberIds": "[String!]"
-      }
-    },
     "CommentFilter": {
       "kind": "INPUT_OBJECT",
       "fields": {
@@ -471,37 +555,6 @@
         "or": "[CommentFilter!]"
       }
     },
-    "CommentUpdateInput": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "body": "String",
-        "bodyData": "JSON",
-        "resolvingUserId": "String",
-        "resolvingCommentId": "String",
-        "quotedText": "String",
-        "subscriberIds": "[String!]",
-        "doNotSubscribeToIssue": "Boolean"
-      }
-    },
-    "CustomViewCreateInput": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "id": "String",
-        "name": "String!",
-        "description": "String",
-        "icon": "String",
-        "color": "String",
-        "teamId": "String",
-        "projectId": "String",
-        "initiativeId": "String",
-        "ownerId": "String",
-        "filterData": "IssueFilter",
-        "projectFilterData": "ProjectFilter",
-        "initiativeFilterData": "InitiativeFilter",
-        "feedItemFilterData": "FeedItemFilter",
-        "shared": "Boolean"
-      }
-    },
     "CustomViewFilter": {
       "kind": "INPUT_OBJECT",
       "fields": {
@@ -518,34 +571,13 @@
         "or": "[CustomViewFilter!]"
       }
     },
-    "CustomViewUpdateInput": {
+    "CustomViewSortInput": {
       "kind": "INPUT_OBJECT",
       "fields": {
-        "name": "String",
-        "description": "String",
-        "icon": "String",
-        "color": "String",
-        "teamId": "String",
-        "projectId": "String",
-        "initiativeId": "String",
-        "ownerId": "String",
-        "filterData": "IssueFilter",
-        "projectFilterData": "ProjectFilter",
-        "initiativeFilterData": "InitiativeFilter",
-        "feedItemFilterData": "FeedItemFilter",
-        "shared": "Boolean"
-      }
-    },
-    "CycleCreateInput": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "id": "String",
-        "name": "String",
-        "description": "String",
-        "teamId": "String!",
-        "startsAt": "DateTime!",
-        "endsAt": "DateTime!",
-        "completedAt": "DateTime"
+        "name": "CustomViewNameSort",
+        "createdAt": "CustomViewCreatedAtSort",
+        "shared": "CustomViewSharedSort",
+        "updatedAt": "CustomViewUpdatedAtSort"
       }
     },
     "CycleFilter": {
@@ -570,37 +602,6 @@
         "inheritedFromId": "IDComparator",
         "and": "[CycleFilter!]",
         "or": "[CycleFilter!]"
-      }
-    },
-    "CycleUpdateInput": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "name": "String",
-        "description": "String",
-        "startsAt": "DateTime",
-        "endsAt": "DateTime",
-        "completedAt": "DateTime"
-      }
-    },
-    "DocumentCreateInput": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "id": "String",
-        "title": "String!",
-        "icon": "String",
-        "color": "String",
-        "content": "String",
-        "projectId": "String",
-        "initiativeId": "String",
-        "teamId": "String",
-        "issueId": "String",
-        "releaseId": "String",
-        "cycleId": "String",
-        "resourceFolderId": "String",
-        "lastAppliedTemplateId": "String",
-        "ownerId": "String",
-        "sortOrder": "Float",
-        "subscriberIds": "[String!]"
       }
     },
     "DocumentFilter": {
@@ -632,48 +633,6 @@
         "project": "DocumentProjectSort",
         "createdAt": "DocumentCreatedAtSort",
         "updatedAt": "DocumentUpdatedAtSort"
-      }
-    },
-    "DocumentUpdateInput": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "title": "String",
-        "icon": "String",
-        "color": "String",
-        "content": "String",
-        "projectId": "String",
-        "initiativeId": "String",
-        "teamId": "String",
-        "issueId": "String",
-        "releaseId": "String",
-        "cycleId": "String",
-        "resourceFolderId": "String",
-        "lastAppliedTemplateId": "String",
-        "ownerId": "String",
-        "hiddenAt": "DateTime",
-        "sortOrder": "Float",
-        "trashed": "Boolean",
-        "subscriberIds": "[String!]"
-      }
-    },
-    "InitiativeCreateInput": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "id": "String",
-        "name": "String!",
-        "description": "String",
-        "ownerId": "String",
-        "leadTeamId": "String",
-        "sortOrder": "Float",
-        "prioritySortOrder": "Float",
-        "color": "String",
-        "icon": "String",
-        "status": "InitiativeStatus",
-        "targetDate": "TimelessDate",
-        "targetDateResolution": "DateResolutionType",
-        "content": "String",
-        "priority": "Int",
-        "labelIds": "[String!]"
       }
     },
     "InitiativeFilter": {
@@ -719,71 +678,19 @@
         "priority": "InitiativePrioritySort"
       }
     },
-    "InitiativeUpdateInput": {
+    "IssueLabelFilter": {
       "kind": "INPUT_OBJECT",
       "fields": {
-        "name": "String",
-        "description": "String",
-        "ownerId": "String",
-        "leadTeamId": "String",
-        "sortOrder": "Float",
-        "prioritySortOrder": "Float",
-        "color": "String",
-        "icon": "String",
-        "targetDate": "TimelessDate",
-        "status": "InitiativeStatus",
-        "targetDateResolution": "DateResolutionType",
-        "trashed": "Boolean",
-        "content": "String",
-        "updateReminderFrequencyInWeeks": "Float",
-        "updateReminderFrequency": "Float",
-        "frequencyResolution": "FrequencyResolutionType",
-        "updateRemindersDay": "Day",
-        "updateRemindersHour": "Int",
-        "priority": "Int",
-        "labelIds": "[String!]",
-        "customIdentifier": "String"
-      }
-    },
-    "IssueCreateInput": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "id": "String",
-        "title": "String",
-        "description": "String",
-        "descriptionData": "JSON",
-        "assigneeId": "String",
-        "delegateId": "String",
-        "parentId": "String",
-        "priority": "Int",
-        "estimate": "Int",
-        "subscriberIds": "[String!]",
-        "labelIds": "[String!]",
-        "teamId": "String!",
-        "cycleId": "String",
-        "projectId": "String",
-        "projectMilestoneId": "String",
-        "lastAppliedTemplateId": "String",
-        "stateId": "String",
-        "referenceCommentId": "String",
-        "sourceCommentId": "String",
-        "sourcePullRequestCommentId": "String",
-        "sortOrder": "Float",
-        "prioritySortOrder": "Float",
-        "subIssueSortOrder": "Float",
-        "dueDate": "TimelessDate",
-        "createAsUser": "String",
-        "displayIconUrl": "String",
-        "preserveSortOrderOnCreate": "Boolean",
-        "createdAt": "DateTime",
-        "slaBreachesAt": "DateTime",
-        "slaStartedAt": "DateTime",
-        "templateId": "String",
-        "completedAt": "DateTime",
-        "slaType": "SLADayCountType",
-        "useDefaultTemplate": "Boolean",
-        "releaseIds": "[String!]",
-        "inheritsSharedAccess": "Boolean"
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "isGroup": "BooleanComparator",
+        "creator": "NullableUserFilter",
+        "team": "NullableTeamFilter",
+        "parent": "IssueLabelFilter",
+        "and": "[IssueLabelFilter!]",
+        "or": "[IssueLabelFilter!]"
       }
     },
     "IssueFilter": {
@@ -861,62 +768,6 @@
         "or": "[IssueFilter!]"
       }
     },
-    "IssueLabelCreateInput": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "id": "String",
-        "name": "String!",
-        "description": "String",
-        "color": "String",
-        "parentId": "String",
-        "isGroup": "Boolean",
-        "retiredAt": "DateTime",
-        "teamId": "String"
-      }
-    },
-    "IssueLabelFilter": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "id": "IDComparator",
-        "createdAt": "DateComparator",
-        "updatedAt": "DateComparator",
-        "name": "StringComparator",
-        "isGroup": "BooleanComparator",
-        "creator": "NullableUserFilter",
-        "team": "NullableTeamFilter",
-        "parent": "IssueLabelFilter",
-        "and": "[IssueLabelFilter!]",
-        "or": "[IssueLabelFilter!]"
-      }
-    },
-    "IssueLabelUpdateInput": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "name": "String",
-        "description": "String",
-        "parentId": "String",
-        "color": "String",
-        "isGroup": "Boolean",
-        "retiredAt": "DateTime"
-      }
-    },
-    "IssueRelationCreateInput": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "id": "String",
-        "type": "IssueRelationType!",
-        "issueId": "String!",
-        "relatedIssueId": "String!"
-      }
-    },
-    "IssueRelationUpdateInput": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "type": "String",
-        "issueId": "String",
-        "relatedIssueId": "String"
-      }
-    },
     "IssueSortInput": {
       "kind": "INPUT_OBJECT",
       "fields": {
@@ -948,71 +799,31 @@
         "release": "ReleaseSort"
       }
     },
-    "IssueUpdateInput": {
+    "ProjectLabelFilter": {
       "kind": "INPUT_OBJECT",
       "fields": {
-        "title": "String",
-        "description": "String",
-        "descriptionData": "JSON",
-        "assigneeId": "String",
-        "delegateId": "String",
-        "parentId": "String",
-        "priority": "Int",
-        "estimate": "Int",
-        "subscriberIds": "[String!]",
-        "labelIds": "[String!]",
-        "addedLabelIds": "[String!]",
-        "removedLabelIds": "[String!]",
-        "releaseIds": "[String!]",
-        "addedReleaseIds": "[String!]",
-        "removedReleaseIds": "[String!]",
-        "teamId": "String",
-        "cycleId": "String",
-        "projectId": "String",
-        "projectMilestoneId": "String",
-        "lastAppliedTemplateId": "String",
-        "stateId": "String",
-        "sortOrder": "Float",
-        "prioritySortOrder": "Float",
-        "subIssueSortOrder": "Float",
-        "dueDate": "TimelessDate",
-        "inheritsSharedAccess": "Boolean",
-        "trusted": "Boolean",
-        "trashed": "Boolean",
-        "slaBreachesAt": "DateTime",
-        "slaStartedAt": "DateTime",
-        "snoozedUntilAt": "DateTime",
-        "snoozedById": "String",
-        "slaType": "SLADayCountType",
-        "autoClosedByParentClosing": "Boolean"
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "isGroup": "BooleanComparator",
+        "creator": "NullableUserFilter",
+        "parent": "ProjectLabelFilter",
+        "and": "[ProjectLabelFilter!]",
+        "or": "[ProjectLabelFilter!]"
       }
     },
-    "ProjectCreateInput": {
+    "ProjectMilestoneFilter": {
       "kind": "INPUT_OBJECT",
       "fields": {
-        "id": "String",
-        "name": "String!",
-        "icon": "String",
-        "color": "String",
-        "statusId": "String",
-        "description": "String",
-        "content": "String",
-        "teamIds": "[String!]!",
-        "convertedFromIssueId": "String",
-        "lastAppliedTemplateId": "String",
-        "templateId": "String",
-        "useDefaultTemplate": "Boolean",
-        "leadId": "String",
-        "leadTeamId": "String",
-        "memberIds": "[String!]",
-        "startDate": "TimelessDate",
-        "startDateResolution": "DateResolutionType",
-        "targetDate": "TimelessDate",
-        "targetDateResolution": "DateResolutionType",
-        "sortOrder": "Float",
-        "prioritySortOrder": "Float",
-        "priority": "Int",
-        "labelIds": "[String!]"
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "NullableStringComparator",
+        "targetDate": "NullableDateComparator",
+        "project": "NullableProjectFilter",
+        "and": "[ProjectMilestoneFilter!]",
+        "or": "[ProjectMilestoneFilter!]"
       }
     },
     "ProjectFilter": {
@@ -1063,105 +874,6 @@
         "or": "[ProjectFilter!]"
       }
     },
-    "ProjectLabelCreateInput": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "id": "String",
-        "name": "String!",
-        "description": "String",
-        "color": "String",
-        "parentId": "String",
-        "isGroup": "Boolean",
-        "retiredAt": "DateTime",
-        "teamId": "String"
-      }
-    },
-    "ProjectLabelFilter": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "id": "IDComparator",
-        "createdAt": "DateComparator",
-        "updatedAt": "DateComparator",
-        "name": "StringComparator",
-        "isGroup": "BooleanComparator",
-        "creator": "NullableUserFilter",
-        "parent": "ProjectLabelFilter",
-        "and": "[ProjectLabelFilter!]",
-        "or": "[ProjectLabelFilter!]"
-      }
-    },
-    "ProjectLabelUpdateInput": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "name": "String",
-        "description": "String",
-        "parentId": "String",
-        "color": "String",
-        "isGroup": "Boolean",
-        "retiredAt": "DateTime"
-      }
-    },
-    "ProjectMilestoneCreateInput": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "id": "String",
-        "name": "String!",
-        "description": "String",
-        "descriptionData": "JSONObject",
-        "targetDate": "TimelessDate",
-        "projectId": "String!",
-        "sortOrder": "Float"
-      }
-    },
-    "ProjectMilestoneFilter": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "id": "IDComparator",
-        "createdAt": "DateComparator",
-        "updatedAt": "DateComparator",
-        "name": "NullableStringComparator",
-        "targetDate": "NullableDateComparator",
-        "project": "NullableProjectFilter",
-        "and": "[ProjectMilestoneFilter!]",
-        "or": "[ProjectMilestoneFilter!]"
-      }
-    },
-    "ProjectMilestoneUpdateInput": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "name": "String",
-        "description": "String",
-        "descriptionData": "JSONObject",
-        "targetDate": "TimelessDate",
-        "sortOrder": "Float",
-        "projectId": "String"
-      }
-    },
-    "ProjectRelationCreateInput": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "id": "String",
-        "type": "String!",
-        "projectId": "String!",
-        "projectMilestoneId": "String",
-        "anchorType": "String!",
-        "relatedProjectId": "String!",
-        "relatedProjectMilestoneId": "String",
-        "relatedAnchorType": "String!"
-      }
-    },
-    "ProjectRelationUpdateInput": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "type": "String",
-        "projectId": "String",
-        "projectMilestoneId": "String",
-        "anchorType": "String",
-        "relatedProjectId": "String",
-        "relatedProjectMilestoneId": "String",
-        "relatedAnchorType": "String"
-      }
-    },
     "ProjectSortInput": {
       "kind": "INPUT_OBJECT",
       "fields": {
@@ -1175,43 +887,6 @@
         "updatedAt": "ProjectUpdatedAtSort",
         "health": "ProjectHealthSort",
         "lead": "ProjectLeadSort"
-      }
-    },
-    "ProjectUpdateInput": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "statusId": "String",
-        "name": "String",
-        "description": "String",
-        "content": "String",
-        "convertedFromIssueId": "String",
-        "lastAppliedTemplateId": "String",
-        "icon": "String",
-        "color": "String",
-        "teamIds": "[String!]",
-        "projectUpdateRemindersPausedUntilAt": "DateTime",
-        "updateReminderFrequencyInWeeks": "Float",
-        "updateReminderFrequency": "Float",
-        "frequencyResolution": "FrequencyResolutionType",
-        "updateRemindersDay": "Day",
-        "updateRemindersHour": "Int",
-        "leadId": "String",
-        "leadTeamId": "String",
-        "memberIds": "[String!]",
-        "startDate": "TimelessDate",
-        "startDateResolution": "DateResolutionType",
-        "targetDate": "TimelessDate",
-        "targetDateResolution": "DateResolutionType",
-        "completedAt": "DateTime",
-        "canceledAt": "DateTime",
-        "slackNewIssue": "Boolean",
-        "slackIssueComments": "Boolean",
-        "slackIssueStatuses": "Boolean",
-        "sortOrder": "Float",
-        "prioritySortOrder": "Float",
-        "trashed": "Boolean",
-        "priority": "Int",
-        "labelIds": "[String!]"
       }
     },
     "TeamFilter": {
@@ -1266,6 +941,471 @@
         "displayName": "UserDisplayNameSort"
       }
     },
+    "WorkflowStateFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "name": "StringComparator",
+        "description": "StringComparator",
+        "position": "NumberComparator",
+        "type": "StringComparator",
+        "team": "TeamFilter",
+        "issues": "IssueCollectionFilter",
+        "and": "[WorkflowStateFilter!]",
+        "or": "[WorkflowStateFilter!]"
+      }
+    },
+    "CommentCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "body": "String",
+        "bodyData": "JSON",
+        "issueId": "String",
+        "projectUpdateId": "String",
+        "initiativeUpdateId": "String",
+        "postId": "String",
+        "documentContentId": "String",
+        "projectId": "String",
+        "initiativeId": "String",
+        "parentId": "String",
+        "createAsUser": "String",
+        "displayIconUrl": "String",
+        "createdAt": "DateTime",
+        "doNotSubscribeToIssue": "Boolean",
+        "createOnSyncedSlackThread": "Boolean",
+        "quotedText": "String",
+        "subscriberIds": "[String!]"
+      }
+    },
+    "CommentUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "body": "String",
+        "bodyData": "JSON",
+        "resolvingUserId": "String",
+        "resolvingCommentId": "String",
+        "quotedText": "String",
+        "subscriberIds": "[String!]",
+        "doNotSubscribeToIssue": "Boolean"
+      }
+    },
+    "CustomViewCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "name": "String!",
+        "description": "String",
+        "icon": "String",
+        "color": "String",
+        "teamId": "String",
+        "projectId": "String",
+        "initiativeId": "String",
+        "ownerId": "String",
+        "filters": "JSONObject",
+        "filterData": "IssueFilter",
+        "projectFilterData": "ProjectFilter",
+        "initiativeFilterData": "InitiativeFilter",
+        "feedItemFilterData": "FeedItemFilter",
+        "shared": "Boolean"
+      }
+    },
+    "CustomViewUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "name": "String",
+        "description": "String",
+        "icon": "String",
+        "color": "String",
+        "teamId": "String",
+        "projectId": "String",
+        "initiativeId": "String",
+        "ownerId": "String",
+        "filters": "JSONObject",
+        "filterData": "IssueFilter",
+        "projectFilterData": "ProjectFilter",
+        "initiativeFilterData": "InitiativeFilter",
+        "feedItemFilterData": "FeedItemFilter",
+        "shared": "Boolean"
+      }
+    },
+    "CycleCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "name": "String",
+        "description": "String",
+        "teamId": "String!",
+        "startsAt": "DateTime!",
+        "endsAt": "DateTime!",
+        "completedAt": "DateTime"
+      }
+    },
+    "CycleUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "name": "String",
+        "description": "String",
+        "startsAt": "DateTime",
+        "endsAt": "DateTime",
+        "completedAt": "DateTime"
+      }
+    },
+    "DocumentCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "title": "String!",
+        "icon": "String",
+        "color": "String",
+        "contentData": "JSONObject",
+        "content": "String",
+        "projectId": "String",
+        "initiativeId": "String",
+        "teamId": "String",
+        "issueId": "String",
+        "releaseId": "String",
+        "cycleId": "String",
+        "resourceFolderId": "String",
+        "lastAppliedTemplateId": "String",
+        "ownerId": "String",
+        "sortOrder": "Float",
+        "subscriberIds": "[String!]"
+      }
+    },
+    "DocumentUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "title": "String",
+        "icon": "String",
+        "color": "String",
+        "contentData": "JSONObject",
+        "content": "String",
+        "projectId": "String",
+        "initiativeId": "String",
+        "teamId": "String",
+        "issueId": "String",
+        "releaseId": "String",
+        "cycleId": "String",
+        "resourceFolderId": "String",
+        "lastAppliedTemplateId": "String",
+        "ownerId": "String",
+        "hiddenAt": "DateTime",
+        "sortOrder": "Float",
+        "trashed": "Boolean",
+        "subscriberIds": "[String!]"
+      }
+    },
+    "InitiativeCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "name": "String!",
+        "description": "String",
+        "ownerId": "String",
+        "leadTeamId": "String",
+        "sortOrder": "Float",
+        "prioritySortOrder": "Float",
+        "color": "String",
+        "icon": "String",
+        "status": "InitiativeStatus",
+        "targetDate": "TimelessDate",
+        "targetDateResolution": "DateResolutionType",
+        "content": "String",
+        "priority": "Int",
+        "labelIds": "[String!]"
+      }
+    },
+    "InitiativeUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "name": "String",
+        "description": "String",
+        "ownerId": "String",
+        "leadTeamId": "String",
+        "sortOrder": "Float",
+        "prioritySortOrder": "Float",
+        "color": "String",
+        "icon": "String",
+        "targetDate": "TimelessDate",
+        "status": "InitiativeStatus",
+        "targetDateResolution": "DateResolutionType",
+        "trashed": "Boolean",
+        "content": "String",
+        "updateReminderFrequencyInWeeks": "Float",
+        "updateReminderFrequency": "Float",
+        "frequencyResolution": "FrequencyResolutionType",
+        "updateRemindersDay": "Day",
+        "updateRemindersHour": "Int",
+        "priority": "Int",
+        "labelIds": "[String!]",
+        "customIdentifier": "String"
+      }
+    },
+    "IssueCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "title": "String",
+        "description": "String",
+        "descriptionData": "JSON",
+        "assigneeId": "String",
+        "delegateId": "String",
+        "parentId": "String",
+        "priority": "Int",
+        "estimate": "Int",
+        "subscriberIds": "[String!]",
+        "labelIds": "[String!]",
+        "teamId": "String!",
+        "cycleId": "String",
+        "projectId": "String",
+        "projectMilestoneId": "String",
+        "lastAppliedTemplateId": "String",
+        "stateId": "String",
+        "referenceCommentId": "String",
+        "sourceCommentId": "String",
+        "sourcePullRequestCommentId": "String",
+        "boardOrder": "Float",
+        "sortOrder": "Float",
+        "prioritySortOrder": "Float",
+        "subIssueSortOrder": "Float",
+        "dueDate": "TimelessDate",
+        "createAsUser": "String",
+        "displayIconUrl": "String",
+        "preserveSortOrderOnCreate": "Boolean",
+        "createdAt": "DateTime",
+        "slaBreachesAt": "DateTime",
+        "slaStartedAt": "DateTime",
+        "templateId": "String",
+        "completedAt": "DateTime",
+        "slaType": "SLADayCountType",
+        "useDefaultTemplate": "Boolean",
+        "releaseIds": "[String!]",
+        "inheritsSharedAccess": "Boolean"
+      }
+    },
+    "IssueLabelCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "name": "String!",
+        "description": "String",
+        "color": "String",
+        "parentId": "String",
+        "isGroup": "Boolean",
+        "retiredAt": "DateTime",
+        "teamId": "String"
+      }
+    },
+    "IssueLabelUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "name": "String",
+        "description": "String",
+        "parentId": "String",
+        "color": "String",
+        "isGroup": "Boolean",
+        "retiredAt": "DateTime"
+      }
+    },
+    "IssueRelationCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "type": "IssueRelationType!",
+        "issueId": "String!",
+        "relatedIssueId": "String!"
+      }
+    },
+    "IssueRelationUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "type": "String",
+        "issueId": "String",
+        "relatedIssueId": "String"
+      }
+    },
+    "IssueUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "title": "String",
+        "description": "String",
+        "descriptionData": "JSON",
+        "assigneeId": "String",
+        "delegateId": "String",
+        "parentId": "String",
+        "priority": "Int",
+        "estimate": "Int",
+        "subscriberIds": "[String!]",
+        "labelIds": "[String!]",
+        "addedLabelIds": "[String!]",
+        "removedLabelIds": "[String!]",
+        "releaseIds": "[String!]",
+        "addedReleaseIds": "[String!]",
+        "removedReleaseIds": "[String!]",
+        "teamId": "String",
+        "cycleId": "String",
+        "projectId": "String",
+        "projectMilestoneId": "String",
+        "lastAppliedTemplateId": "String",
+        "stateId": "String",
+        "boardOrder": "Float",
+        "sortOrder": "Float",
+        "prioritySortOrder": "Float",
+        "subIssueSortOrder": "Float",
+        "dueDate": "TimelessDate",
+        "inheritsSharedAccess": "Boolean",
+        "trusted": "Boolean",
+        "trashed": "Boolean",
+        "slaBreachesAt": "DateTime",
+        "slaStartedAt": "DateTime",
+        "snoozedUntilAt": "DateTime",
+        "snoozedById": "String",
+        "slaType": "SLADayCountType",
+        "autoClosedByParentClosing": "Boolean"
+      }
+    },
+    "ProjectCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "name": "String!",
+        "icon": "String",
+        "color": "String",
+        "state": "String",
+        "statusId": "String",
+        "description": "String",
+        "content": "String",
+        "teamIds": "[String!]!",
+        "convertedFromIssueId": "String",
+        "lastAppliedTemplateId": "String",
+        "templateId": "String",
+        "useDefaultTemplate": "Boolean",
+        "leadId": "String",
+        "leadTeamId": "String",
+        "memberIds": "[String!]",
+        "startDate": "TimelessDate",
+        "startDateResolution": "DateResolutionType",
+        "targetDate": "TimelessDate",
+        "targetDateResolution": "DateResolutionType",
+        "sortOrder": "Float",
+        "prioritySortOrder": "Float",
+        "priority": "Int",
+        "labelIds": "[String!]"
+      }
+    },
+    "ProjectLabelCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "name": "String!",
+        "description": "String",
+        "color": "String",
+        "parentId": "String",
+        "isGroup": "Boolean",
+        "retiredAt": "DateTime",
+        "teamId": "String"
+      }
+    },
+    "ProjectLabelUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "name": "String",
+        "description": "String",
+        "parentId": "String",
+        "color": "String",
+        "isGroup": "Boolean",
+        "retiredAt": "DateTime"
+      }
+    },
+    "ProjectMilestoneCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "name": "String!",
+        "description": "String",
+        "descriptionData": "JSONObject",
+        "targetDate": "TimelessDate",
+        "projectId": "String!",
+        "sortOrder": "Float"
+      }
+    },
+    "ProjectMilestoneUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "name": "String",
+        "description": "String",
+        "descriptionData": "JSONObject",
+        "targetDate": "TimelessDate",
+        "sortOrder": "Float",
+        "projectId": "String"
+      }
+    },
+    "ProjectRelationCreateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "String",
+        "type": "String!",
+        "projectId": "String!",
+        "projectMilestoneId": "String",
+        "anchorType": "String!",
+        "relatedProjectId": "String!",
+        "relatedProjectMilestoneId": "String",
+        "relatedAnchorType": "String!"
+      }
+    },
+    "ProjectRelationUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "type": "String",
+        "projectId": "String",
+        "projectMilestoneId": "String",
+        "anchorType": "String",
+        "relatedProjectId": "String",
+        "relatedProjectMilestoneId": "String",
+        "relatedAnchorType": "String"
+      }
+    },
+    "ProjectUpdateInput": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "state": "String",
+        "statusId": "String",
+        "name": "String",
+        "description": "String",
+        "content": "String",
+        "convertedFromIssueId": "String",
+        "lastAppliedTemplateId": "String",
+        "icon": "String",
+        "color": "String",
+        "teamIds": "[String!]",
+        "projectUpdateRemindersPausedUntilAt": "DateTime",
+        "updateReminderFrequencyInWeeks": "Float",
+        "updateReminderFrequency": "Float",
+        "frequencyResolution": "FrequencyResolutionType",
+        "updateRemindersDay": "Day",
+        "updateRemindersHour": "Int",
+        "leadId": "String",
+        "leadTeamId": "String",
+        "memberIds": "[String!]",
+        "startDate": "TimelessDate",
+        "startDateResolution": "DateResolutionType",
+        "targetDate": "TimelessDate",
+        "targetDateResolution": "DateResolutionType",
+        "completedAt": "DateTime",
+        "canceledAt": "DateTime",
+        "slackNewIssue": "Boolean",
+        "slackIssueComments": "Boolean",
+        "slackIssueStatuses": "Boolean",
+        "sortOrder": "Float",
+        "prioritySortOrder": "Float",
+        "trashed": "Boolean",
+        "priority": "Int",
+        "labelIds": "[String!]"
+      }
+    },
     "ViewPreferencesCreateInput": {
       "kind": "INPUT_OBJECT",
       "fields": {
@@ -1281,24 +1421,9 @@
         "projectLabelId": "String",
         "initiativeLabelId": "String",
         "releasePipelineId": "String",
+        "cycleId": "String",
         "customViewId": "String",
         "userId": "String"
-      }
-    },
-    "WorkflowStateFilter": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "id": "IDComparator",
-        "createdAt": "DateComparator",
-        "updatedAt": "DateComparator",
-        "name": "StringComparator",
-        "description": "StringComparator",
-        "position": "NumberComparator",
-        "type": "StringComparator",
-        "team": "TeamFilter",
-        "issues": "IssueCollectionFilter",
-        "and": "[WorkflowStateFilter!]",
-        "or": "[WorkflowStateFilter!]"
       }
     },
     "IDComparator": {
@@ -1599,22 +1724,6 @@
         "length": "NumberComparator"
       }
     },
-    "FeedItemFilter": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "id": "IDComparator",
-        "createdAt": "DateComparator",
-        "updatedAt": "DateComparator",
-        "author": "UserFilter",
-        "updateType": "StringComparator",
-        "updateHealth": "StringComparator",
-        "projectUpdate": "ProjectUpdateFilter",
-        "relatedInitiatives": "InitiativeCollectionFilter",
-        "relatedTeams": "TeamCollectionFilter",
-        "and": "[FeedItemFilter!]",
-        "or": "[FeedItemFilter!]"
-      }
-    },
     "NullableTeamFilter": {
       "kind": "INPUT_OBJECT",
       "fields": {
@@ -1645,6 +1754,34 @@
       "fields": {
         "eq": "Boolean",
         "neq": "Boolean"
+      }
+    },
+    "CustomViewNameSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "CustomViewCreatedAtSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "CustomViewSharedSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
+      }
+    },
+    "CustomViewUpdatedAtSort": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "nulls": "PaginationNulls",
+        "order": "PaginationSortOrder"
       }
     },
     "NumberComparator": {
@@ -2676,6 +2813,22 @@
         "order": "PaginationSortOrder"
       }
     },
+    "FeedItemFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "author": "UserFilter",
+        "updateType": "StringComparator",
+        "updateHealth": "StringComparator",
+        "projectUpdate": "ProjectUpdateFilter",
+        "relatedInitiatives": "InitiativeCollectionFilter",
+        "relatedTeams": "TeamCollectionFilter",
+        "and": "[FeedItemFilter!]",
+        "or": "[FeedItemFilter!]"
+      }
+    },
     "ReactionFilter": {
       "kind": "INPUT_OBJECT",
       "fields": {
@@ -2722,19 +2875,6 @@
         "customer": "NullableCustomerFilter",
         "and": "[CustomerNeedFilter!]",
         "or": "[CustomerNeedFilter!]"
-      }
-    },
-    "ProjectUpdateFilter": {
-      "kind": "INPUT_OBJECT",
-      "fields": {
-        "id": "IDComparator",
-        "createdAt": "DateComparator",
-        "updatedAt": "DateComparator",
-        "user": "UserFilter",
-        "project": "ProjectFilter",
-        "reactions": "ReactionCollectionFilter",
-        "and": "[ProjectUpdateFilter!]",
-        "or": "[ProjectUpdateFilter!]"
       }
     },
     "ReleasePipelineFilter": {
@@ -2961,6 +3101,19 @@
         "null": "Boolean"
       }
     },
+    "ProjectUpdateFilter": {
+      "kind": "INPUT_OBJECT",
+      "fields": {
+        "id": "IDComparator",
+        "createdAt": "DateComparator",
+        "updatedAt": "DateComparator",
+        "user": "UserFilter",
+        "project": "ProjectFilter",
+        "reactions": "ReactionCollectionFilter",
+        "and": "[ProjectUpdateFilter!]",
+        "or": "[ProjectUpdateFilter!]"
+      }
+    },
     "StringArrayComparator": {
       "kind": "INPUT_OBJECT",
       "fields": {
@@ -2990,6 +3143,7 @@
         "id": "IDComparator",
         "createdAt": "DateComparator",
         "updatedAt": "DateComparator",
+        "name": "StringComparator",
         "displayName": "StringComparator",
         "description": "StringComparator",
         "position": "NumberComparator",
@@ -3238,15 +3392,11 @@
       "kind": "OBJECT",
       "fields": {}
     },
-    "CustomViewConnection": {
-      "kind": "OBJECT",
-      "fields": {}
-    },
     "CustomView": {
       "kind": "OBJECT",
       "fields": {}
     },
-    "CycleConnection": {
+    "CustomViewConnection": {
       "kind": "OBJECT",
       "fields": {}
     },
@@ -3254,7 +3404,7 @@
       "kind": "OBJECT",
       "fields": {}
     },
-    "DocumentConnection": {
+    "CycleConnection": {
       "kind": "OBJECT",
       "fields": {}
     },
@@ -3262,11 +3412,19 @@
       "kind": "OBJECT",
       "fields": {}
     },
-    "InitiativeConnection": {
+    "DocumentConnection": {
       "kind": "OBJECT",
       "fields": {}
     },
     "Initiative": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "InitiativeConnection": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "Issue": {
       "kind": "OBJECT",
       "fields": {}
     },
@@ -3278,23 +3436,15 @@
       "kind": "OBJECT",
       "fields": {}
     },
-    "WorkflowStateConnection": {
-      "kind": "OBJECT",
-      "fields": {}
-    },
     "IssueConnection": {
       "kind": "OBJECT",
       "fields": {}
     },
-    "Issue": {
+    "Project": {
       "kind": "OBJECT",
       "fields": {}
     },
-    "IssueSearchPayload": {
-      "kind": "OBJECT",
-      "fields": {}
-    },
-    "ProjectMilestoneConnection": {
+    "ProjectLabelConnection": {
       "kind": "OBJECT",
       "fields": {}
     },
@@ -3302,7 +3452,7 @@
       "kind": "OBJECT",
       "fields": {}
     },
-    "ProjectLabelConnection": {
+    "ProjectMilestoneConnection": {
       "kind": "OBJECT",
       "fields": {}
     },
@@ -3314,11 +3464,7 @@
       "kind": "OBJECT",
       "fields": {}
     },
-    "Project": {
-      "kind": "OBJECT",
-      "fields": {}
-    },
-    "TeamConnection": {
+    "IssueSearchPayload": {
       "kind": "OBJECT",
       "fields": {}
     },
@@ -3326,11 +3472,19 @@
       "kind": "OBJECT",
       "fields": {}
     },
-    "UserConnection": {
+    "TeamConnection": {
       "kind": "OBJECT",
       "fields": {}
     },
     "User": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "UserConnection": {
+      "kind": "OBJECT",
+      "fields": {}
+    },
+    "WorkflowStateConnection": {
       "kind": "OBJECT",
       "fields": {}
     },
@@ -3348,13 +3502,6 @@
         "success": "Boolean!"
       }
     },
-    "ViewPreferencesPayload": {
-      "kind": "OBJECT",
-      "fields": {
-        "success": "Boolean!",
-        "viewPreferences": "ViewPreferences!"
-      }
-    },
     "CyclePayload": {
       "kind": "OBJECT",
       "fields": {
@@ -3366,6 +3513,20 @@
       "kind": "OBJECT",
       "fields": {
         "document": "Document!",
+        "success": "Boolean!"
+      }
+    },
+    "InitiativePayload": {
+      "kind": "OBJECT",
+      "fields": {
+        "initiative": "Initiative!",
+        "success": "Boolean!"
+      }
+    },
+    "IssuePayload": {
+      "kind": "OBJECT",
+      "fields": {
+        "issue": "Issue",
         "success": "Boolean!"
       }
     },
@@ -3383,10 +3544,10 @@
         "success": "Boolean!"
       }
     },
-    "IssuePayload": {
+    "ProjectPayload": {
       "kind": "OBJECT",
       "fields": {
-        "issue": "Issue",
+        "project": "Project",
         "success": "Boolean!"
       }
     },
@@ -3397,20 +3558,6 @@
         "success": "Boolean!"
       }
     },
-    "ProjectRelationPayload": {
-      "kind": "OBJECT",
-      "fields": {
-        "projectRelation": "ProjectRelation!",
-        "success": "Boolean!"
-      }
-    },
-    "InitiativePayload": {
-      "kind": "OBJECT",
-      "fields": {
-        "initiative": "Initiative!",
-        "success": "Boolean!"
-      }
-    },
     "ProjectMilestonePayload": {
       "kind": "OBJECT",
       "fields": {
@@ -3418,18 +3565,21 @@
         "success": "Boolean!"
       }
     },
-    "ProjectPayload": {
+    "ProjectRelationPayload": {
       "kind": "OBJECT",
       "fields": {
-        "project": "Project",
+        "projectRelation": "ProjectRelation!",
         "success": "Boolean!"
       }
     },
-    "Comment": {
+    "ViewPreferencesPayload": {
       "kind": "OBJECT",
-      "fields": {}
+      "fields": {
+        "success": "Boolean!",
+        "viewPreferences": "ViewPreferences!"
+      }
     },
-    "ViewPreferences": {
+    "Comment": {
       "kind": "OBJECT",
       "fields": {}
     },
@@ -3448,31 +3598,35 @@
     "ProjectRelation": {
       "kind": "OBJECT",
       "fields": {}
+    },
+    "ViewPreferences": {
+      "kind": "OBJECT",
+      "fields": {}
     }
   },
   "scalars": {
-    "Boolean": {
+    "String": {
       "kind": "SCALAR"
     },
     "Int": {
       "kind": "SCALAR"
     },
-    "String": {
-      "kind": "SCALAR"
-    },
-    "JSON": {
-      "kind": "SCALAR"
-    },
-    "DateTime": {
+    "Boolean": {
       "kind": "SCALAR"
     },
     "Float": {
       "kind": "SCALAR"
     },
-    "TimelessDate": {
+    "DateTime": {
+      "kind": "SCALAR"
+    },
+    "JSON": {
       "kind": "SCALAR"
     },
     "JSONObject": {
+      "kind": "SCALAR"
+    },
+    "TimelessDate": {
       "kind": "SCALAR"
     },
     "ID": {
@@ -3487,5 +3641,18 @@
     "Duration": {
       "kind": "SCALAR"
     }
+  },
+  "provenance": {
+    "captureDate": "2026-08-19",
+    "endpoint": "https://api.linear.app/graphql",
+    "schemaIdentity": {
+      "queryType": "Query",
+      "mutationType": "Mutation"
+    },
+    "sourceQuery": "scripts/fixtures/readonly-introspection.graphql",
+    "sourceQuerySha256": "8f8319dd72fea1824c5f5b365415eb152f1876b7df3d935619ab06606a917cf9",
+    "scope": "scripts/fixtures/readonly-schema-scope.json",
+    "scopeSha256": "87374c027fd41d7108437a1ef7bee5aeab388192082224fa2afa742fe72d1c99",
+    "normalizedSha256": "70c180fc5049ae1470346c3d568f45ab2b5212b769af3ac922a9ffcf8e629910"
   }
 }

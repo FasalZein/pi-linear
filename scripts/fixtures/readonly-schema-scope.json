@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "endpoint": "https://api.linear.app/graphql",
+  "schemaIdentity": {
+    "queryType": "Query",
+    "mutationType": "Mutation"
+  },
+  "roots": {
+    "Query": [
+      "comments",
+      "customView",
+      "customViews",
+      "cycle",
+      "cycles",
+      "document",
+      "documents",
+      "initiative",
+      "initiatives",
+      "issue",
+      "issueLabels",
+      "issueRelations",
+      "issues",
+      "project",
+      "projectLabels",
+      "projectMilestone",
+      "projectMilestones",
+      "projectRelations",
+      "projects",
+      "searchIssues",
+      "team",
+      "teams",
+      "user",
+      "users",
+      "workflowStates"
+    ],
+    "Mutation": [
+      "commentCreate",
+      "commentUpdate",
+      "customViewCreate",
+      "customViewUpdate",
+      "cycleCreate",
+      "cycleUpdate",
+      "documentCreate",
+      "documentUpdate",
+      "initiativeCreate",
+      "initiativeUpdate",
+      "issueCreate",
+      "issueLabelCreate",
+      "issueLabelUpdate",
+      "issueRelationCreate",
+      "issueRelationUpdate",
+      "issueUpdate",
+      "projectCreate",
+      "projectLabelCreate",
+      "projectLabelUpdate",
+      "projectMilestoneCreate",
+      "projectMilestoneUpdate",
+      "projectRelationCreate",
+      "projectRelationUpdate",
+      "projectUpdate",
+      "viewPreferencesCreate"
+    ]
+  },
+  "mutationPayloadFields": {
+    "commentCreate": [
+      "comment",
+      "success"
+    ],
+    "commentUpdate": [
+      "comment",
+      "success"
+    ],
+    "customViewCreate": [
+      "customView",
+      "success"
+    ],
+    "customViewUpdate": [
+      "customView",
+      "success"
+    ],
+    "viewPreferencesCreate": [
+      "success",
+      "viewPreferences"
+    ],
+    "cycleCreate": [
+      "cycle",
+      "success"
+    ],
+    "cycleUpdate": [
+      "cycle",
+      "success"
+    ],
+    "documentCreate": [
+      "document",
+      "success"
+    ],
+    "documentUpdate": [
+      "document",
+      "success"
+    ],
+    "issueLabelCreate": [
+      "issueLabel",
+      "success"
+    ],
+    "issueLabelUpdate": [
+      "issueLabel",
+      "success"
+    ],
+    "issueRelationCreate": [
+      "issueRelation",
+      "success"
+    ],
+    "issueRelationUpdate": [
+      "issueRelation",
+      "success"
+    ],
+    "issueCreate": [
+      "issue",
+      "success"
+    ],
+    "issueUpdate": [
+      "issue",
+      "success"
+    ],
+    "projectLabelCreate": [
+      "projectLabel",
+      "success"
+    ],
+    "projectLabelUpdate": [
+      "projectLabel",
+      "success"
+    ],
+    "projectRelationCreate": [
+      "projectRelation",
+      "success"
+    ],
+    "projectRelationUpdate": [
+      "projectRelation",
+      "success"
+    ],
+    "initiativeCreate": [
+      "initiative",
+      "success"
+    ],
+    "initiativeUpdate": [
+      "initiative",
+      "success"
+    ],
+    "projectMilestoneCreate": [
+      "projectMilestone",
+      "success"
+    ],
+    "projectMilestoneUpdate": [
+      "projectMilestone",
+      "success"
+    ],
+    "projectCreate": [
+      "project",
+      "success"
+    ],
+    "projectUpdate": [
+      "project",
+      "success"
+    ]
+  }
+}

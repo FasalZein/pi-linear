@@ -16,7 +16,8 @@ export function runReadonlySmokeCommand(options = {}) {
   if (refusal) return { status: 2, output: `READONLY SMOKE FAIL: ${refusal}` };
 
   const root = dirname(dirname(fileURLToPath(import.meta.url)));
-  const temporaryRoot = mkdtempSync(join(options.temporaryParent ?? tmpdir(), 'pi-linear-readonly-'));
+  const temporaryParent = options.temporaryParent ?? environment.LINEAR_SMOKE_TMP_PARENT ?? tmpdir();
+  const temporaryRoot = mkdtempSync(join(temporaryParent, 'pi-linear-readonly-'));
   const sourceAgentDirectory = environment.PI_CODING_AGENT_DIR || join(homedir(), '.pi', 'agent');
   try {
     const result = (options.spawn ?? spawnSync)(

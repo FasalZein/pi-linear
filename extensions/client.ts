@@ -5,6 +5,17 @@ import path from 'node:path';
 import { redactText } from './redact';
 
 const LINEAR_GRAPHQL_ENDPOINT = 'https://api.linear.app/graphql';
+
+function linearGraphQLEndpoint(): string {
+  const override = process.env.LINEAR_READONLY === '1' ? process.env.LINEAR_SMOKE_GRAPHQL_ENDPOINT : undefined;
+  if (!override) return LINEAR_GRAPHQL_ENDPOINT;
+  const endpoint = new URL(override);
+  if (!['127.0.0.1', '::1', 'localhost'].includes(endpoint.hostname)) {
+    throw new Error('Read-only smoke endpoint overrides must use loopback.');
+  }
+  return endpoint.href;
+}
+
 const ISSUE_IDENTIFIER_PATTERN = /^([A-Z][A-Z0-9]*)-(\d+)$/i;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -199,7 +210,7 @@ export async function linearGraphQL<TData>(
   let response: Response;
   for (let attempt = 0; ; attempt++) {
     try {
-      response = await fetch(LINEAR_GRAPHQL_ENDPOINT, {
+      response = await fetch(linearGraphQLEndpoint(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: apiKey },
         body: JSON.stringify({ query, variables }),

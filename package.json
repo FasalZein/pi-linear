@@ -13,7 +13,8 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "smoke:readonly": "node scripts/smoke-readonly.mjs"
+    "smoke:readonly": "node scripts/smoke-readonly.mjs",
+    "capture:readonly-schema": "node scripts/capture-readonly-schema.mjs"
   },
   "pi": {
     "extensions": [

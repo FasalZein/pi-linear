@@ -1,0 +1,108 @@
+
+    query IntrospectionQuery {
+      __schema {
+
+        queryType { name kind }
+        mutationType { name kind }
+        subscriptionType { name kind }
+        types {
+          ...FullType
+        }
+        directives {
+          name
+
+          isRepeatable
+
+
+          locations
+          args(includeDeprecated: true) {
+            ...InputValue
+          }
+        }
+      }
+    }
+
+    fragment FullType on __Type {
+      kind
+      name
+
+      specifiedByURL
+
+      fields(includeDeprecated: true) {
+        name
+
+        args(includeDeprecated: true) {
+          ...InputValue
+        }
+        type {
+          ...TypeRef
+        }
+        isDeprecated
+        deprecationReason
+      }
+      inputFields(includeDeprecated: true) {
+        ...InputValue
+      }
+      interfaces {
+        ...TypeRef
+      }
+      enumValues(includeDeprecated: true) {
+        name
+
+        isDeprecated
+        deprecationReason
+      }
+      possibleTypes {
+        ...TypeRef
+      }
+    }
+
+    fragment InputValue on __InputValue {
+      name
+
+      type { ...TypeRef }
+      defaultValue
+      isDeprecated
+      deprecationReason
+    }
+
+    fragment TypeRef on __Type {
+      kind
+      name
+      ofType {
+        name
+        kind
+        ofType {
+          name
+          kind
+          ofType {
+            name
+            kind
+            ofType {
+              name
+              kind
+              ofType {
+                name
+                kind
+                ofType {
+                  name
+                  kind
+                  ofType {
+                    name
+                    kind
+                    ofType {
+                      name
+                      kind
+                      ofType {
+                        name
+                        kind
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
