@@ -178,6 +178,12 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
   if (!branches) throw new Error(`Missing compatibility branches for "${operation.name}".`);
   const { action, entity } = actionAndEntity(operation.name);
   const local = Boolean(operation.executeLocal);
+  if (local && !operation.localResult?.requiredStringPaths.length) {
+    throw new Error(`Local operation ${operation.name} is missing its result expectation.`);
+  }
+  if (!local && operation.localResult) {
+    throw new Error(`Operation ${operation.name} declares a local result expectation without executeLocal.`);
+  }
   const documents = local
     ? undefined
     : (operation.variants ?? [{ document: operation.document, root: '' }]).map((variant) =>
@@ -228,6 +234,7 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
       } : {}),
       ...(operation.prepare ? { prepare: operation.prepare } : {}),
       ...(operation.executeLocal ? { executeLocal: operation.executeLocal } : {}),
+      ...(operation.localResult ? { localResult: operation.localResult } : {}),
     },
     ...(documents ? { graphql: { documents } } : {}),
     preparation: {
@@ -247,7 +254,9 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
     },
     result: {
       renderKind: entityKind,
-      dataPaths: documents?.map(({ root }) => root) ?? ['active'],
+      dataPaths: documents?.map(({ root }) => root)
+        ?? [...(operation.localResult?.requiredStringPaths ?? [])],
+      ...(operation.localResult ? { local: operation.localResult } : {}),
     },
     render: {
       entityKind,
@@ -319,6 +328,7 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
         return compatibility.prepare!(apiKey, variables, signal);
       },
     } : {}),
+    ...(compatibility.localResult ? { localResult: compatibility.localResult } : {}),
     ...(compatibility.executeLocal ? {
       executeLocal: async (variables, ctx) => {
         assertRequirementBranches(compatibility.branches, variables);

@@ -3089,6 +3089,7 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 		parameters: [p("name", "String", true)],
 		example: { operation: "switch_workspace", variables: { name: "work" } },
 		document: "query SwitchWorkspaceLocal { viewer { id } }",
+		localResult: { requiredStringPaths: ["active"] },
 		async executeLocal(v) {
 			const updated = await switchWorkspace(String(v.name));
 			return { active: updated.activeWorkspace };

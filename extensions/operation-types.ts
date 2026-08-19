@@ -35,6 +35,10 @@ export type GraphQLDocumentVariant = {
 	root: string;
 	mutationResult?: MutationResultExpectation;
 };
+/** What a local operation must return before its result is redacted or routed. */
+export type LocalResultExpectation = {
+	requiredStringPaths: readonly string[];
+};
 export type OperationPreparation = {
 	variables: Record<string, unknown>;
 	resolution?: Record<string, unknown>;
@@ -72,6 +76,8 @@ export type LinearOperation = {
 		variables: Record<string, unknown>,
 		ctx: ExtensionContext,
 	) => Promise<Record<string, unknown>>;
+	/** Required whenever `executeLocal` is set. */
+	localResult?: LocalResultExpectation;
 };
 
 export type OperationKind = "query" | "mutation" | "local";
@@ -108,6 +114,7 @@ export type OperationCompatibilityDefinition = {
 	semanticValidateVariables?: LinearOperation["validateVariables"];
 	prepare?: LinearOperation["prepare"];
 	executeLocal?: LinearOperation["executeLocal"];
+	localResult?: LocalResultExpectation;
 };
 
 export type OperationDefinition = {
@@ -139,6 +146,8 @@ export type OperationDefinition = {
 	result: {
 		renderKind: string;
 		dataPaths: readonly string[];
+		/** Present for local operations; enforced before redaction and routing. */
+		local?: LocalResultExpectation;
 	};
 	render: {
 		entityKind: string;

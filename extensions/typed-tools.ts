@@ -4,6 +4,7 @@ import { Compile } from 'typebox/compile';
 import { operationDefinitions, operations, type LinearOperation } from './operations';
 import { canonicalFieldNames, canonicalOperation } from './canonical';
 import { assertOperationAllowed, executeOperation, type JsonObject } from './runtime';
+import { activeSecrets } from './active-secrets';
 import { redactError } from './redact';
 import { operationRenderers } from './renderers';
 import { typedToolName } from './tool-names';
@@ -96,7 +97,7 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
         assertSchema(args);
         return args as any;
       } catch (error) {
-        throw redactError(error);
+        throw redactError(error, activeSecrets());
       }
     },
     renderCall: renderers.renderCall,
@@ -111,7 +112,7 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
         assertSchema(params);
         operation.validateVariables?.(variables);
       } catch (error) {
-        throw redactError(error);
+        throw redactError(error, activeSecrets());
       }
       const details = await executeOperation(
         operation,

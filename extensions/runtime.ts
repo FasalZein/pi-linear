@@ -2,8 +2,9 @@ import type { ExtensionContext } from '@earendil-works/pi-coding-agent';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { activeSecrets } from './active-secrets';
 import { linearGraphQL, resolveApiKey } from './client';
-import type { GraphQLDocumentVariant } from './operation-types';
+import type { GraphQLDocumentVariant, LocalResultExpectation } from './operation-types';
 import type { LinearOperation } from './operations';
 import { redactDeep, withRedactedErrors } from './redact';
 import { assertMutationAllowed, assertNamedInputAllowed, getMutationFields, type MutationMode } from './safety';
@@ -215,6 +216,39 @@ export function validateMutationResult(
   }
 }
 
+function valueAtPath(value: unknown, path: string): unknown {
+  let current: unknown = value;
+  for (const part of path.split('.')) {
+    if (!current || typeof current !== 'object' || Array.isArray(current)) return undefined;
+    current = (current as JsonObject)[part];
+  }
+  return current;
+}
+
+/**
+ * A local operation produces its result inside this process, so nothing else proves the
+ * result is real. The declared expectation is checked before redaction and routing.
+ */
+export function validateLocalResult(
+  operationName: string,
+  data: unknown,
+  expectation: LocalResultExpectation | undefined,
+): asserts data is JsonObject {
+  const fail = (path: string, expected: string): never => {
+    throw new Error(
+      `Linear operation "${operationName}" failed local result expectation: ${path} must be ${expected}.`,
+    );
+  };
+  if (!expectation) {
+    throw new Error(`Linear operation "${operationName}" ran locally without a result expectation.`);
+  }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) fail('result', 'an object');
+  for (const path of expectation.requiredStringPaths) {
+    const value = valueAtPath(data, path);
+    if (typeof value !== 'string' || !value.trim()) fail(path, 'a non-empty string');
+  }
+}
+
 /**
  * Single execution path for one named operation. Both `linear_api` and the typed
  * tools route through here, so mutation gating, reference resolution, spill, and
@@ -228,12 +262,14 @@ export async function executeOperation(
   signal: AbortSignal | undefined,
 ): Promise<JsonObject> {
   assertOperationAllowed(operation, options.variables, mode);
-  // Filled as soon as the key is known, so the same array covers results, spill, and
-  // any failure raised later in this call.
-  const secrets: string[] = [];
+  // Seeded with every active credential, so local results, help, and early failures are
+  // covered too; the selected key is appended as soon as it is known.
+  const secrets: string[] = [...activeSecrets()];
   return withRedactedErrors(async () => {
     if (operation.executeLocal) {
-      return redactDeep(await operation.executeLocal(options.variables, ctx), secrets);
+      const localResult = await operation.executeLocal(options.variables, ctx);
+      validateLocalResult(operation.name, localResult, operation.localResult);
+      return redactDeep(localResult, secrets);
     }
 
     const apiKey = await apiKeyForWorkspace(ctx, options.workspace);

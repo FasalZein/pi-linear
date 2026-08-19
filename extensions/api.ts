@@ -22,6 +22,7 @@ import {
   NODE_CAP,
   type JsonObject,
 } from './runtime';
+import { activeSecrets } from './active-secrets';
 import { candidateSummary, planActivation } from './activation';
 import { redactDeep, redactError, withRedactedErrors } from './redact';
 import { renderLinearApiCall, renderLinearApiResult } from './renderers';
@@ -98,7 +99,7 @@ export function resolveRequest(params: {
     validateVariables(operation, params.operation, params.variables ?? {});
     return { query: operation.document, named: true, operation };
   } catch (error) {
-    throw redactError(error);
+    throw redactError(error, activeSecrets());
   }
 }
 
@@ -216,11 +217,13 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
     renderCall: renderLinearApiCall,
     renderResult: renderLinearApiResult,
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-      const secrets: string[] = [];
+      // Collected before any output path, including the help early return: an active key
+      // in an unknown format is only removable as an exact value.
+      const secrets: string[] = [...activeSecrets()];
       return withRedactedErrors(async () => {
         if (signal?.aborted) throw new Error('Request cancelled.');
         if (params.operation === 'help' && !params.query) {
-          return toolResult(helpResult(params.variables, activator));
+          return toolResult(helpResult(params.variables, activator), secrets);
         }
 
         const request = resolveRequest(params, mode);
@@ -231,7 +234,7 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
             mode,
             ctx,
             signal,
-          ));
+          ), secrets);
         }
 
         assertMutationAllowed(request.query, mode);

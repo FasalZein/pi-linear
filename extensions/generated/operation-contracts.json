@@ -14274,7 +14274,12 @@
       "renderKind": "workspace",
       "dataPaths": [
         "active"
-      ]
+      ],
+      "local": {
+        "requiredStringPaths": [
+          "active"
+        ]
+      }
     },
     "render": {
       "entityKind": "workspace",

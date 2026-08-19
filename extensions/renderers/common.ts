@@ -6,6 +6,7 @@ import {
   type Theme,
 } from '@earendil-works/pi-coding-agent';
 import { Text, truncateToWidth, visibleWidth, wrapTextWithAnsi } from '@earendil-works/pi-tui';
+import { activeSecrets } from '../active-secrets';
 import { redactText } from '../redact';
 import {
   getDefaultJsonView,
@@ -62,9 +63,12 @@ export function truncateLine(value: string, width: number): string {
   return truncateToWidth(value, width, '…');
 }
 
-/** Last line of defence in the TUI; the data boundary redacts first (redact.ts). */
+/**
+ * Last line of defence in the TUI; the data boundary redacts first (redact.ts).
+ * Call rows render raw tool arguments, so exact active secrets are removed here too.
+ */
 export function scrubCredentials(value: string): string {
-  return redactText(value);
+  return redactText(value, activeSecrets());
 }
 
 export function textContent(result: AgentToolResult<any>): string {
