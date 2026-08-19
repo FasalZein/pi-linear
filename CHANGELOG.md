@@ -3,10 +3,13 @@
 ## 0.6.0
 
 - Registered 49 tools: always-on `linear_api` plus 48 lazy typed tools that stay inactive until exact help or a closed natural query names them.
-- Kept the always-active loader schema at 673 bytes. The 48 typed schemas remain 64,033 bytes and stay out of context until activation.
+- Kept the always-active loader schema at 673 bytes. The 48 typed schemas are 64,583 bytes and stay out of context until activation: 550 bytes above the 64,033-byte v0.5 baseline, from the approved S3 comment contract.
 - Preserved the Pi peer minimum at `>=0.80.7` and verified the packed package against Pi 0.80.7 and Pi 0.84.2 in isolated installs.
 - Added first-party provider-route checks for fallback, native Anthropic deferred definitions, native OpenAI additional-tools and tool-search, Google conversion of all 48 runtime schemas, and custom proxies with native flags disabled.
 - Added bound package inspection and clean-tree verification. The packed package registers 49 tools, keeps only `linear_api` active, and registers `/linear-auth` and `/linear-settings` without generator sources.
+- Made each operation the single editable authority: compatibility branches, named semantic exceptions, render metadata, discovery intents, and local result expectations are authored beside the operation and projected into runtime, generated contracts, and help.
+- Added an explicit local result expectation for `switch_workspace`, enforced before redaction and routing.
+- Extended exact active-secret redaction to help, loader output, and rendered call rows, including credentials in unknown formats.
 - Left the authorized AEO-258 `linear_create_comment` mutation pending. This release candidate does not fabricate a comment ID or pass result.
 
 ## 0.5.0
