@@ -1,6 +1,6 @@
 # Linear API reference
 
-`pi-linear-lite` registers one active loader, `linear_api`, plus 48 inactive typed tools. Send exactly one of `operation` or `query` to the loader. Send operation inputs through `variables`. Help for one operation activates its typed tool.
+Version 0.6 of `pi-linear-lite` registers one active loader, `linear_api`, plus 48 inactive typed tools. Send exactly one of `operation` or `query` to the loader. Send operation inputs through `variables`. Help for one operation activates its typed tool.
 
 ## Help protocol
 

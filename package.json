@@ -1,6 +1,6 @@
 {
   "name": "@tothemoon/pi-linear-lite",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Linear GraphQL extension for pi with named operations, lazily loaded typed tools, and mutation safety",
   "keywords": [
     "pi-package",
@@ -19,7 +19,17 @@
     "generate:check": "vite-node scripts/generate-cli.ts --check",
     "sync:linear-agent-allowlists": "vite-node scripts/generate-cli.ts --allowlists-sync",
     "check:linear-agent-allowlists": "vite-node scripts/generate-cli.ts --allowlists-check",
-    "test:schema-bytes": "vite-node scripts/schema-bytes.ts"
+    "test:schema-bytes": "vite-node scripts/schema-bytes.ts",
+    "test:pi:min": "vite-node scripts/test-pi-version.ts min",
+    "test:pi:current": "vite-node scripts/test-pi-version.ts current",
+    "test:provider:fallback": "vitest run test/v06-provider-fallback.test.ts",
+    "test:provider:anthropic": "vitest run test/v06-provider-anthropic.test.ts",
+    "test:provider:openai": "vitest run test/v06-provider-openai.test.ts",
+    "test:provider:google": "vitest run test/v06-provider-google.test.ts",
+    "test:provider:proxy": "vitest run test/v06-provider-proxy.test.ts",
+    "test:providers": "vitest run test/v06-provider-fallback.test.ts test/v06-provider-anthropic.test.ts test/v06-provider-openai.test.ts test/v06-provider-google.test.ts test/v06-provider-proxy.test.ts",
+    "verify:package": "vite-node scripts/verify-package.ts",
+    "verify:clean": "vite-node scripts/verify-clean.ts"
   },
   "pi": {
     "extensions": [

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0
+
+- Registered 49 tools: always-on `linear_api` plus 48 lazy typed tools that stay inactive until exact help or a closed natural query names them.
+- Kept the always-active loader schema at 673 bytes. The 48 typed schemas remain 64,033 bytes and stay out of context until activation.
+- Preserved the Pi peer minimum at `>=0.80.7` and verified the packed package against Pi 0.80.7 and Pi 0.84.2 in isolated installs.
+- Added first-party provider-route checks for fallback, native Anthropic deferred definitions, native OpenAI additional-tools and tool-search, Google conversion of all 48 runtime schemas, and custom proxies with native flags disabled.
+- Added bound package inspection and clean-tree verification. The packed package registers 49 tools, keeps only `linear_api` active, and registers `/linear-auth` and `/linear-settings` without generator sources.
+- Left the authorized AEO-258 `linear_create_comment` mutation pending. This release candidate does not fabricate a comment ID or pass result.
+
 ## 0.5.0
 
 - Resolve capitalized natural help requests, prefer list intent in “list comments,” and let `list_comments` accept an exact issue reference.
