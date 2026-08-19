@@ -158,7 +158,7 @@ The optional top-level `workspace` argument selects one stored workspace for one
 { "operation": "get_issue", "variables": { "issue": "AEO-258" }, "workspace": "work" }
 ```
 
-The named operation `switch_workspace` changes the active stored workspace. `/linear-auth switch <name>` performs the same persistent selection. Credential precedence and commands are documented in [`README.md`](./README.md).
+The named operation `switch_workspace` changes the active stored workspace. `/linear-auth switch <name>` performs the same persistent selection. `/linear-settings` sets the default Human readable or Full JSON result view. That preference lives under the Pi agent state directory and is never stored with credentials. Credential precedence and commands are documented in [`README.md`](./README.md).
 
 ## Raw GraphQL and mutation safety
 

@@ -12,6 +12,7 @@ import {
 import { linearApiTool } from './api';
 import { typedLinearTools, typedToolNames } from './typed-tools';
 import type { MutationMode } from './safety';
+import { registerLinearSettings } from './settings';
 
 function text(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
@@ -20,6 +21,7 @@ function text(value: unknown): string | undefined {
 }
 
 export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = 'allowlist') {
+  registerLinearSettings(pi);
   pi.registerCommand('linear-auth', {
     description: 'Manage Linear auth: /linear-auth [add|remove|switch|prefer|status]',
     handler: async (args, ctx) => {
