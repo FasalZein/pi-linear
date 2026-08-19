@@ -1,0 +1,1236 @@
+{
+  "create_comment": [
+    {
+      "required": [
+        "issue",
+        "body"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "bodyData"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "projectId",
+        "body"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "bodyData"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "body"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "bodyData"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "projectUpdateId",
+        "body"
+      ],
+      "target": "projectUpdateId"
+    },
+    {
+      "required": [
+        "projectUpdateId",
+        "bodyData"
+      ],
+      "target": "projectUpdateId"
+    },
+    {
+      "required": [
+        "initiativeUpdateId",
+        "body"
+      ],
+      "target": "initiativeUpdateId"
+    },
+    {
+      "required": [
+        "initiativeUpdateId",
+        "bodyData"
+      ],
+      "target": "initiativeUpdateId"
+    },
+    {
+      "required": [
+        "postId",
+        "body"
+      ],
+      "target": "postId"
+    },
+    {
+      "required": [
+        "postId",
+        "bodyData"
+      ],
+      "target": "postId"
+    },
+    {
+      "required": [
+        "documentContentId",
+        "body"
+      ],
+      "target": "documentContentId"
+    },
+    {
+      "required": [
+        "documentContentId",
+        "bodyData"
+      ],
+      "target": "documentContentId"
+    },
+    {
+      "required": [
+        "parentId",
+        "body"
+      ],
+      "target": "parentId"
+    },
+    {
+      "required": [
+        "parentId",
+        "bodyData"
+      ],
+      "target": "parentId"
+    }
+  ],
+  "update_comment": [
+    {
+      "required": [
+        "id",
+        "body"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "bodyData"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "quotedText"
+      ],
+      "target": "id"
+    }
+  ],
+  "create_view": [
+    {
+      "required": [
+        "name"
+      ],
+      "target": "name"
+    }
+  ],
+  "update_view": [
+    {
+      "required": [
+        "id",
+        "name"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "description"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "icon"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "color"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "shared"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "filterData"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "projectFilterData"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "initiativeFilterData"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "feedItemFilterData"
+      ],
+      "target": "id"
+    }
+  ],
+  "set_view_preferences": [
+    {
+      "required": [
+        "viewId",
+        "preferences"
+      ],
+      "target": "viewId"
+    }
+  ],
+  "create_cycle": [
+    {
+      "required": [
+        "team",
+        "startsAt",
+        "endsAt"
+      ],
+      "target": "team"
+    }
+  ],
+  "update_cycle": [
+    {
+      "required": [
+        "id",
+        "name"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "description"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "startsAt"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "endsAt"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "completedAt"
+      ],
+      "target": "id"
+    }
+  ],
+  "create_document": [
+    {
+      "required": [
+        "title"
+      ],
+      "target": "title"
+    }
+  ],
+  "update_document": [
+    {
+      "required": [
+        "documentId",
+        "title"
+      ],
+      "target": "documentId"
+    },
+    {
+      "required": [
+        "documentId",
+        "content"
+      ],
+      "target": "documentId"
+    },
+    {
+      "required": [
+        "documentId",
+        "icon"
+      ],
+      "target": "documentId"
+    },
+    {
+      "required": [
+        "documentId",
+        "color"
+      ],
+      "target": "documentId"
+    },
+    {
+      "required": [
+        "documentId",
+        "issueId"
+      ],
+      "target": "documentId"
+    },
+    {
+      "required": [
+        "documentId",
+        "teamId"
+      ],
+      "target": "documentId"
+    },
+    {
+      "required": [
+        "documentId",
+        "projectId"
+      ],
+      "target": "documentId"
+    },
+    {
+      "required": [
+        "documentId",
+        "initiativeId"
+      ],
+      "target": "documentId"
+    },
+    {
+      "required": [
+        "documentId",
+        "cycleId"
+      ],
+      "target": "documentId"
+    },
+    {
+      "required": [
+        "documentId",
+        "releaseId"
+      ],
+      "target": "documentId"
+    },
+    {
+      "required": [
+        "documentId",
+        "resourceFolderId"
+      ],
+      "target": "documentId"
+    },
+    {
+      "required": [
+        "documentId",
+        "lastAppliedTemplateId"
+      ],
+      "target": "documentId"
+    },
+    {
+      "required": [
+        "documentId",
+        "ownerId"
+      ],
+      "target": "documentId"
+    },
+    {
+      "required": [
+        "documentId",
+        "subscriberIds"
+      ],
+      "target": "documentId"
+    },
+    {
+      "required": [
+        "documentId",
+        "sortOrder"
+      ],
+      "target": "documentId"
+    },
+    {
+      "required": [
+        "documentId",
+        "hiddenAt"
+      ],
+      "target": "documentId"
+    }
+  ],
+  "create_issue_label": [
+    {
+      "required": [
+        "name"
+      ],
+      "target": "name"
+    }
+  ],
+  "update_issue_label": [
+    {
+      "required": [
+        "id",
+        "name"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "description"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "color"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "isGroup"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "parentId"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "retiredAt"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "replaceTeamLabels"
+      ],
+      "target": "id"
+    }
+  ],
+  "create_issue_relation": [
+    {
+      "required": [
+        "issue",
+        "relatedIssue",
+        "type"
+      ],
+      "target": "issue"
+    }
+  ],
+  "update_issue_relation": [
+    {
+      "required": [
+        "id",
+        "type"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "issueId"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "relatedIssueId"
+      ],
+      "target": "id"
+    }
+  ],
+  "create_issue": [
+    {
+      "required": [
+        "title",
+        "team"
+      ],
+      "target": "title"
+    },
+    {
+      "required": [
+        "title",
+        "parent"
+      ],
+      "target": "title"
+    }
+  ],
+  "update_issue": [
+    {
+      "required": [
+        "issue",
+        "title"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "state"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "assignee"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "parent"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "teamId"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "dueDate"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "addedLabelIds"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "removedLabelIds"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "description"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "descriptionData"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "priority"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "estimate"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "projectId"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "projectMilestoneId"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "cycleId"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "labelIds"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "subscriberIds"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "delegateId"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "lastAppliedTemplateId"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "slaType"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "slaBreachesAt"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "slaStartedAt"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "sortOrder"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "subIssueSortOrder"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "prioritySortOrder"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "autoClosedByParentClosing"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "snoozedById"
+      ],
+      "target": "issue"
+    },
+    {
+      "required": [
+        "issue",
+        "snoozedUntilAt"
+      ],
+      "target": "issue"
+    }
+  ],
+  "create_project_label": [
+    {
+      "required": [
+        "name"
+      ],
+      "target": "name"
+    }
+  ],
+  "update_project_label": [
+    {
+      "required": [
+        "id",
+        "name"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "description"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "color"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "isGroup"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "parentId"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "retiredAt"
+      ],
+      "target": "id"
+    }
+  ],
+  "create_project_relation": [
+    {
+      "required": [
+        "projectId",
+        "relatedProjectId",
+        "type",
+        "anchorType",
+        "relatedAnchorType"
+      ],
+      "target": "projectId"
+    }
+  ],
+  "update_project_relation": [
+    {
+      "required": [
+        "id",
+        "type"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "anchorType"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "relatedAnchorType"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "projectId"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "relatedProjectId"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "projectMilestoneId"
+      ],
+      "target": "id"
+    },
+    {
+      "required": [
+        "id",
+        "relatedProjectMilestoneId"
+      ],
+      "target": "id"
+    }
+  ],
+  "save_initiative": [
+    {
+      "required": [
+        "name"
+      ],
+      "target": "name"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "name"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "description"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "content"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "icon"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "color"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "status"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "targetDate"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "targetDateResolution"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "ownerId"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "leadTeamId"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "sortOrder"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "prioritySortOrder"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "priority"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "labelIds"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "customIdentifier"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "frequencyResolution"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "updateReminderFrequency"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "updateReminderFrequencyInWeeks"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "updateRemindersDay"
+      ],
+      "target": "initiativeId"
+    },
+    {
+      "required": [
+        "initiativeId",
+        "updateRemindersHour"
+      ],
+      "target": "initiativeId"
+    }
+  ],
+  "save_milestone": [
+    {
+      "required": [
+        "name",
+        "projectId"
+      ],
+      "target": "name"
+    },
+    {
+      "required": [
+        "milestoneId",
+        "name"
+      ],
+      "target": "milestoneId"
+    },
+    {
+      "required": [
+        "milestoneId",
+        "projectId"
+      ],
+      "target": "milestoneId"
+    },
+    {
+      "required": [
+        "milestoneId",
+        "description"
+      ],
+      "target": "milestoneId"
+    },
+    {
+      "required": [
+        "milestoneId",
+        "descriptionData"
+      ],
+      "target": "milestoneId"
+    },
+    {
+      "required": [
+        "milestoneId",
+        "targetDate"
+      ],
+      "target": "milestoneId"
+    },
+    {
+      "required": [
+        "milestoneId",
+        "sortOrder"
+      ],
+      "target": "milestoneId"
+    }
+  ],
+  "save_project": [
+    {
+      "required": [
+        "name",
+        "teamIds"
+      ],
+      "target": "name"
+    },
+    {
+      "required": [
+        "projectId",
+        "name"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "teamIds"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "description"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "content"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "icon"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "color"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "priority"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "startDate"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "startDateResolution"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "targetDate"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "targetDateResolution"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "statusId"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "leadId"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "leadTeamId"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "memberIds"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "labelIds"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "convertedFromIssueId"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "lastAppliedTemplateId"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "sortOrder"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "prioritySortOrder"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "canceledAt"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "completedAt"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "projectUpdateRemindersPausedUntilAt"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "slackIssueComments"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "slackIssueStatuses"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "slackNewIssue"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "frequencyResolution"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "updateReminderFrequency"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "updateReminderFrequencyInWeeks"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "updateRemindersDay"
+      ],
+      "target": "projectId"
+    },
+    {
+      "required": [
+        "projectId",
+        "updateRemindersHour"
+      ],
+      "target": "projectId"
+    }
+  ]
+}

@@ -933,7 +933,14 @@
       ],
       "action": "create",
       "targetFields": [
-        "issue"
+        "issue",
+        "projectId",
+        "initiativeId",
+        "projectUpdateId",
+        "initiativeUpdateId",
+        "postId",
+        "documentContentId",
+        "parentId"
       ]
     }
   },
@@ -3414,7 +3421,10 @@
         "startsAt",
         "endsAt"
       ],
-      "action": "create"
+      "action": "create",
+      "targetFields": [
+        "team"
+      ]
     }
   },
   {
@@ -7187,7 +7197,11 @@
         "relatedIssue",
         "type"
       ],
-      "action": "create"
+      "action": "create",
+      "targetFields": [
+        "issue",
+        "relatedIssue"
+      ]
     }
   },
   {

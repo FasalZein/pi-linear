@@ -30,7 +30,14 @@
     ],
     "action": "create",
     "targetFields": [
-      "issue"
+      "issue",
+      "projectId",
+      "initiativeId",
+      "projectUpdateId",
+      "initiativeUpdateId",
+      "postId",
+      "documentContentId",
+      "parentId"
     ]
   },
   "update_comment": {
@@ -133,7 +140,10 @@
       "startsAt",
       "endsAt"
     ],
-    "action": "create"
+    "action": "create",
+    "targetFields": [
+      "team"
+    ]
   },
   "update_cycle": {
     "entityKind": "cycle",
@@ -279,7 +289,11 @@
       "relatedIssue",
       "type"
     ],
-    "action": "create"
+    "action": "create",
+    "targetFields": [
+      "issue",
+      "relatedIssue"
+    ]
   },
   "update_issue_relation": {
     "entityKind": "issue_relation",

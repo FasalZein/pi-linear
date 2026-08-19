@@ -38,7 +38,12 @@ function renderKind(name: string): string {
 }
 
 const EXPLICIT_TARGET_FIELDS: Readonly<Record<string, readonly string[]>> = {
-  create_comment: ['issue'],
+  create_comment: [
+    'issue', 'projectId', 'initiativeId', 'projectUpdateId', 'initiativeUpdateId',
+    'postId', 'documentContentId', 'parentId',
+  ],
+  create_cycle: ['team'],
+  create_issue_relation: ['issue', 'relatedIssue'],
   list_comments: ['issue'],
   save_initiative: ['initiativeId', 'name'],
   save_milestone: ['milestoneId', 'name', 'projectId'],

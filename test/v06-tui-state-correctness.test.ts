@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { linearGraphQL } from '../extensions/client';
 import { getOperation } from '../extensions/operations';
 import { operationRenderers, renderLinearApiResult } from '../extensions/renderers';
 import { priorityStyle, statusStyle } from '../extensions/renderers/entities';
@@ -18,6 +19,8 @@ const taggedTheme = {
 
 const meta = { truncations: [], stringsClipped: 0 };
 const widths = [200, 120, 100, 80, 60, 40, 30, 26, 20, 12];
+
+afterEach(() => vi.unstubAllGlobals());
 
 function result(details: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(details) }], details } as any;
@@ -192,9 +195,42 @@ describe('v0.6 state correctness', () => {
     expect(stableHttp).not.toContain('Retry the same request');
     expect(stableHttp).not.toContain('parameter card');
 
+    for (const detail of ['service unavailable', 'gateway timeout', 'rate-limit exceeded']) {
+      const rendered = text(typed(
+        'get_issue',
+        { error: `Linear API request failed: ${detail}` },
+        {},
+        plainTheme,
+        true,
+      ));
+      expect(rendered).toContain('Retry the same request');
+      expect(rendered).not.toContain('parameter card');
+    }
+
     const validation = text(typed('update_issue', { error: 'missing issue' }, {}, plainTheme, true));
     expect(validation).toContain('linear_update_issue');
     expect(validation).toContain('parameter card');
+  });
+
+  it('renders a 502 response error body through client and renderer as transient', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 502,
+      statusText: 'Bad Gateway',
+      json: async () => ({ errors: [{ message: 'service unavailable' }] }),
+    }));
+
+    let message = '';
+    try {
+      await linearGraphQL('test-key', 'query { viewer { id } }', {});
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    expect(message).toBe('Linear API request failed: service unavailable');
+
+    const rendered = text(typed('get_issue', { error: message }, {}, plainTheme, true));
+    expect(rendered).toContain('Retry the same request');
+    expect(rendered).not.toContain('parameter card');
   });
 
   it('wraps actionable notes without clipping cursor or recovery values at review widths', () => {

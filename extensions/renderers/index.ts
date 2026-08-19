@@ -259,7 +259,7 @@ function emptyState(
 function errorRecovery(message: string, toolName: string, noun: string, rawGraphql = false): string {
   const normalized = message.toLowerCase();
   const httpFailure = /^linear api request failed:\s*(?:(\d{3})\b)?/i.exec(message);
-  if (httpFailure) {
+  if (httpFailure?.[1]) {
     const status = Number(httpFailure[1]);
     if (status === 401 || status === 403) {
       return 'Update Linear authentication with /linear-auth, then retry the request.';
@@ -291,14 +291,19 @@ function errorRecovery(message: string, toolName: string, noun: string, rawGraph
     || normalized.includes('credential') || /\b(?:401|403)\b/.test(normalized)) {
     return 'Update Linear authentication with /linear-auth, then retry the request.';
   }
+  if (normalized.includes('network') || normalized.includes('fetch') || normalized.includes('connection')
+    || normalized.includes('graphql') || normalized.includes('server') || normalized.includes('service unavailable')
+    || normalized.includes('timeout') || normalized.includes('timed out') || normalized.includes('rate limit')
+    || normalized.includes('rate-limit') || normalized.includes('too many requests') || normalized.includes('gateway')) {
+    return 'Retry the same request. A transient network or Linear server failure can change on retry.';
+  }
+  if (httpFailure) {
+    return 'Review the request and Linear server response before trying a corrected request.';
+  }
   if (normalized.includes('validation') || normalized.includes('invalid parameter') || normalized.includes('invalid value')
     || normalized.includes('missing ') || normalized.includes('must be') || normalized.includes('is required')
     || normalized.includes('expected type') || normalized.includes('exactly one')) {
     return `Open the ${toolName} parameter card, correct the validation error, and call ${toolName} again.`;
-  }
-  if (normalized.includes('network') || normalized.includes('fetch') || normalized.includes('connection')
-    || normalized.includes('graphql') || normalized.includes('server') || normalized.includes('service unavailable')) {
-    return 'Retry the same request. A transient network or Linear server failure can change on retry.';
   }
   return `Open the ${toolName} parameter card, correct the validation error, and call ${toolName} again.`;
 }
