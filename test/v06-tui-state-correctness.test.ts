@@ -17,7 +17,7 @@ const taggedTheme = {
 } as any;
 
 const meta = { truncations: [], stringsClipped: 0 };
-const widths = [12, 26, 30, 60, 80, 100, 120, 200];
+const widths = [200, 120, 100, 80, 60, 40, 30, 26, 20, 12];
 
 function result(details: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(details) }], details } as any;
@@ -82,6 +82,31 @@ describe('v0.6 state correctness', () => {
     }
     expect(priorityStyle(taggedTheme, 'Urgent')('Urgent')).toContain('<warning>');
     expect(priorityStyle(taggedTheme, 'Urgent')('Urgent')).not.toContain('<error>');
+
+    const projects = text(typed('list_projects', {
+      data: { projects: { nodes: [
+        { id: 'p1', name: 'Healthy project', health: 'onTrack' },
+        { id: 'p2', name: 'Risk project', health: 'atRisk' },
+        { id: 'p3', name: 'Failed project', health: 'offTrack' },
+      ] } },
+      meta,
+    }, {}, taggedTheme), 200);
+    expect(projects).toContain('<success>On track</success>');
+    expect(projects).toContain('<warning>At risk</warning>');
+    expect(projects).toContain('<error>Off track</error>');
+
+    const issueComponent = typed('list_issues', {
+      data: { issues: { nodes: [{
+        id: 'i1', identifier: 'AEO-1', title: 'Urgent issue', priorityLabel: 'Urgent', state: { name: 'Blocked' },
+      }] } },
+      meta,
+    }, {}, taggedTheme);
+    for (const width of [200, 120]) {
+      const issues = text(issueComponent, width);
+      expect(issues).toContain('<warning>Urgent</warning>');
+      expect(issues).toContain('<error>Blocked</error>');
+      expect(issues).not.toContain('<error>Urgent</error>');
+    }
   });
 
   it('echoes mutation targets without entities and marks unknown confirmation as warning', () => {
@@ -113,6 +138,21 @@ describe('v0.6 state correctness', () => {
     ));
     expect(missingConfirmation).toContain('! Updated issue AEO-258: status unknown');
     expect(missingConfirmation).not.toContain('"issueUpdate"');
+
+    const document = text(typed(
+      'update_document',
+      { data: { documentUpdate: { success: true, document: null } }, meta },
+      { documentId: 'doc-123', title: 'Replacement title' },
+    ));
+    expect(document).toContain('✓ Updated document doc-123');
+    expect(document).not.toContain('Replacement title');
+
+    const cycle = text(typed(
+      'update_cycle',
+      { data: { cycleUpdate: { success: true, cycle: null } }, meta },
+      { id: 'cycle-7', name: 'Renamed cycle' },
+    ));
+    expect(cycle).toContain('✓ Updated cycle cycle-7');
   });
 
   it('branches recovery by cause and never gives parameter advice for policy blocks', () => {
@@ -130,6 +170,27 @@ describe('v0.6 state correctness', () => {
         expect(rendered).not.toContain('Fix the parameters');
       }
     }
+
+    for (const status of ['429 Too Many Requests', '502 Bad Gateway', '408 Request Timeout']) {
+      const rendered = text(typed('get_issue', { error: `Linear API request failed: ${status}` }, {}, plainTheme, true));
+      expect(rendered).toContain('Retry the same request');
+      expect(rendered).not.toContain('parameter card');
+    }
+    for (const status of ['401 Unauthorized', '403 Forbidden']) {
+      const rendered = text(typed('get_issue', { error: `Linear API request failed: ${status}` }, {}, plainTheme, true));
+      expect(rendered).toContain('/linear-auth');
+      expect(rendered).not.toContain('parameter card');
+    }
+    const stableHttp = text(typed(
+      'get_issue',
+      { error: 'Linear API request failed: 422 Unprocessable Entity' },
+      {},
+      plainTheme,
+      true,
+    ));
+    expect(stableHttp).toContain('Review the request and Linear server response');
+    expect(stableHttp).not.toContain('Retry the same request');
+    expect(stableHttp).not.toContain('parameter card');
 
     const validation = text(typed('update_issue', { error: 'missing issue' }, {}, plainTheme, true));
     expect(validation).toContain('linear_update_issue');
@@ -164,8 +225,18 @@ describe('v0.6 state correctness', () => {
     const comments = text(typed('list_comments', { data: { comments: { nodes: [] } }, meta }, { issue: 'AEO-258' }));
     expect(comments).toContain('target has no comments');
 
-    const relations = text(typed('list_issue_relations', { data: { issueRelations: { nodes: [] } }, meta }, { issue: 'AEO-258' }));
-    expect(relations).toContain('target has no relations');
+    const relations = text(typed('list_issue_relations', { data: { issueRelations: { nodes: [] } }, meta }));
+    expect(relations).toContain('No issue relations exist in the selected workspace.');
+
+    for (const [operation, root] of [
+      ['list_users', 'users'],
+      ['list_teams', 'teams'],
+      ['list_issue_statuses', 'workflowStates'],
+    ] as const) {
+      const rendered = text(typed(operation, { data: { [root]: { nodes: [] } }, meta }));
+      expect(rendered).toContain('Check another workspace or adjust the request.');
+      expect(rendered).not.toContain('create the first');
+    }
   });
 
   it('renders a compact structured raw GraphQL digest', () => {

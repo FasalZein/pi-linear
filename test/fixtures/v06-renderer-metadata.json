@@ -11,7 +11,16 @@
       "orderBy",
       "filter"
     ],
-    "action": "list"
+    "action": "list",
+    "targetFields": [
+      "issue"
+    ],
+    "empty": {
+      "fact": "The target has no comments.",
+      "action": "Check another target or add a comment.",
+      "filteredFact": "The target has no comments.",
+      "filteredAction": "Check another target or add a comment."
+    }
   },
   "create_comment": {
     "entityKind": "comment",
@@ -19,7 +28,10 @@
       "issue",
       "body"
     ],
-    "action": "create"
+    "action": "create",
+    "targetFields": [
+      "issue"
+    ]
   },
   "update_comment": {
     "entityKind": "comment",
@@ -44,7 +56,13 @@
       "orderBy",
       "filter"
     ],
-    "action": "list"
+    "action": "list",
+    "empty": {
+      "fact": "No views exist in the selected workspace.",
+      "action": "Create the first view or check another workspace.",
+      "filteredFact": "No views matched the filters.",
+      "filteredAction": "Loosen or remove a filter."
+    }
   },
   "get_view": {
     "entityKind": "view",
@@ -93,7 +111,13 @@
       "orderBy",
       "filter"
     ],
-    "action": "list"
+    "action": "list",
+    "empty": {
+      "fact": "No cycles exist in the selected workspace.",
+      "action": "Create the first cycle or check another workspace.",
+      "filteredFact": "No cycles matched the filters.",
+      "filteredAction": "Loosen or remove a filter."
+    }
   },
   "get_cycle": {
     "entityKind": "cycle",
@@ -135,7 +159,13 @@
       "filter",
       "sort"
     ],
-    "action": "list"
+    "action": "list",
+    "empty": {
+      "fact": "No documents exist in the selected workspace.",
+      "action": "Create the first document or check another workspace.",
+      "filteredFact": "No documents matched the filters.",
+      "filteredAction": "Loosen or remove a filter."
+    }
   },
   "get_document": {
     "entityKind": "document",
@@ -172,7 +202,13 @@
       "filter",
       "sort"
     ],
-    "action": "list"
+    "action": "list",
+    "empty": {
+      "fact": "No initiatives exist in the selected workspace.",
+      "action": "Create the first initiative or check another workspace.",
+      "filteredFact": "No initiatives matched the filters.",
+      "filteredAction": "Loosen or remove a filter."
+    }
   },
   "get_initiative": {
     "entityKind": "initiative",
@@ -193,7 +229,13 @@
       "orderBy",
       "filter"
     ],
-    "action": "list"
+    "action": "list",
+    "empty": {
+      "fact": "No issue labels exist in the selected workspace.",
+      "action": "Create the first issue label or check another workspace.",
+      "filteredFact": "No issue labels matched the filters.",
+      "filteredAction": "Loosen or remove a filter."
+    }
   },
   "create_issue_label": {
     "entityKind": "label",
@@ -222,7 +264,13 @@
       "includeArchived",
       "orderBy"
     ],
-    "action": "list"
+    "action": "list",
+    "empty": {
+      "fact": "No issue relations exist in the selected workspace.",
+      "action": "Create the first issue relation or check another workspace.",
+      "filteredFact": "No issue relations matched the filters.",
+      "filteredAction": "Loosen or remove a filter."
+    }
   },
   "create_issue_relation": {
     "entityKind": "issue_relation",
@@ -252,7 +300,13 @@
       "orderBy",
       "filter"
     ],
-    "action": "list"
+    "action": "list",
+    "empty": {
+      "fact": "No issue statuses exist in the selected workspace.",
+      "action": "Check another workspace or adjust the request.",
+      "filteredFact": "No issue statuses matched the filters.",
+      "filteredAction": "Loosen or remove a filter."
+    }
   },
   "list_issues": {
     "entityKind": "issue",
@@ -271,7 +325,13 @@
       "filter",
       "sort"
     ],
-    "action": "list"
+    "action": "list",
+    "empty": {
+      "fact": "No issues exist in the selected workspace.",
+      "action": "Create the first issue or check another workspace.",
+      "filteredFact": "No issues matched the filters.",
+      "filteredAction": "Loosen or remove a filter."
+    }
   },
   "get_issue": {
     "entityKind": "issue",
@@ -317,7 +377,13 @@
       "orderBy",
       "filter"
     ],
-    "action": "search"
+    "action": "search",
+    "empty": {
+      "fact": "No issues matched the search.",
+      "action": "Change or broaden the search term.",
+      "filteredFact": "No issues matched the search.",
+      "filteredAction": "Change or broaden the search term."
+    }
   },
   "list_milestones": {
     "entityKind": "milestone",
@@ -330,7 +396,13 @@
       "orderBy",
       "filter"
     ],
-    "action": "list"
+    "action": "list",
+    "empty": {
+      "fact": "No milestones exist in the selected workspace.",
+      "action": "Create the first milestone or check another workspace.",
+      "filteredFact": "No milestones matched the filters.",
+      "filteredAction": "Loosen or remove a filter."
+    }
   },
   "get_milestone": {
     "entityKind": "milestone",
@@ -350,7 +422,13 @@
       "orderBy",
       "filter"
     ],
-    "action": "list"
+    "action": "list",
+    "empty": {
+      "fact": "No project labels exist in the selected workspace.",
+      "action": "Create the first project label or check another workspace.",
+      "filteredFact": "No project labels matched the filters.",
+      "filteredAction": "Loosen or remove a filter."
+    }
   },
   "create_project_label": {
     "entityKind": "label",
@@ -378,7 +456,13 @@
       "includeArchived",
       "orderBy"
     ],
-    "action": "list"
+    "action": "list",
+    "empty": {
+      "fact": "No project relations exist in the selected workspace.",
+      "action": "Create the first project relation or check another workspace.",
+      "filteredFact": "No project relations matched the filters.",
+      "filteredAction": "Loosen or remove a filter."
+    }
   },
   "create_project_relation": {
     "entityKind": "project_relation",
@@ -411,7 +495,13 @@
       "filter",
       "sort"
     ],
-    "action": "list"
+    "action": "list",
+    "empty": {
+      "fact": "No projects exist in the selected workspace.",
+      "action": "Create the first project or check another workspace.",
+      "filteredFact": "No projects matched the filters.",
+      "filteredAction": "Loosen or remove a filter."
+    }
   },
   "get_project": {
     "entityKind": "project",
@@ -431,7 +521,13 @@
       "orderBy",
       "filter"
     ],
-    "action": "list"
+    "action": "list",
+    "empty": {
+      "fact": "No teams exist in the selected workspace.",
+      "action": "Check another workspace or adjust the request.",
+      "filteredFact": "No teams matched the filters.",
+      "filteredAction": "Loosen or remove a filter."
+    }
   },
   "get_team": {
     "entityKind": "team",
@@ -453,7 +549,13 @@
       "filter",
       "sort"
     ],
-    "action": "list"
+    "action": "list",
+    "empty": {
+      "fact": "No users exist in the selected workspace.",
+      "action": "Check another workspace or adjust the request.",
+      "filteredFact": "No users matched the filters.",
+      "filteredAction": "Loosen or remove a filter."
+    }
   },
   "get_user": {
     "entityKind": "user",
@@ -476,7 +578,11 @@
       "name",
       "input"
     ],
-    "action": "save"
+    "action": "save",
+    "targetFields": [
+      "initiativeId",
+      "name"
+    ]
   },
   "save_milestone": {
     "entityKind": "milestone",
@@ -486,7 +592,12 @@
       "projectId",
       "input"
     ],
-    "action": "save"
+    "action": "save",
+    "targetFields": [
+      "milestoneId",
+      "name",
+      "projectId"
+    ]
   },
   "save_project": {
     "entityKind": "project",
@@ -495,6 +606,10 @@
       "name",
       "input"
     ],
-    "action": "save"
+    "action": "save",
+    "targetFields": [
+      "projectId",
+      "name"
+    ]
   }
 }

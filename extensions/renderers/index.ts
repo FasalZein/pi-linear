@@ -7,6 +7,7 @@ import { Text } from '@earendil-works/pi-tui';
 import { getOperation, operationDefinitions, type LinearOperation } from '../operations';
 import { canonicalFieldNames } from '../canonical';
 import { typedToolName } from '../tool-names';
+import type { OperationDefinition } from '../operation-types';
 import {
   asRecord,
   LinearBlockComponent,
@@ -203,12 +204,22 @@ function contextArgs(context: LinearRenderContext): Record<string, unknown> {
   return asRecord(args.variables) ?? args;
 }
 
-const TARGET_KEYS = [
-  'issue', 'project', 'document', 'initiative', 'milestone', 'comment',
-  'projectUpdate', 'initiativeUpdate', 'relation', 'id', 'identifier', 'name', 'title', 'team',
-] as const;
+function operationTargetFields(definition: OperationDefinition): readonly string[] {
+  if (definition.render.targetFields) return definition.render.targetFields;
+  const branches = definition.canonical.branches;
+  const common = branches[0]?.all.filter((field) => branches.every((branch) => branch.all.includes(field))) ?? [];
+  const references = common.filter((field) => (
+    field === 'id' || field === definition.render.entityKind || field.endsWith('Id')
+  ));
+  if (references.length) return references;
+  return common.filter((field) => field === 'name' || field === 'title').slice(0, 1);
+}
 
-function targetReference(result: AgentToolResult<any>, context: LinearRenderContext): string | undefined {
+function targetReference(
+  result: AgentToolResult<any>,
+  context: LinearRenderContext,
+  definition: OperationDefinition,
+): string | undefined {
   const details = asRecord(result.details) ?? {};
   const target = asRecord(asRecord(details.resolution)?.target);
   const resolved = target && (
@@ -217,36 +228,47 @@ function targetReference(result: AgentToolResult<any>, context: LinearRenderCont
   );
   if (resolved) return resolved;
   const args = contextArgs(context);
-  for (const key of TARGET_KEYS) {
+  for (const key of operationTargetFields(definition)) {
     const value = asString(args[key]);
     if (value) return value;
   }
-  return Object.values(args).map(asString).find((value): value is string => !!value);
+  return undefined;
 }
 
-function emptyState(operationName: string, spec: EntitySpec, context: LinearRenderContext): { fact: string; action: string } {
-  if (operationName.startsWith('search_')) {
-    return { fact: `No ${pluralNoun(spec)} matched the search.`, action: 'Change or broaden the search term.' };
-  }
-  if (operationName === 'list_comments') {
-    return { fact: 'The target has no comments.', action: 'Check another target or add a comment.' };
-  }
-  if (operationName.includes('relations')) {
-    return { fact: 'The target has no relations.', action: 'Check another target or relation type.' };
-  }
-  const routing = new Set(['after', 'first', 'workspace', 'sink']);
+function emptyState(
+  definition: OperationDefinition,
+  spec: EntitySpec,
+  context: LinearRenderContext,
+): { fact: string; action: string } {
+  const metadata = definition.render;
+  const routing = new Set([
+    'after', 'before', 'first', 'last', 'workspace', 'sink', ...operationTargetFields(definition),
+  ]);
   const filtered = Object.keys(contextArgs(context)).some((key) => !routing.has(key));
-  if (filtered) {
-    return { fact: `No ${pluralNoun(spec)} matched the filters.`, action: 'Loosen or remove a filter.' };
+  if (metadata.empty) {
+    return filtered
+      ? { fact: metadata.empty.filteredFact, action: metadata.empty.filteredAction }
+      : { fact: metadata.empty.fact, action: metadata.empty.action };
   }
   return {
-    fact: `No ${pluralNoun(spec)} exist in the selected workspace.`,
-    action: 'Check another workspace or create the first record.',
+    fact: `No ${pluralNoun(spec)} matched this request.`,
+    action: 'Adjust the request or check another workspace.',
   };
 }
 
 function errorRecovery(message: string, toolName: string, noun: string, rawGraphql = false): string {
   const normalized = message.toLowerCase();
+  const httpFailure = /^linear api request failed:\s*(?:(\d{3})\b)?/i.exec(message);
+  if (httpFailure) {
+    const status = Number(httpFailure[1]);
+    if (status === 401 || status === 403) {
+      return 'Update Linear authentication with /linear-auth, then retry the request.';
+    }
+    if (status === 408 || status === 429 || (status >= 500 && status <= 599)) {
+      return 'Retry the same request. A transient network or Linear server failure can change on retry.';
+    }
+    return 'Review the request and Linear server response before trying a corrected request.';
+  }
   if (normalized.includes('read-only') || normalized.includes('readonly')) {
     return 'Use a read-only operation or restart through a mutation-enabled entry point.';
   }
@@ -287,13 +309,13 @@ function renderDigest(
   theme: Theme,
   spec: EntitySpec,
   verb: Verb,
-  operationName: string,
+  definition: OperationDefinition,
   context: LinearRenderContext,
 ): Text | LinearBlockComponent | LinearListComponent<Entity> {
   if (digest.kind === 'spill') return new LinearBlockComponent(spillBlock(theme, digest));
 
   if (digest.kind === 'list') {
-    const empty = emptyState(operationName, spec, context);
+    const empty = emptyState(definition, spec, context);
     return new LinearListComponent(digest.entities, theme, {
       headline: `${plural(digest.entities.length, spec.noun, spec.pluralNoun)} returned`,
       emptyLabel: empty.fact,
@@ -319,7 +341,7 @@ function renderDigest(
   }
 
   if (digest.kind === 'not-found') {
-    const reference = targetReference(result, context);
+    const reference = targetReference(result, context, definition);
     const title = `${spec.noun.charAt(0).toUpperCase()}${spec.noun.slice(1)} not found`;
     return new LinearBlockComponent([
       '',
@@ -334,7 +356,7 @@ function renderDigest(
 
   if (digest.kind === 'mutation') {
     if (!digest.success) {
-      const target = targetReference(result, context);
+      const target = targetReference(result, context, definition);
       return new LinearBlockComponent([
         '',
         theme.fg('warning', `! ${verb.past} ${spec.noun}${target ? ` ${target}` : ''}: status unknown`),
@@ -346,7 +368,7 @@ function renderDigest(
     if (digest.entity) {
       return new LinearBlockComponent(entityBlock(theme, spec, digest.entity, verb.past, digest.notes));
     }
-    const target = targetReference(result, context);
+    const target = targetReference(result, context, definition);
     return new LinearBlockComponent([
       '',
       theme.fg('success', `✓ ${verb.past} ${spec.noun}${target ? ` ${target}` : ''}`),
@@ -411,7 +433,7 @@ export function operationRenderers(operation: LinearOperation): OperationRendere
 
       if (options.expanded) return expandedJson(result, theme);
       const roots = definition?.result.dataPaths.map((path) => path.split('.')[0]!).filter(Boolean) ?? [];
-      return renderDigest(digestResult(result, roots), result, theme, spec, verb, operation.name, context);
+      return renderDigest(digestResult(result, roots), result, theme, spec, verb, definition!, context);
     },
   };
 }
@@ -584,5 +606,5 @@ export function renderLinearApiResult(
   if (!operation && asString(args.operation) !== 'help' && digest.kind !== 'spill') {
     return rawGraphqlBlock(theme, result, digest.notes);
   }
-  return renderDigest(digest, result, theme, spec, verb, operation?.name ?? 'raw_graphql', context);
+  return renderDigest(digest, result, theme, spec, verb, definition!, context);
 }

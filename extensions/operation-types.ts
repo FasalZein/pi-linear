@@ -144,6 +144,13 @@ export type OperationDefinition = {
 		entityKind: string;
 		callFields: readonly string[];
 		action: string;
+		targetFields?: readonly string[];
+		empty?: {
+			fact: string;
+			action: string;
+			filteredFact: string;
+			filteredAction: string;
+		};
 	};
 	canonical: {
 		fields: readonly OperationParameter[];

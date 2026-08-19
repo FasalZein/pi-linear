@@ -37,6 +37,56 @@ function renderKind(name: string): string {
   return entity.endsWith('s') ? entity.slice(0, -1) : entity;
 }
 
+const EXPLICIT_TARGET_FIELDS: Readonly<Record<string, readonly string[]>> = {
+  create_comment: ['issue'],
+  list_comments: ['issue'],
+  save_initiative: ['initiativeId', 'name'],
+  save_milestone: ['milestoneId', 'name', 'projectId'],
+  save_project: ['projectId', 'name'],
+};
+
+type RenderEmpty = NonNullable<OperationDefinition['render']['empty']>;
+
+function workspaceEmpty(plural: string, singular: string, canCreate = true): RenderEmpty {
+  return {
+    fact: `No ${plural} exist in the selected workspace.`,
+    action: canCreate
+      ? `Create the first ${singular} or check another workspace.`
+      : 'Check another workspace or adjust the request.',
+    filteredFact: `No ${plural} matched the filters.`,
+    filteredAction: 'Loosen or remove a filter.',
+  };
+}
+
+const EMPTY_STATES: Readonly<Record<string, RenderEmpty>> = {
+  list_comments: {
+    fact: 'The target has no comments.',
+    action: 'Check another target or add a comment.',
+    filteredFact: 'The target has no comments.',
+    filteredAction: 'Check another target or add a comment.',
+  },
+  list_cycles: workspaceEmpty('cycles', 'cycle'),
+  list_documents: workspaceEmpty('documents', 'document'),
+  list_initiatives: workspaceEmpty('initiatives', 'initiative'),
+  list_issue_labels: workspaceEmpty('issue labels', 'issue label'),
+  list_issue_relations: workspaceEmpty('issue relations', 'issue relation'),
+  list_issue_statuses: workspaceEmpty('issue statuses', 'issue status', false),
+  list_issues: workspaceEmpty('issues', 'issue'),
+  list_milestones: workspaceEmpty('milestones', 'milestone'),
+  list_project_labels: workspaceEmpty('project labels', 'project label'),
+  list_project_relations: workspaceEmpty('project relations', 'project relation'),
+  list_projects: workspaceEmpty('projects', 'project'),
+  list_teams: workspaceEmpty('teams', 'team', false),
+  list_users: workspaceEmpty('users', 'user', false),
+  list_views: workspaceEmpty('views', 'view'),
+  search_issues: {
+    fact: 'No issues matched the search.',
+    action: 'Change or broaden the search term.',
+    filteredFact: 'No issues matched the search.',
+    filteredAction: 'Change or broaden the search term.',
+  },
+};
+
 function documentDefinition(
   document: string,
   declared?: GraphQLDocumentVariant,
@@ -134,6 +184,11 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
       ? 'mutation'
       : 'query';
   const entityKind = renderKind(operation.name);
+  const renderEmpty = EMPTY_STATES[operation.name];
+  if ((action === 'list' || action === 'search') && !renderEmpty) {
+    throw new Error(`Missing render empty state for "${operation.name}".`);
+  }
+  const renderTargetFields = EXPLICIT_TARGET_FIELDS[operation.name];
   const requiresVariables = !branches.some((branch) => requirementBranchMatches(branch, {}));
   const discovery = discoveryForOperation(operation.name);
   const canonical = operation.canonical;
@@ -193,6 +248,8 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
       entityKind,
       callFields: operation.parameters.map(({ name }) => name),
       action,
+      ...(renderTargetFields ? { targetFields: renderTargetFields } : {}),
+      ...(renderEmpty ? { empty: renderEmpty } : {}),
     },
     canonical: {
       fields: canonicalFields,

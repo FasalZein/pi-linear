@@ -114,7 +114,7 @@ describe('result states', () => {
   it('states the fact and the way forward when a list is empty', () => {
     const text = block(render('list_issues', { data: { issues: { nodes: [] } }, meta }));
     expect(text).toContain('No issues exist in the selected workspace.');
-    expect(text).toContain('Check another workspace');
+    expect(text).toContain('Create the first issue or check another workspace.');
   });
 
   it('names the next page cursor when results were truncated', () => {
