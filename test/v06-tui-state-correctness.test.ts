@@ -210,6 +210,37 @@ describe('v0.6 state correctness', () => {
     const validation = text(typed('update_issue', { error: 'missing issue' }, {}, plainTheme, true));
     expect(validation).toContain('linear_update_issue');
     expect(validation).toContain('parameter card');
+
+    const missingVariable = text(typed(
+      'get_issue',
+      { error: 'Linear GraphQL error: Variable "$id" of required type "ID!" was not provided.' },
+      {},
+      plainTheme,
+      true,
+    ));
+    expect(missingVariable).toContain('parameter card');
+    expect(missingVariable).not.toContain('Retry the same request');
+
+    const documentValidation = text(typed(
+      'get_issue',
+      { error: 'Linear GraphQL error: Cannot query field "unknownField" on type "Issue".' },
+      {},
+      plainTheme,
+      true,
+    ));
+    expect(documentValidation).toContain('parameter card');
+    expect(documentValidation).not.toContain('Retry the same request');
+
+    const unknownExecution = text(typed(
+      'get_issue',
+      { error: 'Linear GraphQL error: Cannot return null for non-nullable field Issue.assignee.' },
+      {},
+      plainTheme,
+      true,
+    ));
+    expect(unknownExecution).toContain('Review the request and Linear server response');
+    expect(unknownExecution).not.toContain('Retry the same request');
+    expect(unknownExecution).not.toContain('parameter card');
   });
 
   it('renders a 502 response error body through client and renderer as transient', async () => {
@@ -231,6 +262,52 @@ describe('v0.6 state correctness', () => {
     const rendered = text(typed('get_issue', { error: message }, {}, plainTheme, true));
     expect(rendered).toContain('Retry the same request');
     expect(rendered).not.toContain('parameter card');
+  });
+
+  it('classifies GraphQL request failures as validation and unknown execution as review', async () => {
+    const cases = [
+      {
+        body: { errors: [{ message: 'Variable "$id" of required type "ID!" was not provided.' }] },
+        thrown: 'Linear GraphQL error: Variable "$id" of required type "ID!" was not provided.',
+        recovery: 'parameter card',
+      },
+      {
+        body: { errors: [{ message: 'Cannot query field "unknownField" on type "Issue".' }] },
+        thrown: 'Linear GraphQL error: Cannot query field "unknownField" on type "Issue".',
+        recovery: 'parameter card',
+      },
+      {
+        body: {
+          data: { issue: { id: 'issue-1' } },
+          errors: [{ message: 'Cannot return null for non-nullable field Issue.assignee.' }],
+        },
+        thrown: 'Linear GraphQL error: Cannot return null for non-nullable field Issue.assignee.',
+        recovery: 'Review the request and Linear server response',
+      },
+    ] as const;
+
+    for (const fixture of cases) {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => fixture.body,
+      }));
+      let message = '';
+      try {
+        await linearGraphQL('test-key', 'query { viewer { id } }', {});
+      } catch (error) {
+        message = error instanceof Error ? error.message : String(error);
+      }
+      expect(message).toBe(fixture.thrown);
+      const rendered = text(typed('get_issue', { error: message }, {}, plainTheme, true));
+      expect(rendered).toContain(fixture.recovery);
+      expect(rendered).not.toContain('Retry the same request');
+      if (fixture.recovery !== 'parameter card') {
+        expect(rendered).not.toContain('parameter card');
+      }
+      vi.unstubAllGlobals();
+    }
   });
 
   it('wraps actionable notes without clipping cursor or recovery values at review widths', () => {
