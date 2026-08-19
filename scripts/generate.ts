@@ -1,4 +1,5 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
@@ -168,8 +169,15 @@ function replaceToolsLine(source: string, allowedTools: readonly string[]): stri
   return source.replace(/^tools:.*$/m, `tools: ${[...retained, ...allowedTools].join(', ')}`);
 }
 
+export function defaultAllowlistPaths(): string[] {
+  const home = homedir();
+  return [resolve(home, '.pi/agent/agents/linear.md'), resolve(home, '.pi/agent/agents/linear-auditor.md')];
+}
+
 export async function syncAllowlistFile(path: string, check = false): Promise<boolean> {
-  const source = await readFile(path, 'utf8');
+  const source = await readFile(path, 'utf8').catch(() => {
+    throw new Error(`External Linear agent allowlist is missing: ${path}`);
+  });
   const next = replaceToolsLine(source, manifest().allowedTools);
   if (next === source) return false;
   if (check) throw new Error(`External Linear agent allowlist is stale: ${path}`);
@@ -181,8 +189,11 @@ export async function runGenerationCommand(args = process.argv.slice(2)): Promis
   const [command, ...paths] = args;
   if (command === '--check') return generate(true);
   if (command === '--allowlists-check' || command === '--allowlists-sync') {
-    if (paths.length !== 2) throw new Error('Pass exactly two external Linear agent allowlist paths.');
-    for (const path of paths) await syncAllowlistFile(resolve(path), command === '--allowlists-check');
+    if (paths.length !== 0 && paths.length !== 2) {
+      throw new Error('Pass exactly two external Linear agent allowlist paths, or none to use the deployment defaults.');
+    }
+    const targets = paths.length === 2 ? paths.map((path) => resolve(path)) : defaultAllowlistPaths();
+    for (const path of targets) await syncAllowlistFile(path, command === '--allowlists-check');
     return;
   }
   await generate(false);
