@@ -40,14 +40,6 @@ function singular(value: string): string {
 }
 
 function intentsFor(name: string): Array<{ action: string; entity: string }> {
-  if (name === 'create_comment') {
-    return [
-      { action: 'comment', entity: 'issue' },
-      { action: 'comment', entity: 'comment' },
-      { action: 'create', entity: 'comment' },
-    ];
-  }
-  if (name === 'set_view_preferences') return [{ action: 'update', entity: 'view_preference' }];
   const [operationAction, ...parts] = name.split('_');
   const entity = singular(parts.join('_'));
   if (operationAction === 'save') {
@@ -56,9 +48,12 @@ function intentsFor(name: string): Array<{ action: string; entity: string }> {
   return [{ action: operationAction!, entity }];
 }
 
-/** Project exact intents and phrases from the canonical operation name. */
-export function discoveryForOperation(name: string) {
-  const intents = intentsFor(name);
+/** Project exact intents and phrases from the operation name, or from declared intents. */
+export function discoveryForOperation(
+  name: string,
+  declaredIntents?: readonly { action: string; entity: string }[],
+) {
+  const intents = declaredIntents?.length ? [...declaredIntents] : intentsFor(name);
   const actions = [...new Set(intents.map(({ action }) => action))];
   const entities = [...new Set(intents.map(({ entity }) => entity))];
   const phrases = [

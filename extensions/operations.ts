@@ -36,6 +36,8 @@ import {
 	paginationVariables,
 	type GraphQLDocumentVariant,
 	type LinearOperation,
+	type OperationSource,
+	type OperationEmptyState,
 	type OperationDefinition,
 	type OperationDomain,
 	type OperationParameter,
@@ -252,6 +254,42 @@ function updateInputPrepare(idKey = "id", omitted: readonly string[] = []) {
 		return { variables: { id: variables[idKey], input: update } };
 	};
 }
+/** Shared wording for list operations that return nothing in the selected workspace. */
+function workspaceEmpty(
+	plural: string,
+	singular: string,
+	canCreate = true,
+): OperationEmptyState {
+	return {
+		fact: `No ${plural} exist in the selected workspace.`,
+		action: canCreate
+			? `Create the first ${singular} or check another workspace.`
+			: "Check another workspace or adjust the request.",
+		filteredFact: `No ${plural} matched the filters.`,
+		filteredAction: "Loosen or remove a filter.",
+	};
+}
+
+/** Per-operation authority carried by every source definition. */
+type OperationSourceExtras = Pick<
+	OperationSource,
+	"compatibilityBranches"
+> & Pick<
+	LinearOperation,
+	"semanticException" | "renderKind" | "renderTargetFields" | "renderEmpty" | "discoveryIntents"
+>;
+
+function sourceExtras(config: OperationSourceExtras): OperationSourceExtras {
+	return {
+		compatibilityBranches: config.compatibilityBranches,
+		semanticException: config.semanticException,
+		renderKind: config.renderKind,
+		renderTargetFields: config.renderTargetFields,
+		renderEmpty: config.renderEmpty,
+		discoveryIntents: config.discoveryIntents,
+	};
+}
+
 function listOperation(config: {
 	name: string;
 	canonical: CanonicalOperation;
@@ -272,7 +310,7 @@ function listOperation(config: {
 	resolverPaths?: Record<string, string>;
 	acceptedParameters?: readonly OperationParameter[];
 	validateVariables?: LinearOperation["validateVariables"];
-}): LinearOperation {
+} & OperationSourceExtras): OperationSource {
 	const parameters = config.parameters ?? [];
 	const document = listDocument(
 		config.name.replace(/(^|_)(\w)/g, (_, _a, c) => c.toUpperCase()),
@@ -281,6 +319,7 @@ function listOperation(config: {
 		config,
 	);
 	return {
+		...sourceExtras(config),
 		name: config.name,
 		canonical: config.canonical,
 		aliases: config.aliases ?? [],
@@ -325,7 +364,7 @@ function simpleMutation(config: {
 	resolverPaths?: Record<string, string>;
 	validateVariables?: LinearOperation["validateVariables"];
 	document?: string;
-}): LinearOperation {
+} & OperationSourceExtras): OperationSource {
 	const document =
 		config.document ??
 		mutationDocument(
@@ -338,6 +377,7 @@ function simpleMutation(config: {
 	const entityPath = config.selection.trim().match(/^(\w+)\s*\{/)?.[1];
 	if (!entityPath) throw new Error(`Mutation ${config.name} must select a result entity.`);
 	return {
+		...sourceExtras(config),
 		name: config.name,
 		canonical: config.canonical,
 		aliases: config.aliases ?? [],
@@ -524,6 +564,20 @@ const issueUpdateFields = [
 const operationDefinitionsMutable: OperationDefinition[] = ([
 	listOperation({
 		name: "list_comments",
+		compatibilityBranches: [
+			{
+				"all": []
+			}
+		],
+		renderTargetFields: [
+			"issue"
+		],
+		renderEmpty: {
+			"fact": "The target has no comments.",
+			"action": "Check another target or add a comment.",
+			"filteredFact": "The target has no comments.",
+			"filteredAction": "Check another target or add a comment."
+		},
 		canonical: {
 			"fields": {
 				"issue": "IssueReference",
@@ -569,6 +623,67 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "create_comment",
+		compatibilityBranches: [
+			{
+				"all": [],
+				"exactlyOneOf": [
+					[
+						"issue",
+						"issueId",
+						"projectId",
+						"initiativeId",
+						"projectUpdateId",
+						"initiativeUpdateId",
+						"postId",
+						"documentContentId",
+						"parentId",
+						"input.issueId",
+						"input.projectId",
+						"input.initiativeId",
+						"input.projectUpdateId",
+						"input.initiativeUpdateId",
+						"input.postId",
+						"input.documentContentId",
+						"input.parentId"
+					],
+					[
+						"body",
+						"bodyData",
+						"input.body",
+						"input.bodyData"
+					]
+				],
+				"exactlyOneOfMessages": [
+					"exactly one comment target is required",
+					"exactly one of body or bodyData is required"
+				]
+			}
+		],
+		semanticException: "comment-value-types",
+		renderTargetFields: [
+			"issue",
+			"projectId",
+			"initiativeId",
+			"projectUpdateId",
+			"initiativeUpdateId",
+			"postId",
+			"documentContentId",
+			"parentId"
+		],
+		discoveryIntents: [
+			{
+				"action": "comment",
+				"entity": "issue"
+			},
+			{
+				"action": "comment",
+				"entity": "comment"
+			},
+			{
+				"action": "create",
+				"entity": "comment"
+			}
+		],
 		canonical: {
 			"fields": {
 				"issue": "IssueReference",
@@ -696,6 +811,31 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_comment",
+		compatibilityBranches: [
+			{
+				"all": [
+					"id"
+				],
+				"atLeastOneOf": [
+					"body",
+					"bodyData",
+					"quotedText",
+					"doNotSubscribeToIssue",
+					"resolvingUserId",
+					"resolvingCommentId",
+					"subscriberIds",
+					"input.body",
+					"input.bodyData",
+					"input.quotedText",
+					"input.doNotSubscribeToIssue",
+					"input.resolvingUserId",
+					"input.resolvingCommentId",
+					"input.subscriberIds"
+				],
+				"atLeastOneOfMessage": "at least one comment update field is required"
+			}
+		],
+		semanticException: "comment-value-types",
 		canonical: {
 			"fields": {
 				"id": "String",
@@ -743,6 +883,12 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_views",
+		compatibilityBranches: [
+			{
+				"all": []
+			}
+		],
+		renderEmpty: workspaceEmpty("views", "view"),
 		canonical: {
 			"fields": {
 				"after": "String",
@@ -766,6 +912,13 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	{
 		name: "get_view",
+		compatibilityBranches: [
+			{
+				"all": [
+					"id"
+				]
+			}
+		],
 		canonical: {
 			"fields": {
 				"id": "String"
@@ -788,6 +941,13 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	},
 	simpleMutation({
 		name: "create_view",
+		compatibilityBranches: [
+			{
+				"all": [
+					"name"
+				]
+			}
+		],
 		canonical: {
 			"fields": {
 				"name": "String",
@@ -851,6 +1011,13 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_view",
+		compatibilityBranches: [
+			{
+				"all": [
+					"id"
+				]
+			}
+		],
 		canonical: {
 			"fields": {
 				"id": "String",
@@ -927,6 +1094,21 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "set_view_preferences",
+		compatibilityBranches: [
+			{
+				"all": [
+					"viewId",
+					"preferences"
+				]
+			}
+		],
+		renderKind: "view",
+		discoveryIntents: [
+			{
+				"action": "update",
+				"entity": "view_preference"
+			}
+		],
 		canonical: {
 			"fields": {
 				"viewId": "String",
@@ -962,6 +1144,12 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_cycles",
+		compatibilityBranches: [
+			{
+				"all": []
+			}
+		],
+		renderEmpty: workspaceEmpty("cycles", "cycle"),
 		canonical: {
 			"fields": {
 				"team": "TeamReference",
@@ -1010,6 +1198,18 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	{
 		name: "get_cycle",
+		compatibilityBranches: [
+			{
+				"all": [
+					"cycle"
+				]
+			},
+			{
+				"all": [
+					"id"
+				]
+			}
+		],
 		canonical: {
 			"fields": {
 				"cycle": "CycleReference"
@@ -1045,6 +1245,32 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	},
 	simpleMutation({
 		name: "create_cycle",
+		compatibilityBranches: [
+			{
+				"all": [
+					"team",
+					"startsAt",
+					"endsAt"
+				]
+			},
+			{
+				"all": [
+					"teamId",
+					"startsAt",
+					"endsAt"
+				]
+			},
+			{
+				"all": [
+					"teamKey",
+					"startsAt",
+					"endsAt"
+				]
+			}
+		],
+		renderTargetFields: [
+			"team"
+		],
 		canonical: {
 			"fields": {
 				"team": "TeamReference",
@@ -1121,6 +1347,13 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_cycle",
+		compatibilityBranches: [
+			{
+				"all": [
+					"id"
+				]
+			}
+		],
 		canonical: {
 			"fields": {
 				"id": "String",
@@ -1172,6 +1405,12 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_documents",
+		compatibilityBranches: [
+			{
+				"all": []
+			}
+		],
+		renderEmpty: workspaceEmpty("documents", "document"),
 		canonical: {
 			"fields": {
 				"sort": "[DocumentSort!]",
@@ -1198,6 +1437,18 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	{
 		name: "get_document",
+		compatibilityBranches: [
+			{
+				"all": [
+					"document"
+				]
+			},
+			{
+				"all": [
+					"documentId"
+				]
+			}
+		],
 		canonical: {
 			"fields": {
 				"document": "DocumentReference"
@@ -1231,6 +1482,16 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	},
 	simpleMutation({
 		name: "create_document",
+		compatibilityBranches: [
+			{
+				"all": [],
+				"atLeastOneOf": [
+					"title",
+					"input.title"
+				]
+			}
+		],
+		semanticException: "nested-title-type",
 		canonical: {
 			"fields": {
 				"title": "String",
@@ -1333,6 +1594,13 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_document",
+		compatibilityBranches: [
+			{
+				"all": [
+					"documentId"
+				]
+			}
+		],
 		canonical: {
 			"fields": {
 				"documentId": "DocumentReference",
@@ -1495,6 +1763,12 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_initiatives",
+		compatibilityBranches: [
+			{
+				"all": []
+			}
+		],
+		renderEmpty: workspaceEmpty("initiatives", "initiative"),
 		canonical: {
 			"fields": {
 				"sort": "[InitiativeSort!]",
@@ -1521,6 +1795,18 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	{
 		name: "get_initiative",
+		compatibilityBranches: [
+			{
+				"all": [
+					"initiative"
+				]
+			},
+			{
+				"all": [
+					"initiativeId"
+				]
+			}
+		],
 		canonical: {
 			"fields": {
 				"initiative": "InitiativeReference"
@@ -1555,6 +1841,13 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_issue_labels",
+		compatibilityBranches: [
+			{
+				"all": []
+			}
+		],
+		renderKind: "label",
+		renderEmpty: workspaceEmpty("issue labels", "issue label"),
 		canonical: {
 			"fields": {
 				"team": "TeamReference",
@@ -1606,6 +1899,17 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "create_issue_label",
+		compatibilityBranches: [
+			{
+				"all": [],
+				"atLeastOneOf": [
+					"name",
+					"input.name"
+				]
+			}
+		],
+		semanticException: "nested-name-type",
+		renderKind: "label",
 		canonical: {
 			"fields": {
 				"name": "String",
@@ -1685,6 +1989,14 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_issue_label",
+		compatibilityBranches: [
+			{
+				"all": [
+					"id"
+				]
+			}
+		],
+		renderKind: "label",
 		canonical: {
 			"fields": {
 				"id": "String",
@@ -1763,6 +2075,12 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_issue_relations",
+		compatibilityBranches: [
+			{
+				"all": []
+			}
+		],
+		renderEmpty: workspaceEmpty("issue relations", "issue relation"),
 		canonical: {
 			"fields": {
 				"after": "String",
@@ -1784,6 +2102,33 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "create_issue_relation",
+		compatibilityBranches: [
+			{
+				"all": [
+					"issue",
+					"relatedIssue",
+					"type"
+				]
+			},
+			{
+				"all": [
+					"issueId",
+					"relatedIssueId",
+					"type"
+				]
+			},
+			{
+				"all": [
+					"issueId",
+					"relatedIssueId",
+					"type"
+				]
+			}
+		],
+		renderTargetFields: [
+			"issue",
+			"relatedIssue"
+		],
 		canonical: {
 			"fields": {
 				"issue": "IssueReference",
@@ -1848,6 +2193,13 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_issue_relation",
+		compatibilityBranches: [
+			{
+				"all": [
+					"id"
+				]
+			}
+		],
 		canonical: {
 			"fields": {
 				"id": "String",
@@ -1906,6 +2258,13 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_issue_statuses",
+		compatibilityBranches: [
+			{
+				"all": []
+			}
+		],
+		renderKind: "issue_status",
+		renderEmpty: workspaceEmpty("issue statuses", "issue status", false),
 		canonical: {
 			"fields": {
 				"after": "String",
@@ -1931,6 +2290,13 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_issues",
+		compatibilityBranches: [
+			{
+				"all": []
+			}
+		],
+		semanticException: "state-name-requires-team",
+		renderEmpty: workspaceEmpty("issues", "issue"),
 		canonical: {
 			"fields": {
 				"query": "String",
@@ -2059,6 +2425,19 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	{
 		name: "get_issue",
+		compatibilityBranches: [
+			{
+				"all": [
+					"issue"
+				]
+			},
+			{
+				"all": [
+					"teamKey",
+					"number"
+				]
+			}
+		],
 		canonical: {
 			"fields": {
 				"issue": "IssueReference"
@@ -2090,6 +2469,35 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	},
 	simpleMutation({
 		name: "create_issue",
+		compatibilityBranches: [
+			{
+				"all": [
+					"title"
+				],
+				"atLeastOneOf": [
+					"team",
+					"teamKey",
+					"teamId",
+					"parent",
+					"input.teamId",
+					"input.parentId"
+				]
+			},
+			{
+				"all": [
+					"input.title"
+				],
+				"atLeastOneOf": [
+					"team",
+					"teamKey",
+					"teamId",
+					"parent",
+					"input.teamId",
+					"input.parentId"
+				]
+			}
+		],
+		semanticException: "non-empty-title-and-team-or-parent",
 		canonical: {
 			"fields": {
 				"title": "String",
@@ -2253,6 +2661,19 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_issue",
+		compatibilityBranches: [
+			{
+				"all": [
+					"issue"
+				]
+			},
+			{
+				"all": [
+					"issueId",
+					"stateId"
+				]
+			}
+		],
 		canonical: {
 			"fields": {
 				"issue": "IssueReference",
@@ -2500,6 +2921,20 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	listOperation({
 		name: "search_issues",
+		compatibilityBranches: [
+			{
+				"all": [
+					"term"
+				]
+			}
+		],
+		renderKind: "issue",
+		renderEmpty: {
+			"fact": "No issues matched the search.",
+			"action": "Change or broaden the search term.",
+			"filteredFact": "No issues matched the search.",
+			"filteredAction": "Change or broaden the search term."
+		},
 		canonical: {
 			"fields": {
 				"term": "String",
@@ -2564,6 +2999,12 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_milestones",
+		compatibilityBranches: [
+			{
+				"all": []
+			}
+		],
+		renderEmpty: workspaceEmpty("milestones", "milestone"),
 		canonical: {
 			"fields": {
 				"after": "String",
@@ -2587,6 +3028,18 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	{
 		name: "get_milestone",
+		compatibilityBranches: [
+			{
+				"all": [
+					"milestone"
+				]
+			},
+			{
+				"all": [
+					"milestoneId"
+				]
+			}
+		],
 		canonical: {
 			"fields": {
 				"milestone": "MilestoneReference"
@@ -2622,6 +3075,13 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_project_labels",
+		compatibilityBranches: [
+			{
+				"all": []
+			}
+		],
+		renderKind: "label",
+		renderEmpty: workspaceEmpty("project labels", "project label"),
 		canonical: {
 			"fields": {
 				"after": "String",
@@ -2645,6 +3105,17 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "create_project_label",
+		compatibilityBranches: [
+			{
+				"all": [],
+				"atLeastOneOf": [
+					"name",
+					"input.name"
+				]
+			}
+		],
+		semanticException: "nested-name-type",
+		renderKind: "label",
 		canonical: {
 			"fields": {
 				"name": "String",
@@ -2688,6 +3159,14 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_project_label",
+		compatibilityBranches: [
+			{
+				"all": [
+					"id"
+				]
+			}
+		],
+		renderKind: "label",
 		canonical: {
 			"fields": {
 				"id": "String",
@@ -2747,6 +3226,12 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_project_relations",
+		compatibilityBranches: [
+			{
+				"all": []
+			}
+		],
+		renderEmpty: workspaceEmpty("project relations", "project relation"),
 		canonical: {
 			"fields": {
 				"after": "String",
@@ -2768,6 +3253,17 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "create_project_relation",
+		compatibilityBranches: [
+			{
+				"all": [
+					"projectId",
+					"relatedProjectId",
+					"type",
+					"anchorType",
+					"relatedAnchorType"
+				]
+			}
+		],
 		canonical: {
 			"fields": {
 				"projectId": "String",
@@ -2820,6 +3316,13 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_project_relation",
+		compatibilityBranches: [
+			{
+				"all": [
+					"id"
+				]
+			}
+		],
 		canonical: {
 			"fields": {
 				"id": "String",
@@ -2885,6 +3388,12 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_projects",
+		compatibilityBranches: [
+			{
+				"all": []
+			}
+		],
+		renderEmpty: workspaceEmpty("projects", "project"),
 		canonical: {
 			"fields": {
 				"sort": "[ProjectSort!]",
@@ -2911,6 +3420,18 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	{
 		name: "get_project",
+		compatibilityBranches: [
+			{
+				"all": [
+					"project"
+				]
+			},
+			{
+				"all": [
+					"projectId"
+				]
+			}
+		],
 		canonical: {
 			"fields": {
 				"project": "ProjectReference"
@@ -2951,6 +3472,12 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 
 	listOperation({
 		name: "list_teams",
+		compatibilityBranches: [
+			{
+				"all": []
+			}
+		],
+		renderEmpty: workspaceEmpty("teams", "team", false),
 		canonical: {
 			"fields": {
 				"after": "String",
@@ -2974,6 +3501,18 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	{
 		name: "get_team",
+		compatibilityBranches: [
+			{
+				"all": [
+					"team"
+				]
+			},
+			{
+				"all": [
+					"teamId"
+				]
+			}
+		],
 		canonical: {
 			"fields": {
 				"team": "TeamReference"
@@ -3008,6 +3547,12 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	},
 	listOperation({
 		name: "list_users",
+		compatibilityBranches: [
+			{
+				"all": []
+			}
+		],
+		renderEmpty: workspaceEmpty("users", "user", false),
 		canonical: {
 			"fields": {
 				"includeDisabled": "Boolean",
@@ -3039,6 +3584,18 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	}),
 	{
 		name: "get_user",
+		compatibilityBranches: [
+			{
+				"all": [
+					"user"
+				]
+			},
+			{
+				"all": [
+					"userId"
+				]
+			}
+		],
 		canonical: {
 			"fields": {
 				"user": "UserReference"
@@ -3073,6 +3630,14 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 	},
 	{
 		name: "switch_workspace",
+		compatibilityBranches: [
+			{
+				"all": [
+					"name"
+				]
+			}
+		],
+		renderKind: "workspace",
 		canonical: {
 			"fields": {
 				"name": "String"
@@ -3095,7 +3660,7 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 			return { active: updated.activeWorkspace };
 		},
 	},
-] satisfies LinearOperation[]).map((operation) =>
+] satisfies OperationSource[]).map((operation) =>
 	defineOperation(operation as LinearOperation),
 );
 
@@ -3116,7 +3681,7 @@ function addSaveOperation(config: {
 	parameters: readonly OperationParameter[];
 	example: Record<string, unknown>;
 	resolverPaths?: Record<string, string>;
-}) {
+} & OperationSourceExtras) {
 	const entityPath = config.entity[0]!.toLowerCase() + config.entity.slice(1);
 	const baseCreateDocument = mutationDocument(
 		`Create${config.documentName}`,
@@ -3181,6 +3746,7 @@ function addSaveOperation(config: {
 						input,
 					];
 	operationDefinitionsMutable.push(defineOperation({
+		...sourceExtras(config),
 		name: config.name,
 		canonical: config.canonical,
 		aliases: [],
@@ -3265,6 +3831,114 @@ function addSaveOperation(config: {
 }
 addSaveOperation({
 	name: "save_initiative",
+	compatibilityBranches: [
+		{
+			"all": [
+				"name"
+			],
+			"forbidden": [
+				"initiativeId",
+				"customIdentifier",
+				"input.customIdentifier",
+				"frequencyResolution",
+				"input.frequencyResolution",
+				"trashed",
+				"input.trashed",
+				"updateReminderFrequency",
+				"input.updateReminderFrequency",
+				"updateReminderFrequencyInWeeks",
+				"input.updateReminderFrequencyInWeeks",
+				"updateRemindersDay",
+				"input.updateRemindersDay",
+				"updateRemindersHour",
+				"input.updateRemindersHour"
+			],
+			"mode": "create"
+		},
+		{
+			"all": [
+				"input.name"
+			],
+			"forbidden": [
+				"initiativeId",
+				"customIdentifier",
+				"input.customIdentifier",
+				"frequencyResolution",
+				"input.frequencyResolution",
+				"trashed",
+				"input.trashed",
+				"updateReminderFrequency",
+				"input.updateReminderFrequency",
+				"updateReminderFrequencyInWeeks",
+				"input.updateReminderFrequencyInWeeks",
+				"updateRemindersDay",
+				"input.updateRemindersDay",
+				"updateRemindersHour",
+				"input.updateRemindersHour"
+			],
+			"mode": "create"
+		},
+		{
+			"all": [
+				"initiativeId"
+			],
+			"atLeastOneOf": [
+				"color",
+				"input.color",
+				"content",
+				"input.content",
+				"description",
+				"input.description",
+				"icon",
+				"input.icon",
+				"labelIds",
+				"input.labelIds",
+				"leadTeamId",
+				"input.leadTeamId",
+				"name",
+				"input.name",
+				"ownerId",
+				"input.ownerId",
+				"priority",
+				"input.priority",
+				"prioritySortOrder",
+				"input.prioritySortOrder",
+				"sortOrder",
+				"input.sortOrder",
+				"status",
+				"input.status",
+				"targetDate",
+				"input.targetDate",
+				"targetDateResolution",
+				"input.targetDateResolution",
+				"customIdentifier",
+				"input.customIdentifier",
+				"frequencyResolution",
+				"input.frequencyResolution",
+				"trashed",
+				"input.trashed",
+				"updateReminderFrequency",
+				"input.updateReminderFrequency",
+				"updateReminderFrequencyInWeeks",
+				"input.updateReminderFrequencyInWeeks",
+				"updateRemindersDay",
+				"input.updateRemindersDay",
+				"updateRemindersHour",
+				"input.updateRemindersHour"
+			],
+			"atLeastOneOfMessage": "No initiative update fields were provided.",
+			"forbidden": [
+				"id",
+				"input.id"
+			],
+			"mode": "update"
+		}
+	],
+	semanticException: "save-value-types",
+	renderTargetFields: [
+		"initiativeId",
+		"name"
+	],
 	canonical: {
 		"fields": {
 			"initiativeId": "InitiativeReference",
@@ -3550,6 +4224,65 @@ addSaveOperation({
 });
 addSaveOperation({
 	name: "save_milestone",
+	compatibilityBranches: [
+		{
+			"all": [
+				"name"
+			],
+			"atLeastOneOf": [
+				"projectId",
+				"input.projectId"
+			],
+			"forbidden": [
+				"milestoneId"
+			],
+			"mode": "create"
+		},
+		{
+			"all": [
+				"input.name"
+			],
+			"atLeastOneOf": [
+				"projectId",
+				"input.projectId"
+			],
+			"forbidden": [
+				"milestoneId"
+			],
+			"mode": "create"
+		},
+		{
+			"all": [
+				"milestoneId"
+			],
+			"atLeastOneOf": [
+				"description",
+				"input.description",
+				"descriptionData",
+				"input.descriptionData",
+				"name",
+				"input.name",
+				"projectId",
+				"input.projectId",
+				"sortOrder",
+				"input.sortOrder",
+				"targetDate",
+				"input.targetDate"
+			],
+			"atLeastOneOfMessage": "No milestone update fields were provided.",
+			"forbidden": [
+				"id",
+				"input.id"
+			],
+			"mode": "update"
+		}
+	],
+	semanticException: "save-value-types",
+	renderTargetFields: [
+		"milestoneId",
+		"name",
+		"projectId"
+	],
 	canonical: {
 		"fields": {
 			"milestoneId": "MilestoneReference",
@@ -3677,6 +4410,170 @@ addSaveOperation({
 });
 addSaveOperation({
 	name: "save_project",
+	compatibilityBranches: [
+		{
+			"all": [
+				"name"
+			],
+			"atLeastOneOf": [
+				"teamIds",
+				"input.teamIds"
+			],
+			"forbidden": [
+				"projectId",
+				"canceledAt",
+				"input.canceledAt",
+				"completedAt",
+				"input.completedAt",
+				"frequencyResolution",
+				"input.frequencyResolution",
+				"projectUpdateRemindersPausedUntilAt",
+				"input.projectUpdateRemindersPausedUntilAt",
+				"slackIssueComments",
+				"input.slackIssueComments",
+				"slackIssueStatuses",
+				"input.slackIssueStatuses",
+				"slackNewIssue",
+				"input.slackNewIssue",
+				"trashed",
+				"input.trashed",
+				"updateReminderFrequency",
+				"input.updateReminderFrequency",
+				"updateReminderFrequencyInWeeks",
+				"input.updateReminderFrequencyInWeeks",
+				"updateRemindersDay",
+				"input.updateRemindersDay",
+				"updateRemindersHour",
+				"input.updateRemindersHour"
+			],
+			"mode": "create"
+		},
+		{
+			"all": [
+				"input.name"
+			],
+			"atLeastOneOf": [
+				"teamIds",
+				"input.teamIds"
+			],
+			"forbidden": [
+				"projectId",
+				"canceledAt",
+				"input.canceledAt",
+				"completedAt",
+				"input.completedAt",
+				"frequencyResolution",
+				"input.frequencyResolution",
+				"projectUpdateRemindersPausedUntilAt",
+				"input.projectUpdateRemindersPausedUntilAt",
+				"slackIssueComments",
+				"input.slackIssueComments",
+				"slackIssueStatuses",
+				"input.slackIssueStatuses",
+				"slackNewIssue",
+				"input.slackNewIssue",
+				"trashed",
+				"input.trashed",
+				"updateReminderFrequency",
+				"input.updateReminderFrequency",
+				"updateReminderFrequencyInWeeks",
+				"input.updateReminderFrequencyInWeeks",
+				"updateRemindersDay",
+				"input.updateRemindersDay",
+				"updateRemindersHour",
+				"input.updateRemindersHour"
+			],
+			"mode": "create"
+		},
+		{
+			"all": [
+				"projectId"
+			],
+			"atLeastOneOf": [
+				"name",
+				"input.name",
+				"description",
+				"input.description",
+				"content",
+				"input.content",
+				"color",
+				"input.color",
+				"icon",
+				"input.icon",
+				"convertedFromIssueId",
+				"input.convertedFromIssueId",
+				"labelIds",
+				"input.labelIds",
+				"lastAppliedTemplateId",
+				"input.lastAppliedTemplateId",
+				"leadId",
+				"input.leadId",
+				"leadTeamId",
+				"input.leadTeamId",
+				"memberIds",
+				"input.memberIds",
+				"priority",
+				"input.priority",
+				"prioritySortOrder",
+				"input.prioritySortOrder",
+				"sortOrder",
+				"input.sortOrder",
+				"startDate",
+				"input.startDate",
+				"startDateResolution",
+				"input.startDateResolution",
+				"statusId",
+				"input.statusId",
+				"targetDate",
+				"input.targetDate",
+				"targetDateResolution",
+				"input.targetDateResolution",
+				"teamIds",
+				"input.teamIds",
+				"canceledAt",
+				"input.canceledAt",
+				"completedAt",
+				"input.completedAt",
+				"frequencyResolution",
+				"input.frequencyResolution",
+				"projectUpdateRemindersPausedUntilAt",
+				"input.projectUpdateRemindersPausedUntilAt",
+				"slackIssueComments",
+				"input.slackIssueComments",
+				"slackIssueStatuses",
+				"input.slackIssueStatuses",
+				"slackNewIssue",
+				"input.slackNewIssue",
+				"trashed",
+				"input.trashed",
+				"updateReminderFrequency",
+				"input.updateReminderFrequency",
+				"updateReminderFrequencyInWeeks",
+				"input.updateReminderFrequencyInWeeks",
+				"updateRemindersDay",
+				"input.updateRemindersDay",
+				"updateRemindersHour",
+				"input.updateRemindersHour"
+			],
+			"atLeastOneOfMessage": "No project update fields were provided.",
+			"forbidden": [
+				"id",
+				"input.id",
+				"templateId",
+				"input.templateId",
+				"useDefaultTemplate",
+				"input.useDefaultTemplate",
+				"slackChannelName",
+				"input.slackChannelName"
+			],
+			"mode": "update"
+		}
+	],
+	semanticException: "save-value-types",
+	renderTargetFields: [
+		"projectId",
+		"name"
+	],
 	canonical: {
 		"fields": {
 			"projectId": "ProjectReference",

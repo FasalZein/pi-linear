@@ -79,9 +79,9 @@ describe('generated products', () => {
   it.each([
     [
       'compatibility branch',
-      'extensions/definition-compatibility.ts',
-      '"list_comments": [\n    {\n      "all": []',
-      '"list_comments": [\n    {\n      "all": ["issue"]',
+      'extensions/operations.ts',
+      'name: "list_comments",\n\t\tcompatibilityBranches: [\n\t\t\t{\n\t\t\t\t"all": []',
+      'name: "list_comments",\n\t\tcompatibilityBranches: [\n\t\t\t{\n\t\t\t\t"all": ["issue"]',
     ],
     [
       'mutation root',
@@ -98,8 +98,8 @@ describe('generated products', () => {
     [
       'canonical field type',
       'extensions/operations.ts',
-      'name: "list_comments",\n\t\tcanonical: {\n\t\t\t"fields": {\n\t\t\t\t"issue": "IssueReference",',
-      'name: "list_comments",\n\t\tcanonical: {\n\t\t\t"fields": {\n\t\t\t\t"issue": "Float",',
+      '\t\tcanonical: {\n\t\t\t"fields": {\n\t\t\t\t"issue": "IssueReference",\n\t\t\t\t"after": "String",\n\t\t\t\t"before": "String",\n\t\t\t\t"first": "Int",\n\t\t\t\t"last": "Int",\n\t\t\t\t"includeArchived": "Boolean",\n\t\t\t\t"orderBy": "PaginationOrderBy",\n\t\t\t\t"filter": "Filter"',
+      '\t\tcanonical: {\n\t\t\t"fields": {\n\t\t\t\t"issue": "Float",\n\t\t\t\t"after": "String",\n\t\t\t\t"before": "String",\n\t\t\t\t"first": "Int",\n\t\t\t\t"last": "Int",\n\t\t\t\t"includeArchived": "Boolean",\n\t\t\t\t"orderBy": "PaginationOrderBy",\n\t\t\t\t"filter": "Filter"',
     ],
     [
       'discovery term',
@@ -109,9 +109,9 @@ describe('generated products', () => {
     ],
     [
       'renderer kind',
-      'extensions/operation-definition.ts',
-      "search_issues: 'issue',",
-      "search_issues: 'project',",
+      'extensions/operations.ts',
+      'renderKind: "issue",',
+      'renderKind: "project",',
     ],
     [
       'manifest name',

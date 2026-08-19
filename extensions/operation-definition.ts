@@ -1,8 +1,4 @@
 import { Kind, parse } from 'graphql';
-import {
-  DEFINITION_COMPATIBILITY_BRANCHES,
-  DEFINITION_SEMANTIC_EXCEPTIONS,
-} from './definition-compatibility';
 import { discoveryForOperation } from './definition-discovery';
 import type {
   GraphQLDocumentVariant,
@@ -12,85 +8,17 @@ import type {
   RequirementBranch,
 } from './operation-types';
 
-const EXPLICIT_RENDER_KINDS: Readonly<Record<string, string>> = {
-  search_issues: 'issue',
-  set_view_preferences: 'view',
-  switch_workspace: 'workspace',
-  list_issue_statuses: 'issue_status',
-  list_issue_labels: 'label',
-  create_issue_label: 'label',
-  update_issue_label: 'label',
-  list_project_labels: 'label',
-  create_project_label: 'label',
-  update_project_label: 'label',
-};
-
 function actionAndEntity(name: string): { action: string; entity: string } {
   const [action, ...parts] = name.split('_');
   return { action: action ?? name, entity: parts.join('_') || name };
 }
 
-function renderKind(name: string): string {
-  if (EXPLICIT_RENDER_KINDS[name]) return EXPLICIT_RENDER_KINDS[name]!;
+/** Projected from the operation name; a source definition may override it. */
+function projectedRenderKind(name: string): string {
   const { entity } = actionAndEntity(name);
   if (entity.endsWith('ies')) return `${entity.slice(0, -3)}y`;
   return entity.endsWith('s') ? entity.slice(0, -1) : entity;
 }
-
-const EXPLICIT_TARGET_FIELDS: Readonly<Record<string, readonly string[]>> = {
-  create_comment: [
-    'issue', 'projectId', 'initiativeId', 'projectUpdateId', 'initiativeUpdateId',
-    'postId', 'documentContentId', 'parentId',
-  ],
-  create_cycle: ['team'],
-  create_issue_relation: ['issue', 'relatedIssue'],
-  list_comments: ['issue'],
-  save_initiative: ['initiativeId', 'name'],
-  save_milestone: ['milestoneId', 'name', 'projectId'],
-  save_project: ['projectId', 'name'],
-};
-
-type RenderEmpty = NonNullable<OperationDefinition['render']['empty']>;
-
-function workspaceEmpty(plural: string, singular: string, canCreate = true): RenderEmpty {
-  return {
-    fact: `No ${plural} exist in the selected workspace.`,
-    action: canCreate
-      ? `Create the first ${singular} or check another workspace.`
-      : 'Check another workspace or adjust the request.',
-    filteredFact: `No ${plural} matched the filters.`,
-    filteredAction: 'Loosen or remove a filter.',
-  };
-}
-
-const EMPTY_STATES: Readonly<Record<string, RenderEmpty>> = {
-  list_comments: {
-    fact: 'The target has no comments.',
-    action: 'Check another target or add a comment.',
-    filteredFact: 'The target has no comments.',
-    filteredAction: 'Check another target or add a comment.',
-  },
-  list_cycles: workspaceEmpty('cycles', 'cycle'),
-  list_documents: workspaceEmpty('documents', 'document'),
-  list_initiatives: workspaceEmpty('initiatives', 'initiative'),
-  list_issue_labels: workspaceEmpty('issue labels', 'issue label'),
-  list_issue_relations: workspaceEmpty('issue relations', 'issue relation'),
-  list_issue_statuses: workspaceEmpty('issue statuses', 'issue status', false),
-  list_issues: workspaceEmpty('issues', 'issue'),
-  list_milestones: workspaceEmpty('milestones', 'milestone'),
-  list_project_labels: workspaceEmpty('project labels', 'project label'),
-  list_project_relations: workspaceEmpty('project relations', 'project relation'),
-  list_projects: workspaceEmpty('projects', 'project'),
-  list_teams: workspaceEmpty('teams', 'team', false),
-  list_users: workspaceEmpty('users', 'user', false),
-  list_views: workspaceEmpty('views', 'view'),
-  search_issues: {
-    fact: 'No issues matched the search.',
-    action: 'Change or broaden the search term.',
-    filteredFact: 'No issues matched the search.',
-    filteredAction: 'Change or broaden the search term.',
-  },
-};
 
 function documentDefinition(
   document: string,
@@ -172,9 +100,9 @@ export function assertRequirementBranches(
   throw new Error('parameters do not match one accepted requirement branch');
 }
 
-/** Build the single authority object while the v0.4-shaped input stays local to this module boundary. */
+/** Project the runtime definition from one authored source operation. */
 export function defineOperation(operation: LinearOperation): OperationDefinition {
-  const branches = DEFINITION_COMPATIBILITY_BRANCHES[operation.name];
+  const branches = operation.compatibilityBranches;
   if (!branches) throw new Error(`Missing compatibility branches for "${operation.name}".`);
   const { action, entity } = actionAndEntity(operation.name);
   const local = Boolean(operation.executeLocal);
@@ -194,14 +122,14 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
     : documents?.some((variant) => variant.kind === 'mutation')
       ? 'mutation'
       : 'query';
-  const entityKind = renderKind(operation.name);
-  const renderEmpty = EMPTY_STATES[operation.name];
+  const entityKind = operation.renderKind ?? projectedRenderKind(operation.name);
+  const renderEmpty = operation.renderEmpty;
   if ((action === 'list' || action === 'search') && !renderEmpty) {
     throw new Error(`Missing render empty state for "${operation.name}".`);
   }
-  const renderTargetFields = EXPLICIT_TARGET_FIELDS[operation.name];
+  const renderTargetFields = operation.renderTargetFields;
   const requiresVariables = !branches.some((branch) => requirementBranchMatches(branch, {}));
-  const discovery = discoveryForOperation(operation.name);
+  const discovery = discoveryForOperation(operation.name, operation.discoveryIntents);
   const canonical = operation.canonical;
   const canonicalFields = Object.entries(canonical.fields).map(([name, type]) => ({
     name,
@@ -228,7 +156,7 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
       ...(operation.resolverPaths ? { resolverPaths: operation.resolverPaths } : {}),
       ...(requiresVariables ? { requiresVariables: true } : {}),
       ...(operation.validateVariables ? {
-        semanticException: DEFINITION_SEMANTIC_EXCEPTIONS[operation.name]
+        semanticException: operation.semanticException
           ?? (() => { throw new Error(`Unnamed semantic validation exception for "${operation.name}".`); })(),
         semanticValidateVariables: operation.validateVariables,
       } : {}),

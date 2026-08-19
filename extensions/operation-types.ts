@@ -78,6 +78,25 @@ export type LinearOperation = {
 	) => Promise<Record<string, unknown>>;
 	/** Required whenever `executeLocal` is set. */
 	localResult?: LocalResultExpectation;
+	/**
+	 * Compatibility and projection metadata that used to live in operation-keyed
+	 * catalogs. It is authored here, beside the operation it describes, so one
+	 * editable source owns every per-operation decision.
+	 */
+	compatibilityBranches?: readonly RequirementBranch[];
+	/** Named semantic exception for checks branches cannot express. */
+	semanticException?: string;
+	/** Render kind override when the operation name does not project it. */
+	renderKind?: string;
+	renderTargetFields?: readonly string[];
+	renderEmpty?: OperationEmptyState;
+	/** Discovery intents override when the operation name does not project them. */
+	discoveryIntents?: readonly OperationIntent[];
+};
+
+/** An authored operation: every per-operation decision is declared in one place. */
+export type OperationSource = LinearOperation & {
+	compatibilityBranches: readonly RequirementBranch[];
 };
 
 export type OperationKind = "query" | "mutation" | "local";
@@ -86,6 +105,13 @@ export type OperationDocumentDefinition = GraphQLDocumentVariant & {
 	kind: "query" | "mutation";
 };
 
+export type OperationEmptyState = {
+	fact: string;
+	action: string;
+	filteredFact: string;
+	filteredAction: string;
+};
+export type OperationIntent = { action: string; entity: string };
 export type RequirementBranch = {
 	all: readonly string[];
 	exactlyOneOf?: readonly (readonly string[])[];
@@ -138,7 +164,7 @@ export type OperationDefinition = {
 		entity: string;
 		actions: readonly string[];
 		entities: readonly string[];
-		intents: readonly { action: string; entity: string }[];
+		intents: readonly OperationIntent[];
 		phrases: readonly string[];
 		terms: readonly string[];
 		exactHelp: true;
@@ -154,12 +180,7 @@ export type OperationDefinition = {
 		callFields: readonly string[];
 		action: string;
 		targetFields?: readonly string[];
-		empty?: {
-			fact: string;
-			action: string;
-			filteredFact: string;
-			filteredAction: string;
-		};
+		empty?: OperationEmptyState;
 	};
 	canonical: {
 		fields: readonly OperationParameter[];
