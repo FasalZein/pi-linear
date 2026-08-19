@@ -67,7 +67,10 @@ function humanize(value: string): string {
 
 function name(entity: Entity, fallback: string): string {
   const value = field(entity, 'name') ?? field(entity, 'title');
-  return truncate(cleanOneLine(value ?? fallback), NAME_LIMIT);
+  if (value) return truncate(cleanOneLine(value), NAME_LIMIT);
+  const id = field(entity, 'id');
+  if (id) return id.length > 12 ? `${id.slice(0, 8)}…` : id;
+  return fallback;
 }
 
 function body(entity: Entity, ...keys: string[]): string | undefined {
@@ -83,21 +86,22 @@ function parts(...values: Array<string | undefined>): string[] {
 }
 
 export function statusStyle(theme: Theme, value: string): CellStyle {
-  const normalized = value.toLowerCase();
-  if (['done', 'completed', 'active', 'onTrack'.toLowerCase()].includes(normalized)) {
+  const normalized = value.toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (['done', 'completed', 'on track', 'ontrack', 'healthy'].includes(normalized)) {
     return (text) => theme.fg('success', text);
   }
-  if (['at risk', 'atrisk', 'offtrack', 'off track', 'canceled', 'cancelled'].includes(normalized)) {
-    return (text) => theme.fg('warning', text);
+  if (['at risk', 'atrisk', 'active'].includes(normalized)) return (text) => theme.fg('warning', text);
+  if (['off track', 'offtrack', 'blocked', 'canceled', 'cancelled', 'failed'].includes(normalized)) {
+    return (text) => theme.fg('error', text);
   }
-  if (normalized === 'backlog' || normalized === 'triage' || value === '—') return dimStyle(theme);
+  if (['upcoming', 'next'].includes(normalized)) return accentStyle(theme);
+  if (['planned', 'backlog', 'triage', 'past', 'unknown', '—'].includes(normalized)) return dimStyle(theme);
   return mutedStyle(theme);
 }
 
 export function priorityStyle(theme: Theme, value: string): CellStyle {
   const normalized = value.toLowerCase();
-  if (normalized === 'urgent') return (text) => theme.fg('error', text);
-  if (normalized === 'high') return (text) => theme.fg('warning', text);
+  if (['urgent', 'high'].includes(normalized)) return (text) => theme.fg('warning', text);
   if (['low', 'no priority', '—'].includes(normalized)) return dimStyle(theme);
   return mutedStyle(theme);
 }

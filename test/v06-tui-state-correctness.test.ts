@@ -1,0 +1,226 @@
+import { describe, expect, it } from 'vitest';
+import { getOperation } from '../extensions/operations';
+import { operationRenderers, renderLinearApiResult } from '../extensions/renderers';
+import { priorityStyle, statusStyle } from '../extensions/renderers/entities';
+
+const plainTheme = {
+  fg: (_role: string, text: string) => text,
+  bg: (_role: string, text: string) => text,
+  bold: (text: string) => text,
+  italic: (text: string) => text,
+  underline: (text: string) => text,
+} as any;
+
+const taggedTheme = {
+  ...plainTheme,
+  fg: (role: string, text: string) => `<${role}>${text}</${role}>`,
+} as any;
+
+const meta = { truncations: [], stringsClipped: 0 };
+const widths = [12, 26, 30, 60, 80, 100, 120, 200];
+
+function result(details: unknown) {
+  return { content: [{ type: 'text' as const, text: JSON.stringify(details) }], details } as any;
+}
+
+function typed(
+  operation: string,
+  details: unknown,
+  args: Record<string, unknown> = {},
+  theme = plainTheme,
+  isError = false,
+) {
+  return operationRenderers(getOperation(operation)).renderResult(
+    result(details),
+    { expanded: false, isPartial: false },
+    theme,
+    { args, isError } as any,
+  );
+}
+
+function api(details: unknown, args: Record<string, unknown>, theme = plainTheme, isError = false) {
+  return renderLinearApiResult(
+    result(details),
+    { expanded: false, isPartial: false },
+    theme,
+    { args, isError } as any,
+  );
+}
+
+function text(component: any, width = 120): string {
+  return component.render(width).join('\n');
+}
+
+function compact(component: any, width: number): string {
+  return component.render(width).join('').replace(/\s/g, '');
+}
+
+describe('v0.6 state correctness', () => {
+  it('renders a null single-entity root as a dedicated not-found state on both public surfaces', () => {
+    const details = { data: { issue: null }, meta };
+    for (const component of [
+      typed('get_issue', details, { issue: 'AEO-404' }),
+      api(details, { operation: 'get_issue', variables: { issue: 'AEO-404' } }),
+    ]) {
+      const rendered = text(component);
+      expect(rendered).toContain('✗ Issue not found');
+      expect(rendered).toContain('AEO-404');
+      expect(rendered).toContain('exact issue reference');
+      expect(rendered).not.toContain('"issue":null');
+    }
+  });
+
+  it('uses exact semantic theme roles for health, lifecycle status, and urgent priority', () => {
+    expect(statusStyle(taggedTheme, 'On track')('On track')).toContain('<success>');
+    expect(statusStyle(taggedTheme, 'onTrack')('onTrack')).toContain('<success>');
+    expect(statusStyle(taggedTheme, 'Healthy')('Healthy')).toContain('<success>');
+    expect(statusStyle(taggedTheme, 'At risk')('At risk')).toContain('<warning>');
+    expect(statusStyle(taggedTheme, 'atRisk')('atRisk')).toContain('<warning>');
+    expect(statusStyle(taggedTheme, 'Active')('Active')).toContain('<warning>');
+    for (const value of ['Off track', 'Blocked', 'Canceled', 'Cancelled']) {
+      expect(statusStyle(taggedTheme, value)(value)).toContain('<error>');
+    }
+    expect(priorityStyle(taggedTheme, 'Urgent')('Urgent')).toContain('<warning>');
+    expect(priorityStyle(taggedTheme, 'Urgent')('Urgent')).not.toContain('<error>');
+  });
+
+  it('echoes mutation targets without entities and marks unknown confirmation as warning', () => {
+    const success = text(typed(
+      'update_issue',
+      { data: { issueUpdate: { success: true, issue: null } }, meta },
+      { issue: 'AEO-258', title: 'Changed' },
+    ));
+    expect(success).toContain('✓ Updated issue AEO-258');
+
+    const resolved = text(typed(
+      'update_issue',
+      {
+        data: { issueUpdate: { success: true, issue: null } },
+        resolution: { target: { requested: '258', identifier: 'AEO-258' } },
+        meta,
+      },
+      { issue: '258' },
+    ));
+    expect(resolved).toContain('AEO-258');
+
+    const unknown = text(typed('update_issue', { data: { issueUpdate: { success: false } }, meta }, {}, taggedTheme));
+    expect(unknown).toContain('<warning>! Updated issue: status unknown</warning>');
+
+    const missingConfirmation = text(typed(
+      'update_issue',
+      { data: { issueUpdate: {} }, meta },
+      { issue: 'AEO-258' },
+    ));
+    expect(missingConfirmation).toContain('! Updated issue AEO-258: status unknown');
+    expect(missingConfirmation).not.toContain('"issueUpdate"');
+  });
+
+  it('branches recovery by cause and never gives parameter advice for policy blocks', () => {
+    const cases = [
+      ['Linear mutations are disabled by read-only mode.', 'mutation-enabled entry point'],
+      ['Mutation root issueDelete is not allowed.', 'supported named operation'],
+      ['Linear issue "AEO-404" was not found.', 'exact issue reference'],
+      ['Linear network error: connection reset', 'Retry'],
+      ['Linear GraphQL error: service unavailable', 'Retry'],
+    ] as const;
+    for (const [message, recovery] of cases) {
+      const rendered = text(typed('update_issue', { error: message }, { issue: 'AEO-258' }, plainTheme, true));
+      expect(rendered).toContain(recovery);
+      if (message.includes('read-only') || message.includes('not allowed')) {
+        expect(rendered).not.toContain('Fix the parameters');
+      }
+    }
+
+    const validation = text(typed('update_issue', { error: 'missing issue' }, {}, plainTheme, true));
+    expect(validation).toContain('linear_update_issue');
+    expect(validation).toContain('parameter card');
+  });
+
+  it('wraps actionable notes without clipping cursor or recovery values at review widths', () => {
+    const cursor = 'cursor-secret-shaped-but-not-a-token-1234567890';
+    const component = typed('list_issues', {
+      data: { issues: { nodes: [], pageInfo: { hasNextPage: true, endCursor: cursor } } },
+      meta: { truncations: [{ path: 'issues.nodes', kept: 100, endCursor: cursor }], stringsClipped: 0 },
+    });
+    for (const width of widths) {
+      const rendered = text(component, width);
+      expect(rendered).not.toContain('...');
+      expect(compact(component, width)).toContain(cursor);
+    }
+  });
+
+  it('renders operation-aware empty states with the two-space result grid', () => {
+    const search = text(typed('search_issues', { data: { issues: { nodes: [] } }, meta }, { query: 'needle' }));
+    expect(search).toContain('  ○ No issues matched the search.');
+    expect(search).toContain('Change or broaden the search term.');
+
+    const filtered = text(typed('list_issues', { data: { issues: { nodes: [] } }, meta }, { team: 'AEO' }));
+    expect(filtered).toContain('matched the filters');
+    expect(filtered).toContain('Loosen or remove a filter.');
+
+    const unfiltered = text(typed('list_issues', { data: { issues: { nodes: [] } }, meta }));
+    expect(unfiltered).toContain('exist in the selected workspace');
+
+    const comments = text(typed('list_comments', { data: { comments: { nodes: [] } }, meta }, { issue: 'AEO-258' }));
+    expect(comments).toContain('target has no comments');
+
+    const relations = text(typed('list_issue_relations', { data: { issueRelations: { nodes: [] } }, meta }, { issue: 'AEO-258' }));
+    expect(relations).toContain('target has no relations');
+  });
+
+  it('renders a compact structured raw GraphQL digest', () => {
+    const rendered = text(api({
+      data: {
+        viewer: { id: 'user-1', name: 'Sam' },
+        issues: { nodes: [{ id: '1' }, { id: '2' }], pageInfo: { hasNextPage: true, endCursor: 'next-1' } },
+        count: 2,
+      },
+      meta,
+    }, { query: 'query { viewer { id name } issues { nodes { id } } count }' }));
+    expect(rendered).toContain('✓ GraphQL response');
+    expect(rendered).toContain('Keys: viewer, issues, count');
+    expect(rendered).toContain('issues: connection · 2 nodes');
+    expect(rendered).toContain('next page after="next-1"');
+    expect(rendered).toContain('viewer: object · 2 keys');
+    expect(rendered).not.toContain('{"viewer"');
+  });
+
+  it('wraps all help domains and labels natural-match alternatives', () => {
+    const domains = ['issues', 'comments', 'users', 'teams', 'projects', 'cycles', 'milestones', 'initiatives', 'documents', 'views', 'labels', 'relations', 'workspace'];
+    const domainComponent = api({ domains }, { operation: 'help' });
+    for (const width of widths) {
+      const rendered = compact(domainComponent, width);
+      for (const domain of domains) expect(rendered).toContain(domain);
+    }
+
+    const matches = text(api({
+      match: { name: 'get_issue', signature: 'get_issue(issue: IssueReference)', purpose: 'Get one issue.' },
+      alternatives: [
+        { signature: 'list_issues(team?: TeamReference)' },
+        { signature: 'search_issues(query: String)' },
+      ],
+    }, { operation: 'help', variables: { query: 'issue' } }), 26);
+    expect(matches).toContain('Alternatives');
+    expect(matches).toContain('list_issues');
+    expect(matches).toContain('search_issues');
+  });
+
+  it('falls back to an entity id, confirms tool loads, and scrubs secret-shaped data', () => {
+    const nameless = text(typed('get_project', { data: { project: { id: '12345678-aaaa-bbbb-cccc-123456789012' } }, meta }));
+    expect(nameless).toContain('12345678…');
+    expect(nameless).not.toContain('(untitled project)');
+
+    const loaded = text(api({
+      loadedTools: ['linear_get_issue'],
+      name: 'get_issue',
+      parameters: [{ name: 'issue', type: 'IssueReference', required: true }],
+    }, { operation: 'help', variables: { operation: 'get_issue' } }));
+    expect(loaded).toContain('✓ loaded 1 tool');
+    expect(loaded).not.toContain('+ loaded');
+
+    const token = 'lin_api_secret123456789';
+    const secret = text(api({ data: { viewer: { [token]: token } }, meta }, { query: 'query { viewer }' }));
+    expect(secret).toContain('[REDACTED]');
+    expect(secret).not.toContain('secret123456789');
+  });
+});

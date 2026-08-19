@@ -5,7 +5,7 @@ import {
   type AgentToolResult,
   type Theme,
 } from '@earendil-works/pi-coding-agent';
-import { Text, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui';
+import { Text, truncateToWidth, visibleWidth, wrapTextWithAnsi } from '@earendil-works/pi-tui';
 import { redactText } from '../redact';
 
 export type ToolArgs = Record<string, unknown>;
@@ -53,7 +53,7 @@ export function truncate(value: string, maxLength: number): string {
 }
 
 export function truncateLine(value: string, width: number): string {
-  return truncateToWidth(value, width);
+  return truncateToWidth(value, width, '…');
 }
 
 /** Last line of defence in the TUI; the data boundary redacts first (redact.ts). */
@@ -94,7 +94,7 @@ export function expandedJson(result: AgentToolResult<any>, theme: Theme): Text {
 }
 
 /** Errors read as one sentence, never as a JSON envelope. */
-export function errorMessage(result: AgentToolResult<any>): string {
+export function resultErrorMessage(result: AgentToolResult<any>): string {
   const raw = cleanOneLine(textContent(result));
   try {
     const parsed = JSON.parse(raw);
@@ -109,7 +109,7 @@ export function errorMessage(result: AgentToolResult<any>): string {
 }
 
 export function renderErrorResult(result: AgentToolResult<any>, theme: Theme, nextAction?: string): Text {
-  const message = scrubCredentials(errorMessage(result)) || 'Linear request failed.';
+  const message = scrubCredentials(resultErrorMessage(result)) || 'Linear request failed.';
   const recovery = nextAction ?? 'Check the parameters and call the operation again.';
   return new Text(`\n${theme.fg('error', `✗ ${message}`)}\n  ${theme.fg('dim', recovery)}`, 0, 0);
 }
@@ -193,7 +193,7 @@ export function renderTable<T>(
     ),
     formatCell(options.primary.label, layout.primaryWidth, dimStyle(theme)),
   ];
-  const lines = [truncateToWidth(`  ${header.join(TABLE_SEPARATOR)}`, width)];
+  const lines = [truncateToWidth(`  ${header.join(TABLE_SEPARATOR)}`, width, '…')];
 
   for (const item of items) {
     const cells = [
@@ -204,22 +204,36 @@ export function renderTable<T>(
       }),
       formatCell(options.primary.value(item), layout.primaryWidth, outputStyle(theme)),
     ];
-    lines.push(truncateToWidth(`  ${cells.join(TABLE_SEPARATOR)}`, width));
+    lines.push(truncateToWidth(`  ${cells.join(TABLE_SEPARATOR)}`, width, '…'));
   }
   return lines;
 }
 
+export type WrappedLine = { text: string; indent?: number };
+
+/** Mark prose that must wrap instead of losing recovery data at the terminal edge. */
+export function wrapped(text: string, indent = 0): WrappedLine {
+  return { text, indent };
+}
+
+function renderBlockLines(lines: Array<string | WrappedLine>, width: number): string[] {
+  return lines.flatMap((line) => {
+    if (typeof line === 'string') return truncateToWidth(scrubCredentials(line), width, '…');
+    const indent = Math.min(line.indent ?? 0, Math.max(0, width - 1));
+    return wrapTextWithAnsi(scrubCredentials(line.text), Math.max(1, width - indent))
+      .map((part) => `${' '.repeat(indent)}${part}`);
+  });
+}
+
 /**
- * A block of pre-composed lines, clipped to the terminal width. Status lines stay
- * on one row instead of wrapping, which is what makes a row scannable.
+ * A block of pre-composed lines. Data rows clip with one Unicode ellipsis.
+ * Actionable prose uses `wrapped()` so identifiers and recovery values remain visible.
  */
 export class LinearBlockComponent {
-  constructor(private readonly lines: string[]) {}
+  constructor(private readonly lines: Array<string | WrappedLine>) {}
 
   render(width: number): string[] {
-    // Single scrub point for every composed block row: Linear content can carry a
-    // token anywhere, and no rendered line may leak one.
-    return this.lines.map((line) => truncateToWidth(scrubCredentials(line), width));
+    return renderBlockLines(this.lines, width);
   }
 
   invalidate(): void {}
@@ -243,11 +257,11 @@ export class LinearListComponent<T> {
 
   render(width: number): string[] {
     const theme = this.theme;
-    const lines: string[] = [''];
+    const lines: Array<string | WrappedLine> = [''];
 
     if (this.items.length === 0) {
-      lines.push(theme.fg('muted', this.options.emptyLabel));
-      if (this.options.emptyAction) lines.push(theme.fg('dim', this.options.emptyAction));
+      lines.push(wrapped(theme.fg('muted', `○ ${this.options.emptyLabel}`), 2));
+      if (this.options.emptyAction) lines.push(wrapped(theme.fg('dim', this.options.emptyAction), 2));
     } else {
       const limit = this.options.previewLimit ?? 20;
       const shown = this.items.slice(0, limit);
@@ -261,10 +275,14 @@ export class LinearListComponent<T> {
       }
     }
 
-    for (const note of this.options.footnotes) lines.push(theme.fg('dim', `  ${note}`));
-    lines.push('');
-    lines.push(theme.fg('dim', jsonHint()));
-    return lines.map((line) => truncateToWidth(scrubCredentials(line), width));
+    const rendered = renderBlockLines(lines, width);
+    for (const note of this.options.footnotes) {
+      rendered.push(...wrapTextWithAnsi(scrubCredentials(theme.fg('dim', note)), Math.max(1, width - 2))
+        .map((part) => `  ${part}`));
+    }
+    rendered.push('');
+    rendered.push(...wrapTextWithAnsi(scrubCredentials(theme.fg('dim', jsonHint())), Math.max(1, width)));
+    return rendered;
   }
 
   invalidate(): void {}

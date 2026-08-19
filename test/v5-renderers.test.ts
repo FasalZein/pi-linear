@@ -113,8 +113,8 @@ describe('result states', () => {
 
   it('states the fact and the way forward when a list is empty', () => {
     const text = block(render('list_issues', { data: { issues: { nodes: [] } }, meta }));
-    expect(text).toContain('No issues matched this request.');
-    expect(text).toContain('Loosen a filter');
+    expect(text).toContain('No issues exist in the selected workspace.');
+    expect(text).toContain('Check another workspace');
   });
 
   it('names the next page cursor when results were truncated', () => {
@@ -254,7 +254,7 @@ describe('linear_api rendering', () => {
     expect(text).toContain('✓ get_issue');
     expect(text).toContain('issue');
     expect(text).toContain('IssueReference');
-    expect(text).toContain('+ loaded 1 tool');
+    expect(text).toContain('✓ loaded 1 tool');
     expect(text).toContain('linear_get_issue');
   });
 
@@ -321,7 +321,8 @@ describe('escape hatch and local operations', () => {
       { args: { query: 'query { viewer { id name } }' } } as any,
     ));
     expect(text).toContain('✓ GraphQL response');
-    expect(text).toContain('"viewer"');
+    expect(text).toContain('Keys: viewer');
+    expect(text).toContain('viewer: object · 2 keys');
     expect(text).not.toContain('Loaded');
   });
 
