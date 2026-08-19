@@ -14,6 +14,13 @@ import {
 
 export type Entity = Record<string, unknown>;
 
+export type DetailField = {
+  label: string;
+  value: (entity: Entity) => string | undefined;
+  style?: (theme: Theme, value: string, entity: Entity) => CellStyle;
+  optional?: boolean;
+};
+
 export type EntitySpec = {
   noun: string;
   pluralNoun?: string;
@@ -25,6 +32,7 @@ export type EntitySpec = {
   primaryLabel?: string;
   columns: TableColumn<Entity>[];
   dropOrder?: string[];
+  details?: DetailField[];
   metadata: (entity: Entity) => string[];
   body?: (entity: Entity) => string | undefined;
 };
@@ -47,6 +55,17 @@ function nodeNames(entity: Entity, key: string, limit = 3): string | undefined {
   if (!names.length) return undefined;
   const shown = names.slice(0, limit).join(', ');
   return names.length > limit ? `${shown}, +${names.length - limit}` : shown;
+}
+
+function teamKeys(entity: Entity, limit = 4): string | undefined {
+  const nodes = asRecord(entity.teams)?.nodes;
+  if (!Array.isArray(nodes)) return undefined;
+  const keys = nodes
+    .map((node) => asString(asRecord(node)?.key) ?? asString(asRecord(node)?.name))
+    .filter((value): value is string => !!value);
+  if (!keys.length) return undefined;
+  const shown = keys.slice(0, limit).join(', ');
+  return keys.length > limit ? `${shown}, +${keys.length - limit}` : shown;
 }
 
 function date(entity: Entity, key: string): string | undefined {
@@ -113,32 +132,102 @@ function priorityText(entity: Entity): string | undefined {
   return typeof value === 'number' && value > 0 ? `P${value}` : undefined;
 }
 
+export function cycleStatus(entity: Entity): string {
+  const lifecycle = field(entity, 'completedAt')
+    ? 'completed'
+    : entity.isActive === true
+      ? 'active'
+      : entity.isFuture === true
+        ? 'upcoming'
+        : entity.isPast === true
+          ? 'past'
+          : 'unknown';
+  const position = entity.isNext === true ? 'next' : entity.isPrevious === true ? 'previous' : undefined;
+  return position ? `${lifecycle} · ${position}` : lifecycle;
+}
+
+function cycleStatusStyle(theme: Theme, value: string): CellStyle {
+  const normalized = value.toLowerCase();
+  if (normalized.startsWith('completed')) return (text) => theme.fg('success', text);
+  if (normalized.startsWith('active')) return (text) => theme.fg('warning', text);
+  if (normalized.startsWith('upcoming') || normalized.startsWith('next')) return accentStyle(theme);
+  if (normalized.startsWith('past') || normalized.startsWith('unknown') || value === '—') return dimStyle(theme);
+  return statusStyle(theme, value);
+}
+
+function rangeText(entity: Entity): string | undefined {
+  const start = date(entity, 'startsAt');
+  const end = date(entity, 'endsAt');
+  return start && end ? `${start} → ${end}` : start ?? end;
+}
+
+function archivedText(entity: Entity): string | undefined {
+  const autoArchived = date(entity, 'autoArchivedAt');
+  const archived = date(entity, 'archivedAt') ?? autoArchived;
+  if (!archived) return undefined;
+  return autoArchived ? `${archived} (auto)` : archived;
+}
+
+function viewTypeText(entity: Entity): string {
+  switch (field(entity, 'modelName')) {
+    case 'Project':
+      return 'projects';
+    case 'Initiative':
+      return 'initiatives';
+    case 'FeedItem':
+      return 'updates';
+    default:
+      return 'issues';
+  }
+}
+
+function viewScopeText(entity: Entity): string {
+  const team = nested(entity, 'team', 'key');
+  return team ? `team: ${team}` : 'workspace';
+}
+
+function viewFilterText(entity: Entity): string {
+  const model = field(entity, 'modelName');
+  const filterKey = model === 'Project'
+    ? 'projectFilterData'
+    : model === 'Initiative'
+      ? 'initiativeFilterData'
+      : model === 'FeedItem'
+        ? 'feedItemFilterData'
+        : 'filterData';
+  const filter = asRecord(entity[filterKey]);
+  const keys = filter ? Object.keys(filter) : [];
+  return keys.length ? truncate(keys.join(', '), 60) : 'none';
+}
+
 const column = (
   id: string,
   label: string,
-  width: number,
+  minWidth: number,
   value: (entity: Entity) => string | undefined,
   options: {
     style?: (theme: Theme, value: string, entity: Entity) => CellStyle;
     align?: 'left' | 'right';
+    maxWidth?: number;
   } = {},
 ): TableColumn<Entity> => ({
   id,
   label,
-  width,
+  minWidth,
+  maxWidth: options.maxWidth,
   align: options.align,
   value: (entity) => value(entity) ?? '—',
   style: options.style,
 });
 
-const identifier = column('id', 'ID', 9, (entity) => field(entity, 'identifier'), {
+const identifier = column('id', 'ID', 7, (entity) => field(entity, 'identifier'), {
   style: (theme) => accentStyle(theme),
 });
-const stateColumn = column('state', 'Status', 12, (entity) => nested(entity, 'state'), {
+const stateColumn = column('state', 'Status', 6, (entity) => nested(entity, 'state'), {
   style: statusStyle,
 });
-const priorityColumn = column('priority', 'Priority', 11, priorityText, { style: priorityStyle });
-const teamColumn = column('team', 'Team', 6, (entity) => nested(entity, 'team', 'key'));
+const priorityColumn = column('priority', 'Priority', 8, priorityText, { style: priorityStyle });
+const teamColumn = column('team', 'Team', 4, (entity) => nested(entity, 'team', 'key'));
 const updatedColumn = column('updated', 'Updated', 10, (entity) => date(entity, 'updatedAt'));
 
 export const ENTITY_SPECS: Record<string, EntitySpec> = {
@@ -151,8 +240,8 @@ export const ENTITY_SPECS: Record<string, EntitySpec> = {
       identifier,
       stateColumn,
       priorityColumn,
-      column('assignee', 'Assignee', 16, (entity) => nested(entity, 'assignee')),
-      column('labels', 'Labels', 20, (entity) => nodeNames(entity, 'labels'), {
+      column('assignee', 'Assignee', 8, (entity) => nested(entity, 'assignee')),
+      column('labels', 'Labels', 6, (entity) => nodeNames(entity, 'labels'), {
         style: (theme) => dimStyle(theme),
       }),
     ],
@@ -171,24 +260,27 @@ export const ENTITY_SPECS: Record<string, EntitySpec> = {
     noun: 'project',
     label: (entity) => name(entity, '(untitled project)'),
     columns: [
-      column('status', 'Status', 14, (entity) => nested(entity, 'status') ?? field(entity, 'state'), {
+      column('status', 'Status', 8, (entity) => nested(entity, 'status') ?? field(entity, 'state'), {
         style: statusStyle,
       }),
-      column('health', 'Health', 10, (entity) => {
+      column('priority', 'Priority', 8, priorityText, { style: priorityStyle }),
+      column('health', 'Health', 6, (entity) => {
         const health = field(entity, 'health');
         return health ? humanize(health) : undefined;
       }, { style: statusStyle }),
-      column('progress', '%', 5, (entity) => percent(entity, 'progress'), { align: 'right' }),
-      column('lead', 'Lead', 16, (entity) => nested(entity, 'lead')),
+      column('progress', '%', 3, (entity) => percent(entity, 'progress'), { align: 'right' }),
+      column('lead', 'Lead', 6, (entity) => nested(entity, 'lead')),
+      column('teams', 'Teams', 5, (entity) => teamKeys(entity)),
       column('target', 'Target', 10, (entity) => date(entity, 'targetDate')),
     ],
-    dropOrder: ['target', 'lead', 'health', 'progress'],
+    dropOrder: ['target', 'teams', 'lead', 'priority', 'health', 'progress'],
     metadata: (entity) => parts(
       nested(entity, 'status') ?? field(entity, 'state'),
+      priorityText(entity),
       field(entity, 'health') ? humanize(field(entity, 'health')!) : undefined,
       percent(entity, 'progress') ? `${percent(entity, 'progress')} complete` : undefined,
       nested(entity, 'lead') ? `lead @${nested(entity, 'lead')}` : undefined,
-      nodeNames(entity, 'teams'),
+      teamKeys(entity),
       date(entity, 'targetDate') ? `target ${date(entity, 'targetDate')}` : undefined,
     ),
     body: (entity) => body(entity, 'description'),
@@ -219,25 +311,28 @@ export const ENTITY_SPECS: Record<string, EntitySpec> = {
     lead: (entity) => (typeof entity.number === 'number' ? `#${entity.number}` : undefined),
     label: (entity) => name(entity, '(unnamed cycle)'),
     columns: [
-      column('number', '#', 4, (entity) => (typeof entity.number === 'number' ? String(entity.number) : undefined), {
+      column('number', '#', 3, (entity) => (typeof entity.number === 'number' ? String(entity.number) : undefined), {
         align: 'right',
         style: (theme) => accentStyle(theme),
       }),
+      column('status', 'Status', 8, cycleStatus, { style: cycleStatusStyle }),
       teamColumn,
-      column('window', 'Window', 23, (entity) => {
-        const start = date(entity, 'startsAt');
-        const end = date(entity, 'endsAt');
-        return start && end ? `${start} → ${end}` : start ?? end;
-      }),
-      column('progress', '%', 5, (entity) => percent(entity, 'progress'), { align: 'right' }),
+      column('window', 'Window', 16, rangeText),
+      column('progress', '%', 3, (entity) => percent(entity, 'progress'), { align: 'right' }),
     ],
     dropOrder: ['progress', 'window', 'team'],
+    details: [
+      { label: 'Team', value: (entity) => nested(entity, 'team', 'key') },
+      { label: 'Status', value: cycleStatus, style: cycleStatusStyle },
+      { label: 'Progress', value: (entity) => percent(entity, 'progress') },
+      { label: 'Range', value: rangeText },
+      { label: 'Archived', value: archivedText },
+      { label: 'Description', value: (entity) => field(entity, 'description') },
+    ],
     metadata: (entity) => parts(
+      cycleStatus(entity),
       nested(entity, 'team', 'key'),
-      date(entity, 'startsAt') && date(entity, 'endsAt')
-        ? `${date(entity, 'startsAt')} → ${date(entity, 'endsAt')}`
-        : undefined,
-      entity.isActive === true ? 'active' : undefined,
+      rangeText(entity),
       percent(entity, 'progress') ? `${percent(entity, 'progress')} complete` : undefined,
     ),
     body: (entity) => body(entity, 'description'),
@@ -311,7 +406,7 @@ export const ENTITY_SPECS: Record<string, EntitySpec> = {
     lead: (entity) => field(entity, 'key'),
     label: (entity) => name(entity, '(unnamed team)'),
     columns: [
-      column('key', 'Key', 6, (entity) => field(entity, 'key'), { style: (theme) => accentStyle(theme) }),
+      column('key', 'Key', 3, (entity) => field(entity, 'key'), { style: (theme) => accentStyle(theme) }),
       column('private', 'Access', 7, (entity) => (entity.private === true ? 'private' : 'open')),
       column('states', 'States', 6, (entity) => {
         const nodes = asRecord(entity.states)?.nodes;
@@ -424,17 +519,31 @@ export const ENTITY_SPECS: Record<string, EntitySpec> = {
   },
   view: {
     noun: 'view',
+    lead: (entity) => field(entity, 'slugId'),
     label: (entity) => name(entity, '(unnamed view)'),
     columns: [
-      teamColumn,
+      column('type', 'Type', 6, viewTypeText),
       column('shared', 'Shared', 6, (entity) => (entity.shared === true ? 'shared' : 'private')),
-      column('owner', 'Owner', 16, (entity) => nested(entity, 'owner')),
-      updatedColumn,
+      teamColumn,
+      column('owner', 'Owner', 8, (entity) => nested(entity, 'owner')),
     ],
-    dropOrder: ['updated', 'owner', 'shared', 'team'],
+    dropOrder: ['owner', 'shared', 'team', 'type'],
+    details: [
+      { label: 'Type', value: viewTypeText },
+      { label: 'Scope', value: viewScopeText },
+      { label: 'Shared', value: (entity) => (entity.shared === true ? 'shared' : entity.shared === false ? 'private' : undefined) },
+      { label: 'Icon', value: (entity) => field(entity, 'icon') },
+      { label: 'Filter', value: viewFilterText },
+      { label: 'Slug', value: (entity) => field(entity, 'slugId') },
+      { label: 'Archived', value: archivedText },
+      { label: 'Owner', value: (entity) => nested(entity, 'owner') },
+      { label: 'Description', value: (entity) => field(entity, 'description'), optional: true },
+    ],
     metadata: (entity) => parts(
-      nested(entity, 'team', 'key'),
-      entity.shared === true ? 'shared' : 'private',
+      viewTypeText(entity),
+      viewScopeText(entity),
+      entity.shared === true ? 'shared' : entity.shared === false ? 'private' : undefined,
+      field(entity, 'icon'),
       nested(entity, 'owner') ? `owner @${nested(entity, 'owner')}` : undefined,
     ),
     body: (entity) => body(entity, 'description'),

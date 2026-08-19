@@ -13,11 +13,13 @@ import {
   LinearBlockComponent,
   asString,
   cleanOneLine,
+  detailLine,
   expandedJson,
   formatToolArgValue,
   scrubCredentials,
   jsonHint,
   LinearListComponent,
+  shouldShowJson,
   plural,
   renderErrorResult,
   resultErrorMessage,
@@ -167,10 +169,20 @@ function entityBlock(
   notes: string[],
 ): Array<string | ReturnType<typeof wrapped>> {
   const lines: Array<string | ReturnType<typeof wrapped>> = ['', statusLine(theme, spec, entity, verb)];
-  const metadata = spec.metadata(entity);
-  if (metadata.length) lines.push(`  ${theme.fg('dim', metadata.join(' · '))}`);
-  const body = spec.body?.(entity);
-  if (body) lines.push(`  ${theme.fg('muted', body)}`);
+  if (spec.details?.length) {
+    for (const field of spec.details) {
+      const value = field.value(entity);
+      if (!value && field.optional) continue;
+      const display = value ?? '—';
+      const style = field.style?.(theme, display, entity);
+      lines.push(detailLine(theme, field.label, display, style));
+    }
+  } else {
+    const metadata = spec.metadata(entity);
+    if (metadata.length) lines.push(`  ${theme.fg('dim', metadata.join(' · '))}`);
+    const body = spec.body?.(entity);
+    if (body) lines.push(`  ${theme.fg('muted', body)}`);
+  }
   const url = asString(entity.url);
   if (url) lines.push(`  ${theme.fg('dim', url)}`);
   for (const note of notes) lines.push(wrapped(theme.fg('dim', note), 2));
@@ -437,7 +449,7 @@ export function operationRenderers(operation: LinearOperation): OperationRendere
         return renderErrorResult(result, theme, errorRecovery(message, toolName, spec.noun));
       }
 
-      if (options.expanded) return expandedJson(result, theme);
+      if (shouldShowJson(options, context)) return expandedJson(result, theme);
       const roots = definition?.result.dataPaths.map((path) => path.split('.')[0]!).filter(Boolean) ?? [];
       return renderDigest(digestResult(result, roots), result, theme, spec, verb, definition!, context);
     },
@@ -599,7 +611,7 @@ export function renderLinearApiResult(
     }
     return renderErrorResult(result, theme, recovery);
   }
-  if (options.expanded) return expandedJson(result, theme);
+  if (shouldShowJson(options, context)) return expandedJson(result, theme);
 
   const help = helpBlock(theme, asRecord(result.details) ?? {});
   if (help) return help;

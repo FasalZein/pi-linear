@@ -7,6 +7,11 @@ import {
 } from '@earendil-works/pi-coding-agent';
 import { Text, truncateToWidth, visibleWidth, wrapTextWithAnsi } from '@earendil-works/pi-tui';
 import { redactText } from '../redact';
+import {
+  getDefaultJsonView,
+  registerLinearResultRenderer,
+  type ResultRendererContext,
+} from './state';
 
 export type ToolArgs = Record<string, unknown>;
 export type CellStyle = (text: string) => string;
@@ -14,7 +19,8 @@ export type CellStyle = (text: string) => string;
 export type TableColumn<T> = {
   id: string;
   label: string;
-  width: number;
+  minWidth: number;
+  maxWidth?: number;
   align?: 'left' | 'right';
   value: (item: T) => string;
   style?: (theme: Theme, value: string, item: T) => CellStyle;
@@ -84,6 +90,14 @@ export function jsonHint(): string {
   return expandHint('show full JSON');
 }
 
+export function shouldShowJson(
+  options: { expanded?: boolean },
+  context?: ResultRendererContext,
+): boolean {
+  registerLinearResultRenderer(context);
+  return options.expanded !== getDefaultJsonView();
+}
+
 export function expandedJson(result: AgentToolResult<any>, theme: Theme): Text {
   const body = scrubCredentials(textContent(result));
   return new Text(
@@ -91,6 +105,17 @@ export function expandedJson(result: AgentToolResult<any>, theme: Theme): Text {
     0,
     0,
   );
+}
+
+const DETAIL_LABEL_WIDTH = 12;
+
+export function detailLine(
+  theme: Theme,
+  label: string,
+  value: string,
+  style: CellStyle = (text) => theme.fg('toolOutput', text),
+): string {
+  return `  ${theme.fg('dim', label.padEnd(DETAIL_LABEL_WIDTH))}${style(value)}`;
 }
 
 /** Errors read as one sentence, never as a JSON envelope. */
@@ -146,32 +171,67 @@ export const dimStyle = (theme: Theme): CellStyle => (text) => theme.fg('dim', t
 export const mutedStyle = (theme: Theme): CellStyle => (text) => theme.fg('muted', text);
 export const outputStyle = (theme: Theme): CellStyle => (text) => theme.fg('toolOutput', text);
 
+type LaidOutColumn<T> = TableColumn<T> & { width: number };
+
+function preferredWidth<T>(column: TableColumn<T>, items: T[]): number {
+  let preferred = Math.max(column.minWidth, visibleWidth(column.label));
+  for (const item of items) {
+    preferred = Math.max(preferred, visibleWidth(cleanOneLine(column.value(item) || '—')));
+  }
+  return column.maxWidth == null ? preferred : Math.min(preferred, Math.max(column.minWidth, column.maxWidth));
+}
+
 function fitLayout<T>(
   width: number,
   columns: TableColumn<T>[],
+  items: T[],
   dropOrder: string[] | undefined,
-): { columns: TableColumn<T>[]; primaryWidth: number } | undefined {
+  primaryMinWidth = PRIMARY_MIN_WIDTH,
+): { columns: LaidOutColumn<T>[]; primaryWidth: number } | undefined {
   if (width < TABLE_MIN_WIDTH) return undefined;
+  const available = width - 2;
   const order = dropOrder ?? columns.map((column) => column.id).reverse();
   let visible = [...columns];
-  const primaryWidthFor = (candidates: TableColumn<T>[]) =>
-    width - candidates.reduce((sum, column) => sum + column.width, 0)
-      - TABLE_SEPARATOR.length * candidates.length - 2;
+  const minCost = (candidates: TableColumn<T>[]) =>
+    candidates.reduce((sum, column) => sum + column.minWidth, 0)
+    + TABLE_SEPARATOR.length * candidates.length
+    + primaryMinWidth;
 
-  let primaryWidth = primaryWidthFor(visible);
   for (const id of order) {
-    if (primaryWidth >= PRIMARY_MIN_WIDTH) break;
+    if (minCost(visible) <= available) break;
     visible = visible.filter((column) => column.id !== id);
-    primaryWidth = primaryWidthFor(visible);
   }
+  if (minCost(visible) > available) {
+    const fallbackCost = minCost(visible) - primaryMinWidth + FALLBACK_PRIMARY_MIN_WIDTH;
+    if (fallbackCost > available) return undefined;
+  }
+
+  const allocated = visible.map((column) => column.minWidth);
+  let extra = available
+    - allocated.reduce((sum, value) => sum + value, 0)
+    - TABLE_SEPARATOR.length * visible.length
+    - primaryMinWidth;
+  if (extra > 0) {
+    visible.forEach((column, index) => {
+      const grow = Math.min(Math.max(0, preferredWidth(column, items) - allocated[index]!), extra);
+      allocated[index] += grow;
+      extra -= grow;
+    });
+  }
+  const primaryWidth = available
+    - allocated.reduce((sum, value) => sum + value, 0)
+    - TABLE_SEPARATOR.length * visible.length;
   if (primaryWidth < FALLBACK_PRIMARY_MIN_WIDTH) return undefined;
-  return { columns: visible, primaryWidth };
+  return {
+    columns: visible.map((column, index) => ({ ...column, width: allocated[index]! })),
+    primaryWidth,
+  };
 }
 
 /**
- * Dense aligned rows: fixed metadata columns first, the naming column last and
- * filling the remaining width. Columns drop from the least informative end when
- * the terminal narrows, so identifiers and names survive every width.
+ * Dense aligned rows: metadata columns first, the naming column last.
+ * Columns grow to measured content, shrink to a semantic minimum, then drop
+ * by priority so identifiers and names survive every width.
  */
 export function renderTable<T>(
   items: T[],
@@ -184,7 +244,13 @@ export function renderTable<T>(
     fallback: (item: T, theme: Theme, width: number) => string;
   },
 ): string[] {
-  const layout = fitLayout(width, options.columns, options.dropOrder);
+  const layout = fitLayout(
+    width,
+    options.columns,
+    items,
+    options.dropOrder,
+    options.primary.minWidth ?? PRIMARY_MIN_WIDTH,
+  );
   if (!layout) return items.map((item) => options.fallback(item, theme, width));
 
   const header = [
