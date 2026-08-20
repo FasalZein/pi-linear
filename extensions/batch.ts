@@ -22,14 +22,15 @@ import {
   parameterShapes,
   type LinearOperation,
 } from './operations';
-import type { OperationPreparation } from './operation-types';
+import type { GraphQLDocumentVariant, OperationPreparation } from './operation-types';
 import {
   apiKeyForWorkspace,
   assertOperationAllowed,
   compactLinearResult,
+  validateMutationResult,
   type JsonObject,
 } from './runtime';
-import type { MutationMode } from './safety';
+import { assertMutationAllowed, type MutationMode } from './safety';
 
 export const BATCH_PURPOSE = 'Carry several independent named reads in one GraphQL request.';
 
@@ -42,7 +43,10 @@ export function batchHelp(): JsonObject {
   return {
     name: 'batch',
     purpose: BATCH_PURPOSE,
-    parameters: [{ name: 'reads', type: 'BatchEntry[]', required: true }],
+    parameters: [
+      { name: 'reads', type: 'BatchEntry[]', required: false },
+      { name: 'mutations', type: 'BatchEntry[]', required: false },
+    ],
     example: {
       operation: 'batch',
       variables: {
@@ -107,12 +111,14 @@ function validateVariables(
   );
 }
 
-type PlannedRead = {
+type PlannedEntry = {
   key: string;
   root: string;
   document: string;
   variables: Record<string, unknown>;
   prepared: OperationPreparation;
+  operationName: string;
+  variant?: GraphQLDocumentVariant;
 };
 
 function operationDefinition(document: DocumentNode): OperationDefinitionNode {
@@ -152,7 +158,11 @@ function aliasDocument(key: string, document: string): { ast: DocumentNode; root
   return { ast, root };
 }
 
-function mergeQueries(parts: readonly DocumentNode[]): string {
+function mergeDocuments(
+  operation: OperationTypeNode,
+  name: string,
+  parts: readonly DocumentNode[],
+): string {
   const variableDefinitions = [];
   const selections = [];
   for (const part of parts) {
@@ -164,35 +174,21 @@ function mergeQueries(parts: readonly DocumentNode[]): string {
     kind: Kind.DOCUMENT,
     definitions: [{
       kind: Kind.OPERATION_DEFINITION,
-      operation: OperationTypeNode.QUERY,
-      name: { kind: Kind.NAME, value: 'BatchRead' },
+      operation,
+      name: { kind: Kind.NAME, value: name },
       variableDefinitions,
       selectionSet: { kind: Kind.SELECTION_SET, selections },
     }],
   });
 }
 
-function parseEntries(variables: Record<string, unknown>): Array<{
-  key: string;
-  operation: string;
-  variables: Record<string, unknown>;
-}> {
-  const unknown = Object.keys(variables).filter((name) => name !== 'reads' && name !== 'mutations');
-  if (unknown.length) {
-    throw new Error(`Unknown batch field "${unknown[0]}". Send { "reads": [ { "key", "operation", "variables" } ] }.`);
-  }
-  const mutations = variables.mutations;
-  if (mutations !== undefined) {
-    if (!Array.isArray(mutations)) throw new Error('Batch mutations must be an array.');
-    if (mutations.length) throw new Error('Batch mutations are not implemented.');
-  }
-  const reads = variables.reads;
-  if (!Array.isArray(reads) || reads.length === 0) {
-    throw new Error('Batch reads must be a non-empty array.');
-  }
-  const seen = new Set<string>();
-  return reads.map((entry, index) => {
-    const record = asObject(entry, `Batch entry ${index}`);
+type RawEntry = { key: string; operation: string; variables: Record<string, unknown> };
+
+function parsePhase(value: unknown, label: string, seen: Set<string>): RawEntry[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) throw new Error(`Batch ${label} must be an array.`);
+  return value.map((entry, index) => {
+    const record = asObject(entry, `Batch ${label} entry ${index}`);
     const extra = Object.keys(record).filter((name) => name !== 'key' && name !== 'operation' && name !== 'variables');
     if (extra.length) throw new Error(`Unknown batch entry field "${extra[0]}".`);
     if (typeof record.key !== 'string' || !isAlias(record.key)) {
@@ -203,9 +199,25 @@ function parseEntries(variables: Record<string, unknown>): Array<{
     if (typeof record.operation !== 'string' || !record.operation.trim()) {
       throw new Error(`Batch entry "${record.key}" must name a GraphQL operation.`);
     }
-    const entryVariables = record.variables === undefined ? {} : asObject(record.variables, `Batch entry "${record.key}" variables`);
+    const entryVariables = record.variables === undefined
+      ? {}
+      : asObject(record.variables, `Batch entry "${record.key}" variables`);
     return { key: record.key, operation: record.operation, variables: entryVariables };
   });
+}
+
+function parseEntries(variables: Record<string, unknown>): { reads: RawEntry[]; mutations: RawEntry[] } {
+  const unknown = Object.keys(variables).filter((name) => name !== 'reads' && name !== 'mutations');
+  if (unknown.length) {
+    throw new Error(`Unknown batch field "${unknown[0]}". Send { "reads"?: BatchEntry[], "mutations"?: BatchEntry[] }.`);
+  }
+  const seen = new Set<string>();
+  const reads = parsePhase(variables.reads, 'reads', seen);
+  const mutations = parsePhase(variables.mutations, 'mutations', seen);
+  if (!reads.length && !mutations.length) {
+    throw new Error('Batch requires a non-empty reads or mutations array.');
+  }
+  return { reads, mutations };
 }
 
 async function localPrepare(
@@ -222,11 +234,123 @@ async function localPrepare(
       return await operation.prepare!('batch-local', variables, signal);
     } catch (error) {
       if (error instanceof PreparationLookup) {
-        throw new Error(`Batch entry "${key}" cannot fold its preparation lookups into one read request.`);
+        throw new Error(`Batch entry "${key}" cannot fold its preparation lookups into one GraphQL request.`);
       }
       throw error;
     }
   });
+}
+
+function objectAtPath(value: unknown, path: string): JsonObject | undefined {
+  let current: unknown = value;
+  for (const part of path.split('.')) {
+    if (!current || typeof current !== 'object' || Array.isArray(current)) return undefined;
+    current = (current as JsonObject)[part];
+  }
+  return current && typeof current === 'object' && !Array.isArray(current)
+    ? current as JsonObject
+    : undefined;
+}
+
+function assertNamedEntry(entry: RawEntry): LinearOperation {
+  if (FORBIDDEN_OPERATIONS.has(entry.operation)) {
+    throw new Error('Batch entries must be named GraphQL operations. help, batch, raw GraphQL, and local operations are not allowed.');
+  }
+  const operation = getOperation(entry.operation);
+  const definition = getOperationDefinition(entry.operation);
+  if (operation.executeLocal || definition.kind === 'local') {
+    throw new Error('Batch entries must be named GraphQL operations. help, batch, raw GraphQL, and local operations are not allowed.');
+  }
+  return operation;
+}
+
+async function planEntry(
+  entry: RawEntry,
+  expectedKind: 'query' | 'mutation',
+  mode: MutationMode,
+  signal: AbortSignal | undefined,
+): Promise<PlannedEntry> {
+  const operation = assertNamedEntry(entry);
+  const definition = getOperationDefinition(entry.operation);
+  if (definition.kind !== expectedKind) {
+    throw new Error(`Batch entry "${entry.key}" must be a ${expectedKind} operation.`);
+  }
+  assertOperationAllowed(operation, entry.variables, mode);
+  validateVariables(operation, entry.operation, entry.variables);
+  const prepared = await localPrepare(entry.key, operation, entry.variables, signal);
+  const document = prepared.variant?.document ?? operation.document;
+  if (!document) throw new Error(`Batch entry "${entry.key}" is missing a GraphQL document.`);
+  const { ast, root } = aliasDocument(entry.key, document);
+  return {
+    key: entry.key,
+    root,
+    document: print(ast),
+    variables: Object.fromEntries(
+      Object.entries(prepared.variables).map(([name, value]) => [`${entry.key}_${name}`, value]),
+    ),
+    prepared,
+    operationName: operation.name,
+    variant: prepared.variant ?? operation.variants?.[0],
+  };
+}
+
+function collectAlias(
+  entry: PlannedEntry,
+  raw: JsonObject,
+  pathErrors: ReturnType<typeof linearGraphQLErrors>,
+  data: JsonObject,
+  errors: Array<{ key: string; path: ReadonlyArray<string | number>; message: string }>,
+): void {
+  const scoped = pathErrors.filter((error) => error.path[0] === entry.key);
+  if (scoped.length) {
+    for (const error of scoped) errors.push({ key: entry.key, path: error.path, message: error.message });
+    return;
+  }
+  const value = raw[entry.key];
+  const mapped = { [entry.root]: value };
+  try {
+    if (value == null) throw new Error(`Batch entry "${entry.key}" returned no data.`);
+    if (entry.prepared.exactIssue) {
+      assertIssueNodeMatches(
+        entry.prepared.exactIssue.requested,
+        objectAtPath(mapped, entry.prepared.exactIssue.path) as never,
+      );
+    }
+    if (entry.prepared.exactNamed) {
+      assertNamedNodeMatches(
+        entry.prepared.exactNamed.kind,
+        entry.prepared.exactNamed.requested,
+        objectAtPath(mapped, entry.prepared.exactNamed.path) as never,
+      );
+    }
+    if (entry.variant?.mutationResult) validateMutationResult(entry.operationName, mapped, entry.variant);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    errors.push({ key: entry.key, path: [entry.key], message });
+    return;
+  }
+  data[entry.key] = mapped;
+}
+
+function envelope(
+  data: JsonObject,
+  errors: Array<{ key: string; path: ReadonlyArray<string | number>; message: string }>,
+  skipped: string[],
+  requests: { read: number; mutation: number },
+  aliases: number,
+): JsonObject {
+  const compact = compactLinearResult(data);
+  return {
+    data: compact.data,
+    errors,
+    skipped,
+    meta: {
+      requests,
+      aliases,
+      truncations: compact.meta.truncations,
+      stringsClipped: compact.meta.stringsClipped,
+    },
+  };
 }
 
 export async function executeBatch(
@@ -235,81 +359,61 @@ export async function executeBatch(
   ctx: ExtensionContext,
   signal: AbortSignal | undefined,
 ): Promise<JsonObject> {
-  const planned: PlannedRead[] = [];
-  for (const entry of parseEntries(params.variables ?? {})) {
-    if (FORBIDDEN_OPERATIONS.has(entry.operation)) {
-      throw new Error('Batch entries must be named GraphQL operations. help, batch, raw GraphQL, and local operations are not allowed.');
-    }
-    const operation = getOperation(entry.operation);
-    const definition = getOperationDefinition(entry.operation);
-    if (operation.executeLocal || definition.kind === 'local') {
-      throw new Error('Batch entries must be named GraphQL operations. help, batch, raw GraphQL, and local operations are not allowed.');
-    }
-    if (definition.kind !== 'query') {
-      throw new Error(`Batch entry "${entry.key}" must be a query operation.`);
-    }
-    assertOperationAllowed(operation, entry.variables, mode);
-    validateVariables(operation, entry.operation, entry.variables);
-    const prepared = await localPrepare(entry.key, operation, entry.variables, signal);
-    const document = prepared.variant?.document ?? operation.document;
-    if (!document) throw new Error(`Batch entry "${entry.key}" is missing a GraphQL document.`);
-    const { ast, root } = aliasDocument(entry.key, document);
-    planned.push({
-      key: entry.key,
-      root,
-      document: print(ast),
-      variables: Object.fromEntries(
-        Object.entries(prepared.variables).map(([name, value]) => [`${entry.key}_${name}`, value]),
-      ),
-      prepared,
+  const parsed = parseEntries(params.variables ?? {});
+  if (parsed.mutations.length > 1) {
+    const createOnly = parsed.mutations.every((entry) => {
+      const operation = getOperation(entry.operation);
+      const variants = operation.variants ?? [];
+      return variants.length === 1 && variants[0]?.root === 'issueCreate';
     });
+    if (createOnly) throw new Error('Transactional create support is not yet implemented.');
+    throw new Error('Batch permits one ordinary named mutation.');
   }
 
-  const query = mergeQueries(planned.map((entry) => parse(entry.document)));
-  const variables = Object.assign({}, ...planned.map((entry) => entry.variables));
+  const reads: PlannedEntry[] = [];
+  for (const entry of parsed.reads) reads.push(await planEntry(entry, 'query', mode, signal));
+  const mutations: PlannedEntry[] = [];
+  for (const entry of parsed.mutations) mutations.push(await planEntry(entry, 'mutation', mode, signal));
+
   const apiKey = await apiKeyForWorkspace(ctx, params.workspace);
-  const raw = await linearGraphQL<JsonObject>(apiKey, query, variables, signal);
-  const pathErrors = linearGraphQLErrors(raw);
   const data: JsonObject = {};
   const errors: Array<{ key: string; path: ReadonlyArray<string | number>; message: string }> = [];
+  let readRequests = 0;
+  let mutationRequests = 0;
 
-  for (const entry of planned) {
-    const scoped = pathErrors.filter((error) => error.path[0] === entry.key);
-    if (scoped.length) {
-      for (const error of scoped) errors.push({ key: entry.key, path: error.path, message: error.message });
-      continue;
-    }
-    const value = raw[entry.key];
-    try {
-      if (entry.prepared.exactIssue) {
-        assertIssueNodeMatches(entry.prepared.exactIssue.requested, value as never);
-      }
-      if (entry.prepared.exactNamed) {
-        assertNamedNodeMatches(
-          entry.prepared.exactNamed.kind,
-          entry.prepared.exactNamed.requested,
-          value as never,
-        );
-      }
-      if (value == null) throw new Error(`Batch entry "${entry.key}" returned no data.`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      errors.push({ key: entry.key, path: [entry.key], message });
-      continue;
-    }
-    data[entry.key] = { [entry.root]: value };
+  if (reads.length) {
+    const query = mergeDocuments(OperationTypeNode.QUERY, 'BatchRead', reads.map((entry) => parse(entry.document)));
+    const variables = Object.assign({}, ...reads.map((entry) => entry.variables));
+    const raw = await linearGraphQL<JsonObject>(apiKey, query, variables, signal);
+    readRequests = 1;
+    const pathErrors = linearGraphQLErrors(raw);
+    for (const entry of reads) collectAlias(entry, raw, pathErrors, data, errors);
   }
 
-  const compact = compactLinearResult(data);
-  return {
-    data: compact.data,
+  if (errors.length && mutations.length) {
+    return envelope(data, errors, mutations.map((entry) => entry.key), { read: readRequests, mutation: 0 }, reads.length + mutations.length);
+  }
+
+  if (mutations.length) {
+    const mutation = mutations[0]!;
+    const query = mergeDocuments(OperationTypeNode.MUTATION, 'BatchMutation', [parse(mutation.document)]);
+    assertMutationAllowed(query, mode, [mutation.root]);
+    const raw = await linearGraphQL<JsonObject>(
+      apiKey,
+      query,
+      mutation.variables,
+      signal,
+      { preserveUnusableRoot: true },
+    );
+    mutationRequests = 1;
+    collectAlias(mutation, raw, linearGraphQLErrors(raw), data, errors);
+  }
+
+  return envelope(
+    data,
     errors,
-    skipped: [],
-    meta: {
-      requests: { read: 1, mutation: 0 },
-      aliases: planned.length,
-      truncations: compact.meta.truncations,
-      stringsClipped: compact.meta.stringsClipped,
-    },
-  };
+    [],
+    { read: readRequests, mutation: mutationRequests },
+    reads.length + mutations.length,
+  );
 }

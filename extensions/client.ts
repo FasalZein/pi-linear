@@ -237,11 +237,14 @@ function retryDelay(response: Response): number {
   return Math.max(0, Date.parse(value) - Date.now());
 }
 
+export type LinearGraphQLOptions = { preserveUnusableRoot?: boolean };
+
 type LinearGraphQLFn = <TData>(
   apiKey: string,
   query: string,
   variables?: Record<string, unknown>,
   signal?: AbortSignal,
+  options?: LinearGraphQLOptions,
 ) => Promise<TData>;
 
 let graphqlOverride: LinearGraphQLFn | undefined;
@@ -261,8 +264,9 @@ export async function linearGraphQL<TData>(
   query: string,
   variables: Record<string, unknown> = {},
   signal?: AbortSignal,
+  options?: LinearGraphQLOptions,
 ): Promise<TData> {
-  if (graphqlOverride) return graphqlOverride(apiKey, query, variables, signal);
+  if (graphqlOverride) return graphqlOverride(apiKey, query, variables, signal, options);
   let response: Response;
   for (let attempt = 0; ; attempt++) {
     try {
@@ -296,7 +300,7 @@ export async function linearGraphQL<TData>(
     const data = body.data;
     if (data && typeof data === 'object') {
       const scoped = scopedPathErrors(body.errors, apiKey);
-      if (scoped && hasUsableRoot(data, scoped)) {
+      if (scoped && (hasUsableRoot(data, scoped) || options?.preserveUnusableRoot)) {
         Object.defineProperty(data, LINEAR_GRAPHQL_ERRORS, { value: scoped });
         return data;
       }

@@ -74,7 +74,10 @@ describe('batch help and catalog', () => {
     expect(result.details.name).toBe('batch');
     expect(result.details.loadedTools).toBeUndefined();
     expect(result.details.parameters).toEqual(
-      expect.arrayContaining([{ name: 'reads', type: 'BatchEntry[]', required: true }]),
+      expect.arrayContaining([
+        { name: 'reads', type: 'BatchEntry[]', required: false },
+        { name: 'mutations', type: 'BatchEntry[]', required: false },
+      ]),
     );
     expect(result.details.example).toMatchObject({ operation: 'batch' });
   });
@@ -190,10 +193,6 @@ describe('batch read phase', () => {
     await expect(batch([{ key: 'again', operation: 'batch', variables: { reads: [] } }])).rejects.toThrow(/named GraphQL/i);
     await expect(batch([{ key: 'local', operation: 'switch_workspace', variables: { name: 'main' } }])).rejects.toThrow(/local|named GraphQL/i);
     await expect(batch([{ key: 'write', operation: 'create_issue', variables: { title: 'X', team: 'AEO' } }])).rejects.toThrow(/query|mutation/i);
-    await expect(batch(
-      [{ key: 'one', operation: 'get_issue', variables: { issue: 'AEO-1' } }],
-      { mutations: [{ key: 'write', operation: 'create_issue', variables: { title: 'X', team: 'AEO' } }] },
-    )).rejects.toThrow(/mutation/i);
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -250,5 +249,197 @@ describe('batch read phase', () => {
     expect(result.details.data.issue).toEqual(issueNode(ISSUE_A, 'AEO-1'));
     expect(result.details).not.toHaveProperty('skipped');
     expect(result.details).not.toHaveProperty('errors');
+  });
+});
+
+describe('batch mutation phase', () => {
+  const updated = issueNode(ISSUE_A, 'AEO-1', 'New title');
+
+  function mutationEntry(key = 'edit') {
+    return { key, operation: 'update_issue', variables: { issue: 'AEO-1', title: 'New title' } };
+  }
+
+  it('runs a mutation-only batch as one mutation request', async () => {
+    const { requests } = graphqlStub((request) => {
+      expect(request.query).toMatch(/mutation/);
+      expect(request.query).toContain('edit: issueUpdate');
+      return { body: { data: { edit: { success: true, issue: updated } } } };
+    });
+
+    const result = await execute({
+      operation: 'batch',
+      variables: { mutations: [mutationEntry()] },
+    });
+
+    expect(requests).toHaveLength(1);
+    expect(result.details.data.edit).toEqual({ issueUpdate: { success: true, issue: updated } });
+    expect(result.details.errors).toEqual([]);
+    expect(result.details.skipped).toEqual([]);
+    expect(result.details.meta.requests).toEqual({ read: 0, mutation: 1 });
+  });
+
+  it('runs reads then one mutation when both phases succeed', async () => {
+    const { requests } = graphqlStub((request) => {
+      if (request.query.includes('issueUpdate')) {
+        return { body: { data: { edit: { success: true, issue: updated } } } };
+      }
+      return { body: { data: { one: issueNode(ISSUE_A, 'AEO-1') } } };
+    });
+
+    const result = await execute({
+      operation: 'batch',
+      variables: {
+        reads: [{ key: 'one', operation: 'get_issue', variables: { issue: 'AEO-1' } }],
+        mutations: [mutationEntry()],
+      },
+    });
+
+    expect(requests).toHaveLength(2);
+    expect(requests[0]!.query).toContain('one: issue');
+    expect(requests[1]!.query).toContain('edit: issueUpdate');
+    expect(result.details.data).toEqual({
+      one: { issue: issueNode(ISSUE_A, 'AEO-1') },
+      edit: { issueUpdate: { success: true, issue: updated } },
+    });
+    expect(result.details.skipped).toEqual([]);
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
+  });
+
+  it('skips the mutation when a read alias fails', async () => {
+    const { requests } = graphqlStub((request) => {
+      expect(request.query).not.toMatch(/mutation/);
+      return {
+        body: {
+          data: { ready: issueNode(ISSUE_A, 'AEO-1'), missing: null },
+          errors: [{ message: 'Entity not found: Issue', path: ['missing'] }],
+        },
+      };
+    });
+
+    const result = await execute({
+      operation: 'batch',
+      variables: {
+        reads: [
+          { key: 'ready', operation: 'get_issue', variables: { issue: 'AEO-1' } },
+          { key: 'missing', operation: 'get_issue', variables: { issue: 'AEO-2' } },
+        ],
+        mutations: [mutationEntry()],
+      },
+    });
+
+    expect(requests).toHaveLength(1);
+    expect(result.details.data).toEqual({ ready: { issue: issueNode(ISSUE_A, 'AEO-1') } });
+    expect(result.details.errors).toEqual([
+      { key: 'missing', path: ['missing'], message: 'Entity not found: Issue' },
+    ]);
+    expect(result.details.skipped).toEqual(['edit']);
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 0 });
+  });
+
+  it('rejects mutations in read-only mode before network access', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = 'test-key';
+    await expect(execute({
+      operation: 'batch',
+      variables: { mutations: [mutationEntry()] },
+    }, 'readonly')).rejects.toThrow(/read-only/i);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects destructive named input before network access', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = 'test-key';
+    await expect(execute({
+      operation: 'batch',
+      variables: {
+        mutations: [{
+          key: 'edit',
+          operation: 'update_issue',
+          variables: { issue: 'AEO-1', input: { title: 'New title', trashed: true } },
+        }],
+      },
+    })).rejects.toThrow(/trashed|destructive/i);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects a mutation whose prepare would call Linear', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = 'test-key';
+    await expect(execute({
+      operation: 'batch',
+      variables: {
+        mutations: [{ key: 'write', operation: 'create_issue', variables: { title: 'X', team: 'AEO' } }],
+      },
+    })).rejects.toThrow(/preparation|fold/i);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects two mutations and create-only transaction sets before network access', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = 'test-key';
+    await expect(execute({
+      operation: 'batch',
+      variables: {
+        mutations: [mutationEntry('one'), mutationEntry('two')],
+      },
+    })).rejects.toThrow(/one ordinary named mutation/i);
+    await expect(execute({
+      operation: 'batch',
+      variables: {
+        mutations: [
+          { key: 'a', operation: 'create_issue', variables: { title: 'A', team: 'AEO' } },
+          { key: 'b', operation: 'create_issue', variables: { title: 'B', team: 'AEO' } },
+        ],
+      },
+    })).rejects.toThrow(/Transactional create support is not yet implemented/);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('keeps successful reads when the mutation alias has a path error', async () => {
+    const { requests } = graphqlStub((request) => {
+      if (request.query.includes('issueUpdate')) {
+        return {
+          body: {
+            data: { edit: null },
+            errors: [{ message: 'Issue not found', path: ['edit'] }],
+          },
+        };
+      }
+      return { body: { data: { one: issueNode(ISSUE_A, 'AEO-1') } } };
+    });
+
+    const result = await execute({
+      operation: 'batch',
+      variables: {
+        reads: [{ key: 'one', operation: 'get_issue', variables: { issue: 'AEO-1' } }],
+        mutations: [mutationEntry()],
+      },
+    });
+
+    expect(requests).toHaveLength(2);
+    expect(result.details.data).toEqual({ one: { issue: issueNode(ISSUE_A, 'AEO-1') } });
+    expect(result.details.errors).toEqual([
+      { key: 'edit', path: ['edit'], message: 'Issue not found' },
+    ]);
+    expect(result.details.skipped).toEqual([]);
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
+  });
+
+  it('preserves mutation transport failures', async () => {
+    graphqlStub((request) => {
+      if (request.query.includes('issueUpdate')) return { throw: new Error('socket closed') };
+      return { body: { data: { one: issueNode(ISSUE_A, 'AEO-1') } } };
+    });
+    await expect(execute({
+      operation: 'batch',
+      variables: {
+        reads: [{ key: 'one', operation: 'get_issue', variables: { issue: 'AEO-1' } }],
+        mutations: [mutationEntry()],
+      },
+    })).rejects.toThrow('Linear network error: socket closed');
   });
 });
