@@ -287,12 +287,23 @@ export function wrapped(text: string, indent = 0): WrappedLine {
 }
 
 function renderBlockLines(lines: Array<string | WrappedLine>, width: number): string[] {
-  return lines.flatMap((line) => {
-    if (typeof line === 'string') return truncateToWidth(scrubCredentials(line), width, '…');
-    const indent = Math.min(line.indent ?? 0, Math.max(0, width - 1));
-    return wrapTextWithAnsi(scrubCredentials(line.text), Math.max(1, width - indent))
-      .map((part) => `${' '.repeat(indent)}${part}`);
-  });
+  return lines
+    .flatMap((line) => {
+      if (typeof line === 'string') return truncateToWidth(scrubCredentials(line), width, '…');
+      const indent = Math.min(line.indent ?? 0, Math.max(0, width - 1));
+      return wrapTextWithAnsi(scrubCredentials(line.text), Math.max(1, width - indent))
+        .map((part) => `${' '.repeat(indent)}${part}`);
+    })
+    .map((line) => flattenLineBreaks(line, width));
+}
+
+/**
+ * Final defence for the component contract: each render(width) entry is one line
+ * within width, so a stray CR or LF is flattened and the row re-clipped.
+ */
+function flattenLineBreaks(line: string, width: number): string {
+  if (!/\r|\n/.test(line)) return line;
+  return truncateToWidth(line.replace(/[\r\n]+/g, ' '), width, '…');
 }
 
 /**
@@ -362,10 +373,11 @@ export function formatToolArgValue(value: unknown): string | undefined {
   // null is a request to clear a field, not an absent argument: it must be visible.
   if (value === null) return 'null';
   if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed) return undefined;
-    const clipped = truncate(scrubCredentials(trimmed), TOOL_ARG_STRING_LIMIT);
-    return trimmed.includes(' ') ? `"${clipped}"` : clipped;
+    // Call rows are one line: collapse multiline whitespace before quoting and clipping.
+    const collapsed = cleanOneLine(value);
+    if (!collapsed) return undefined;
+    const clipped = truncate(scrubCredentials(collapsed), TOOL_ARG_STRING_LIMIT);
+    return collapsed.includes(' ') ? `"${clipped}"` : clipped;
   }
   if (typeof value === 'number') return String(value);
   if (typeof value === 'boolean') return value ? 'true' : 'false';
