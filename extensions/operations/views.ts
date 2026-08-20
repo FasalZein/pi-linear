@@ -1,5 +1,5 @@
 import { resolveTeamReference } from "../client";
-import { VIEW_SELECTION } from "../selections";
+import { projection } from "../selections";
 import {
 	mergedInput,
 	p,
@@ -44,7 +44,7 @@ export const views: readonly OperationDefinition[] = ([
 		},
 		domain: "views",
 		root: "customViews",
-		selection: VIEW_SELECTION,
+		selection: projection("view", "list"),
 		purpose: "List custom views.",
 		pageSize: 50,
 		filterType: "CustomViewFilter",
@@ -73,7 +73,7 @@ export const views: readonly OperationDefinition[] = ([
 		purpose: "Get a custom view.",
 		parameters: [p("id", "String", true)],
 		example: { operation: "get_view", variables: { id: "view-id" } },
-		document: getDocument("GetView", "customView", VIEW_SELECTION),
+		document: getDocument("GetView", "customView", projection("view", "detail")),
 		async prepare(_k, v) {
 			return { variables: { id: v.id } };
 		},
@@ -111,7 +111,7 @@ export const views: readonly OperationDefinition[] = ([
 			"Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData.",
 		root: "customViewCreate",
 		inputType: "CustomViewCreateInput",
-		selection: `customView { ${VIEW_SELECTION} }`,
+		selection: `customView { ${projection("view", "detail")} }`,
 		parameters: [
 			p("name", "String", true),
 			p("filterData", "Object"),
@@ -213,7 +213,7 @@ export const views: readonly OperationDefinition[] = ([
 		purpose: "Update a custom view.",
 		root: "customViewUpdate",
 		inputType: "CustomViewUpdateInput",
-		selection: `customView { ${VIEW_SELECTION} }`,
+		selection: `customView { ${projection("view", "detail")} }`,
 		parameters: [p("id", "String", true), input],
 		acceptedParameters: [
 			"id",

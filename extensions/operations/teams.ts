@@ -1,5 +1,5 @@
 import { resolveTeamReference } from "../client";
-import { TEAM_SELECTION } from "../selections";
+import { projection } from "../selections";
 import { p } from "../operation-types";
 import type {
 	LinearOperation,
@@ -39,7 +39,7 @@ export const teams: readonly OperationDefinition[] = ([
 		},
 		domain: "teams",
 		root: "teams",
-		selection: `${TEAM_SELECTION} states(first: 50) { nodes { id name type } }`,
+		selection: projection("team", "list"),
 		purpose: "List teams and workflow states.",
 		pageSize: 50,
 		filterType: "TeamFilter",
@@ -74,7 +74,7 @@ export const teams: readonly OperationDefinition[] = ([
 		parameters: [p("team", "TeamReference", true)],
 		legacyParameters: [[p("teamId", "String", true)]],
 		example: { operation: "get_team", variables: { team: "AEO" } },
-		document: getDocument("GetTeam", "team", TEAM_SELECTION),
+		document: getDocument("GetTeam", "team", projection("team", "detail")),
 		resolverPaths: { team: "resolveTeamReference" },
 		async prepare(k, v, s) {
 			const x = await resolveTeamReference(k, String(v.team ?? v.teamId), s);

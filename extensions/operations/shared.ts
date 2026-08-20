@@ -3,7 +3,7 @@ import {
 	resolveNamedEntityReference,
 	type ResolvedIssue,
 } from "../client";
-import { PAGE_INFO } from "../selections";
+import { projection } from "../selections";
 import {
 	compactObject,
 	mergedInput,
@@ -141,7 +141,7 @@ function listDocument(
   ) {
     ${root}(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy
       ${options.filterType ? "filter: $filter" : ""} ${options.sortType ? "sort: $sort" : ""} ${options.extraArgs ?? ""}) {
-      nodes { ${selection} } ${PAGE_INFO}
+      nodes { ${selection} } ${projection("pageInfo", "list")}
     }
   }`;
 }

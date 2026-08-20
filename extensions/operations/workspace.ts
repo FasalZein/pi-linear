@@ -1,5 +1,5 @@
 import { switchWorkspace } from "../client";
-import { WORKFLOW_STATE_SELECTION } from "../selections";
+import { projection } from "../selections";
 import { p } from "../operation-types";
 import type {
 	LinearOperation,
@@ -39,7 +39,7 @@ export const issueStatuses: readonly OperationDefinition[] = ([
 		},
 		domain: "workspace",
 		root: "workflowStates",
-		selection: WORKFLOW_STATE_SELECTION,
+		selection: projection("workflowState", "list"),
 		purpose: "List issue workflow states.",
 		pageSize: 50,
 		filterType: "WorkflowStateFilter",

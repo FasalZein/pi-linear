@@ -2,7 +2,7 @@ import {
 	resolveNamedEntityReference,
 	resolveTeamReference,
 } from "../client";
-import { CYCLE_SELECTION } from "../selections";
+import { projection } from "../selections";
 import {
 	mergeFilters,
 	mergedInput,
@@ -52,7 +52,7 @@ export const cycles: readonly OperationDefinition[] = ([
 		},
 		domain: "cycles",
 		root: "cycles",
-		selection: CYCLE_SELECTION,
+		selection: projection("cycle", "list"),
 		purpose: "List cycles.",
 		pageSize: 50,
 		filterType: "CycleFilter",
@@ -111,7 +111,7 @@ export const cycles: readonly OperationDefinition[] = ([
 		parameters: [p("cycle", "CycleReference", true)],
 		legacyParameters: [[p("id", "String", true)]],
 		example: { operation: "get_cycle", variables: { cycle: "Cycle 12" } },
-		document: getDocument("GetCycle", "cycle", CYCLE_SELECTION),
+		document: getDocument("GetCycle", "cycle", projection("cycle", "detail")),
 		resolverPaths: { cycle: "resolveNamedEntityReference" },
 		async prepare(k, v, s) {
 			const x = await resolveNamedEntityReference(
@@ -176,7 +176,7 @@ export const cycles: readonly OperationDefinition[] = ([
 		purpose: "Create a cycle.",
 		root: "cycleCreate",
 		inputType: "CycleCreateInput",
-		selection: `cycle { ${CYCLE_SELECTION} }`,
+		selection: `cycle { ${projection("cycle", "detail")} }`,
 		parameters: [
 			p("team", "TeamReference", true),
 			p("startsAt", "DateTime", true),
@@ -275,7 +275,7 @@ export const cycles: readonly OperationDefinition[] = ([
 		purpose: "Update a cycle.",
 		root: "cycleUpdate",
 		inputType: "CycleUpdateInput",
-		selection: `cycle { ${CYCLE_SELECTION} }`,
+		selection: `cycle { ${projection("cycle", "detail")} }`,
 		parameters: [
 			p("id", "String", true),
 			p("name"),

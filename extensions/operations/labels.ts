@@ -1,8 +1,5 @@
 import { resolveTeamReference } from "../client";
-import {
-	ISSUE_LABEL_SELECTION,
-	PROJECT_LABEL_SELECTION,
-} from "../selections";
+import { projection } from "../selections";
 import {
 	compactObject,
 	mergeFilters,
@@ -29,14 +26,14 @@ import {
 const createIssueLabelDocument = `mutation CreateIssueLabel($input: IssueLabelCreateInput!, $replaceTeamLabels: Boolean) {
   issueLabelCreate(input: $input, replaceTeamLabels: $replaceTeamLabels) {
     success
-    issueLabel { ${ISSUE_LABEL_SELECTION} }
+    issueLabel { ${projection("issueLabel", "detail")} }
   }
 }`;
 
 const updateIssueLabelDocument = `mutation UpdateIssueLabel($id: String!, $input: IssueLabelUpdateInput!, $replaceTeamLabels: Boolean) {
   issueLabelUpdate(id: $id, input: $input, replaceTeamLabels: $replaceTeamLabels) {
     success
-    issueLabel { ${ISSUE_LABEL_SELECTION} }
+    issueLabel { ${projection("issueLabel", "detail")} }
   }
 }`;
 
@@ -67,7 +64,7 @@ export const issueLabels: readonly OperationDefinition[] = ([
 		},
 		domain: "labels",
 		root: "issueLabels",
-		selection: ISSUE_LABEL_SELECTION,
+		selection: projection("issueLabel", "list"),
 		purpose: "List issue labels.",
 		pageSize: 50,
 		filterType: "IssueLabelFilter",
@@ -134,7 +131,7 @@ export const issueLabels: readonly OperationDefinition[] = ([
 		purpose: "Create an issue label.",
 		root: "issueLabelCreate",
 		inputType: "IssueLabelCreateInput",
-		selection: `issueLabel { ${ISSUE_LABEL_SELECTION} }`,
+		selection: `issueLabel { ${projection("issueLabel", "detail")} }`,
 		document: createIssueLabelDocument,
 		parameters: [p("name", "String", true), p("team", "TeamReference"), input],
 		acceptedParameters: [
@@ -245,7 +242,7 @@ export const issueLabels: readonly OperationDefinition[] = ([
 		purpose: "Update an issue label.",
 		root: "issueLabelUpdate",
 		inputType: "IssueLabelUpdateInput",
-		selection: `issueLabel { ${ISSUE_LABEL_SELECTION} }`,
+		selection: `issueLabel { ${projection("issueLabel", "detail")} }`,
 		document: updateIssueLabelDocument,
 		parameters: [p("id", "String", true), input],
 		acceptedParameters: [
@@ -304,7 +301,7 @@ export const projectLabels: readonly OperationDefinition[] = ([
 		},
 		domain: "labels",
 		root: "projectLabels",
-		selection: PROJECT_LABEL_SELECTION,
+		selection: projection("projectLabel", "list"),
 		purpose: "List project labels.",
 		pageSize: 50,
 		filterType: "ProjectLabelFilter",
@@ -341,7 +338,7 @@ export const projectLabels: readonly OperationDefinition[] = ([
 		purpose: "Create a project label.",
 		root: "projectLabelCreate",
 		inputType: "ProjectLabelCreateInput",
-		selection: `projectLabel { ${PROJECT_LABEL_SELECTION} }`,
+		selection: `projectLabel { ${projection("projectLabel", "detail")} }`,
 		parameters: [p("name", "String", true), input],
 		acceptedParameters: [
 			"name",
@@ -414,7 +411,7 @@ export const projectLabels: readonly OperationDefinition[] = ([
 		purpose: "Update a project label.",
 		root: "projectLabelUpdate",
 		inputType: "ProjectLabelUpdateInput",
-		selection: `projectLabel { ${PROJECT_LABEL_SELECTION} }`,
+		selection: `projectLabel { ${projection("projectLabel", "detail")} }`,
 		parameters: [p("id", "String", true), input],
 		acceptedParameters: [
 			"id",

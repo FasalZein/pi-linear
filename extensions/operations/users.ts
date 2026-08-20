@@ -1,5 +1,5 @@
 import { resolveUserReference } from "../client";
-import { USER_SELECTION } from "../selections";
+import { projection } from "../selections";
 import { p } from "../operation-types";
 import type {
 	LinearOperation,
@@ -44,7 +44,7 @@ export const users: readonly OperationDefinition[] = ([
 		},
 		domain: "users",
 		root: "users",
-		selection: USER_SELECTION,
+		selection: projection("user", "list"),
 		purpose: "List users.",
 		pageSize: 50,
 		filterType: "UserFilter",
@@ -85,7 +85,7 @@ export const users: readonly OperationDefinition[] = ([
 		parameters: [p("user", "UserReference", true)],
 		legacyParameters: [[p("userId", "String", true)]],
 		example: { operation: "get_user", variables: { user: "me" } },
-		document: getDocument("GetUser", "user", USER_SELECTION),
+		document: getDocument("GetUser", "user", projection("user", "detail")),
 		resolverPaths: { user: "resolveUserReference" },
 		async prepare(k, v, s) {
 			const x = await resolveUserReference(k, String(v.user ?? v.userId), s);

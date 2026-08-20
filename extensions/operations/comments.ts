@@ -1,5 +1,5 @@
 import { resolveIssueReference } from "../client";
-import { COMMENT_SELECTION } from "../selections";
+import { projection } from "../selections";
 import {
 	compactObject,
 	mergeFilters,
@@ -103,7 +103,7 @@ function validateCommentUpdateSemantics(variables: Record<string, unknown>): voi
 const updateCommentDocument = `mutation UpdateComment($id: String!, $input: CommentUpdateInput!, $skipEditedAt: Boolean) {
   commentUpdate(id: $id, input: $input, skipEditedAt: $skipEditedAt) {
     success
-    comment { ${COMMENT_SELECTION} }
+    comment { ${projection("comment", "detail")} }
   }
 }`;
 
@@ -141,7 +141,7 @@ export const comments: readonly OperationDefinition[] = ([
 		},
 		domain: "comments",
 		root: "comments",
-		selection: COMMENT_SELECTION,
+		selection: projection("comment", "list"),
 		purpose: "List comments, optionally for one exact issue.",
 		pageSize: 20,
 		filterType: "CommentFilter",
@@ -306,7 +306,7 @@ export const comments: readonly OperationDefinition[] = ([
 		purpose: "Create a comment on an issue or another supported target.",
 		root: "commentCreate",
 		inputType: "CommentCreateInput",
-		selection: `comment { ${COMMENT_SELECTION} }`,
+		selection: `comment { ${projection("comment", "detail")} }`,
 		parameters: [p("issue", "IssueReference"), p("body", "String")],
 		acceptedParameters: [p("issue"), ...commentCreateInput, input],
 		example: { issue: "AEO-258", body: "Comment text" },
@@ -395,7 +395,7 @@ export const comments: readonly OperationDefinition[] = ([
 		purpose: "Update a comment by id.",
 		root: "commentUpdate",
 		inputType: "CommentUpdateInput",
-		selection: `comment { ${COMMENT_SELECTION} }`,
+		selection: `comment { ${projection("comment", "detail")} }`,
 		document: updateCommentDocument,
 		parameters: [p("id", "String", true), ...commentUpdateInput, input],
 		example: { id: "comment-id", body: "Updated text" },
