@@ -3,11 +3,11 @@
  *
  * Every per-operation decision — compatibility branches, named semantic exceptions,
  * render kind, target fields, empty states, local result
- * expectations — is authored beside the operation in `extensions/operations.ts`.
+ * expectations — is authored beside the operation in `extensions/operations/`.
  * Runtime compatibility, generated contracts, help, and tests project from there.
  *
  * A second authority is always a catalog: a module that enumerates operations by name.
- * These checks fail when any module other than the source file enumerates two or more
+ * These checks fail when any module other than the source directory enumerates two or more
  * operation names, which is the smallest shape an operation-keyed catalog can take.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
@@ -16,7 +16,7 @@ import { describe, expect, it } from 'vitest';
 import contracts from '../extensions/generated/operation-contracts.json';
 import { getOperationDefinition, operationDefinitions, operations } from '../extensions/operations';
 
-const SOURCE_FILE = join('extensions', 'operations.ts');
+const SOURCE_DIR = join('extensions', 'operations');
 const names = operationDefinitions.map(({ name }) => name);
 
 function sourceFiles(directory: string): string[] {
@@ -27,14 +27,18 @@ function sourceFiles(directory: string): string[] {
   });
 }
 
+function isOperationSource(path: string): boolean {
+  return path === SOURCE_DIR || path.startsWith(`${SOURCE_DIR}/`);
+}
+
 describe('no second operation-keyed authority', () => {
   it('removed the authored compatibility catalog module', () => {
     expect(existsSync(join('extensions', 'definition-compatibility.ts'))).toBe(false);
   });
 
-  it('keeps every operation-name enumeration inside the source file', () => {
+  it('keeps every operation-name enumeration inside the source directory', () => {
     const offenders = sourceFiles('extensions')
-      .filter((path) => path !== SOURCE_FILE)
+      .filter((path) => !isOperationSource(path))
       .map((path) => {
         const text = readFileSync(path, 'utf8');
         return { path, hits: names.filter((name) => new RegExp(`\\b${name}\\b`).test(text)) };
@@ -43,8 +47,11 @@ describe('no second operation-keyed authority', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('authors every per-operation override in the source file', () => {
-    const source = readFileSync(SOURCE_FILE, 'utf8');
+  it('authors every per-operation override in the source directory', () => {
+    const source = sourceFiles(SOURCE_DIR)
+      .filter((path) => !path.endsWith(`${join('operations', 'index.ts')}`) && !path.endsWith(`${join('operations', 'shared.ts')}`))
+      .map((path) => readFileSync(path, 'utf8'))
+      .join('\n');
     for (const keyword of [
       'compatibilityBranches:',
       'semanticException:',
