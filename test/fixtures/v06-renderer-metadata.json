@@ -327,6 +327,7 @@
   "list_issues": {
     "entityKind": "issue",
     "callFields": [
+      "issues",
       "query",
       "team",
       "state",

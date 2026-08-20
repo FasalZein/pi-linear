@@ -1,5 +1,6 @@
 import {
 	isIssueIdentifier,
+	parseIssueReferenceSet,
 	requireIssueReference,
 	resolveIssueReference,
 	resolveStateIdReference,
@@ -120,6 +121,7 @@ export const issues: readonly OperationDefinition[] = ([
 		renderEmpty: workspaceEmpty("issues", "issue"),
 		canonical: {
 			"fields": {
+				"issues": "[IssueReference!]",
 				"query": "String",
 				"team": "TeamReference",
 				"state": "StateReference",
@@ -149,6 +151,7 @@ export const issues: readonly OperationDefinition[] = ([
 		sortKeys: ISSUE_SORT_KEYS,
 		example: { assignee: "me", stateType: "started" },
 		parameters: [
+			p("issues", "[IssueReference!]"),
 			p("query"),
 			p("team", "TeamReference"),
 			p("state", "StateReference"),
@@ -156,6 +159,7 @@ export const issues: readonly OperationDefinition[] = ([
 			p("assignee", "UserReference"),
 		],
 		acceptedParameters: [
+			p("issues"),
 			p("query"),
 			p("team"),
 			p("teamId"),
@@ -175,6 +179,7 @@ export const issues: readonly OperationDefinition[] = ([
 			assignee: "resolveUserReference",
 		},
 		validateVariables(variables) {
+			if (variables.issues !== undefined) parseIssueReferenceSet(variables.issues);
 			const state = variables.state ?? variables.stateName;
 			if (state === undefined) return;
 			if (typeof state !== "string" || !state.trim()) {
@@ -193,6 +198,8 @@ export const issues: readonly OperationDefinition[] = ([
 			}
 		},
 		prepare: async (k, v, s) => {
+			const issueIds =
+				v.issues !== undefined ? parseIssueReferenceSet(v.issues) : undefined;
 			const teamRef = v.team ?? v.teamKey ?? v.teamId;
 			const team = teamRef
 				? await resolveTeamReference(k, String(teamRef), s)
@@ -212,6 +219,7 @@ export const issues: readonly OperationDefinition[] = ([
 					.id;
 			}
 			const convenience = compactObject({
+				id: issueIds ? { in: issueIds } : undefined,
 				title: v.query ? { containsIgnoreCase: v.query } : undefined,
 				team: team ? { id: { eq: team.id } } : undefined,
 				state: stateId

@@ -307,6 +307,30 @@ export function requireIssueReference(value: string): string {
   throw new Error(`Invalid Linear issue reference "${reference}". Use TEAM-123 or a UUID.`);
 }
 
+export function parseIssueReferenceSet(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    throw new Error('issues must be an array of issue identifiers or UUIDs.');
+  }
+  if (!value.length) {
+    throw new Error('issues must contain at least one issue identifier or UUID.');
+  }
+  const seen = new Set<string>();
+  const references: string[] = [];
+  for (const item of value) {
+    if (typeof item !== 'string') {
+      throw new Error('issues must be an array of issue identifiers or UUIDs.');
+    }
+    const reference = requireIssueReference(item);
+    const key = reference.toLowerCase();
+    if (seen.has(key)) {
+      throw new Error(`Duplicate Linear issue reference "${item}".`);
+    }
+    seen.add(key);
+    references.push(reference);
+  }
+  return references;
+}
+
 export function assertIssueNodeMatches(
   requested: string,
   issue: { id?: unknown; identifier?: unknown; team?: { id?: unknown; key?: unknown } | null } | null | undefined,

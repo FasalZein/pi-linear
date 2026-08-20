@@ -6,6 +6,7 @@ import { typedToolName } from './tool-names';
 
 const REFERENCE_HINTS: Record<string, string> = {
   IssueReference: 'Issue identifier such as ABC-123, or an issue UUID.',
+  '[IssueReference!]': 'One or more issue identifiers such as ABC-123, or issue UUIDs.',
   TeamReference: 'Team key such as ABC, exact team name, or a team UUID.',
   StateReference: 'Workflow state name, or a state UUID.',
   UserReference: 'User email, exact name, display name, "me", or a user UUID.',
@@ -150,6 +151,8 @@ function schemaFor(type: string): TSchema {
       return Type.String({ ...options, pattern: UUID_PATTERN });
     case '[UUID!]':
       return Type.Array(Type.String({ pattern: UUID_PATTERN }), { ...options, minItems: 1 });
+    case '[IssueReference!]':
+      return Type.Array(Type.String({ minLength: 1 }), { ...options, minItems: 1 });
     case 'Preferences':
       return { ...PREFERENCES, ...options } as TSchema;
     case '[ID!]':
