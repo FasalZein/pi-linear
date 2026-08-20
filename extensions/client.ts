@@ -163,12 +163,47 @@ export async function resolveApiKey(
   return { source: 'none' };
 }
 
-type LinearGraphQLError = {
+type GraphQLErrorBody = {
   message?: string;
+  path?: ReadonlyArray<string | number>;
   extensions?: Record<string, unknown>;
 };
 
-function errorText(error: LinearGraphQLError): string {
+export type LinearGraphQLPathError = {
+  path: ReadonlyArray<string | number>;
+  message: string;
+};
+
+const LINEAR_GRAPHQL_ERRORS = Symbol('linearGraphQLErrors');
+
+export function linearGraphQLErrors(data: unknown): readonly LinearGraphQLPathError[] {
+  if (!data || typeof data !== 'object') return [];
+  return (data as { [LINEAR_GRAPHQL_ERRORS]?: readonly LinearGraphQLPathError[] })[LINEAR_GRAPHQL_ERRORS] ?? [];
+}
+
+function errorPath(error: GraphQLErrorBody): ReadonlyArray<string | number> | undefined {
+  const path = error.path;
+  if (!Array.isArray(path) || path.length === 0) return undefined;
+  if (!path.every((entry) => typeof entry === 'string' || typeof entry === 'number')) return undefined;
+  return path;
+}
+
+function scopedPathErrors(errors: GraphQLErrorBody[], apiKey: string): LinearGraphQLPathError[] | undefined {
+  const scoped: LinearGraphQLPathError[] = [];
+  for (const error of errors) {
+    const path = errorPath(error);
+    if (!path) return undefined;
+    scoped.push({ path, message: redactText(errorText(error), [apiKey]) });
+  }
+  return scoped;
+}
+
+function hasUsableRoot(data: object, errors: readonly LinearGraphQLPathError[]): boolean {
+  const failed = new Set(errors.map((error) => error.path[0]));
+  return Object.entries(data).some(([key, value]) => value != null || !failed.has(key));
+}
+
+function errorText(error: GraphQLErrorBody): string {
   const extensions = error.extensions ?? {};
   const presentable = asString(extensions.userPresentableMessage);
   if (presentable) return presentable;
@@ -224,7 +259,7 @@ export async function linearGraphQL<TData>(
     await new Promise((resolve) => setTimeout(resolve, retryDelay(response)));
   }
 
-  let body: { data?: TData; errors?: LinearGraphQLError[] } = {};
+  let body: { data?: TData; errors?: GraphQLErrorBody[] } = {};
   try {
     body = (await response.json()) as typeof body;
   } catch {
@@ -236,7 +271,17 @@ export async function linearGraphQL<TData>(
     const status = redactText(`${response.status} ${response.statusText}`, [apiKey]);
     throw new Error(`Linear API request failed: ${detail || status}`);
   }
-  if (body.errors?.length) throw new Error(`Linear GraphQL error: ${detail}`);
+  if (body.errors?.length) {
+    const data = body.data;
+    if (data && typeof data === 'object') {
+      const scoped = scopedPathErrors(body.errors, apiKey);
+      if (scoped && hasUsableRoot(data, scoped)) {
+        Object.defineProperty(data, LINEAR_GRAPHQL_ERRORS, { value: scoped });
+        return data;
+      }
+    }
+    throw new Error(`Linear GraphQL error: ${detail}`);
+  }
   if (!body.data) throw new Error('Linear GraphQL response did not include data.');
   return body.data;
 }

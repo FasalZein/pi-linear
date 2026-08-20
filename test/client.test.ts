@@ -10,6 +10,7 @@ import {
   switchWorkspace,
   setAuthPreference,
   linearGraphQL,
+  linearGraphQLErrors,
   resolveIssueReference,
   resolveTeamReference,
   resolveStateReference,
@@ -238,6 +239,160 @@ describe('linearGraphQL error surfacing', () => {
 
     await expect(linearGraphQL('key', 'query { viewer { id } }')).resolves.toEqual({ viewer: { id: 'user-1' } });
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps a successful root alias when a sibling path fails', async () => {
+    stubFetch({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      body: {
+        data: {
+          ready: { id: 'issue-1', title: 'Ready' },
+          missing: null,
+        },
+        errors: [{ message: 'Entity not found: Issue', path: ['missing'] }],
+      },
+    });
+
+    const data = await linearGraphQL('key', 'query { ready: issue { id title } missing: issue { id } }');
+    expect(data).toEqual({
+      ready: { id: 'issue-1', title: 'Ready' },
+      missing: null,
+    });
+    expect(linearGraphQLErrors(data)).toEqual([{ path: ['missing'], message: 'Entity not found: Issue' }]);
+  });
+
+  it('maps multiple path errors without dropping a successful sibling', async () => {
+    stubFetch({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      body: {
+        data: {
+          ready: { id: 'issue-1' },
+          missing: null,
+          forbidden: null,
+        },
+        errors: [
+          { message: 'Entity not found: Issue', path: ['missing'] },
+          { message: 'You cannot view that issue', path: ['forbidden'] },
+        ],
+      },
+    });
+
+    const data = await linearGraphQL('key', 'query { ready: issue { id } missing: issue { id } forbidden: issue { id } }');
+    expect(data).toEqual({
+      ready: { id: 'issue-1' },
+      missing: null,
+      forbidden: null,
+    });
+    expect(linearGraphQLErrors(data)).toEqual([
+      { path: ['missing'], message: 'Entity not found: Issue' },
+      { path: ['forbidden'], message: 'You cannot view that issue' },
+    ]);
+  });
+
+  it('keeps a sibling alias when nested non-null failure nulls its root', async () => {
+    stubFetch({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      body: {
+        data: {
+          ready: { id: 'issue-1', title: 'Ready' },
+          broken: null,
+        },
+        errors: [{
+          message: 'Cannot return null for non-nullable field Issue.assignee',
+          path: ['broken', 'assignee', 'name'],
+        }],
+      },
+    });
+
+    const data = await linearGraphQL('key', 'query { ready: issue { id title } broken: issue { assignee { name } } }');
+    expect(data).toEqual({
+      ready: { id: 'issue-1', title: 'Ready' },
+      broken: null,
+    });
+    expect(linearGraphQLErrors(data)).toEqual([{
+      path: ['broken', 'assignee', 'name'],
+      message: 'Cannot return null for non-nullable field Issue.assignee',
+    }]);
+  });
+
+  it('still fails fast when nested non-null failure leaves no usable root', async () => {
+    stubFetch({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      body: {
+        data: { issue: null },
+        errors: [{
+          message: 'Cannot return null for non-nullable field Issue.assignee',
+          path: ['issue', 'assignee', 'name'],
+        }],
+      },
+    });
+
+    await expect(linearGraphQL('key', 'query { issue { assignee { name } } }')).rejects.toThrow(
+      'Linear GraphQL error: Cannot return null for non-nullable field Issue.assignee',
+    );
+  });
+
+  it('still fails fast for errors that have no path', async () => {
+    stubFetch({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      body: {
+        data: {
+          ready: { id: 'issue-1' },
+          missing: null,
+        },
+        errors: [{ message: 'Variable "$id" of required type "String!" was not provided.' }],
+      },
+    });
+
+    await expect(linearGraphQL('key', 'query { ready: issue { id } missing: issue { id } }')).rejects.toThrow(
+      'Linear GraphQL error: Variable "$id" of required type "String!" was not provided.',
+    );
+  });
+
+  it('redacts secrets in retained path error text', async () => {
+    const apiKey = 'lin_api_secretkey12';
+    stubFetch({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      body: {
+        data: {
+          ready: { id: 'issue-1' },
+          missing: null,
+        },
+        errors: [{ message: `rejected ${apiKey}`, path: ['missing'] }],
+      },
+    });
+
+    const data = await linearGraphQL(apiKey, 'query { ready: issue { id } missing: issue { id } }');
+    expect(linearGraphQLErrors(data)).toEqual([{ path: ['missing'], message: 'rejected [REDACTED]' }]);
+    expect(JSON.stringify(linearGraphQLErrors(data))).not.toContain(apiKey);
+  });
+
+  it('redacts secrets in thrown GraphQL error text', async () => {
+    const apiKey = 'lin_api_secretkey12';
+    stubFetch({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      body: {
+        errors: [{ message: `rejected ${apiKey}` }],
+      },
+    });
+
+    await expect(linearGraphQL(apiKey, 'query { viewer { id } }')).rejects.toThrow(
+      'Linear GraphQL error: rejected [REDACTED]',
+    );
   });
 });
 
