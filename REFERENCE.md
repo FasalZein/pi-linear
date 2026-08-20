@@ -1,16 +1,14 @@
 # Linear API reference
 
-Version 0.6 of `pi-linear-lite` registers one active loader, `linear`, plus 48 inactive typed tools. Send exactly one of `operation` or `query` to the loader. Send operation inputs through `variables`. Help for one operation activates its typed tool.
+Version 0.7 of `pi-linear-lite` registers one active loader, `linear`, plus 48 inactive typed tools. The `linear` tool description publishes the operation catalog. Choose an operation from that catalog and call it directly. Send exactly one of `operation` or `query` to the loader. Send operation inputs through `variables`. Use operation help only when exact parameter names are needed. That call activates the matching typed tool.
 
 ## Help protocol
 
-Use this exact bootstrap request:
+Help is optional. This request returns the accepted domains and examples for the two narrower help forms:
 
 ```json
 { "operation": "help" }
 ```
-
-It returns the accepted domains and examples for the two narrower help forms.
 
 ```json
 { "operation": "help", "variables": { "domain": "issues" } }

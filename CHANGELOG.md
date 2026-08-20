@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0
+
+- Renamed the `linear_api` tool to `linear`. No alias is registered.
+- Removed natural help. `help` no longer accepts `query` or `search`; those variables fail with a message that names the catalog and the exact-name form.
+- Published a generated `name: purpose` catalog of all 48 operations in the `linear` tool description. Call an operation directly from that catalog. Use `help { "operation": "<name>" }` only for exact parameters; that call also loads the typed tool.
+- Corrected the `save_initiative` and `save_milestone` purposes.
+- Moved the initial active schema from 669 bytes / 168 Pi-estimated tokens to 3,170 bytes / 793 tokens.
+- See [`docs/adr/0006-publish-the-operation-catalog.md`](./docs/adr/0006-publish-the-operation-catalog.md) and [`docs/v06-discovery-evidence.md`](./docs/v06-discovery-evidence.md).
+
 ## 0.6.0
 
 - Registered 49 tools: always-on `linear_api` plus 48 lazy typed tools that stay inactive until exact help or a closed natural query names them.
