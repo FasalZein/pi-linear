@@ -1,4 +1,5 @@
 import {
+	isLinearUrlSlug,
 	resolveNamedEntityReference,
 	resolveTeamReference,
 } from "../client";
@@ -20,6 +21,7 @@ import {
 	input,
 	filter,
 	object,
+	isUuid,
 	getDocument,
 	workspaceEmpty,
 	listOperation,
@@ -114,12 +116,16 @@ export const cycles: readonly OperationDefinition[] = ([
 		document: getDocument("GetCycle", "cycle", projection("cycle", "detail")),
 		resolverPaths: { cycle: "resolveNamedEntityReference" },
 		async prepare(k, v, s) {
-			const x = await resolveNamedEntityReference(
-				k,
-				"cycle",
-				String(v.cycle ?? v.id),
-				s,
-			);
+			const requested = String(v.cycle ?? v.id);
+			const reference = requested.trim();
+			if (isUuid(reference) || isLinearUrlSlug(reference)) {
+				return {
+					variables: { id: reference },
+					exactNamed: { requested: reference, path: "cycle", kind: "cycle" },
+					resolution: { target: { requested: reference } },
+				};
+			}
+			const x = await resolveNamedEntityReference(k, "cycle", requested, s);
 			return {
 				variables: { id: x.id },
 				resolution: {

@@ -1,4 +1,5 @@
 import {
+	isIssueIdentifier,
 	requireIssueReference,
 	resolveIssueReference,
 	resolveStateIdReference,
@@ -802,6 +803,18 @@ export const issues: readonly OperationDefinition[] = ([
 		extras: "$term: String! $includeComments: Boolean $teamId: String",
 		extraArgs: "term: $term includeComments: $includeComments teamId: $teamId",
 		prepare: async (k, v, s) => {
+			const term = typeof v.term === "string" ? v.term.trim() : "";
+			if (isIssueIdentifier(term)) {
+				return {
+					variables: { id: term },
+					variant: {
+						document: getDocument("GetIssue", "issue", projection("issue", "list")),
+						root: "issue",
+					},
+					exactIssue: { requested: term, path: "issue" },
+					resolution: { target: { requested: term } },
+				};
+			}
 			const teamRef = v.team ?? v.teamId;
 			const team = teamRef
 				? await resolveTeamReference(k, String(teamRef), s)
