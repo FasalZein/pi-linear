@@ -49,6 +49,6 @@ describe('custom proxies with native flags disabled', () => {
     expect(hasNativeOnlyMarker(anthropicPayload)).toBe(false);
     expect(hasNativeOnlyMarker(openaiPayload)).toBe(false);
     expect(anthropicPayload.tools.every((tool: { defer_loading?: boolean }) => !tool.defer_loading)).toBe(true);
-    expect(openaiPayload.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear_api', 'linear_get_issue']);
+    expect(openaiPayload.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear', 'linear_get_issue']);
   });
 });

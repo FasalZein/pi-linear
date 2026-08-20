@@ -147,7 +147,7 @@ describe('default view and expand override', () => {
     expect(human).toContain('show full JSON');
   });
 
-  it('applies the same inverse on linear_api', async () => {
+  it('applies the same inverse on linear', async () => {
     await saveResultPreference('Full JSON');
     const json = text(renderLinearApiResult(
       result(details),
@@ -208,7 +208,7 @@ describe('linear-settings command', () => {
         events.push(event);
       },
       getAllTools: () => [],
-      getActiveTools: () => ['linear_api'],
+      getActiveTools: () => ['linear'],
       setActiveTools: vi.fn(),
       registerTool: () => undefined,
     };

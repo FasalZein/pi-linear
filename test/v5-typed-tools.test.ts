@@ -76,16 +76,16 @@ function setup(): FakePi {
 
 async function loadedFor(query: string): Promise<string[]> {
   const harness = setup();
-  const result = await execute(harness.tool('linear_api'), { operation: 'help', variables: { query } });
+  const result = await execute(harness.tool('linear'), { operation: 'help', variables: { query } });
   return (result.details.loadedTools as string[] | undefined) ?? [];
 }
 
 describe('typed tool registration', () => {
-  it('registers linear_api plus one typed tool per catalog operation', () => {
+  it('registers linear plus one typed tool per catalog operation', () => {
     const harness = setup();
     const names = harness.registered.map((tool) => tool.name);
-    expect(names).toContain('linear_api');
-    expect(names.filter((name) => name !== 'linear_api').sort())
+    expect(names).toContain('linear');
+    expect(names.filter((name) => name !== 'linear').sort())
       .toEqual([...typedToolNames()].sort());
     expect(typedToolNames()).toHaveLength(48);
   });
@@ -106,7 +106,7 @@ describe('typed tool registration', () => {
   it('keeps every typed tool inactive at session start and preserves other tools', () => {
     const harness = setup();
     const active = harness.activeTools();
-    expect(active).toContain('linear_api');
+    expect(active).toContain('linear');
     expect(active).toContain('read');
     expect(active).toContain('bash');
     expect(active.filter((name) => typedToolNames().includes(name))).toEqual([]);
@@ -117,7 +117,7 @@ describe('deterministic activation', () => {
   it('activates exactly the operation named by operation help', async () => {
     const harness = setup();
     const before = harness.activeTools();
-    const result = await execute(harness.tool('linear_api'), {
+    const result = await execute(harness.tool('linear'), {
       operation: 'help',
       variables: { operation: 'get_issue' },
     });
@@ -131,7 +131,7 @@ describe('deterministic activation', () => {
   it('reports a missing requested registration as a configuration error', async () => {
     const harness = setup();
     harness.removeRegistration('linear_get_issue');
-    await expect(execute(harness.tool('linear_api'), {
+    await expect(execute(harness.tool('linear'), {
       operation: 'help', variables: { operation: 'get_issue' },
     })).rejects.toThrow('manifest entries are not registered: linear_get_issue');
   });
@@ -139,7 +139,7 @@ describe('deterministic activation', () => {
   it('reports policy-blocked activation and does not claim the tool loaded', async () => {
     const harness = setup();
     harness.blockActivation('linear_get_issue');
-    await expect(execute(harness.tool('linear_api'), {
+    await expect(execute(harness.tool('linear'), {
       operation: 'help', variables: { operation: 'get_issue' },
     })).rejects.toThrow('policy blocked manifest entries: linear_get_issue');
     expect(harness.activeTools()).not.toContain('linear_get_issue');
@@ -148,7 +148,7 @@ describe('deterministic activation', () => {
   it('activates nothing for a domain listing', async () => {
     const harness = setup();
     const before = harness.activeTools();
-    const result = await execute(harness.tool('linear_api'), {
+    const result = await execute(harness.tool('linear'), {
       operation: 'help',
       variables: { domain: 'issues' },
     });
@@ -199,7 +199,7 @@ describe('deterministic activation', () => {
   it('activates nothing for a broad noun-only query and offers candidates', async () => {
     const harness = setup();
     const before = harness.activeTools();
-    const result = await execute(harness.tool('linear_api'), {
+    const result = await execute(harness.tool('linear'), {
       operation: 'help',
       variables: { query: 'issues' },
     });
@@ -223,16 +223,16 @@ describe('deterministic activation', () => {
     expect(loaded).toEqual(['linear_create_comment']);
 
     const harness = setup();
-    await execute(harness.tool('linear_api'), { operation: 'help', variables: { query: 'read AEO-258' } });
+    await execute(harness.tool('linear'), { operation: 'help', variables: { query: 'read AEO-258' } });
     const active = harness.activeTools().filter((name) => typedToolNames().includes(name));
     expect(active).toEqual(['linear_get_issue']);
   });
 
   it('never removes an active tool and never re-reports an already active tool', async () => {
     const harness = setup();
-    await execute(harness.tool('linear_api'), { operation: 'help', variables: { operation: 'get_issue' } });
+    await execute(harness.tool('linear'), { operation: 'help', variables: { operation: 'get_issue' } });
     const afterFirst = harness.activeTools();
-    const second = await execute(harness.tool('linear_api'), {
+    const second = await execute(harness.tool('linear'), {
       operation: 'help',
       variables: { operation: 'get_issue' },
     });
@@ -248,12 +248,12 @@ describe('deterministic activation', () => {
 
   it('accumulates activation across successive requests', async () => {
     const harness = setup();
-    await execute(harness.tool('linear_api'), { operation: 'help', variables: { query: 'create an issue' } });
-    await execute(harness.tool('linear_api'), { operation: 'help', variables: { query: 'comment on it' } });
+    await execute(harness.tool('linear'), { operation: 'help', variables: { query: 'create an issue' } });
+    await execute(harness.tool('linear'), { operation: 'help', variables: { query: 'comment on it' } });
     const active = harness.activeTools();
     expect(active).toContain('linear_create_issue');
     expect(active).toContain('linear_create_comment');
-    expect(active).toContain('linear_api');
+    expect(active).toContain('linear');
   });
 });
 
@@ -604,7 +604,7 @@ describe('typed execution delegates to the v0.4 operation pipeline', () => {
     return requests;
   }
 
-  it('resolves references and emits the same GraphQL as linear_api', async () => {
+  it('resolves references and emits the same GraphQL as linear', async () => {
     const requests = installServer();
     const typedResult = await execute(tools.get('linear_get_issue')!, { issue: 'AEO-258' });
     const typedRequests = requests.splice(0);
@@ -707,7 +707,7 @@ describe('schema cost', () => {
     const total = typed.reduce((sum, tool) => sum + tool.bytes, 0);
     const sorted = [...typed].sort((left, right) => left.bytes - right.bytes);
 
-    console.log(`always-on linear_api schema: ${alwaysOn} bytes`);
+    console.log(`always-on linear schema: ${alwaysOn} bytes`);
     console.log(`all 48 typed schemas: ${total} bytes (median ${sorted[Math.floor(sorted.length / 2)]!.bytes}, min ${sorted[0]!.bytes} ${sorted[0]!.name}, max ${sorted.at(-1)!.bytes} ${sorted.at(-1)!.name})`);
     for (const name of ['linear_get_issue', 'linear_list_issues', 'linear_create_issue', 'linear_create_comment', 'linear_update_issue']) {
       console.log(`  ${name}: ${typed.find((tool) => tool.name === name)!.bytes} bytes`);

@@ -457,10 +457,10 @@ export function operationRenderers(operation: LinearOperation): OperationRendere
 }
 
 // ---------------------------------------------------------------------------
-// linear_api: the loader keeps the same visual language as the typed tools.
+// linear: the loader keeps the same visual language as the typed tools.
 // ---------------------------------------------------------------------------
 
-const API_TOOL = 'linear_api';
+const API_TOOL = 'linear';
 
 function apiOperation(args: ToolArgs | undefined): LinearOperation | undefined {
   const name = asString(args?.operation);

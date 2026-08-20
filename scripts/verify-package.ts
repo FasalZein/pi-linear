@@ -90,8 +90,8 @@ try {
   loaded.registerLinearExtension(pi);
   for (const handler of sessionHandlers) handler();
   if (registered.length !== 49) throw new Error(`Extracted package registered ${registered.length} tools.`);
-  const linearActive = active.filter((name) => name.startsWith('linear_'));
-  if (linearActive.join(',') !== 'linear_api') throw new Error(`Active Linear tools: ${linearActive.join(', ')}`);
+  const linearActive = active.filter((name) => name === 'linear' || name.startsWith('linear_'));
+  if (linearActive.join(',') !== 'linear') throw new Error(`Active Linear tools: ${linearActive.join(', ')}`);
   if (!commands.has('linear-auth') || !commands.has('linear-settings')) {
     throw new Error('Extracted package did not register /linear-auth and /linear-settings.');
   }

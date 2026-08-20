@@ -113,7 +113,7 @@ describe('help paths redact unknown-format active secrets', () => {
 });
 
 describe('call rows redact unknown-format active secrets', () => {
-  it('redacts an active secret in rendered linear_api call arguments', () => {
+  it('redacts an active secret in rendered linear call arguments', () => {
     const theme: any = { fg: (_name: string, text: string) => text, bold: (text: string) => text };
     const block = renderLinearApiCall(
       { operation: 'help', variables: { query: `issue ${ENV_SECRET}` }, query: `query { viewer { id ${WORKSPACE_SECRET} } }` },

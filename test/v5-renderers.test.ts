@@ -218,7 +218,7 @@ describe('result states', () => {
   });
 });
 
-describe('linear_api rendering', () => {
+describe('linear rendering', () => {
   function apiResult(details: unknown, args: Record<string, unknown>, options: Record<string, boolean> = {}) {
     return renderLinearApiResult(
       result(details),
@@ -230,7 +230,7 @@ describe('linear_api rendering', () => {
 
   it('labels the call with the operation and its variables', () => {
     const text = block(renderLinearApiCall({ operation: 'get_issue', variables: { issue: 'AEO-258' } }, theme));
-    expect(text).toContain('linear_api');
+    expect(text).toContain('linear');
     expect(text).toContain('get_issue');
     expect(text).toContain('issue=AEO-258');
   });
@@ -335,13 +335,13 @@ describe('escape hatch and local operations', () => {
 describe('credential safety in rendered rows', () => {
   const token = 'lin_api_secret123456789';
 
-  it('scrubs a credential in a direct linear_api variable', () => {
+  it('scrubs a credential in a direct linear variable', () => {
     const text = block(renderLinearApiCall({ operation: 'get_issue', variables: { token } }, theme));
     expect(text).toContain('[REDACTED]');
     expect(text).not.toContain('secret123456789');
   });
 
-  it('scrubs a credential nested inside a linear_api variable key or value', () => {
+  it('scrubs a credential nested inside a linear variable key or value', () => {
     const text = block(renderLinearApiCall(
       {
         operation: 'get_issue',

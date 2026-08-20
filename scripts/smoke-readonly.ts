@@ -164,12 +164,12 @@ async function runAuthenticatedSmoke(apiKey: string): Promise<JsonObject> {
   compareReadonlySchema(introspection, fixture, usage, scope);
 
   const harness = extensionHarness();
-  const compatibility = harness.tool('linear_api');
-  if (!compatibility) throw new Error('smoke.activation: linear_api is unavailable');
+  const compatibility = harness.tool('linear');
+  if (!compatibility) throw new Error('smoke.activation: linear is unavailable');
   const activation = await executeTool(compatibility, { operation: 'help', variables: { operation: 'get_issue' } });
   const loaded = activation.details?.loadedTools;
   if (!Array.isArray(loaded) || loaded.length !== 1 || loaded[0] !== 'linear_get_issue' || !harness.active().includes('linear_get_issue')) {
-    throw new Error('smoke.activation: linear_get_issue was not loaded through linear_api');
+    throw new Error('smoke.activation: linear_get_issue was not loaded through linear');
   }
   const typedGetIssue = harness.tool('linear_get_issue');
   if (!typedGetIssue) throw new Error('smoke.activation: activated linear_get_issue is unavailable');

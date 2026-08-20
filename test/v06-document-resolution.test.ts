@@ -22,7 +22,7 @@ function execute(tool: any, params: Record<string, unknown>) {
 function updateTools(documentId = 'Planning notes') {
   return [
     ['typed', typedLinearTools().find(({ name }) => name === 'linear_update_document')!, { documentId, title: 'Updated notes' }],
-    ['linear_api', linearApiTool() as any, { operation: 'update_document', variables: { documentId, title: 'Updated notes' } }],
+    ['linear', linearApiTool() as any, { operation: 'update_document', variables: { documentId, title: 'Updated notes' } }],
   ] as const;
 }
 

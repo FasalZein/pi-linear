@@ -28,13 +28,13 @@ const manifest = JSON.parse(await readFile(join(root, 'extensions/generated/line
   allowedTools: string[];
 };
 const lazyNames = operationDefinitions.map(({ toolName }) => toolName);
-if (manifest.initialActiveTools.join(',') !== 'linear_api') {
-  throw new Error('Manifest initialActiveTools must be exactly linear_api.');
+if (manifest.initialActiveTools.join(',') !== 'linear') {
+  throw new Error('Manifest initialActiveTools must be exactly linear.');
 }
 if (manifest.lazyTools.map(({ name }) => name).join(',') !== lazyNames.join(',')) {
   throw new Error('Manifest lazyTools drifted from operation definitions.');
 }
-if (manifest.allowedTools.join(',') !== ['linear_api', ...lazyNames].join(',')) {
+if (manifest.allowedTools.join(',') !== ['linear', ...lazyNames].join(',')) {
   throw new Error('Manifest allowedTools drifted from the generated allowlist.');
 }
 

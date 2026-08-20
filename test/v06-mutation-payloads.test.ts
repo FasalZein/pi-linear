@@ -254,7 +254,7 @@ describe('shared mutation response validation', () => {
   }
 
   it.each([
-    ['linear_api', () => (linearApiTool() as any).execute(
+    ['linear', () => (linearApiTool() as any).execute(
       'call-1', { operation: 'create_project_relation', variables }, undefined, undefined, { hasUI: false },
     )],
     ['typed tool', () => {

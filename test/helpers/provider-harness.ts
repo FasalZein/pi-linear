@@ -72,7 +72,7 @@ export function asProviderTools(tools: readonly any[]) {
 
 export async function activateGetIssue(harness: LinearHarness) {
   harness.startSession();
-  const result = await execute(harness.tool('linear_api'), {
+  const result = await execute(harness.tool('linear'), {
     operation: 'help',
     variables: { operation: 'get_issue' },
   });
@@ -85,7 +85,7 @@ export function wrapLoader(harness: LinearHarness) {
     createContext: () => ({ hasUI: false }),
   };
   const [wrapped] = wrapRegisteredTools(
-    [{ definition: harness.tool('linear_api'), sourceInfo: { path: 'linear', source: 'extension' } as any }],
+    [{ definition: harness.tool('linear'), sourceInfo: { path: 'linear', source: 'extension' } as any }],
     runner as any,
   );
   return wrapped;
@@ -111,7 +111,7 @@ export function activationContext(harness: LinearHarness, addedToolNames: string
       { role: 'user' as const, content: 'load get_issue', timestamp: 1 },
       {
         role: 'assistant' as const,
-        content: [{ type: 'toolCall' as const, id: 'call-1', name: 'linear_api', arguments: { operation: 'help' } }],
+        content: [{ type: 'toolCall' as const, id: 'call-1', name: 'linear', arguments: { operation: 'help' } }],
         api: 'anthropic-messages',
         provider: 'anthropic',
         model: NATIVE_ANTHROPIC_MODEL.id,
@@ -122,7 +122,7 @@ export function activationContext(harness: LinearHarness, addedToolNames: string
       {
         role: 'toolResult' as const,
         toolCallId: 'call-1',
-        toolName: 'linear_api',
+        toolName: 'linear',
         content: [{ type: 'text' as const, text: 'loaded linear_get_issue' }],
         addedToolNames,
         isError: false,

@@ -25,7 +25,7 @@ const scenarios: Array<[string, string[]]> = [
   ['initial', []],
   ['oneTool', ['linear_get_issue']],
   ['fiveTools', ['linear_get_issue', 'linear_list_issues', 'linear_create_comment', 'linear_create_issue', 'linear_update_issue']],
-  ['allTools', tools.filter(({ name }) => name.startsWith('linear_') && name !== 'linear_api').map(({ name }) => name)],
+  ['allTools', tools.filter(({ name }) => name.startsWith('linear_')).map(({ name }) => name)],
 ];
 
 function schemaBytes(names: readonly string[]): number {
@@ -36,7 +36,7 @@ function schemaBytes(names: readonly string[]): number {
 
 let failed = false;
 for (const [name, additions] of scenarios) {
-  active = [...new Set(['linear_api', ...additions])];
+  active = [...new Set(['linear', ...additions])];
   const current = schemaBytes(active);
   const expected = fixture[name];
   if (!expected) throw new Error(`Missing schema-byte fixture for ${name}.`);

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "package": "@tothemoon/pi-linear-lite",
   "initialActiveTools": [
-    "linear_api"
+    "linear"
   ],
   "lazyTools": [
     {
@@ -247,7 +247,7 @@
     }
   ],
   "allowedTools": [
-    "linear_api",
+    "linear",
     "linear_list_comments",
     "linear_create_comment",
     "linear_update_comment",

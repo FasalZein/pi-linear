@@ -250,7 +250,7 @@ export function validateLocalResult(
 }
 
 /**
- * Single execution path for one named operation. Both `linear_api` and the typed
+ * Single execution path for one named operation. Both `linear` and the typed
  * tools route through here, so mutation gating, reference resolution, spill, and
  * result routing exist exactly once.
  */

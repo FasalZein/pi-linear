@@ -128,12 +128,12 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
   const generatedTypedTools = typedLinearTools(mode);
   for (const tool of generatedTypedTools) pi.registerTool(tool);
 
-  // Register all 48 typed tools, start with none of them active: linear_api alone
+  // Register all 48 typed tools, start with none of them active: linear alone
   // carries the always-on schema cost, and help loads only what the task needs.
   pi.on('session_start', () => {
     const allTools = pi.getAllTools();
     const registered = new Set(allTools.map(({ name }) => name));
-    const missing = ['linear_api', ...lazyToolNames].filter((name) => !registered.has(name));
+    const missing = ['linear', ...lazyToolNames].filter((name) => !registered.has(name));
     if (missing.length) {
       throw new Error(`Linear tool configuration error: manifest entries are not registered: ${missing.join(', ')}.`);
     }

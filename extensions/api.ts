@@ -201,7 +201,7 @@ function toolResult(details: JsonObject, secrets: readonly string[] = []) {
 
 export function linearApiTool(mode: MutationMode = 'allowlist', activator?: ToolActivator) {
   return defineTool({
-    name: 'linear_api',
+    name: 'linear',
     label: 'Linear API',
     description: 'Run a named Linear operation or raw GraphQL. Discover operations with { "operation": "help" }; help for one operation also loads its typed linear_* tool.',
     parameters: Type.Object({

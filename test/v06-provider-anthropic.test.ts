@@ -45,7 +45,7 @@ describe('native Anthropic route', () => {
 
     const payload = await captureAnthropic(NATIVE_ANTHROPIC_MODEL, activationContext(harness, wrapped.addedToolNames));
     const tools = payload.tools as Array<{ name: string; defer_loading?: boolean; input_schema?: any }>;
-    expect(tools.find((tool) => tool.name === 'linear_api')?.defer_loading).toBeUndefined();
+    expect(tools.find((tool) => tool.name === 'linear')?.defer_loading).toBeUndefined();
     const deferred = tools.find((tool) => tool.name === 'linear_get_issue');
     expect(deferred?.defer_loading).toBe(true);
     expect(deferred?.input_schema?.type).toBe('object');

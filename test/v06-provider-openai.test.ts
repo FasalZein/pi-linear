@@ -30,7 +30,7 @@ describe('native OpenAI route', () => {
     const context = activationContext(harness, wrapped.addedToolNames);
 
     const firstParty = await captureOpenAI(NATIVE_OPENAI_MODEL, context);
-    expect(firstParty.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear_api']);
+    expect(firstParty.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear']);
     const additional = firstParty.input.filter((item: { type: string }) => item.type === 'additional_tools');
     expect(additional).toHaveLength(1);
     expect(additional[0].tools.map((tool: { name: string; defer_loading?: boolean }) => tool.name)).toEqual(['linear_get_issue']);

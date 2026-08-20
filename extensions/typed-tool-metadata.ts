@@ -236,7 +236,7 @@ export function parameterSchema(operation: LinearOperation) {
 }
 
 function toolDescription(operation: LinearOperation): string {
-  return `${operation.purpose} Equivalent to linear_api ${formatInvocation(operation.example)}.`;
+  return `${operation.purpose} Equivalent to linear ${formatInvocation(operation.example)}.`;
 }
 
 export type TypedToolMetadata = {

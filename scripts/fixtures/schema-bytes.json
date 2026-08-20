@@ -1,6 +1,6 @@
 {
-  "initial": { "baseline": 673, "current": 673 },
-  "oneTool": { "baseline": 1179, "current": 1179 },
-  "fiveTools": { "baseline": 14635, "current": 15137 },
-  "allTools": { "baseline": 64706, "current": 65256 }
+  "initial": { "baseline": 673, "current": 669 },
+  "oneTool": { "baseline": 1179, "current": 1171 },
+  "fiveTools": { "baseline": 14635, "current": 15113 },
+  "allTools": { "baseline": 64706, "current": 65060 }
 }

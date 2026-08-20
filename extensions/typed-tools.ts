@@ -45,7 +45,7 @@ function assertCanonicalOnly(operation: LinearOperation, variables: JsonObject):
   if (foreign.length) {
     throw new Error(
       `Unknown parameters for "${typedToolName(operation.name)}": ${foreign.join(', ')}. `
-      + `Accepted parameters: ${[...allowed].join(', ')}. Legacy aliases and raw input go through linear_api.`,
+      + `Accepted parameters: ${[...allowed].join(', ')}. Legacy aliases and raw input go through linear.`,
     );
   }
 }

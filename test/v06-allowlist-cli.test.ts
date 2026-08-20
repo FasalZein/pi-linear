@@ -7,9 +7,9 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { operationDefinitions } from '../extensions/operations';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const expectedTools = ['linear_api', ...operationDefinitions.map(({ toolName }) => toolName)].join(', ');
+const expectedTools = ['linear', ...operationDefinitions.map(({ toolName }) => toolName)].join(', ');
 const staleAgent = (name: string) =>
-  `---\nname: ${name}\ntools: read, bash, linear_api, linear_stale_tool\nmode: background\n---\n\nBody for ${name}.\n`;
+  `---\nname: ${name}\ntools: read, bash, linear, linear_stale_tool\nmode: background\n---\n\nBody for ${name}.\n`;
 
 function npm(script: string, home: string) {
   return spawnSync('npm', ['run', script], {

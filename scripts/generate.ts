@@ -23,9 +23,9 @@ function manifest() {
   return {
     schemaVersion: 1,
     package: '@tothemoon/pi-linear-lite',
-    initialActiveTools: ['linear_api'],
+    initialActiveTools: ['linear'],
     lazyTools,
-    allowedTools: ['linear_api', ...lazyTools.map(({ name }) => name)],
+    allowedTools: ['linear', ...lazyTools.map(({ name }) => name)],
   };
 }
 
@@ -165,7 +165,7 @@ function replaceToolsLine(source: string, allowedTools: readonly string[]): stri
   const match = source.match(/^tools:\s*(.*)$/m);
   if (!match) throw new Error('Agent allowlist has no tools frontmatter field.');
   const existing = match[1]!.split(',').map((value) => value.trim()).filter(Boolean);
-  const retained = existing.filter((name) => !name.startsWith('linear_'));
+  const retained = existing.filter((name) => name !== 'linear' && !name.startsWith('linear_'));
   return source.replace(/^tools:.*$/m, `tools: ${[...retained, ...allowedTools].join(', ')}`);
 }
 

@@ -10,7 +10,7 @@ import contracts from '../extensions/generated/operation-contracts.json';
 import { operationDefinitions } from '../extensions/operations';
 import { typedLinearTools } from '../extensions/typed-tools';
 
-const expectedNames = ['linear_api', ...operationDefinitions.map(({ toolName }) => toolName)];
+const expectedNames = ['linear', ...operationDefinitions.map(({ toolName }) => toolName)];
 
 async function treeDigest(root: string): Promise<string> {
   const hash = createHash('sha256');
@@ -122,8 +122,8 @@ describe('generated products', () => {
     [
       'typed tool description',
       'extensions/typed-tool-metadata.ts',
-      'Equivalent to linear_api',
-      'Same as linear_api',
+      'Equivalent to linear',
+      'Same as linear',
     ],
     [
       'typed tool schema field',
@@ -207,7 +207,7 @@ describe('generated products', () => {
 
   it('publishes one deployable manifest entry for each canonical operation', () => {
     expect(manifest.schemaVersion).toBe(1);
-    expect(manifest.initialActiveTools).toEqual(['linear_api']);
+    expect(manifest.initialActiveTools).toEqual(['linear']);
     expect(manifest.lazyTools).toEqual(operationDefinitions.map(({ name, toolName, domain }) => ({
       name: toolName, operation: name, domain,
     })));

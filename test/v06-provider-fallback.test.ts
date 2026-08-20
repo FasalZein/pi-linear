@@ -30,7 +30,7 @@ describe('fallback provider route', () => {
     const harness = createLinearHarness();
     harness.startSession();
     const before = harness.activeTools();
-    const help = await execute(harness.tool('linear_api'), {
+    const help = await execute(harness.tool('linear'), {
       operation: 'help',
       variables: { operation: 'get_issue' },
     });
@@ -41,7 +41,7 @@ describe('fallback provider route', () => {
     expect(harness.tool('linear_get_issue').promptSnippet).toBeUndefined();
     expect(harness.tool('linear_get_issue').promptGuidelines).toBeUndefined();
 
-    const again = await execute(harness.tool('linear_api'), {
+    const again = await execute(harness.tool('linear'), {
       operation: 'help',
       variables: { operation: 'get_issue' },
     });
@@ -54,7 +54,7 @@ describe('fallback provider route', () => {
     const context = activationContext(harness, wrapped.addedToolNames);
     const placement = splitDeferredTools(context, false);
     expect(placement.deferred.size).toBe(0);
-    expect(placement.immediate.map(({ name }) => name)).toEqual(after.filter((name) => name.startsWith('linear_')));
+    expect(placement.immediate.map(({ name }) => name)).toEqual(after.filter((name) => name === 'linear' || name.startsWith('linear_')));
 
     const fallbackAnthropic = { ...NATIVE_ANTHROPIC_MODEL, compat: { ...NATIVE_ANTHROPIC_MODEL.compat, supportsToolReferences: false } };
     const fallbackOpenAI = {
@@ -65,7 +65,7 @@ describe('fallback provider route', () => {
     const openaiPayload = await captureOpenAI(fallbackOpenAI, context);
     expect(hasNativeOnlyMarker(anthropicPayload)).toBe(false);
     expect(hasNativeOnlyMarker(openaiPayload)).toBe(false);
-    expect(anthropicPayload.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear_api', 'linear_get_issue']);
-    expect(openaiPayload.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear_api', 'linear_get_issue']);
+    expect(anthropicPayload.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear', 'linear_get_issue']);
+    expect(openaiPayload.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear', 'linear_get_issue']);
   });
 });

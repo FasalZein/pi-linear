@@ -110,7 +110,7 @@ describe('public surfaces', () => {
     return entry.execute('call-1', params, undefined, undefined, { hasUI: false });
   }
 
-  it('switches a workspace through linear_api', async () => {
+  it('switches a workspace through linear', async () => {
     const result = await execute(tool, { operation: 'switch_workspace', variables: { name: 'second' } });
     expect(result.details).toEqual({ active: 'second' });
     const stored = JSON.parse(await readFile(join(agentDirectory, 'extensions/linear/credentials.json'), 'utf8'));
