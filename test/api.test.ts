@@ -364,14 +364,16 @@ describe('reference preparation pipeline', () => {
       const request = JSON.parse(String(init.body)) as { query: string; variables: Record<string, unknown> };
       requests.push(request);
       const { query, variables } = request;
+      const resolvedIssue = (value: unknown) => {
+        const raw = String(value);
+        if (raw === RELATED_ID || /^AEO-259$/i.test(raw)) {
+          return { id: RELATED_ID, identifier: 'AEO-259', team: { id: TEAM_ID, key: 'AEO' } };
+        }
+        return { id: ISSUE_ID, identifier: /^AEO-\d+$/i.test(raw) ? raw.toUpperCase() : 'AEO-258', team: { id: TEAM_ID, key: 'AEO' } };
+      };
       let data: Record<string, unknown>;
-      if (query.includes('ResolveIssueByIdentifier')) {
-        const number = Number(variables.number);
-        const id = number === 259 ? RELATED_ID : ISSUE_ID;
-        data = { issues: { nodes: [{ id, identifier: `AEO-${number}`, team: { id: TEAM_ID, key: 'AEO' } }] } };
-      } else if (query.includes('ResolveIssueById')) {
-        const id = String(variables.id);
-        data = { issue: { id, identifier: id === RELATED_ID ? 'AEO-259' : 'AEO-258', team: { id: TEAM_ID, key: 'AEO' } } };
+      if (query.includes('ResolveIssueById')) {
+        data = { issue: resolvedIssue(variables.id) };
       } else if (query.includes('ResolveStateByName')) {
         data = { workflowStates: { nodes: [{ id: STATE_ID, name: 'Backlog', team: { id: TEAM_ID } }] } };
       } else if (query.includes('ResolveStateById')) {
@@ -381,9 +383,9 @@ describe('reference preparation pipeline', () => {
       } else if (query.includes('mutation CreateIssueRelation')) {
         data = { issueRelationCreate: { success: true, issueRelation: { id: 'relation-1', type: (variables.input as any).type } } };
       } else if (query.includes('mutation UpdateIssue')) {
-        data = { issueUpdate: { success: true, issue: { id: variables.id, identifier: 'AEO-258' } } };
+        data = { issueUpdate: { success: true, issue: resolvedIssue(variables.id) } };
       } else {
-        data = { issue: { id: variables.id, identifier: 'AEO-258' } };
+        data = { issue: resolvedIssue(variables.id) };
       }
       return { ok: true, status: 200, statusText: 'OK', headers: new Headers(), json: async () => ({ data }) };
     });
@@ -410,13 +412,13 @@ describe('reference preparation pipeline', () => {
 
     const final = requests.filter(({ query }) => !query.includes('Resolve'));
     expect(final.map(({ variables }) => variables)).toEqual([
-      { id: ISSUE_ID },
-      { id: ISSUE_ID },
+      { id: 'AEO-258' },
+      { id: 'AEO-258' },
       { input: { body: 'canonical', issueId: ISSUE_ID } },
       { input: { issueId: ISSUE_ID, body: 'legacy' } },
       { input: { issueId: ISSUE_ID, relatedIssueId: RELATED_ID, type: 'related' } },
       { input: { issueId: ISSUE_ID, relatedIssueId: RELATED_ID, type: 'blocks' } },
-      { id: ISSUE_ID, input: { stateId: STATE_ID } },
+      { id: 'AEO-258', input: { stateId: STATE_ID } },
       { id: ISSUE_ID, input: { stateId: STATE_ID } },
     ]);
     expect(results[2].details.resolution.target).toEqual({
@@ -439,10 +441,10 @@ describe('reference preparation pipeline', () => {
       queries.push(request.query);
       return {
         ok: true, status: 200, statusText: 'OK', headers: new Headers(),
-        json: async () => ({ data: { issues: { nodes: [] } } }),
+        json: async () => ({ data: { issue: null } }),
       };
     }));
-    await expect(execute(linearApiTool() as any, { operation, variables })).rejects.toThrow('0 matches');
+    await expect(execute(linearApiTool() as any, { operation, variables })).rejects.toThrow('was not found');
     expect(queries.some((query) => query.trimStart().startsWith('mutation'))).toBe(false);
   });
 });

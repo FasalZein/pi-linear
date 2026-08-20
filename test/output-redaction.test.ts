@@ -171,9 +171,7 @@ describe('redaction at the execution boundary', () => {
   });
 
   it('redacts resolution metadata carrying resolved values', async () => {
-    installServer((request) => request.query.includes('ResolveIssueByIdentifier')
-      ? { data: { issues: { nodes: [{ id: `issue-${TOKEN}`, identifier: 'AEO-258', team: { id: 'team-1', key: 'AEO' } }] } } }
-      : { data: { issue: { id: 'issue-1', identifier: 'AEO-258', title: 'ok' } } });
+    installServer(() => ({ data: { issue: { id: `issue-${TOKEN}`, identifier: 'AEO-258', title: 'ok' } } }));
 
     const result = await execute(linearApiTool() as any, {
       operation: 'get_issue',
@@ -338,9 +336,7 @@ describe('exact active-secret redaction', () => {
   });
 
   it('removes the active key from resolution metadata', async () => {
-    installServer((request) => request.query.includes('ResolveIssueByIdentifier')
-      ? { data: { issues: { nodes: [{ id: `id-${UNKNOWN_FORMAT_KEY}`, identifier: 'AEO-258', team: { id: 'team-1', key: 'AEO' } }] } } }
-      : { data: { issue: { id: 'issue-1', identifier: 'AEO-258', title: 'ok' } } });
+    installServer(() => ({ data: { issue: { id: `id-${UNKNOWN_FORMAT_KEY}`, identifier: 'AEO-258', title: 'ok' } } }));
 
     const result = await execute(linearApiTool() as any, {
       operation: 'get_issue',

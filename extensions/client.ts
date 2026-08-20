@@ -292,6 +292,35 @@ function requireReference(value: string, kind: string): string {
   return reference;
 }
 
+export function requireIssueReference(value: string): string {
+  const reference = requireReference(value, 'issue');
+  if (ISSUE_IDENTIFIER_PATTERN.test(reference) || UUID_PATTERN.test(reference)) return reference;
+  throw new Error(`Invalid Linear issue reference "${reference}". Use TEAM-123 or a UUID.`);
+}
+
+export function assertIssueNodeMatches(
+  requested: string,
+  issue: { id?: unknown; identifier?: unknown; team?: { id?: unknown; key?: unknown } | null } | null | undefined,
+): asserts issue is { id: string; identifier: string; team?: { id?: unknown; key?: unknown } | null } {
+  const reference = requireIssueReference(requested);
+  if (!issue || typeof issue.id !== 'string' || typeof issue.identifier !== 'string') {
+    throw new Error(`Linear issue "${reference}" was not found.`);
+  }
+  const identifier = reference.match(ISSUE_IDENTIFIER_PATTERN);
+  if (identifier) {
+    const teamKey = identifier[1]!;
+    const number = Number(identifier[2]!);
+    const parsedResult = issue.identifier.match(ISSUE_IDENTIFIER_PATTERN);
+    if (!parsedResult || parsedResult[1]!.toLowerCase() !== teamKey.toLowerCase() || Number(parsedResult[2]!) !== number) {
+      throw new Error(`Linear issue resolver returned mismatched identifier "${issue.identifier}" for "${reference}".`);
+    }
+    return;
+  }
+  if (issue.id !== reference) {
+    throw new Error(`Linear issue resolver returned mismatched id "${issue.id}" for "${reference}".`);
+  }
+}
+
 function requireSingle<T>(nodes: T[], description: string): T {
   if (nodes.length !== 1) {
     throw new Error(`Linear ${description} resolved to ${nodes.length} matches; expected exactly one.`);
@@ -304,47 +333,26 @@ export async function resolveIssueReference(
   value: string,
   signal?: AbortSignal,
 ): Promise<ResolvedIssue> {
-  const reference = requireReference(value, 'issue');
-  const identifier = reference.match(ISSUE_IDENTIFIER_PATTERN);
-  if (identifier) {
-    const teamKey = identifier[1]!;
-    const number = Number(identifier[2]!);
-    const data = await linearGraphQL<{ issues: { nodes: Array<{
-      id: string; identifier: string; team: { id: string; key: string } | null;
-    }> } }>(apiKey, `query ResolveIssueByIdentifier($teamKey: String!, $number: Float!) {
-  issues(first: 2, filter: { team: { key: { eq: $teamKey } }, number: { eq: $number } }) {
-    nodes { id identifier team { id key } }
-  }
-}`, { teamKey: teamKey.toUpperCase(), number }, signal);
-    const issue = requireSingle(data.issues.nodes, `issue "${reference}"`);
-    const parsedResult = issue.identifier.match(ISSUE_IDENTIFIER_PATTERN);
-    if (!parsedResult || parsedResult[1]!.toLowerCase() !== teamKey.toLowerCase() || Number(parsedResult[2]!) !== number) {
-      throw new Error(`Linear issue resolver returned mismatched identifier "${issue.identifier}" for "${reference}".`);
-    }
-    if (!issue.team || issue.team.key.toLowerCase() !== teamKey.toLowerCase()) {
-      throw new Error(`Linear issue resolver returned a mismatched team for "${reference}".`);
-    }
-    return { id: issue.id, identifier: issue.identifier, teamId: issue.team.id, teamKey: issue.team.key };
-  }
-
-  if (!UUID_PATTERN.test(reference)) {
-    throw new Error(`Invalid Linear issue reference "${reference}". Use TEAM-123 or a UUID.`);
-  }
+  const reference = requireIssueReference(value);
   const data = await linearGraphQL<{ issue: {
     id: string; identifier: string; team: { id: string; key: string } | null;
   } | null }>(apiKey, `query ResolveIssueById($id: String!) {
   issue(id: $id) { id identifier team { id key } }
 }`, { id: reference }, signal);
-  if (!data.issue) throw new Error(`Linear issue "${reference}" was not found.`);
-  if (data.issue.id !== reference) {
-    throw new Error(`Linear issue resolver returned mismatched id "${data.issue.id}" for "${reference}".`);
+  assertIssueNodeMatches(reference, data.issue);
+  const team = data.issue.team;
+  if (!team || typeof team.id !== 'string' || typeof team.key !== 'string') {
+    throw new Error(`Linear issue "${reference}" has no team.`);
   }
-  if (!data.issue.team) throw new Error(`Linear issue "${reference}" has no team.`);
+  const identifier = reference.match(ISSUE_IDENTIFIER_PATTERN);
+  if (identifier && team.key.toLowerCase() !== identifier[1]!.toLowerCase()) {
+    throw new Error(`Linear issue resolver returned a mismatched team for "${reference}".`);
+  }
   return {
     id: data.issue.id,
     identifier: data.issue.identifier,
-    teamId: data.issue.team.id,
-    teamKey: data.issue.team.key,
+    teamId: team.id,
+    teamKey: team.key,
   };
 }
 

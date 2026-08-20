@@ -43,16 +43,12 @@ afterEach(() => vi.unstubAllGlobals());
 describe("comment list convenience preparation", () => {
 	it("resolves an exact issue reference into a valid CommentFilter", async () => {
 		const { requests } = graphqlStub((query) =>
-			query.includes("ResolveIssueByIdentifier")
+			query.includes("ResolveIssueById")
 				? {
-					issues: {
-						nodes: [
-							{
-								id: INITIATIVE_ID,
-								identifier: "AEO-258",
-								team: { id: PROJECT_ID, key: "AEO" },
-							},
-						],
+					issue: {
+						id: INITIATIVE_ID,
+						identifier: "AEO-258",
+						team: { id: PROJECT_ID, key: "AEO" },
 					},
 				}
 				: {},
@@ -325,15 +321,10 @@ describe("update_issue final request", () => {
 		const issueId = INITIATIVE_ID;
 		const teamId = PROJECT_ID;
 		const stateId = MILESTONE_ID;
+		const stateIsName = stateReference === "Backlog";
 		graphqlStub((query, variables) => {
-			if (query.includes("ResolveIssueByIdentifier")) {
-				expect(variables).toEqual({ teamKey: "AEO", number: 266 });
-				return {
-					issues: { nodes: [{ id: issueId, identifier: "AEO-266", team: { id: teamId, key: "AEO" } }] },
-				};
-			}
 			if (query.includes("ResolveIssueById")) {
-				expect(variables).toEqual({ id: issueId });
+				expect(variables).toEqual({ id: issueReference });
 				return { issue: { id: issueId, identifier: "AEO-266", team: { id: teamId, key: "AEO" } } };
 			}
 			if (query.includes("ResolveStateByName")) {
@@ -352,12 +343,12 @@ describe("update_issue final request", () => {
 		expect(operations.update_issue.document).toContain(
 			"issueUpdate(id: $id, input: $input)",
 		);
-		expect(prepared.variables).toEqual({ id: issueId, input: { stateId } });
-		expect(prepared.resolution?.target).toEqual({
-			requested: issueReference,
-			resolvedId: issueId,
-			identifier: "AEO-266",
-		});
+		expect(prepared.variables).toEqual({ id: issueReference, input: { stateId } });
+		expect(prepared.resolution?.target).toEqual(
+			stateIsName
+				? { requested: issueReference, resolvedId: issueId, identifier: "AEO-266" }
+				: { requested: issueReference },
+		);
 	});
 });
 

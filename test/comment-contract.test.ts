@@ -232,14 +232,14 @@ describe('comment compatibility validation and preparation', () => {
   it('keeps issue aliases safe and resolves AEO-258 exactly', async () => {
     const fetch = vi.fn(async (_url: string, init: RequestInit) => {
       const request = JSON.parse(String(init.body));
-      expect(request.query).toContain('ResolveIssueByIdentifier');
-      expect(request.variables).toEqual({ teamKey: 'AEO', number: 258 });
+      expect(request.query).toContain('ResolveIssueById');
+      expect(request.variables).toEqual({ id: 'AEO-258' });
       return {
         ok: true,
         status: 200,
         statusText: 'OK',
         headers: new Headers(),
-        json: async () => ({ data: { issues: { nodes: [{ id: ISSUE_ID, identifier: 'AEO-258', team: { id: OTHER_ID, key: 'AEO' } }] } } }),
+        json: async () => ({ data: { issue: { id: ISSUE_ID, identifier: 'AEO-258', team: { id: OTHER_ID, key: 'AEO' } } } }),
       };
     });
     vi.stubGlobal('fetch', fetch);
