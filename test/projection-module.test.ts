@@ -9,9 +9,7 @@ import { operationDocuments, operations } from "../extensions/operations";
 const SAME_FOR_BOTH_VIEWS = [
 	"comment",
 	"cycle",
-	"document",
 	"initiative",
-	"issue",
 	"issueLabel",
 	"issueRelation",
 	"milestone",
@@ -30,16 +28,7 @@ const BASELINE: Record<ProjectionEntity, Record<ProjectionView, string>> = {
 	},
 	issue: {
 		list: `
-  id identifier number title description priority url branchName dueDate createdAt updatedAt
-  estimate priorityLabel completedAt startedAt archivedAt trashed
-  state { id name type }
-  team { id key name }
-  assignee { id name email }
-  labels { nodes { id name } }
-  project { id name }
-  parent { id identifier title }
-  cycle { id name number }
-  creator { id name email }
+  id identifier title url
 `,
 		detail: `
   id identifier number title description priority url branchName dueDate createdAt updatedAt
@@ -47,7 +36,7 @@ const BASELINE: Record<ProjectionEntity, Record<ProjectionView, string>> = {
   state { id name type }
   team { id key name }
   assignee { id name email }
-  labels { nodes { id name } }
+  labels(first: 50) { nodes { id name } }
   project { id name }
   parent { id identifier title }
   cycle { id name number }
@@ -74,17 +63,15 @@ const BASELINE: Record<ProjectionEntity, Record<ProjectionView, string>> = {
 	},
 	project: {
 		list: `
-  id name description color icon state priority slugId startDate targetDate completedAt
-  canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url
-  teams(first: 10) { nodes { id key name } }
-  lead { id name email } members(first: 10) { nodes { id name email } } status { id name }
+  id name url
 `,
 		detail: `
   id name description color icon state priority slugId startDate targetDate completedAt
   canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url
   teams(first: 10) { nodes { id key name } }
   lead { id name email } members(first: 10) { nodes { id name email } } status { id name }
- content`,
+  content
+`,
 	},
 	projectLabel: {
 		list: `
@@ -96,8 +83,7 @@ const BASELINE: Record<ProjectionEntity, Record<ProjectionView, string>> = {
 	},
 	document: {
 		list: `
-  id title content color icon slugId sortOrder hiddenAt trashed summary archivedAt createdAt updatedAt url
-  team { id key name } project { id name } issue { id identifier title } initiative { id name }
+  id title url
 `,
 		detail: `
   id title content color icon slugId sortOrder hiddenAt trashed summary archivedAt createdAt updatedAt url
@@ -194,10 +180,12 @@ describe("projection hides field selection syntax", () => {
 	);
 
 	it("keeps nested connection page-size literals", () => {
-		expect(nestedPageSizes(projection("project", "list"))).toEqual([
-			"teams(first: 10)",
-			"members(first: 10)",
+		expect(nestedPageSizes(projection("issue", "list"))).toEqual([]);
+		expect(nestedPageSizes(projection("issue", "detail"))).toEqual([
+			"labels(first: 50)",
 		]);
+		expect(nestedPageSizes(projection("project", "list"))).toEqual([]);
+
 		expect(nestedPageSizes(projection("project", "detail"))).toEqual([
 			"teams(first: 10)",
 			"members(first: 10)",
@@ -216,9 +204,24 @@ describe("projection hides field selection syntax", () => {
 		for (const entity of SAME_FOR_BOTH_VIEWS) {
 			expect(projection(entity, "list")).toBe(projection(entity, "detail"));
 		}
-		expect(projection("project", "detail")).toBe(
-			`${projection("project", "list")} content`,
-		);
+		expect(projection("issue", "list")).toBe(`
+  id identifier title url
+`);
+		expect(projection("issue", "list")).not.toContain("description");
+		expect(projection("issue", "list")).not.toContain("labels");
+		expect(projection("issue", "list")).not.toContain("state");
+		expect(projection("issue", "detail")).toContain("description");
+		expect(projection("issue", "detail")).toContain("labels(first: 50)");
+		expect(projection("project", "list")).toBe(`
+  id name url
+`);
+		expect(projection("project", "list")).not.toContain("content");
+		expect(projection("project", "detail")).toContain("content");
+		expect(projection("document", "list")).toBe(`
+  id title url
+`);
+		expect(projection("document", "list")).not.toContain("content");
+		expect(projection("document", "detail")).toContain("content");
 		expect(projection("team", "list")).toBe(
 			`${projection("team", "detail")} states(first: 50) { nodes { id name type } }`,
 		);

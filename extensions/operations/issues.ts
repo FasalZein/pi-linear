@@ -7,7 +7,7 @@ import {
 	resolveTeamReference,
 	resolveUserReference,
 } from "../client";
-import { projection } from "../selections";
+import { parseResultView, projection } from "../selections";
 import {
 	compactObject,
 	mergeFilters,
@@ -35,6 +35,7 @@ import {
 	workspaceEmpty,
 	listOperation,
 	simpleMutation,
+	withGetResultView,
 } from "./shared";
 
 const issueCreateFields = [
@@ -140,6 +141,7 @@ export const issues: readonly OperationDefinition[] = ([
 		domain: "issues",
 		root: "issues",
 		selection: projection("issue", "list"),
+		resultView: { entity: "issue", defaultView: "summary" },
 		purpose: "List issues with exact convenience filters.",
 		pageSize: 20,
 		filterType: "IssueFilter",
@@ -243,7 +245,7 @@ export const issues: readonly OperationDefinition[] = ([
 			};
 		},
 	}),
-	{
+	withGetResultView({
 		name: "get_issue",
 		compatibilityBranches: [
 			{
@@ -286,7 +288,7 @@ export const issues: readonly OperationDefinition[] = ([
 				resolution: { target: { requested: ref } },
 			};
 		},
-	},
+	}, "issue", "issue", "GetIssue"),
 	simpleMutation({
 		name: "create_issue",
 		compatibilityBranches: [
@@ -782,6 +784,7 @@ export const issues: readonly OperationDefinition[] = ([
 		domain: "issues",
 		root: "searchIssues",
 		selection: projection("issue", "list"),
+		resultView: { entity: "issue", defaultView: "summary" },
 		purpose: "Search issues by text.",
 		pageSize: 20,
 		filterType: "IssueFilter",
@@ -805,14 +808,20 @@ export const issues: readonly OperationDefinition[] = ([
 		prepare: async (k, v, s) => {
 			const term = typeof v.term === "string" ? v.term.trim() : "";
 			if (isIssueIdentifier(term)) {
+				const view = parseResultView(v.view, "summary");
 				return {
 					variables: { id: term },
 					variant: {
-						document: getDocument("GetIssue", "issue", projection("issue", "list")),
+						document: getDocument(
+							"GetIssue",
+							"issue",
+							projection("issue", view === "summary" ? "list" : "detail"),
+						),
 						root: "issue",
 					},
 					exactIssue: { requested: term, path: "issue" },
 					resolution: { target: { requested: term } },
+					resultView: view,
 				};
 			}
 			const teamRef = v.team ?? v.teamId;
