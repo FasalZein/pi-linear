@@ -3473,6 +3473,14 @@
             "description": "Linear filter object for this entity; must name at least one field.",
             "minProperties": 1
           },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "summary or full. Lists default to summary. Single records default to full."
+          },
           "workspace": {
             "type": "string",
             "minLength": 1,
@@ -3486,7 +3494,7 @@
     "purpose": "List documents.",
     "kind": "query",
     "help": {
-      "signature": "list_documents(after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, sort?: [SortInput!])",
+      "signature": "list_documents(after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, sort?: [SortInput!], view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "list_documents",
@@ -3500,7 +3508,8 @@
         "includeArchived",
         "orderBy",
         "filter",
-        "sort"
+        "sort",
+        "view"
       ]
     },
     "compatibility": {
@@ -3545,6 +3554,11 @@
           "name": "sort",
           "type": "[SortInput!]",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -3559,7 +3573,7 @@
         "operation": "list_documents",
         "variables": {}
       },
-      "document": "query ListDocuments(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: DocumentFilter\n    $sort: [DocumentSortInput!]\n    \n  ) {\n    documents(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id title content color icon slugId sortOrder hiddenAt trashed summary archivedAt createdAt updatedAt url\n  team { id key name } project { id name } issue { id identifier title } initiative { id name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "document": "query ListDocuments(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: DocumentFilter\n    $sort: [DocumentSortInput!]\n    \n  ) {\n    documents(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id title summary slugId url createdAt updatedAt\n  team { id key name } project { id name } issue { id identifier title }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
       "pagination": {
         "defaultPageSize": 20,
         "filterType": "DocumentFilter",
@@ -3579,7 +3593,7 @@
     "graphql": {
       "documents": [
         {
-          "document": "query ListDocuments(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: DocumentFilter\n    $sort: [DocumentSortInput!]\n    \n  ) {\n    documents(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id title content color icon slugId sortOrder hiddenAt trashed summary archivedAt createdAt updatedAt url\n  team { id key name } project { id name } issue { id identifier title } initiative { id name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+          "document": "query ListDocuments(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: DocumentFilter\n    $sort: [DocumentSortInput!]\n    \n  ) {\n    documents(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id title summary slugId url createdAt updatedAt\n  team { id key name } project { id name } issue { id identifier title }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
           "root": "documents",
           "kind": "query"
         }
@@ -3633,6 +3647,11 @@
           "name": "filter",
           "type": "Filter",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -3659,7 +3678,8 @@
         "includeArchived",
         "orderBy",
         "filter",
-        "sort"
+        "sort",
+        "view"
       ],
       "action": "list",
       "empty": {
@@ -3684,6 +3704,14 @@
             "description": "Exact document title, or a document UUID.",
             "minLength": 1
           },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "summary or full. Lists default to summary. Single records default to full."
+          },
           "workspace": {
             "type": "string",
             "minLength": 1,
@@ -3700,7 +3728,7 @@
     "purpose": "Get a document by exact title or UUID.",
     "kind": "query",
     "help": {
-      "signature": "get_document(document: DocumentReference)",
+      "signature": "get_document(document: DocumentReference, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "get_document",
@@ -3709,7 +3737,8 @@
         }
       },
       "callFields": [
-        "document"
+        "document",
+        "view"
       ]
     },
     "compatibility": {
@@ -3719,6 +3748,11 @@
           "name": "document",
           "type": "DocumentReference",
           "required": true
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -3782,6 +3816,11 @@
           "name": "document",
           "type": "DocumentReference",
           "required": true
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -3805,7 +3844,8 @@
     "render": {
       "entityKind": "document",
       "callFields": [
-        "document"
+        "document",
+        "view"
       ],
       "action": "get"
     }
@@ -7175,6 +7215,14 @@
             "description": "Linear filter object for this entity; must name at least one field.",
             "minProperties": 1
           },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "summary or full. Lists default to summary. Single records default to full."
+          },
           "workspace": {
             "type": "string",
             "minLength": 1,
@@ -7188,7 +7236,7 @@
     "purpose": "List issues with exact convenience filters.",
     "kind": "query",
     "help": {
-      "signature": "list_issues(query?: String, team?: TeamReference, state?: StateReference, stateType?: WorkflowStateType, assignee?: UserReference, after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, sort?: [SortInput!])",
+      "signature": "list_issues(query?: String, team?: TeamReference, state?: StateReference, stateType?: WorkflowStateType, assignee?: UserReference, after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, sort?: [SortInput!], view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "list_issues",
@@ -7210,7 +7258,8 @@
         "includeArchived",
         "orderBy",
         "filter",
-        "sort"
+        "sort",
+        "view"
       ]
     },
     "compatibility": {
@@ -7279,6 +7328,11 @@
         {
           "name": "sort",
           "type": "[SortInput!]",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -7372,6 +7426,11 @@
           "name": "sort",
           "type": "[SortInput!]",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "legacyBranches": null,
@@ -7383,7 +7442,7 @@
           "stateType": "started"
         }
       },
-      "document": "query ListIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    $sort: [IssueSortInput!]\n    \n  ) {\n    issues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "document": "query ListIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    $sort: [IssueSortInput!]\n    \n  ) {\n    issues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id identifier number title priority url dueDate createdAt updatedAt priorityLabel\n  state { id name type }\n  team { id key name }\n  assignee { id name }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
       "pagination": {
         "defaultPageSize": 20,
         "filterType": "IssueFilter",
@@ -7428,7 +7487,7 @@
     "graphql": {
       "documents": [
         {
-          "document": "query ListIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    $sort: [IssueSortInput!]\n    \n  ) {\n    issues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+          "document": "query ListIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    $sort: [IssueSortInput!]\n    \n  ) {\n    issues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id identifier number title priority url dueDate createdAt updatedAt priorityLabel\n  state { id name type }\n  team { id key name }\n  assignee { id name }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
           "root": "issues",
           "kind": "query"
         }
@@ -7511,6 +7570,11 @@
           "name": "filter",
           "type": "Filter",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -7545,7 +7609,8 @@
         "includeArchived",
         "orderBy",
         "filter",
-        "sort"
+        "sort",
+        "view"
       ],
       "action": "list",
       "empty": {
@@ -7570,6 +7635,14 @@
             "description": "Issue identifier such as ABC-123, or an issue UUID.",
             "minLength": 1
           },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "summary or full. Lists default to summary. Single records default to full."
+          },
           "workspace": {
             "type": "string",
             "minLength": 1,
@@ -7586,7 +7659,7 @@
     "purpose": "Get one issue by exact identifier or UUID.",
     "kind": "query",
     "help": {
-      "signature": "get_issue(issue: IssueReference)",
+      "signature": "get_issue(issue: IssueReference, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "get_issue",
@@ -7595,7 +7668,8 @@
         }
       },
       "callFields": [
-        "issue"
+        "issue",
+        "view"
       ]
     },
     "compatibility": {
@@ -7605,6 +7679,11 @@
           "name": "issue",
           "type": "IssueReference",
           "required": true
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -7642,7 +7721,7 @@
           "issue": "AEO-258"
         }
       },
-      "document": "query GetIssue($id: String!) { issue(id: $id) { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } }",
+      "document": "query GetIssue($id: String!) { issue(id: $id) { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } }",
       "pagination": null,
       "resolverPaths": {
         "issue": "resolveIssueReference"
@@ -7653,7 +7732,7 @@
     "graphql": {
       "documents": [
         {
-          "document": "query GetIssue($id: String!) { issue(id: $id) { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } }",
+          "document": "query GetIssue($id: String!) { issue(id: $id) { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } }",
           "root": "issue",
           "kind": "query"
         }
@@ -7674,6 +7753,11 @@
           "name": "issue",
           "type": "IssueReference",
           "required": true
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -7697,7 +7781,8 @@
     "render": {
       "entityKind": "issue",
       "callFields": [
-        "issue"
+        "issue",
+        "view"
       ],
       "action": "get"
     }
@@ -8229,7 +8314,7 @@
           "parent": "AEO-258"
         }
       },
-      "document": "mutation CreateIssue($input: IssueCreateInput!) {\n    issueCreate(input: $input) { success issue { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } }\n  }",
+      "document": "mutation CreateIssue($input: IssueCreateInput!) {\n    issueCreate(input: $input) { success issue { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } }\n  }",
       "pagination": null,
       "resolverPaths": {
         "parent": "resolveIssueReference",
@@ -8248,7 +8333,7 @@
     "graphql": {
       "documents": [
         {
-          "document": "mutation CreateIssue($input: IssueCreateInput!) {\n    issueCreate(input: $input) { success issue { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } }\n  }",
+          "document": "mutation CreateIssue($input: IssueCreateInput!) {\n    issueCreate(input: $input) { success issue { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } }\n  }",
           "root": "issueCreate",
           "kind": "mutation",
           "mutationResult": {
@@ -9126,7 +9211,7 @@
           "state": "Backlog"
         }
       },
-      "document": "mutation UpdateIssue($id: String! $input: IssueUpdateInput!) {\n    issueUpdate(id: $id, input: $input) { success issue { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } }\n  }",
+      "document": "mutation UpdateIssue($id: String! $input: IssueUpdateInput!) {\n    issueUpdate(id: $id, input: $input) { success issue { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } }\n  }",
       "pagination": null,
       "resolverPaths": {
         "issue": "resolveIssueReference",
@@ -9145,7 +9230,7 @@
     "graphql": {
       "documents": [
         {
-          "document": "mutation UpdateIssue($id: String! $input: IssueUpdateInput!) {\n    issueUpdate(id: $id, input: $input) { success issue { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } }\n  }",
+          "document": "mutation UpdateIssue($id: String! $input: IssueUpdateInput!) {\n    issueUpdate(id: $id, input: $input) { success issue { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } }\n  }",
           "root": "issueUpdate",
           "kind": "mutation",
           "mutationResult": {
@@ -9571,6 +9656,14 @@
             "description": "Linear filter object for this entity; must name at least one field.",
             "minProperties": 1
           },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "summary or full. Lists default to summary. Single records default to full."
+          },
           "workspace": {
             "type": "string",
             "minLength": 1,
@@ -9587,7 +9680,7 @@
     "purpose": "Search issues by text.",
     "kind": "query",
     "help": {
-      "signature": "search_issues(term: String, includeComments?: Boolean, team?: TeamReference, after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
+      "signature": "search_issues(term: String, includeComments?: Boolean, team?: TeamReference, after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "search_issues",
@@ -9605,7 +9698,8 @@
         "last",
         "includeArchived",
         "orderBy",
-        "filter"
+        "filter",
+        "view"
       ]
     },
     "compatibility": {
@@ -9659,6 +9753,11 @@
         {
           "name": "filter",
           "type": "Filter",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -9724,6 +9823,11 @@
           "name": "filter",
           "type": "Filter",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "legacyBranches": null,
@@ -9734,7 +9838,7 @@
           "term": "authentication"
         }
       },
-      "document": "query SearchIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    \n    $term: String! $includeComments: Boolean $teamId: String\n  ) {\n    searchIssues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  term: $term includeComments: $includeComments teamId: $teamId) {\n      nodes { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "document": "query SearchIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    \n    $term: String! $includeComments: Boolean $teamId: String\n  ) {\n    searchIssues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  term: $term includeComments: $includeComments teamId: $teamId) {\n      nodes { \n  id identifier number title priority url dueDate createdAt updatedAt priorityLabel\n  state { id name type }\n  team { id key name }\n  assignee { id name }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
       "pagination": {
         "defaultPageSize": 20,
         "filterType": "IssueFilter"
@@ -9748,7 +9852,7 @@
     "graphql": {
       "documents": [
         {
-          "document": "query SearchIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    \n    $term: String! $includeComments: Boolean $teamId: String\n  ) {\n    searchIssues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  term: $term includeComments: $includeComments teamId: $teamId) {\n      nodes { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+          "document": "query SearchIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    \n    $term: String! $includeComments: Boolean $teamId: String\n  ) {\n    searchIssues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  term: $term includeComments: $includeComments teamId: $teamId) {\n      nodes { \n  id identifier number title priority url dueDate createdAt updatedAt priorityLabel\n  state { id name type }\n  team { id key name }\n  assignee { id name }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
           "root": "searchIssues",
           "kind": "query"
         }
@@ -9814,6 +9918,11 @@
           "name": "filter",
           "type": "Filter",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -9846,7 +9955,8 @@
         "last",
         "includeArchived",
         "orderBy",
-        "filter"
+        "filter",
+        "view"
       ],
       "action": "search",
       "empty": {
@@ -11857,6 +11967,14 @@
             "description": "Linear filter object for this entity; must name at least one field.",
             "minProperties": 1
           },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "summary or full. Lists default to summary. Single records default to full."
+          },
           "workspace": {
             "type": "string",
             "minLength": 1,
@@ -11870,7 +11988,7 @@
     "purpose": "List projects.",
     "kind": "query",
     "help": {
-      "signature": "list_projects(after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, sort?: [SortInput!])",
+      "signature": "list_projects(after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, sort?: [SortInput!], view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "list_projects",
@@ -11884,7 +12002,8 @@
         "includeArchived",
         "orderBy",
         "filter",
-        "sort"
+        "sort",
+        "view"
       ]
     },
     "compatibility": {
@@ -11929,6 +12048,11 @@
           "name": "sort",
           "type": "[SortInput!]",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -11943,7 +12067,7 @@
         "operation": "list_projects",
         "variables": {}
       },
-      "document": "query ListProjects(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: ProjectFilter\n    $sort: [ProjectSortInput!]\n    \n  ) {\n    projects(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id name description color icon state priority slugId startDate targetDate completedAt\n  canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url\n  teams(first: 10) { nodes { id key name } }\n  lead { id name email } members(first: 10) { nodes { id name email } } status { id name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "document": "query ListProjects(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: ProjectFilter\n    $sort: [ProjectSortInput!]\n    \n  ) {\n    projects(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id name state priority slugId startDate targetDate health progress priorityLabel url\n  teams(first: 10) { nodes { id key name } }\n  lead { id name } status { id name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
       "pagination": {
         "defaultPageSize": 20,
         "filterType": "ProjectFilter",
@@ -11968,7 +12092,7 @@
     "graphql": {
       "documents": [
         {
-          "document": "query ListProjects(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: ProjectFilter\n    $sort: [ProjectSortInput!]\n    \n  ) {\n    projects(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id name description color icon state priority slugId startDate targetDate completedAt\n  canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url\n  teams(first: 10) { nodes { id key name } }\n  lead { id name email } members(first: 10) { nodes { id name email } } status { id name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+          "document": "query ListProjects(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: ProjectFilter\n    $sort: [ProjectSortInput!]\n    \n  ) {\n    projects(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id name state priority slugId startDate targetDate health progress priorityLabel url\n  teams(first: 10) { nodes { id key name } }\n  lead { id name } status { id name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
           "root": "projects",
           "kind": "query"
         }
@@ -12022,6 +12146,11 @@
           "name": "filter",
           "type": "Filter",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -12048,7 +12177,8 @@
         "includeArchived",
         "orderBy",
         "filter",
-        "sort"
+        "sort",
+        "view"
       ],
       "action": "list",
       "empty": {
@@ -12073,6 +12203,14 @@
             "description": "Exact project name, or a project UUID.",
             "minLength": 1
           },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "summary or full. Lists default to summary. Single records default to full."
+          },
           "workspace": {
             "type": "string",
             "minLength": 1,
@@ -12089,7 +12227,7 @@
     "purpose": "Get a project by exact name or UUID.",
     "kind": "query",
     "help": {
-      "signature": "get_project(project: ProjectReference)",
+      "signature": "get_project(project: ProjectReference, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "get_project",
@@ -12098,7 +12236,8 @@
         }
       },
       "callFields": [
-        "project"
+        "project",
+        "view"
       ]
     },
     "compatibility": {
@@ -12108,6 +12247,11 @@
           "name": "project",
           "type": "ProjectReference",
           "required": true
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -12139,7 +12283,7 @@
           "project": "Platform"
         }
       },
-      "document": "query GetProject($id: String!) { project(id: $id) { \n  id name description color icon state priority slugId startDate targetDate completedAt\n  canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url\n  teams(first: 10) { nodes { id key name } }\n  lead { id name email } members(first: 10) { nodes { id name email } } status { id name }\n content } }",
+      "document": "query GetProject($id: String!) { project(id: $id) { \n  id name description color icon state priority slugId startDate targetDate completedAt\n  canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url\n  teams(first: 10) { nodes { id key name } }\n  lead { id name email } members(first: 10) { nodes { id name email } } status { id name }\n  content\n } }",
       "pagination": null,
       "resolverPaths": {
         "project": "resolveNamedEntityReference"
@@ -12150,7 +12294,7 @@
     "graphql": {
       "documents": [
         {
-          "document": "query GetProject($id: String!) { project(id: $id) { \n  id name description color icon state priority slugId startDate targetDate completedAt\n  canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url\n  teams(first: 10) { nodes { id key name } }\n  lead { id name email } members(first: 10) { nodes { id name email } } status { id name }\n content } }",
+          "document": "query GetProject($id: String!) { project(id: $id) { \n  id name description color icon state priority slugId startDate targetDate completedAt\n  canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url\n  teams(first: 10) { nodes { id key name } }\n  lead { id name email } members(first: 10) { nodes { id name email } } status { id name }\n  content\n } }",
           "root": "project",
           "kind": "query"
         }
@@ -12171,6 +12315,11 @@
           "name": "project",
           "type": "ProjectReference",
           "required": true
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -12194,7 +12343,8 @@
     "render": {
       "entityKind": "project",
       "callFields": [
-        "project"
+        "project",
+        "view"
       ],
       "action": "get"
     }
@@ -15643,7 +15793,7 @@
           ]
         }
       },
-      "document": "mutation CreateProject($input: ProjectCreateInput! $slackChannelName: String) {\n    projectCreate(input: $input, slackChannelName: $slackChannelName) { success project { \n  id name description color icon state priority slugId startDate targetDate completedAt\n  canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url\n  teams(first: 10) { nodes { id key name } }\n  lead { id name email } members(first: 10) { nodes { id name email } } status { id name }\n content } }\n  }",
+      "document": "mutation CreateProject($input: ProjectCreateInput! $slackChannelName: String) {\n    projectCreate(input: $input, slackChannelName: $slackChannelName) { success project { \n  id name description color icon state priority slugId startDate targetDate completedAt\n  canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url\n  teams(first: 10) { nodes { id key name } }\n  lead { id name email } members(first: 10) { nodes { id name email } } status { id name }\n  content\n } }\n  }",
       "pagination": null,
       "resolverPaths": {
         "projectId": "resolveNamedEntityReference",
@@ -15656,7 +15806,7 @@
       "documents": [
         {
           "when": "create",
-          "document": "mutation CreateProject($input: ProjectCreateInput! $slackChannelName: String) {\n    projectCreate(input: $input, slackChannelName: $slackChannelName) { success project { \n  id name description color icon state priority slugId startDate targetDate completedAt\n  canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url\n  teams(first: 10) { nodes { id key name } }\n  lead { id name email } members(first: 10) { nodes { id name email } } status { id name }\n content } }\n  }",
+          "document": "mutation CreateProject($input: ProjectCreateInput! $slackChannelName: String) {\n    projectCreate(input: $input, slackChannelName: $slackChannelName) { success project { \n  id name description color icon state priority slugId startDate targetDate completedAt\n  canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url\n  teams(first: 10) { nodes { id key name } }\n  lead { id name email } members(first: 10) { nodes { id name email } } status { id name }\n  content\n } }\n  }",
           "root": "projectCreate",
           "kind": "mutation",
           "mutationResult": {
@@ -15669,7 +15819,7 @@
         },
         {
           "when": "update",
-          "document": "mutation UpdateProject($id: String! $input: ProjectUpdateInput!) {\n    projectUpdate(id: $id, input: $input) { success project { \n  id name description color icon state priority slugId startDate targetDate completedAt\n  canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url\n  teams(first: 10) { nodes { id key name } }\n  lead { id name email } members(first: 10) { nodes { id name email } } status { id name }\n content } }\n  }",
+          "document": "mutation UpdateProject($id: String! $input: ProjectUpdateInput!) {\n    projectUpdate(id: $id, input: $input) { success project { \n  id name description color icon state priority slugId startDate targetDate completedAt\n  canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url\n  teams(first: 10) { nodes { id key name } }\n  lead { id name email } members(first: 10) { nodes { id name email } } status { id name }\n  content\n } }\n  }",
           "root": "projectUpdate",
           "kind": "mutation",
           "mutationResult": {

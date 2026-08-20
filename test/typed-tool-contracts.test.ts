@@ -265,6 +265,8 @@ function sampleFor(type: string): unknown {
       return 'started';
     case 'PaginationOrderBy':
       return 'updatedAt';
+    case 'ResultView':
+      return 'summary';
     default:
       return 'sample';
   }
@@ -442,6 +444,10 @@ describe('typed schema validation across all 48 tools', () => {
     expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', dueDate: '2026-09-01' })).toBe(true);
     expect(accepts('linear_create_issue_label', { name: 'bug', color: 'red' })).toBe(false);
     expect(accepts('linear_create_issue_label', { name: 'bug', color: '#ff0000' })).toBe(true);
+    expect(accepts('linear_list_issues', { view: 'compact' })).toBe(false);
+    expect(accepts('linear_list_issues', { view: 'summary' })).toBe(true);
+    expect(accepts('linear_list_issues', { view: 'full' })).toBe(true);
+    expect(accepts('linear_get_issue', { issue: 'AEO-258', view: 'summary' })).toBe(true);
   });
 
   it('publishes branches as anyOf and single requirements as required', () => {
@@ -662,7 +668,7 @@ describe('package hygiene', () => {
   });
 
   it('exposes the canonical field list to the renderers', () => {
-    expect(canonicalFieldNames(operations.get_issue!)).toEqual(['issue']);
+    expect(canonicalFieldNames(operations.get_issue!)).toEqual(['issue', 'view']);
     const createIssueFields = canonicalFieldNames(operations.create_issue!);
     expect(createIssueFields.slice(0, 6))
       .toEqual(['title', 'team', 'parent', 'state', 'assignee', 'dueDate']);
@@ -788,6 +794,8 @@ const COMPATIBILITY: ReadonlyArray<{
       ['orderBy', 'updatedAt'],
       ['filter', { state: { name: { eq: 'Todo' } } }],
       ['sort', [{ key: 'priority', order: 'Ascending' }]],
+      ['view', 'summary'],
+      ['view', 'full'],
     ],
     absent: ['teamId', 'teamKey', 'stateName', 'assigneeId'],
   },

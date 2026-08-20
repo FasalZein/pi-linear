@@ -32,6 +32,7 @@ import {
 import { specFor, specForKind, type Entity, type EntitySpec } from './entities';
 
 const PREVIEW_LIMIT = 20;
+export const SUMMARY_VIEW_NOTICE = 'Fields narrowed — use view="full" for complete fields.';
 
 /**
  * Structural view of pi's ToolRenderContext (not exported by the package).
@@ -48,6 +49,7 @@ type Meta = {
   truncations?: Array<{ path: string; kept: number; endCursor?: string }>;
   stringsClipped?: number;
   resultBudget?: { maxBytes: number; truncated: true };
+  view?: 'summary' | 'full';
 };
 
 type Digest =
@@ -161,14 +163,21 @@ function statusLine(theme: Theme, spec: EntitySpec, entity: Entity, verb: string
   return parts.join(' ');
 }
 
+function detailsView(result: AgentToolResult<any>): 'summary' | 'full' | undefined {
+  const view = asRecord(asRecord(result.details)?.meta)?.view;
+  return view === 'summary' || view === 'full' ? view : undefined;
+}
+
 function entityBlock(
   theme: Theme,
   spec: EntitySpec,
   entity: Entity,
   verb: string,
   notes: string[],
+  disclosure?: string,
 ): Array<string | ReturnType<typeof wrapped>> {
   const lines: Array<string | ReturnType<typeof wrapped>> = ['', statusLine(theme, spec, entity, verb)];
+  if (disclosure) lines.push(wrapped(theme.fg('dim', disclosure), 2));
   if (spec.details?.length) {
     for (const field of spec.details) {
       const value = field.value(entity);
@@ -254,7 +263,7 @@ function emptyState(
 ): { fact: string; action: string } {
   const metadata = definition.render;
   const routing = new Set([
-    'after', 'before', 'first', 'last', 'workspace', 'sink', ...operationTargetFields(definition),
+    'after', 'before', 'first', 'last', 'workspace', 'sink', 'view', ...operationTargetFields(definition),
   ]);
   const filtered = Object.keys(contextArgs(context)).some((key) => !routing.has(key));
   if (metadata.empty) {
@@ -334,8 +343,12 @@ function renderDigest(
 
   if (digest.kind === 'list') {
     const empty = emptyState(definition, spec, context);
+    const summaryList = detailsView(result) === 'summary' && digest.entities.length > 0;
     return new LinearListComponent(digest.entities, theme, {
-      headline: `${plural(digest.entities.length, spec.noun, spec.pluralNoun)} returned`,
+      headline: summaryList
+        ? `${plural(digest.entities.length, spec.noun, spec.pluralNoun)} returned · summary view`
+        : `${plural(digest.entities.length, spec.noun, spec.pluralNoun)} returned`,
+      disclosure: summaryList ? SUMMARY_VIEW_NOTICE : undefined,
       emptyLabel: empty.fact,
       emptyAction: empty.action,
       footnotes: digest.notes,
@@ -355,7 +368,8 @@ function renderDigest(
   }
 
   if (digest.kind === 'entity') {
-    return new LinearBlockComponent(entityBlock(theme, spec, digest.entity, verb.past, digest.notes));
+    const disclosure = detailsView(result) === 'summary' ? SUMMARY_VIEW_NOTICE : undefined;
+    return new LinearBlockComponent(entityBlock(theme, spec, digest.entity, verb.past, digest.notes, disclosure));
   }
 
   if (digest.kind === 'not-found') {

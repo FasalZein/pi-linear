@@ -167,7 +167,8 @@
       "includeArchived",
       "orderBy",
       "filter",
-      "sort"
+      "sort",
+      "view"
     ],
     "action": "list",
     "empty": {
@@ -180,7 +181,8 @@
   "get_document": {
     "entityKind": "document",
     "callFields": [
-      "document"
+      "document",
+      "view"
     ],
     "action": "get"
   },
@@ -337,7 +339,8 @@
       "includeArchived",
       "orderBy",
       "filter",
-      "sort"
+      "sort",
+      "view"
     ],
     "action": "list",
     "empty": {
@@ -350,7 +353,8 @@
   "get_issue": {
     "entityKind": "issue",
     "callFields": [
-      "issue"
+      "issue",
+      "view"
     ],
     "action": "get"
   },
@@ -389,7 +393,8 @@
       "last",
       "includeArchived",
       "orderBy",
-      "filter"
+      "filter",
+      "view"
     ],
     "action": "search",
     "empty": {
@@ -507,7 +512,8 @@
       "includeArchived",
       "orderBy",
       "filter",
-      "sort"
+      "sort",
+      "view"
     ],
     "action": "list",
     "empty": {
@@ -520,7 +526,8 @@
   "get_project": {
     "entityKind": "project",
     "callFields": [
-      "project"
+      "project",
+      "view"
     ],
     "action": "get"
   },

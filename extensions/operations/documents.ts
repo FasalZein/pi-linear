@@ -28,6 +28,7 @@ import {
 	workspaceEmpty,
 	listOperation,
 	simpleMutation,
+	withGetResultView,
 } from "./shared";
 
 export const documents: readonly OperationDefinition[] = ([
@@ -57,13 +58,14 @@ export const documents: readonly OperationDefinition[] = ([
 		domain: "documents",
 		root: "documents",
 		selection: projection("document", "list"),
+		resultView: { entity: "document", defaultView: "summary" },
 		purpose: "List documents.",
 		pageSize: 20,
 		filterType: "DocumentFilter",
 		sortType: "DocumentSortInput",
 		sortKeys: DOCUMENT_SORT_KEYS,
 	}),
-	{
+	withGetResultView({
 		name: "get_document",
 		compatibilityBranches: [
 			{
@@ -111,7 +113,7 @@ export const documents: readonly OperationDefinition[] = ([
 			const x = await resolveNamedEntityReference(k, "document", requested, s);
 			return { variables: { id: x.id } };
 		},
-	},
+	}, "document", "document", "GetDocument"),
 	simpleMutation({
 		name: "create_document",
 		compatibilityBranches: [

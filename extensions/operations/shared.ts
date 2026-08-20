@@ -3,7 +3,12 @@ import {
 	resolveNamedEntityReference,
 	type ResolvedIssue,
 } from "../client";
-import { projection } from "../selections";
+import {
+	parseResultView,
+	projection,
+	type ResultView,
+	type ResultViewEntity,
+} from "../selections";
 import {
 	compactObject,
 	mergedInput,
@@ -11,6 +16,7 @@ import {
 	paginationVariables,
 	type GraphQLDocumentVariant,
 	type LinearOperation,
+	type OperationPreparation,
 	type OperationSource,
 	type OperationEmptyState,
 	type OperationDefinition,
@@ -122,7 +128,7 @@ export function object(value: unknown): Record<string, unknown> | undefined {
 		? (value as Record<string, unknown>)
 		: undefined;
 }
-function listDocument(
+export function listQueryDocument(
 	name: string,
 	root: string,
 	selection: string,
@@ -147,6 +153,56 @@ function listDocument(
 }
 export function getDocument(name: string, root: string, selection: string) {
 	return `query ${name}($id: String!) { ${root}(id: $id) { ${selection} } }`;
+}
+
+export const resultViewParam = p("view", "ResultView");
+
+export function applyResultView(
+	variables: Record<string, unknown>,
+	defaultView: ResultView,
+	prepared: OperationPreparation,
+	documents: Record<ResultView, string>,
+	root: string,
+): OperationPreparation {
+	const view = parseResultView(variables.view, defaultView);
+	return {
+		...prepared,
+		variant: {
+			...prepared.variant,
+			document: documents[view],
+			root: prepared.variant?.root ?? root,
+		},
+		resultView: view,
+	};
+}
+
+export function withGetResultView(
+	source: OperationSource,
+	entity: ResultViewEntity,
+	root: string,
+	queryName: string,
+	defaultView: ResultView = "full",
+): OperationSource {
+	const documents: Record<ResultView, string> = {
+		summary: getDocument(queryName, root, projection(entity, "list")),
+		full: getDocument(queryName, root, projection(entity, "detail")),
+	};
+	const innerPrepare = source.prepare;
+	return {
+		...source,
+		canonical: {
+			...source.canonical,
+			fields: { ...source.canonical.fields, view: "ResultView" },
+		},
+		parameters: [...source.parameters, resultViewParam],
+		document: documents[defaultView],
+		prepare: async (apiKey, variables, signal) => {
+			const prepared = innerPrepare
+				? await innerPrepare(apiKey, variables, signal)
+				: { variables };
+			return applyResultView(variables, defaultView, prepared, documents, root);
+		},
+	};
 }
 function mutationDocument(
 	name: string,
@@ -181,8 +237,8 @@ export function listPrepare(
 	extra?: (
 		variables: Record<string, unknown>,
 	) => Promise<Record<string, unknown>> | Record<string, unknown>,
-) {
-	return async (_apiKey: string, variables: Record<string, unknown>) => ({
+): NonNullable<LinearOperation["prepare"]> {
+	return async (_apiKey, variables) => ({
 		variables: compactObject({
 			...paginationVariables(variables, defaultPageSize),
 			filter: object(variables.filter),
@@ -259,18 +315,41 @@ export function listOperation(config: {
 	resolverPaths?: Record<string, string>;
 	acceptedParameters?: readonly OperationParameter[];
 	validateVariables?: LinearOperation["validateVariables"];
+	resultView?: { entity: ResultViewEntity; defaultView: ResultView };
 } & OperationSourceExtras): OperationSource {
 	const parameters = config.parameters ?? [];
-	const document = listDocument(
-		config.name.replace(/(^|_)(\w)/g, (_, _a, c) => c.toUpperCase()),
-		config.root,
-		config.selection,
-		config,
-	);
+	const queryName = config.name.replace(/(^|_)(\w)/g, (_, _a, c) => c.toUpperCase());
+	const documents = config.resultView
+		? {
+				summary: listQueryDocument(
+					queryName,
+					config.root,
+					projection(config.resultView.entity, "list"),
+					config,
+				),
+				full: listQueryDocument(
+					queryName,
+					config.root,
+					projection(config.resultView.entity, "detail"),
+					config,
+				),
+		  }
+		: undefined;
+	const document = documents
+		? documents[config.resultView!.defaultView]
+		: listQueryDocument(queryName, config.root, config.selection, config);
+	const innerPrepare = config.prepare ?? listPrepare(config.pageSize);
+	const innerValidate = config.validateVariables;
+	const defaultView = config.resultView?.defaultView;
 	return {
 		...sourceExtras(config),
 		name: config.name,
-		canonical: config.canonical,
+		canonical: config.resultView
+			? {
+					...config.canonical,
+					fields: { ...config.canonical.fields, view: "ResultView" },
+			  }
+			: config.canonical,
 		aliases: config.aliases ?? [],
 		domain: config.domain,
 		purpose: config.purpose,
@@ -279,8 +358,13 @@ export function listOperation(config: {
 			...pagination,
 			...(config.filterType ? [filter] : []),
 			...(config.sortType ? [sort] : []),
+			...(config.resultView ? [resultViewParam] : []),
 		],
-		acceptedParameters: config.acceptedParameters,
+		acceptedParameters: config.acceptedParameters
+			? config.resultView
+				? [...config.acceptedParameters, resultViewParam]
+				: config.acceptedParameters
+			: undefined,
 		example: { operation: config.name, variables: config.example ?? {} },
 		document,
 		pagination: {
@@ -290,8 +374,25 @@ export function listOperation(config: {
 			...(config.sortKeys ? { sortKeys: config.sortKeys } : {}),
 		},
 		resolverPaths: config.resolverPaths,
-		validateVariables: config.validateVariables,
-		prepare: config.prepare ?? listPrepare(config.pageSize),
+		validateVariables: innerValidate
+			? (variables) => {
+					if (defaultView) parseResultView(variables.view, defaultView);
+					innerValidate(variables);
+			  }
+			: innerValidate,
+		prepare: documents && defaultView
+			? async (apiKey, variables, signal) => {
+					const prepared = await innerPrepare(apiKey, variables, signal);
+					if (prepared.resultView) return prepared;
+					return applyResultView(
+						variables,
+						defaultView,
+						prepared,
+						documents,
+						config.root,
+					);
+			  }
+			: innerPrepare,
 	};
 }
 export function simpleMutation(config: {

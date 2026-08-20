@@ -113,7 +113,7 @@ describe('named operations', () => {
       'Unknown Linear operation "missing". Send { "operation": "help" }.',
     );
     expect(() => resolveRequest({ operation: 'get_issue', variables: { teamKey: 'AEO', extra: true } })).toThrow(
-      'Invalid parameters for "get_issue": missing issue; unknown extra. Valid parameters: issue: IssueReference (required). Example: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }.',
+      'Invalid parameters for "get_issue": missing issue; unknown extra. Valid parameters: issue: IssueReference (required), view: ResultView (optional). Example: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }.',
     );
   });
 
@@ -314,7 +314,7 @@ describe('runtime discovery', () => {
       'Unknown Linear operation "missing". Send { "operation": "help" }.',
     );
     await expect(execute(tool, { operation: 'get_issue', variables: { teamKey: 'AEO' } })).rejects.toThrow(
-      'Valid parameters: issue: IssueReference (required). Example: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }.',
+      'Valid parameters: issue: IssueReference (required), view: ResultView (optional). Example: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }.',
     );
     expect(fetch).not.toHaveBeenCalled();
   });

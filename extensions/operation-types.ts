@@ -1,5 +1,6 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { CanonicalOperation } from "./canonical-schema";
+import type { ResultView } from "./selections";
 
 export type OperationDomain =
 	| "issues"
@@ -54,6 +55,7 @@ export type OperationPreparation = {
 	variant?: GraphQLDocumentVariant;
 	exactIssue?: ExactIssueCheck;
 	exactNamed?: ExactNamedCheck;
+	resultView?: ResultView;
 };
 export type PaginationMetadata = {
 	defaultPageSize: number;

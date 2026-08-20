@@ -18,6 +18,7 @@ const REFERENCE_HINTS: Record<string, string> = {
   Date: 'Calendar date, YYYY-MM-DD.',
   PaginationOrderBy: 'createdAt or updatedAt.',
   WorkflowStateType: 'triage, backlog, unstarted, started, completed, or canceled.',
+  ResultView: 'summary or full. Lists default to summary. Single records default to full.',
   IssueRelationType: 'blocks, duplicate, related, or similar.',
   Filter: 'Linear filter object for this entity; must name at least one field.',
   FilterData: 'Linear view filter object; must name at least one field.',
@@ -92,6 +93,7 @@ const ENUMS: Record<string, readonly string[]> = {
   IssueRelationType: ['blocks', 'duplicate', 'related', 'similar'],
   WorkflowStateType: ['triage', 'backlog', 'unstarted', 'started', 'completed', 'canceled'],
   PaginationOrderBy: ['createdAt', 'updatedAt'],
+  ResultView: ['summary', 'full'],
   IssueGrouping: ['assignee', 'status', 'priority', 'cycle', 'project', 'labels', 'none'],
 };
 

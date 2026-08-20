@@ -1,4 +1,6 @@
-// Field sets ported from @alasano/pi-linear 0.4.1.
+// Field sets ported from @alasano/pi-linear 0.4.1, with public summary/full
+// views mapped onto the list/detail projection boundary for issue, project,
+// and document reads.
 export type ProjectionEntity =
   | "comment"
   | "cycle"
@@ -18,15 +20,26 @@ export type ProjectionEntity =
   | "workflowState";
 
 export type ProjectionView = "list" | "detail";
+export type ResultView = "summary" | "full";
+export type ResultViewEntity = "issue" | "project" | "document";
 
 const PAGE_INFO = `pageInfo { hasNextPage hasPreviousPage startCursor endCursor }`;
-const ISSUE = `
+const ISSUE_LABELS = `labels(first: 50) { nodes { id name } }`;
+const ISSUE_SUMMARY = `
+  id identifier number title priority url dueDate createdAt updatedAt priorityLabel
+  state { id name type }
+  team { id key name }
+  assignee { id name }
+  ${ISSUE_LABELS}
+  project { id name }
+`;
+const ISSUE_FULL = `
   id identifier number title description priority url branchName dueDate createdAt updatedAt
   estimate priorityLabel completedAt startedAt archivedAt trashed
   state { id name type }
   team { id key name }
   assignee { id name email }
-  labels { nodes { id name } }
+  ${ISSUE_LABELS}
   project { id name }
   parent { id identifier title }
   cycle { id name number }
@@ -39,16 +52,26 @@ const ISSUE_LABEL = `
   id name description color isGroup createdAt updatedAt retiredAt
   team { id key name } parent { id name }
 `;
-const PROJECT = `
+const PROJECT_SUMMARY = `
+  id name state priority slugId startDate targetDate health progress priorityLabel url
+  teams(first: 10) { nodes { id key name } }
+  lead { id name } status { id name }
+`;
+const PROJECT_FULL = `
   id name description color icon state priority slugId startDate targetDate completedAt
   canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url
   teams(first: 10) { nodes { id key name } }
   lead { id name email } members(first: 10) { nodes { id name email } } status { id name }
+  content
 `;
 const PROJECT_LABEL = `
   id name description color isGroup createdAt updatedAt retiredAt parent { id name }
 `;
-const DOCUMENT = `
+const DOCUMENT_SUMMARY = `
+  id title summary slugId url createdAt updatedAt
+  team { id key name } project { id name } issue { id identifier title }
+`;
+const DOCUMENT_FULL = `
   id title content color icon slugId sortOrder hiddenAt trashed summary archivedAt createdAt updatedAt url
   team { id key name } project { id name } issue { id identifier title } initiative { id name }
 `;
@@ -84,14 +107,14 @@ const CYCLE = `
 const SELECTIONS: Record<ProjectionEntity, Record<ProjectionView, string>> = {
   comment: { list: COMMENT, detail: COMMENT },
   cycle: { list: CYCLE, detail: CYCLE },
-  document: { list: DOCUMENT, detail: DOCUMENT },
+  document: { list: DOCUMENT_SUMMARY, detail: DOCUMENT_FULL },
   initiative: { list: INITIATIVE, detail: INITIATIVE },
-  issue: { list: ISSUE, detail: ISSUE },
+  issue: { list: ISSUE_SUMMARY, detail: ISSUE_FULL },
   issueLabel: { list: ISSUE_LABEL, detail: ISSUE_LABEL },
   issueRelation: { list: ISSUE_RELATION, detail: ISSUE_RELATION },
   milestone: { list: MILESTONE, detail: MILESTONE },
   pageInfo: { list: PAGE_INFO, detail: PAGE_INFO },
-  project: { list: PROJECT, detail: `${PROJECT} content` },
+  project: { list: PROJECT_SUMMARY, detail: PROJECT_FULL },
   projectLabel: { list: PROJECT_LABEL, detail: PROJECT_LABEL },
   projectRelation: { list: PROJECT_RELATION, detail: PROJECT_RELATION },
   team: {
@@ -105,4 +128,14 @@ const SELECTIONS: Record<ProjectionEntity, Record<ProjectionView, string>> = {
 
 export function projection(entity: ProjectionEntity, view: ProjectionView): string {
   return SELECTIONS[entity][view];
+}
+
+export function projectionViewFor(view: ResultView): ProjectionView {
+  return view === "summary" ? "list" : "detail";
+}
+
+export function parseResultView(value: unknown, fallback: ResultView): ResultView {
+  if (value === undefined) return fallback;
+  if (value === "summary" || value === "full") return value;
+  throw new Error('view must be "summary" or "full"');
 }

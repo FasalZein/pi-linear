@@ -21,6 +21,7 @@ import {
 	workspaceEmpty,
 	listOperation,
 	addSaveOperation,
+	withGetResultView,
 } from "./shared";
 
 export const projectReads: readonly OperationDefinition[] = ([
@@ -50,13 +51,14 @@ export const projectReads: readonly OperationDefinition[] = ([
 		domain: "projects",
 		root: "projects",
 		selection: projection("project", "list"),
+		resultView: { entity: "project", defaultView: "summary" },
 		purpose: "List projects.",
 		pageSize: 20,
 		filterType: "ProjectFilter",
 		sortType: "ProjectSortInput",
 		sortKeys: PROJECT_SORT_KEYS,
 	}),
-	{
+	withGetResultView({
 		name: "get_project",
 		compatibilityBranches: [
 			{
@@ -110,7 +112,7 @@ export const projectReads: readonly OperationDefinition[] = ([
 				},
 			};
 		},
-	},
+	}, "project", "project", "GetProject"),
 ] satisfies OperationSource[]).map((operation) =>
 	defineOperation(operation as LinearOperation),
 );

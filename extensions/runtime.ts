@@ -6,6 +6,7 @@ import { activeSecrets } from './active-secrets';
 import { assertIssueNodeMatches, assertNamedNodeMatches, linearGraphQL, resolveApiKey } from './client';
 import type { GraphQLDocumentVariant, LocalResultExpectation, OperationPreparation } from './operation-types';
 import type { LinearOperation } from './operations';
+import type { ResultView } from './selections';
 import { redactDeep, withRedactedErrors } from './redact';
 import { assertMutationAllowed, assertNamedInputAllowed, getMutationFields, type MutationMode } from './safety';
 
@@ -21,6 +22,7 @@ export type ResultMeta = {
   truncations: Truncation[];
   stringsClipped: number;
   resultBudget?: { maxBytes: number; truncated: true };
+  view?: ResultView;
 };
 
 function byteLength(value: unknown): number {
@@ -329,8 +331,11 @@ export async function executeOperation(
       sink: options.sink,
       secrets,
     });
-    return prepared.resolution
-      ? { ...result, resolution: redactDeep(prepared.resolution, secrets) }
+    const withView = prepared.resultView
+      ? { ...result, meta: { ...result.meta, view: prepared.resultView } }
       : result;
+    return prepared.resolution
+      ? { ...withView, resolution: redactDeep(prepared.resolution, secrets) }
+      : withView;
   }, secrets);
 }

@@ -327,6 +327,7 @@ export class LinearListComponent<T> {
     private readonly theme: Theme,
     private readonly options: {
       headline: string;
+      disclosure?: string;
       emptyLabel: string;
       emptyAction?: string;
       footnotes: string[];
@@ -347,6 +348,9 @@ export class LinearListComponent<T> {
       const limit = this.options.previewLimit ?? 20;
       const shown = this.items.slice(0, limit);
       lines.push(theme.fg('success', `✓ ${this.options.headline}`));
+      if (this.options.disclosure) {
+        lines.push(wrapped(theme.fg('dim', this.options.disclosure), 2));
+      }
       lines.push('');
       lines.push(...this.options.renderItems(shown, theme, width));
       if (shown.length < this.items.length) {
