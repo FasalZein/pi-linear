@@ -43,11 +43,9 @@ describe("post-change blind regression replay", () => {
 			};
 			const { query, variables } = request;
 			let data: Record<string, unknown>;
-			if (query.includes("ResolveIssueByIdentifier")) {
+			if (query.includes("ResolveIssueById")) {
 				data = {
-					issues: {
-						nodes: [{ id: ISSUE_ID, identifier: "AEO-266", team: { id: TEAM_ID, key: "AEO" } }],
-					},
+					issue: { id: ISSUE_ID, identifier: "AEO-266", team: { id: TEAM_ID, key: "AEO" } },
 				};
 			} else if (query.includes("ResolveStateByName")) {
 				data = {
@@ -84,7 +82,7 @@ describe("post-change blind regression replay", () => {
 		const requests = fetch.mock.calls.map(([, init]) => JSON.parse(String((init as RequestInit).body)));
 		const update = requests.find(({ query }) => query.includes("mutation UpdateIssue"));
 		expect(update.query).toContain("issueUpdate(id: $id, input: $input)");
-		expect(update.variables).toEqual({ id: ISSUE_ID, input: { stateId: STATE_ID } });
+		expect(update.variables).toEqual({ id: "AEO-266", input: { stateId: STATE_ID } });
 		expect((fetch.mock.calls[0]?.[1] as RequestInit).headers).toMatchObject({ Authorization: "active-key" });
 
 		delete process.env.LINEAR_MUTATIONS;

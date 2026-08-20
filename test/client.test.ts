@@ -424,10 +424,11 @@ describe('strict reference resolvers', () => {
 
   it.each(['AEO-258', 'aeo-258'])('resolves exact identifier %s without search', async (reference) => {
     const fetch = graphqlStub((query, variables) => {
-      expect(query).toContain('issues(first: 2');
+      expect(query).toContain('issue(id: $id)');
       expect(query).not.toContain('searchIssues');
-      expect(variables).toEqual({ teamKey: 'AEO', number: 258 });
-      return { issues: { nodes: [issue()] } };
+      expect(query).not.toContain('issues(first:');
+      expect(variables).toEqual({ id: reference });
+      return { issue: issue() };
     });
     await expect(resolveIssueReference('key', reference)).resolves.toEqual({
       id: ISSUE_ID, identifier: 'AEO-258', teamId: TEAM_ID, teamKey: 'AEO',
@@ -445,18 +446,17 @@ describe('strict reference resolvers', () => {
     await expect(resolveIssueReference('key', ISSUE_ID)).resolves.toMatchObject({ id: ISSUE_ID, identifier: 'AEO-258' });
   });
 
-  it('rejects missing, ambiguous, identifier-mismatched, and UUID-mismatched issues', async () => {
+  it('rejects missing, identifier-mismatched, team-mismatched, and UUID-mismatched issues', async () => {
     graphqlStub((_query, variables) => {
-      if ('teamKey' in variables) {
-        if (variables.number === 1) return { issues: { nodes: [] } };
-        if (variables.number === 2) return { issues: { nodes: [issue(), issue(OTHER_ID)] } };
-        return { issues: { nodes: [issue(ISSUE_ID, 'AEO-999')] } };
-      }
+      const id = String(variables.id);
+      if (id === 'AEO-1') return { issue: null };
+      if (id === 'AEO-3') return { issue: issue(ISSUE_ID, 'AEO-999') };
+      if (id === 'AEO-4') return { issue: { ...issue(ISSUE_ID, 'AEO-4'), team: { id: TEAM_ID, key: 'OTHER' } } };
       return { issue: issue(OTHER_ID) };
     });
-    await expect(resolveIssueReference('key', 'AEO-1')).rejects.toThrow('0 matches');
-    await expect(resolveIssueReference('key', 'AEO-2')).rejects.toThrow('2 matches');
+    await expect(resolveIssueReference('key', 'AEO-1')).rejects.toThrow('was not found');
     await expect(resolveIssueReference('key', 'AEO-3')).rejects.toThrow('mismatched identifier');
+    await expect(resolveIssueReference('key', 'AEO-4')).rejects.toThrow('mismatched team');
     await expect(resolveIssueReference('key', ISSUE_ID)).rejects.toThrow('mismatched id');
   });
 

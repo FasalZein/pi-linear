@@ -1,4 +1,5 @@
 import {
+	requireIssueReference,
 	resolveIssueReference,
 	resolveStateIdReference,
 	resolveStateReference,
@@ -276,12 +277,12 @@ export const issues: readonly OperationDefinition[] = ([
 		example: { operation: "get_issue", variables: { issue: "AEO-258" } },
 		document: getDocument("GetIssue", "issue", projection("issue", "detail")),
 		resolverPaths: { issue: "resolveIssueReference" },
-		async prepare(k, v, s) {
-			const ref = issueReference(v);
-			const x = await resolveIssueReference(k, ref, s);
+		async prepare(_k, v) {
+			const ref = requireIssueReference(issueReference(v));
 			return {
-				variables: { id: x.id },
-				resolution: { target: issueTarget(ref, x) },
+				variables: { id: ref },
+				exactIssue: { requested: ref, path: "issue" },
+				resolution: { target: { requested: ref } },
 			};
 		},
 	},
@@ -681,8 +682,7 @@ export const issues: readonly OperationDefinition[] = ([
 			teamId: "resolveTeamReference",
 		},
 		async prepare(k, v, s) {
-			const ref = issueReference(v);
-			const issue = await resolveIssueReference(k, ref, s);
+			const ref = requireIssueReference(issueReference(v));
 			const x = mergedInput(v, [
 				"issue",
 				"issueId",
@@ -696,22 +696,27 @@ export const issues: readonly OperationDefinition[] = ([
 				: undefined;
 			if (targetTeam) x.teamId = targetTeam.id;
 			const stateRef = v.state ?? x.stateId;
-			if (stateRef)
-				x.stateId = (
-					await resolveStateReference(
-						k,
-						targetTeam?.id ?? issue.teamId,
-						String(stateRef),
-						s,
-					)
-				).id;
+			const parentRef = v.parent ?? x.parentId;
+			const stateNeedsTeam =
+				typeof stateRef === "string" &&
+				stateRef.trim() !== "" &&
+				!isUuid(stateRef);
+			const issue =
+				stateNeedsTeam || parentRef
+					? await resolveIssueReference(k, ref, s)
+					: undefined;
+			if (stateRef) {
+				const teamId = targetTeam?.id ?? issue?.teamId;
+				x.stateId = teamId
+					? (await resolveStateReference(k, teamId, String(stateRef), s)).id
+					: (await resolveStateIdReference(k, String(stateRef), s)).id;
+			}
 			const userRef = v.assignee ?? x.assigneeId;
 			if (userRef)
 				x.assigneeId = (await resolveUserReference(k, String(userRef), s)).id;
-			const parentRef = v.parent ?? x.parentId;
 			if (parentRef) {
 				const parent = await resolveIssueReference(k, String(parentRef), s);
-				if (parent.teamId !== (targetTeam?.id ?? issue.teamId)) {
+				if (parent.teamId !== (targetTeam?.id ?? issue?.teamId)) {
 					throw new Error(
 						`Linear parent "${parent.identifier}" does not belong to the issue team.`,
 					);
@@ -721,9 +726,10 @@ export const issues: readonly OperationDefinition[] = ([
 			if (!Object.keys(x).length)
 				throw new Error("No update fields were provided.");
 			return {
-				variables: { id: issue.id, input: x },
+				variables: { id: ref, input: x },
+				exactIssue: { requested: ref, path: "issueUpdate.issue" },
 				resolution: compactObject({
-					target: issueTarget(ref, issue),
+					target: issue ? issueTarget(ref, issue) : { requested: ref },
 					state: stateRef
 						? { requested: stateRef, resolvedId: x.stateId }
 						: undefined,

@@ -78,7 +78,8 @@ describe('deterministic fake-server smoke command', () => {
       const requests = (await readFile(server.log, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
       expect(new Set(requests.map((request) => request.kind))).toEqual(new Set(['introspection', 'query']));
       expect(requests.some((request) => request.kind === 'mutation')).toBe(false);
-      expect(requests.filter((request) => request.operationName === 'GetIssue')).toHaveLength(6);
+      expect(requests.filter((request) => request.operationName === 'GetIssue')).toHaveLength(8);
+      expect(requests.filter((request) => request.operationName === 'ResolveIssueByIdentifier')).toHaveLength(0);
       expect(requests.filter((request) => request.operationName === 'ListIssues' && request.variables.after === 'next-1')).toHaveLength(2);
       for (const operation of [
         'ListComments', 'ListViews', 'ListCycles', 'ListDocuments', 'ListInitiatives',

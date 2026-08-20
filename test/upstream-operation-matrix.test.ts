@@ -303,7 +303,7 @@ const BRANCH_AND_LEGACY_FIXTURES: Fixture[] = [
 		{ id: A, input: { stateId: STATE } },
 		true,
 	),
-	f("get_issue", { teamKey: "ENG", number: 7 }, "issue", { id: A }, true),
+	f("get_issue", { teamKey: "ENG", number: 7 }, "issue", { id: "ENG-7" }, true),
 	f(
 		"create_issue",
 		{ input: { title: "Legacy", teamId: TEAM } },
@@ -408,14 +408,17 @@ function installResolvers() {
 					],
 				},
 			};
-		else if (query.includes("ResolveIssueById"))
+		else if (query.includes("ResolveIssueById")) {
+			const id = String(variables.id);
+			const named = /^[A-Z]+-\d+$/i.test(id);
 			data = {
 				issue: {
-					id: variables.id,
-					identifier: "ENG-7",
+					id: named ? A : id,
+					identifier: named ? id.toUpperCase() : id === B ? "ENG-8" : "ENG-7",
 					team: { id: TEAM, key: "ENG" },
 				},
 			};
+		}
 		else if (query.includes("ResolveTeamById"))
 			data = { team: { id: variables.id, key: "ENG" } };
 		else if (query.includes("ResolveTeamByKey"))

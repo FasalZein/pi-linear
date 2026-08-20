@@ -39,10 +39,15 @@ export type GraphQLDocumentVariant = {
 export type LocalResultExpectation = {
 	requiredStringPaths: readonly string[];
 };
+export type ExactIssueCheck = {
+	requested: string;
+	path: string;
+};
 export type OperationPreparation = {
 	variables: Record<string, unknown>;
 	resolution?: Record<string, unknown>;
 	variant?: GraphQLDocumentVariant;
+	exactIssue?: ExactIssueCheck;
 };
 export type PaginationMetadata = {
 	defaultPageSize: number;

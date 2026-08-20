@@ -51,18 +51,14 @@ describe("v0.4 blind-task first calls", () => {
 				requests.push(request);
 				const { query, variables } = request;
 				let data: Record<string, unknown>;
-				if (query.includes("ResolveIssueByIdentifier")) {
-					const number = Number(variables.number);
-					const child = number === 300;
+				if (query.includes("ResolveIssueById")) {
+					const id = String(variables.id);
+					const child = id === CHILD_ID || /^AEO-300$/i.test(id);
 					data = {
-						issues: {
-							nodes: [
-								{
-									id: child ? CHILD_ID : ISSUE_ID,
-									identifier: `AEO-${number}`,
-									team: { id: TEAM_ID, key: "AEO" },
-								},
-							],
+						issue: {
+							id: child ? CHILD_ID : ISSUE_ID,
+							identifier: child ? "AEO-300" : (/^AEO-\d+$/i.test(id) ? id.toUpperCase() : "AEO-258"),
+							team: { id: TEAM_ID, key: "AEO" },
 						},
 					};
 				} else if (query.includes("ResolveViewer"))
@@ -160,6 +156,6 @@ describe("v0.4 blind-task first calls", () => {
 		});
 		expect(
 			final.find(({ query }) => query.includes("UpdateIssue"))?.variables,
-		).toEqual({ id: CHILD_ID, input: { stateId: STATE_ID } });
+		).toEqual({ id: "AEO-300", input: { stateId: STATE_ID } });
 	});
 });
