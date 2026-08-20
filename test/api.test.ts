@@ -282,19 +282,24 @@ describe('runtime discovery', () => {
     vi.stubGlobal('fetch', fetch);
     const tool = linearApiTool() as any;
     const alternatives = 'Send exactly one of: { "operation": "help" }, { "operation": "help", "variables": { "domain": "issues" } }, or { "operation": "help", "variables": { "operation": "get_issue" } }.';
+    const naturalSearch = 'Natural search was removed. The operation catalog is in the `linear` tool description. Send `{ "operation": "help", "variables": { "operation": "get_issue" } }` for exact parameters, or call the operation directly.';
 
     await expect(execute(tool, { operation: 'help', variables: { domain: 'issues', operation: 'get_issue' } }))
       .rejects.toThrow(alternatives);
+    await expect(execute(tool, { operation: 'help', variables: { query: 'issue lookup by identifier' } }))
+      .rejects.toThrow(naturalSearch);
+    await expect(execute(tool, { operation: 'help', variables: { search: 'comment issue create comment' } }))
+      .rejects.toThrow(naturalSearch);
     await expect(execute(tool, { operation: 'help', variables: { query: 'issues', search: 'comments' } }))
-      .rejects.toThrow('For natural search, send exactly one of:');
+      .rejects.toThrow(naturalSearch);
     await expect(execute(tool, { operation: 'help', variables: { domain: 'issues', query: 'comments' } }))
-      .rejects.toThrow('For natural search, send exactly one of:');
+      .rejects.toThrow(naturalSearch);
     await expect(execute(tool, { operation: 'help', variables: { domain: 'issues', includeSchema: true } }))
-      .rejects.toThrow('For natural search, send exactly one of:');
+      .rejects.toThrow(alternatives);
     await expect(execute(tool, { operation: 'help', variables: { query: 'issues', includeSchema: 'yes' } }))
-      .rejects.toThrow('For natural search, send exactly one of:');
+      .rejects.toThrow(naturalSearch);
     await expect(execute(tool, { operation: 'help', variables: { query: 42 } }))
-      .rejects.toThrow('For natural search, send exactly one of:');
+      .rejects.toThrow(naturalSearch);
     await expect(execute(tool, { operation: 'help', variables: { domain: 'unknown' } }))
       .rejects.toThrow(alternatives);
     expect(fetch).not.toHaveBeenCalled();
@@ -311,22 +316,6 @@ describe('runtime discovery', () => {
     await expect(execute(tool, { operation: 'get_issue', variables: { teamKey: 'AEO' } })).rejects.toThrow(
       'Valid parameters: issue: IssueReference (required). Example: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }.',
     );
-    expect(fetch).not.toHaveBeenCalled();
-  });
-
-  it('redacts credential forms from natural help content and details', async () => {
-    const token = 'lin_api_secret123456789';
-    const fetch = vi.fn();
-    vi.stubGlobal('fetch', fetch);
-    const result = await execute(linearApiTool() as any, {
-      operation: 'help',
-      variables: { query: token },
-    });
-
-    expect(result.details.query).toBe('[REDACTED]');
-    expect(JSON.stringify(result.details)).not.toContain(token);
-    expect(result.content[0].text).not.toContain(token);
-    expect(result.content[0].text).toContain('[REDACTED]');
     expect(fetch).not.toHaveBeenCalled();
   });
 

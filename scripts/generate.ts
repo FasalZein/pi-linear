@@ -44,7 +44,7 @@ export function contractProjection(definition: (typeof operationDefinitions)[num
     kind: definition.kind,
     help: {
       signature,
-      exact: definition.discovery.exactHelp,
+      exact: true,
       example: compatibility.example,
       callFields: definition.render.callFields,
     },
@@ -66,7 +66,6 @@ export function contractProjection(definition: (typeof operationDefinitions)[num
     preparation: { resolverPaths: definition.preparation.resolverPaths },
     safety: definition.safety,
     canonical: definition.canonical,
-    discovery: definition.discovery,
     result: definition.result,
     render: definition.render,
   };
@@ -125,10 +124,6 @@ function referenceCatalog(): string {
     '',
     '```json',
     '{ "operation": "help", "variables": { "operation": "get_issue" } }',
-    '```',
-    '',
-    '```json',
-    '{ "operation": "help", "variables": { "query": "list comments on AEO-258" } }',
     '```',
   ].join('\n');
 }

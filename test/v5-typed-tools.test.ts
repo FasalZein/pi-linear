@@ -6,8 +6,7 @@ import { registerLinearExtension } from '../extensions/index';
 import { linearApiTool } from '../extensions/api';
 import { requirementBranches, typedLinearTools, typedToolNames } from '../extensions/typed-tools';
 import { CANONICAL_OPERATIONS, canonicalFieldNames, missingCanonicalOperations } from '../extensions/canonical';
-import { candidatesFor, planActivation } from '../extensions/activation';
-import { operationDefinitions, operations } from '../extensions/operations';
+import { operations } from '../extensions/operations';
 // The validator Pi runs on every tool call, imported from the agent runtime itself.
 import { validateToolArguments } from '../node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/utils/validation.js';
 
@@ -72,12 +71,6 @@ function setup(): FakePi {
   registerLinearExtension(harness.pi);
   harness.startSession();
   return harness;
-}
-
-async function loadedFor(query: string): Promise<string[]> {
-  const harness = setup();
-  const result = await execute(harness.tool('linear'), { operation: 'help', variables: { query } });
-  return (result.details.loadedTools as string[] | undefined) ?? [];
 }
 
 describe('typed tool registration', () => {
@@ -157,77 +150,6 @@ describe('deterministic activation', () => {
     expect(harness.activeTools()).toEqual(before);
   });
 
-  it.each([
-    ['read AEO-258', ['linear_get_issue']],
-    ['comment on AEO-258', ['linear_create_comment']],
-    ['list my in-progress issues', ['linear_list_issues']],
-    ["List the authenticated user's in-progress issues. Return issue identifiers and a total count. Load the typed tool for this list query.", ['linear_list_issues']],
-    ['list comments for an issue by identifier', ['linear_list_comments']],
-    ['List comments on AEO-258', ['linear_list_comments']],
-    ['create a child under AEO-258 in Backlog', ['linear_create_issue']],
-  ])('activates exactly one tool for %j', async (query, expected) => {
-    expect(await loadedFor(query as string)).toEqual(expected);
-  });
-
-  it('activates each step of an explicit two-step request, in clause order', async () => {
-    expect(await loadedFor('create an issue then set it to Backlog'))
-      .toEqual(['linear_create_issue', 'linear_update_issue']);
-  });
-
-  it('ranks natural candidates from definition terms with stable name tie-breaking', () => {
-    const names = candidatesFor('comment issue').map(({ name }) => name);
-    expect(names[0]).toBe('create_comment');
-    expect(names).toEqual([...names].sort((left, right) => {
-      const definition = (name: string) => operationDefinitions.find((entry) => entry.name === name)!;
-      const score = (name: string) => definition(name).discovery.terms
-        .filter((term) => term === 'comment' || term === 'issue').length;
-      return score(right) - score(left) || left.localeCompare(right);
-    }));
-  });
-
-  it('uses discovery terms as the live candidate index', () => {
-    const definition = operationDefinitions.find(({ name }) => name === 'get_issue')!;
-    const terms = definition.discovery.terms;
-    definition.discovery.terms = [...terms, 'needleterm'];
-    try {
-      expect(candidatesFor('needleterm').map(({ name }) => name)).toEqual(['get_issue']);
-    } finally {
-      definition.discovery.terms = terms;
-    }
-  });
-
-  it('activates nothing for a broad noun-only query and offers candidates', async () => {
-    const harness = setup();
-    const before = harness.activeTools();
-    const result = await execute(harness.tool('linear'), {
-      operation: 'help',
-      variables: { query: 'issues' },
-    });
-
-    expect(result.details.loadedTools).toBeUndefined();
-    expect(harness.activeTools()).toEqual(before);
-    expect((result.details.candidates as unknown[]).length).toBeGreaterThan(0);
-    expect(result.details.note).toMatch(/no tool was loaded/i);
-  });
-
-  it('carries the entity across clauses only through it or them', () => {
-    expect(planActivation('create an issue then set it to Backlog').operationNames)
-      .toEqual(['create_issue', 'update_issue']);
-    // No pronoun and no entity in the second clause: nothing to resolve.
-    expect(planActivation('create an issue then set Backlog').operationNames)
-      .toEqual(['create_issue']);
-  });
-
-  it('never activates an unrelated tool', async () => {
-    const loaded = await loadedFor('comment on AEO-258');
-    expect(loaded).toEqual(['linear_create_comment']);
-
-    const harness = setup();
-    await execute(harness.tool('linear'), { operation: 'help', variables: { query: 'read AEO-258' } });
-    const active = harness.activeTools().filter((name) => typedToolNames().includes(name));
-    expect(active).toEqual(['linear_get_issue']);
-  });
-
   it('never removes an active tool and never re-reports an already active tool', async () => {
     const harness = setup();
     await execute(harness.tool('linear'), { operation: 'help', variables: { operation: 'get_issue' } });
@@ -248,8 +170,8 @@ describe('deterministic activation', () => {
 
   it('accumulates activation across successive requests', async () => {
     const harness = setup();
-    await execute(harness.tool('linear'), { operation: 'help', variables: { query: 'create an issue' } });
-    await execute(harness.tool('linear'), { operation: 'help', variables: { query: 'comment on it' } });
+    await execute(harness.tool('linear'), { operation: 'help', variables: { operation: 'create_issue' } });
+    await execute(harness.tool('linear'), { operation: 'help', variables: { operation: 'create_comment' } });
     const active = harness.activeTools();
     expect(active).toContain('linear_create_issue');
     expect(active).toContain('linear_create_comment');

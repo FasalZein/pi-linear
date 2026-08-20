@@ -52,15 +52,6 @@ function surfaces(result: any): string {
   return `${JSON.stringify(result.details)}\n${result.content.map((entry: any) => entry.text).join('\n')}`;
 }
 
-async function expectNoSecret(params: Record<string, unknown>) {
-  const result = await execute(params);
-  const text = surfaces(result);
-  expect(text).not.toContain(ENV_SECRET);
-  expect(text).not.toContain(WORKSPACE_SECRET);
-  expect(text).toContain(REDACTED);
-  return result;
-}
-
 describe('active secret collection', () => {
   it('collects the env key and every configured workspace key without prompting', () => {
     expect(activeSecrets().sort()).toEqual([ENV_SECRET, WORKSPACE_SECRET].sort());
@@ -88,15 +79,6 @@ describe('help paths redact unknown-format active secrets', () => {
       .then((value: any) => value, (thrown: unknown) => thrown as Error);
     const text = result instanceof Error ? result.message : surfaces(result);
     expect(text).not.toContain(ENV_SECRET);
-  });
-
-  it('redacts an active secret echoed by natural help', async () => {
-    const result = await expectNoSecret({ operation: 'help', variables: { query: `list issues ${ENV_SECRET}` } });
-    expect(String(result.details.query)).toContain(REDACTED);
-  });
-
-  it('redacts an active workspace secret echoed by natural help', async () => {
-    await expectNoSecret({ operation: 'help', variables: { search: `list issues ${WORKSPACE_SECRET}` } });
   });
 
   it('keeps loader output and exact operation help usable while redacting', async () => {

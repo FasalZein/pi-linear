@@ -35,7 +35,7 @@ afterEach(async () => {
 });
 
 describe("post-change blind regression replay", () => {
-	it("replays every failed help and named call without weakening raw mutation safety", async () => {
+	it("replays named calls without weakening raw mutation safety", async () => {
 		const fetch = vi.fn(async (_url: string, init: RequestInit) => {
 			const request = JSON.parse(String(init.body)) as {
 				query: string;
@@ -69,33 +69,6 @@ describe("post-change blind regression replay", () => {
 			};
 		});
 		vi.stubGlobal("fetch", fetch);
-
-		const helpCalls = [
-			{ variables: { query: "issue lookup by identifier" }, first: "get_issue" },
-			{ variables: { search: "comment issue create comment" }, first: "create_comment" },
-			{ variables: { query: "issues assigned to current user in progress list" }, first: "list_issues" },
-			{
-				variables: {
-					search: "create sub-issue child issue set status backlog",
-					includeSchema: true,
-				},
-				first: "create_issue",
-			},
-			{
-				variables: { query: "create child issue", include_schema: false },
-				first: "create_issue",
-			},
-		] as const;
-		for (const { variables, first } of helpCalls) {
-			const result = await execute({ operation: "help", variables });
-			expect(result.details.match).toMatchObject({
-				name: first,
-				signature: expect.stringMatching(new RegExp(`^${first}\\(`)),
-				parameters: expect.any(Array),
-				invocation: { operation: first, variables: expect.any(Object) },
-			});
-		}
-		expect(fetch).not.toHaveBeenCalled();
 
 		const piDir = await mkdtemp(join(tmpdir(), "pi-linear-blind-fix-"));
 		temporaryDirectories.push(piDir);

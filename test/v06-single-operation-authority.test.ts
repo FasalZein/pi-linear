@@ -2,7 +2,7 @@
  * One authority per operation.
  *
  * Every per-operation decision — compatibility branches, named semantic exceptions,
- * render kind, target fields, empty states, discovery intents, local result
+ * render kind, target fields, empty states, local result
  * expectations — is authored beside the operation in `extensions/operations.ts`.
  * Runtime compatibility, generated contracts, help, and tests project from there.
  *
@@ -51,7 +51,6 @@ describe('no second operation-keyed authority', () => {
       'renderKind:',
       'renderTargetFields:',
       'renderEmpty:',
-      'discoveryIntents:',
       'localResult:',
     ]) {
       expect(source, keyword).toContain(keyword);
@@ -85,7 +84,6 @@ describe('definitions project from the source', () => {
       expect(JSON.parse(JSON.stringify(generated.get(name)!.compatibility.branches)), name)
         .toEqual(JSON.parse(JSON.stringify(definition.compatibility.branches)));
       expect(generated.get(name)!.render.entityKind, name).toBe(definition.render.entityKind);
-      expect(generated.get(name)!.discovery.intents, name).toEqual(definition.discovery.intents);
     }
   });
 });

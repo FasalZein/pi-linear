@@ -76,7 +76,6 @@ describe('v0.6 operation definition authority', () => {
       expect(definition.compatibility.fields).toBeDefined();
       expect(definition.compatibility.branches.length).toBeGreaterThan(0);
       expect(definition.compatibility.prepare ?? definition.compatibility.executeLocal).toBeTypeOf('function');
-      expect(definition.discovery.exactHelp).toBe(true);
       expect(definition.result.renderKind).toBeTruthy();
       expect(definition.render.callFields).toEqual(definition.compatibility.fields.map(({ name }) => name));
       expect(definition.canonical.strictRawArguments).toBe(true);

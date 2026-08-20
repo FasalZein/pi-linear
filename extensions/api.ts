@@ -23,7 +23,6 @@ import {
   type JsonObject,
 } from './runtime';
 import { activeSecrets } from './active-secrets';
-import { candidateSummary, planActivation } from './activation';
 import { redactDeep, redactError, withRedactedErrors } from './redact';
 import { renderLinearApiCall, renderLinearApiResult } from './renderers';
 import { typedToolName } from './tool-names';
@@ -40,7 +39,8 @@ export {
 } from './runtime';
 
 const REQUEST_SHAPES = 'Invalid request. Send exactly one of: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }, { "operation": "help" }, or { "query": "query { viewer { id } }", "variables": {} }.';
-const HELP_SHAPES = 'Send exactly one of: { "operation": "help" }, { "operation": "help", "variables": { "domain": "issues" } }, or { "operation": "help", "variables": { "operation": "get_issue" } }. For natural search, send exactly one of: { "operation": "help", "variables": { "query": "issue lookup by identifier" } } or { "operation": "help", "variables": { "search": "comment issue create comment" } }.';
+const HELP_SHAPES = 'Send exactly one of: { "operation": "help" }, { "operation": "help", "variables": { "domain": "issues" } }, or { "operation": "help", "variables": { "operation": "get_issue" } }.';
+const NATURAL_SEARCH_REMOVED = 'Natural search was removed. The operation catalog is in the `linear` tool description. Send `{ "operation": "help", "variables": { "operation": "get_issue" } }` for exact parameters, or call the operation directly.';
 const definitionDomainSet = new Set(operationDefinitions.map(({ domain }) => domain));
 const DEFINITION_DOMAINS = DOMAINS.filter((domain) => definitionDomainSet.has(domain));
 
@@ -116,39 +116,6 @@ function activate(activator: ToolActivator | undefined, operationNames: string[]
   return added.length ? { loadedTools: added } : {};
 }
 
-/**
- * Natural help resolves clauses deterministically (see activation.ts): each clause
- * that names exactly one operation activates that operation, in clause order. A
- * request that resolves nothing activates nothing and returns ranked candidates.
- */
-function naturalHelp(search: string, activator?: ToolActivator): JsonObject {
-  const plan = planActivation(search);
-  const resolved = plan.operationNames.map((name) => getOperation(name));
-  const best = resolved[0];
-
-  return {
-    ...activate(activator, plan.operationNames),
-    query: search,
-    ...(best
-      ? {
-        match: {
-          name: best.name,
-          domain: best.domain,
-          purpose: best.purpose,
-          signature: operationSignature(best),
-          parameters: best.parameters,
-          invocation: best.example,
-        },
-        alternatives: resolved.slice(1).map(candidateSummary),
-      }
-      : {
-        match: undefined,
-        note: 'No clause named exactly one operation, so no tool was loaded. Ask for one operation by name, or use one of these candidates.',
-        candidates: plan.candidates.map(candidateSummary),
-      }),
-  };
-}
-
 export function helpResult(variables: Record<string, unknown> = {}, activator?: ToolActivator): JsonObject {
   const keys = Object.keys(variables);
   if (!keys.length) {
@@ -159,18 +126,12 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
     };
   }
 
+  if ('query' in variables || 'search' in variables) {
+    throw new Error(NATURAL_SEARCH_REMOVED);
+  }
+
   const domain = variables.domain;
   const operationName = variables.operation;
-  const naturalKeys = keys.filter((key) => key === 'query' || key === 'search');
-  const schemaKeys = keys.filter((key) => key === 'includeSchema' || key === 'include_schema');
-  const naturalQuery = variables.query ?? variables.search;
-  const naturalMode = naturalKeys.length === 1
-    && schemaKeys.length <= 1
-    && keys.length === naturalKeys.length + schemaKeys.length
-    && (schemaKeys.length === 0 || typeof variables[schemaKeys[0]!] === 'boolean');
-  if (naturalMode && typeof naturalQuery === 'string' && naturalQuery.trim()) {
-    return naturalHelp(naturalQuery.trim(), activator);
-  }
   if (keys.length !== 1) throw new Error(`Invalid help request. ${HELP_SHAPES}`);
   if (typeof domain === 'string' && DEFINITION_DOMAINS.includes(domain as OperationDomain)) {
     return {

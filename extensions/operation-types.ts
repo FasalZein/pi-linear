@@ -90,8 +90,6 @@ export type LinearOperation = {
 	renderKind?: string;
 	renderTargetFields?: readonly string[];
 	renderEmpty?: OperationEmptyState;
-	/** Discovery intents override when the operation name does not project them. */
-	discoveryIntents?: readonly OperationIntent[];
 };
 
 /** An authored operation: every per-operation decision is declared in one place. */
@@ -111,7 +109,6 @@ export type OperationEmptyState = {
 	filteredFact: string;
 	filteredAction: string;
 };
-export type OperationIntent = { action: string; entity: string };
 export type RequirementBranch = {
 	all: readonly string[];
 	exactlyOneOf?: readonly (readonly string[])[];
@@ -158,16 +155,6 @@ export type OperationDefinition = {
 	safety: {
 		namedInputPolicy: "non-destructive";
 		mutation: boolean;
-	};
-	discovery: {
-		action: string;
-		entity: string;
-		actions: readonly string[];
-		entities: readonly string[];
-		intents: readonly OperationIntent[];
-		phrases: readonly string[];
-		terms: readonly string[];
-		exactHelp: true;
 	};
 	result: {
 		renderKind: string;

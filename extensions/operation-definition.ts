@@ -1,5 +1,4 @@
 import { Kind, parse } from 'graphql';
-import { discoveryForOperation } from './definition-discovery';
 import type {
   GraphQLDocumentVariant,
   LinearOperation,
@@ -104,7 +103,7 @@ export function assertRequirementBranches(
 export function defineOperation(operation: LinearOperation): OperationDefinition {
   const branches = operation.compatibilityBranches;
   if (!branches) throw new Error(`Missing compatibility branches for "${operation.name}".`);
-  const { action, entity } = actionAndEntity(operation.name);
+  const { action } = actionAndEntity(operation.name);
   const local = Boolean(operation.executeLocal);
   if (local && !operation.localResult?.requiredStringPaths.length) {
     throw new Error(`Local operation ${operation.name} is missing its result expectation.`);
@@ -129,7 +128,6 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
   }
   const renderTargetFields = operation.renderTargetFields;
   const requiresVariables = !branches.some((branch) => requirementBranchMatches(branch, {}));
-  const discovery = discoveryForOperation(operation.name, operation.discoveryIntents);
   const canonical = operation.canonical;
   const canonicalFields = Object.entries(canonical.fields).map(([name, type]) => ({
     name,
@@ -172,13 +170,6 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
     safety: {
       namedInputPolicy: 'non-destructive',
       mutation: kind === 'mutation',
-    },
-    discovery: {
-      action,
-      entity,
-      ...discovery,
-      terms: [...new Set([...operation.name.split('_'), ...discovery.actions, ...discovery.entities])],
-      exactHelp: true,
     },
     result: {
       renderKind: entityKind,

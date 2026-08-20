@@ -218,32 +218,6 @@
         "issue": "AEO-258"
       }
     },
-    "discovery": {
-      "action": "list",
-      "entity": "comments",
-      "actions": [
-        "list"
-      ],
-      "entities": [
-        "comment"
-      ],
-      "intents": [
-        {
-          "action": "list",
-          "entity": "comment"
-        }
-      ],
-      "phrases": [
-        "\\b(?:list|show me|enumerate)\\b",
-        "\\bcomments?\\b"
-      ],
-      "terms": [
-        "list",
-        "comments",
-        "comment"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "comment",
       "dataPaths": [
@@ -879,46 +853,6 @@
         "body": "Comment text"
       }
     },
-    "discovery": {
-      "action": "create",
-      "entity": "comment",
-      "actions": [
-        "comment",
-        "create"
-      ],
-      "entities": [
-        "issue",
-        "comment"
-      ],
-      "intents": [
-        {
-          "action": "comment",
-          "entity": "issue"
-        },
-        {
-          "action": "comment",
-          "entity": "comment"
-        },
-        {
-          "action": "create",
-          "entity": "comment"
-        }
-      ],
-      "phrases": [
-        "\\b(?:add|post|leave|write)\\s+(?:a\\s+)?comment\\b|\\bcomment(?:ed|ing|s)?\\b",
-        "\\b(?:create|add|new|make|file|open a new)\\b",
-        "\\b(?:child|children|sub-?issues?|subtasks?)\\b",
-        "\\bcomments?\\b",
-        "\\bissues?\\b|\\btickets?\\b|\\bbugs?\\b",
-        "\\b[A-Z][A-Z0-9]+-\\d+\\b"
-      ],
-      "terms": [
-        "create",
-        "comment",
-        "issue"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "comment",
       "dataPaths": [
@@ -1178,31 +1112,6 @@
         "body": "Updated text"
       }
     },
-    "discovery": {
-      "action": "update",
-      "entity": "comment",
-      "actions": [
-        "update"
-      ],
-      "entities": [
-        "comment"
-      ],
-      "intents": [
-        {
-          "action": "update",
-          "entity": "comment"
-        }
-      ],
-      "phrases": [
-        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
-        "\\bcomments?\\b"
-      ],
-      "terms": [
-        "update",
-        "comment"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "comment",
       "dataPaths": [
@@ -1415,32 +1324,6 @@
       "strictRawArguments": true,
       "example": {}
     },
-    "discovery": {
-      "action": "list",
-      "entity": "views",
-      "actions": [
-        "list"
-      ],
-      "entities": [
-        "view"
-      ],
-      "intents": [
-        {
-          "action": "list",
-          "entity": "view"
-        }
-      ],
-      "phrases": [
-        "\\b(?:list|show me|enumerate)\\b",
-        "\\bviews?\\b"
-      ],
-      "terms": [
-        "list",
-        "views",
-        "view"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "view",
       "dataPaths": [
@@ -1574,31 +1457,6 @@
       "example": {
         "id": "view-id"
       }
-    },
-    "discovery": {
-      "action": "get",
-      "entity": "view",
-      "actions": [
-        "get"
-      ],
-      "entities": [
-        "view"
-      ],
-      "intents": [
-        {
-          "action": "get",
-          "entity": "view"
-        }
-      ],
-      "phrases": [
-        "\\b(?:read|get|show|open|view|fetch|inspect|lookup)\\b",
-        "\\bviews?\\b"
-      ],
-      "terms": [
-        "get",
-        "view"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "view",
@@ -1926,31 +1784,6 @@
         "name": "My issues",
         "filterData": {}
       }
-    },
-    "discovery": {
-      "action": "create",
-      "entity": "view",
-      "actions": [
-        "create"
-      ],
-      "entities": [
-        "view"
-      ],
-      "intents": [
-        {
-          "action": "create",
-          "entity": "view"
-        }
-      ],
-      "phrases": [
-        "\\b(?:create|add|new|make|file|open a new)\\b",
-        "\\bviews?\\b"
-      ],
-      "terms": [
-        "create",
-        "view"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "view",
@@ -2350,31 +2183,6 @@
         "name": "New name"
       }
     },
-    "discovery": {
-      "action": "update",
-      "entity": "view",
-      "actions": [
-        "update"
-      ],
-      "entities": [
-        "view"
-      ],
-      "intents": [
-        {
-          "action": "update",
-          "entity": "view"
-        }
-      ],
-      "phrases": [
-        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
-        "\\bviews?\\b"
-      ],
-      "terms": [
-        "update",
-        "view"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "view",
       "dataPaths": [
@@ -2580,34 +2388,6 @@
         "viewId": "view-id",
         "preferences": {}
       }
-    },
-    "discovery": {
-      "action": "set",
-      "entity": "view_preferences",
-      "actions": [
-        "update"
-      ],
-      "entities": [
-        "view_preference"
-      ],
-      "intents": [
-        {
-          "action": "update",
-          "entity": "view_preference"
-        }
-      ],
-      "phrases": [
-        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
-        "\\bview preferences?\\b"
-      ],
-      "terms": [
-        "set",
-        "view",
-        "preferences",
-        "update",
-        "view_preference"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "view",
@@ -2888,32 +2668,6 @@
       "strictRawArguments": true,
       "example": {}
     },
-    "discovery": {
-      "action": "list",
-      "entity": "cycles",
-      "actions": [
-        "list"
-      ],
-      "entities": [
-        "cycle"
-      ],
-      "intents": [
-        {
-          "action": "list",
-          "entity": "cycle"
-        }
-      ],
-      "phrases": [
-        "\\b(?:list|show me|enumerate)\\b",
-        "\\bcycles?\\b|\\bsprints?\\b"
-      ],
-      "terms": [
-        "list",
-        "cycles",
-        "cycle"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "cycle",
       "dataPaths": [
@@ -3066,31 +2820,6 @@
       "example": {
         "cycle": "Cycle 12"
       }
-    },
-    "discovery": {
-      "action": "get",
-      "entity": "cycle",
-      "actions": [
-        "get"
-      ],
-      "entities": [
-        "cycle"
-      ],
-      "intents": [
-        {
-          "action": "get",
-          "entity": "cycle"
-        }
-      ],
-      "phrases": [
-        "\\b(?:read|get|show|open|view|fetch|inspect|lookup)\\b",
-        "\\bcycles?\\b|\\bsprints?\\b"
-      ],
-      "terms": [
-        "get",
-        "cycle"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "cycle",
@@ -3383,31 +3112,6 @@
         "endsAt": "2026-08-31"
       }
     },
-    "discovery": {
-      "action": "create",
-      "entity": "cycle",
-      "actions": [
-        "create"
-      ],
-      "entities": [
-        "cycle"
-      ],
-      "intents": [
-        {
-          "action": "create",
-          "entity": "cycle"
-        }
-      ],
-      "phrases": [
-        "\\b(?:create|add|new|make|file|open a new)\\b",
-        "\\bcycles?\\b|\\bsprints?\\b"
-      ],
-      "terms": [
-        "create",
-        "cycle"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "cycle",
       "dataPaths": [
@@ -3677,31 +3381,6 @@
         "name": "Cycle 12"
       }
     },
-    "discovery": {
-      "action": "update",
-      "entity": "cycle",
-      "actions": [
-        "update"
-      ],
-      "entities": [
-        "cycle"
-      ],
-      "intents": [
-        {
-          "action": "update",
-          "entity": "cycle"
-        }
-      ],
-      "phrases": [
-        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
-        "\\bcycles?\\b|\\bsprints?\\b"
-      ],
-      "terms": [
-        "update",
-        "cycle"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "cycle",
       "dataPaths": [
@@ -3964,32 +3643,6 @@
       "strictRawArguments": true,
       "example": {}
     },
-    "discovery": {
-      "action": "list",
-      "entity": "documents",
-      "actions": [
-        "list"
-      ],
-      "entities": [
-        "document"
-      ],
-      "intents": [
-        {
-          "action": "list",
-          "entity": "document"
-        }
-      ],
-      "phrases": [
-        "\\b(?:list|show me|enumerate)\\b",
-        "\\bdocuments?\\b|\\bdocs?\\b"
-      ],
-      "terms": [
-        "list",
-        "documents",
-        "document"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "document",
       "dataPaths": [
@@ -4142,31 +3795,6 @@
       "example": {
         "document": "Planning notes"
       }
-    },
-    "discovery": {
-      "action": "get",
-      "entity": "document",
-      "actions": [
-        "get"
-      ],
-      "entities": [
-        "document"
-      ],
-      "intents": [
-        {
-          "action": "get",
-          "entity": "document"
-        }
-      ],
-      "phrases": [
-        "\\b(?:read|get|show|open|view|fetch|inspect|lookup)\\b",
-        "\\bdocuments?\\b|\\bdocs?\\b"
-      ],
-      "terms": [
-        "get",
-        "document"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "document",
@@ -4565,31 +4193,6 @@
         "title": "Planning notes",
         "content": "Notes"
       }
-    },
-    "discovery": {
-      "action": "create",
-      "entity": "document",
-      "actions": [
-        "create"
-      ],
-      "entities": [
-        "document"
-      ],
-      "intents": [
-        {
-          "action": "create",
-          "entity": "document"
-        }
-      ],
-      "phrases": [
-        "\\b(?:create|add|new|make|file|open a new)\\b",
-        "\\bdocuments?\\b|\\bdocs?\\b"
-      ],
-      "terms": [
-        "create",
-        "document"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "document",
@@ -5195,31 +4798,6 @@
         "title": "Updated notes"
       }
     },
-    "discovery": {
-      "action": "update",
-      "entity": "document",
-      "actions": [
-        "update"
-      ],
-      "entities": [
-        "document"
-      ],
-      "intents": [
-        {
-          "action": "update",
-          "entity": "document"
-        }
-      ],
-      "phrases": [
-        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
-        "\\bdocuments?\\b|\\bdocs?\\b"
-      ],
-      "terms": [
-        "update",
-        "document"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "document",
       "dataPaths": [
@@ -5486,32 +5064,6 @@
       "strictRawArguments": true,
       "example": {}
     },
-    "discovery": {
-      "action": "list",
-      "entity": "initiatives",
-      "actions": [
-        "list"
-      ],
-      "entities": [
-        "initiative"
-      ],
-      "intents": [
-        {
-          "action": "list",
-          "entity": "initiative"
-        }
-      ],
-      "phrases": [
-        "\\b(?:list|show me|enumerate)\\b",
-        "\\binitiatives?\\b"
-      ],
-      "terms": [
-        "list",
-        "initiatives",
-        "initiative"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "initiative",
       "dataPaths": [
@@ -5664,31 +5216,6 @@
       "example": {
         "initiative": "Platform"
       }
-    },
-    "discovery": {
-      "action": "get",
-      "entity": "initiative",
-      "actions": [
-        "get"
-      ],
-      "entities": [
-        "initiative"
-      ],
-      "intents": [
-        {
-          "action": "get",
-          "entity": "initiative"
-        }
-      ],
-      "phrases": [
-        "\\b(?:read|get|show|open|view|fetch|inspect|lookup)\\b",
-        "\\binitiatives?\\b"
-      ],
-      "terms": [
-        "get",
-        "initiative"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "initiative",
@@ -5967,34 +5494,6 @@
       ],
       "strictRawArguments": true,
       "example": {}
-    },
-    "discovery": {
-      "action": "list",
-      "entity": "issue_labels",
-      "actions": [
-        "list"
-      ],
-      "entities": [
-        "issue_label"
-      ],
-      "intents": [
-        {
-          "action": "list",
-          "entity": "issue_label"
-        }
-      ],
-      "phrases": [
-        "\\b(?:list|show me|enumerate)\\b",
-        "\\bissue labels?\\b",
-        "\\blabels?\\b"
-      ],
-      "terms": [
-        "list",
-        "issue",
-        "labels",
-        "issue_label"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "label",
@@ -6302,34 +5801,6 @@
         "name": "needs-review",
         "color": "#ff0000"
       }
-    },
-    "discovery": {
-      "action": "create",
-      "entity": "issue_label",
-      "actions": [
-        "create"
-      ],
-      "entities": [
-        "issue_label"
-      ],
-      "intents": [
-        {
-          "action": "create",
-          "entity": "issue_label"
-        }
-      ],
-      "phrases": [
-        "\\b(?:create|add|new|make|file|open a new)\\b",
-        "\\bissue labels?\\b",
-        "\\blabels?\\b"
-      ],
-      "terms": [
-        "create",
-        "issue",
-        "label",
-        "issue_label"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "label",
@@ -6666,34 +6137,6 @@
         "name": "review"
       }
     },
-    "discovery": {
-      "action": "update",
-      "entity": "issue_label",
-      "actions": [
-        "update"
-      ],
-      "entities": [
-        "issue_label"
-      ],
-      "intents": [
-        {
-          "action": "update",
-          "entity": "issue_label"
-        }
-      ],
-      "phrases": [
-        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
-        "\\bissue labels?\\b",
-        "\\blabels?\\b"
-      ],
-      "terms": [
-        "update",
-        "issue",
-        "label",
-        "issue_label"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "label",
       "dataPaths": [
@@ -6881,33 +6324,6 @@
       ],
       "strictRawArguments": true,
       "example": {}
-    },
-    "discovery": {
-      "action": "list",
-      "entity": "issue_relations",
-      "actions": [
-        "list"
-      ],
-      "entities": [
-        "issue_relation"
-      ],
-      "intents": [
-        {
-          "action": "list",
-          "entity": "issue_relation"
-        }
-      ],
-      "phrases": [
-        "\\b(?:list|show me|enumerate)\\b",
-        "\\bissue relations?\\b|\\bblocking relations?\\b"
-      ],
-      "terms": [
-        "list",
-        "issue",
-        "relations",
-        "issue_relation"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "issue_relation",
@@ -7157,33 +6573,6 @@
         "type": "related"
       }
     },
-    "discovery": {
-      "action": "create",
-      "entity": "issue_relation",
-      "actions": [
-        "create"
-      ],
-      "entities": [
-        "issue_relation"
-      ],
-      "intents": [
-        {
-          "action": "create",
-          "entity": "issue_relation"
-        }
-      ],
-      "phrases": [
-        "\\b(?:create|add|new|make|file|open a new)\\b",
-        "\\bissue relations?\\b|\\bblocking relations?\\b"
-      ],
-      "terms": [
-        "create",
-        "issue",
-        "relation",
-        "issue_relation"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "issue_relation",
       "dataPaths": [
@@ -7425,33 +6814,6 @@
         "type": "blocks"
       }
     },
-    "discovery": {
-      "action": "update",
-      "entity": "issue_relation",
-      "actions": [
-        "update"
-      ],
-      "entities": [
-        "issue_relation"
-      ],
-      "intents": [
-        {
-          "action": "update",
-          "entity": "issue_relation"
-        }
-      ],
-      "phrases": [
-        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
-        "\\bissue relations?\\b|\\bblocking relations?\\b"
-      ],
-      "terms": [
-        "update",
-        "issue",
-        "relation",
-        "issue_relation"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "issue_relation",
       "dataPaths": [
@@ -7661,33 +7023,6 @@
       ],
       "strictRawArguments": true,
       "example": {}
-    },
-    "discovery": {
-      "action": "list",
-      "entity": "issue_statuses",
-      "actions": [
-        "list"
-      ],
-      "entities": [
-        "issue_status"
-      ],
-      "intents": [
-        {
-          "action": "list",
-          "entity": "issue_status"
-        }
-      ],
-      "phrases": [
-        "\\b(?:list|show me|enumerate)\\b",
-        "\\bissue statuses\\b|\\bworkflow states?\\b|\\bstatuses\\b"
-      ],
-      "terms": [
-        "list",
-        "issue",
-        "statuses",
-        "issue_status"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "issue_status",
@@ -8189,34 +7524,6 @@
         "stateType": "started"
       }
     },
-    "discovery": {
-      "action": "list",
-      "entity": "issues",
-      "actions": [
-        "list"
-      ],
-      "entities": [
-        "issue"
-      ],
-      "intents": [
-        {
-          "action": "list",
-          "entity": "issue"
-        }
-      ],
-      "phrases": [
-        "\\b(?:list|show me|enumerate)\\b",
-        "\\b(?:child|children|sub-?issues?|subtasks?)\\b",
-        "\\bissues?\\b|\\btickets?\\b|\\bbugs?\\b",
-        "\\b[A-Z][A-Z0-9]+-\\d+\\b"
-      ],
-      "terms": [
-        "list",
-        "issues",
-        "issue"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "issue",
       "dataPaths": [
@@ -8380,33 +7687,6 @@
       "example": {
         "issue": "AEO-258"
       }
-    },
-    "discovery": {
-      "action": "get",
-      "entity": "issue",
-      "actions": [
-        "get"
-      ],
-      "entities": [
-        "issue"
-      ],
-      "intents": [
-        {
-          "action": "get",
-          "entity": "issue"
-        }
-      ],
-      "phrases": [
-        "\\b(?:read|get|show|open|view|fetch|inspect|lookup)\\b",
-        "\\b(?:child|children|sub-?issues?|subtasks?)\\b",
-        "\\bissues?\\b|\\btickets?\\b|\\bbugs?\\b",
-        "\\b[A-Z][A-Z0-9]+-\\d+\\b"
-      ],
-      "terms": [
-        "get",
-        "issue"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "issue",
@@ -9190,33 +8470,6 @@
         "title": "v0.4 trial child",
         "parent": "AEO-258"
       }
-    },
-    "discovery": {
-      "action": "create",
-      "entity": "issue",
-      "actions": [
-        "create"
-      ],
-      "entities": [
-        "issue"
-      ],
-      "intents": [
-        {
-          "action": "create",
-          "entity": "issue"
-        }
-      ],
-      "phrases": [
-        "\\b(?:create|add|new|make|file|open a new)\\b",
-        "\\b(?:child|children|sub-?issues?|subtasks?)\\b",
-        "\\bissues?\\b|\\btickets?\\b|\\bbugs?\\b",
-        "\\b[A-Z][A-Z0-9]+-\\d+\\b"
-      ],
-      "terms": [
-        "create",
-        "issue"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "issue",
@@ -10246,33 +9499,6 @@
         "state": "Backlog"
       }
     },
-    "discovery": {
-      "action": "update",
-      "entity": "issue",
-      "actions": [
-        "update"
-      ],
-      "entities": [
-        "issue"
-      ],
-      "intents": [
-        {
-          "action": "update",
-          "entity": "issue"
-        }
-      ],
-      "phrases": [
-        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
-        "\\b(?:child|children|sub-?issues?|subtasks?)\\b",
-        "\\bissues?\\b|\\btickets?\\b|\\bbugs?\\b",
-        "\\b[A-Z][A-Z0-9]+-\\d+\\b"
-      ],
-      "terms": [
-        "update",
-        "issue"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "issue",
       "dataPaths": [
@@ -10602,34 +9828,6 @@
         "term": "authentication"
       }
     },
-    "discovery": {
-      "action": "search",
-      "entity": "issues",
-      "actions": [
-        "search"
-      ],
-      "entities": [
-        "issue"
-      ],
-      "intents": [
-        {
-          "action": "search",
-          "entity": "issue"
-        }
-      ],
-      "phrases": [
-        "\\bsearch\\b",
-        "\\b(?:child|children|sub-?issues?|subtasks?)\\b",
-        "\\bissues?\\b|\\btickets?\\b|\\bbugs?\\b",
-        "\\b[A-Z][A-Z0-9]+-\\d+\\b"
-      ],
-      "terms": [
-        "search",
-        "issues",
-        "issue"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "issue",
       "dataPaths": [
@@ -10852,32 +10050,6 @@
       "strictRawArguments": true,
       "example": {}
     },
-    "discovery": {
-      "action": "list",
-      "entity": "milestones",
-      "actions": [
-        "list"
-      ],
-      "entities": [
-        "milestone"
-      ],
-      "intents": [
-        {
-          "action": "list",
-          "entity": "milestone"
-        }
-      ],
-      "phrases": [
-        "\\b(?:list|show me|enumerate)\\b",
-        "\\bmilestones?\\b"
-      ],
-      "terms": [
-        "list",
-        "milestones",
-        "milestone"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "milestone",
       "dataPaths": [
@@ -11029,31 +10201,6 @@
       "example": {
         "milestone": "Beta"
       }
-    },
-    "discovery": {
-      "action": "get",
-      "entity": "milestone",
-      "actions": [
-        "get"
-      ],
-      "entities": [
-        "milestone"
-      ],
-      "intents": [
-        {
-          "action": "get",
-          "entity": "milestone"
-        }
-      ],
-      "phrases": [
-        "\\b(?:read|get|show|open|view|fetch|inspect|lookup)\\b",
-        "\\bmilestones?\\b"
-      ],
-      "terms": [
-        "get",
-        "milestone"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "milestone",
@@ -11261,33 +10408,6 @@
       ],
       "strictRawArguments": true,
       "example": {}
-    },
-    "discovery": {
-      "action": "list",
-      "entity": "project_labels",
-      "actions": [
-        "list"
-      ],
-      "entities": [
-        "project_label"
-      ],
-      "intents": [
-        {
-          "action": "list",
-          "entity": "project_label"
-        }
-      ],
-      "phrases": [
-        "\\b(?:list|show me|enumerate)\\b",
-        "\\bproject labels?\\b"
-      ],
-      "terms": [
-        "list",
-        "project",
-        "labels",
-        "project_label"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "label",
@@ -11528,33 +10648,6 @@
       "example": {
         "name": "Strategic"
       }
-    },
-    "discovery": {
-      "action": "create",
-      "entity": "project_label",
-      "actions": [
-        "create"
-      ],
-      "entities": [
-        "project_label"
-      ],
-      "intents": [
-        {
-          "action": "create",
-          "entity": "project_label"
-        }
-      ],
-      "phrases": [
-        "\\b(?:create|add|new|make|file|open a new)\\b",
-        "\\bproject labels?\\b"
-      ],
-      "terms": [
-        "create",
-        "project",
-        "label",
-        "project_label"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "label",
@@ -11865,33 +10958,6 @@
         "name": "Strategy"
       }
     },
-    "discovery": {
-      "action": "update",
-      "entity": "project_label",
-      "actions": [
-        "update"
-      ],
-      "entities": [
-        "project_label"
-      ],
-      "intents": [
-        {
-          "action": "update",
-          "entity": "project_label"
-        }
-      ],
-      "phrases": [
-        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
-        "\\bproject labels?\\b"
-      ],
-      "terms": [
-        "update",
-        "project",
-        "label",
-        "project_label"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "label",
       "dataPaths": [
@@ -12079,33 +11145,6 @@
       ],
       "strictRawArguments": true,
       "example": {}
-    },
-    "discovery": {
-      "action": "list",
-      "entity": "project_relations",
-      "actions": [
-        "list"
-      ],
-      "entities": [
-        "project_relation"
-      ],
-      "intents": [
-        {
-          "action": "list",
-          "entity": "project_relation"
-        }
-      ],
-      "phrases": [
-        "\\b(?:list|show me|enumerate)\\b",
-        "\\bproject relations?\\b"
-      ],
-      "terms": [
-        "list",
-        "project",
-        "relations",
-        "project_relation"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "project_relation",
@@ -12391,33 +11430,6 @@
         "anchorType": "project",
         "relatedAnchorType": "project"
       }
-    },
-    "discovery": {
-      "action": "create",
-      "entity": "project_relation",
-      "actions": [
-        "create"
-      ],
-      "entities": [
-        "project_relation"
-      ],
-      "intents": [
-        {
-          "action": "create",
-          "entity": "project_relation"
-        }
-      ],
-      "phrases": [
-        "\\b(?:create|add|new|make|file|open a new)\\b",
-        "\\bproject relations?\\b"
-      ],
-      "terms": [
-        "create",
-        "project",
-        "relation",
-        "project_relation"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "project_relation",
@@ -12752,33 +11764,6 @@
         "type": "related"
       }
     },
-    "discovery": {
-      "action": "update",
-      "entity": "project_relation",
-      "actions": [
-        "update"
-      ],
-      "entities": [
-        "project_relation"
-      ],
-      "intents": [
-        {
-          "action": "update",
-          "entity": "project_relation"
-        }
-      ],
-      "phrases": [
-        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
-        "\\bproject relations?\\b"
-      ],
-      "terms": [
-        "update",
-        "project",
-        "relation",
-        "project_relation"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "project_relation",
       "dataPaths": [
@@ -13047,32 +12032,6 @@
       "strictRawArguments": true,
       "example": {}
     },
-    "discovery": {
-      "action": "list",
-      "entity": "projects",
-      "actions": [
-        "list"
-      ],
-      "entities": [
-        "project"
-      ],
-      "intents": [
-        {
-          "action": "list",
-          "entity": "project"
-        }
-      ],
-      "phrases": [
-        "\\b(?:list|show me|enumerate)\\b",
-        "\\bprojects?\\b"
-      ],
-      "terms": [
-        "list",
-        "projects",
-        "project"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "project",
       "dataPaths": [
@@ -13225,31 +12184,6 @@
       "example": {
         "project": "Platform"
       }
-    },
-    "discovery": {
-      "action": "get",
-      "entity": "project",
-      "actions": [
-        "get"
-      ],
-      "entities": [
-        "project"
-      ],
-      "intents": [
-        {
-          "action": "get",
-          "entity": "project"
-        }
-      ],
-      "phrases": [
-        "\\b(?:read|get|show|open|view|fetch|inspect|lookup)\\b",
-        "\\bprojects?\\b"
-      ],
-      "terms": [
-        "get",
-        "project"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "project",
@@ -13458,32 +12392,6 @@
       "strictRawArguments": true,
       "example": {}
     },
-    "discovery": {
-      "action": "list",
-      "entity": "teams",
-      "actions": [
-        "list"
-      ],
-      "entities": [
-        "team"
-      ],
-      "intents": [
-        {
-          "action": "list",
-          "entity": "team"
-        }
-      ],
-      "phrases": [
-        "\\b(?:list|show me|enumerate)\\b",
-        "\\bteams?\\b"
-      ],
-      "terms": [
-        "list",
-        "teams",
-        "team"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "team",
       "dataPaths": [
@@ -13635,31 +12543,6 @@
       "example": {
         "team": "AEO"
       }
-    },
-    "discovery": {
-      "action": "get",
-      "entity": "team",
-      "actions": [
-        "get"
-      ],
-      "entities": [
-        "team"
-      ],
-      "intents": [
-        {
-          "action": "get",
-          "entity": "team"
-        }
-      ],
-      "phrases": [
-        "\\b(?:read|get|show|open|view|fetch|inspect|lookup)\\b",
-        "\\bteams?\\b"
-      ],
-      "terms": [
-        "get",
-        "team"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "team",
@@ -13926,32 +12809,6 @@
       "strictRawArguments": true,
       "example": {}
     },
-    "discovery": {
-      "action": "list",
-      "entity": "users",
-      "actions": [
-        "list"
-      ],
-      "entities": [
-        "user"
-      ],
-      "intents": [
-        {
-          "action": "list",
-          "entity": "user"
-        }
-      ],
-      "phrases": [
-        "\\b(?:list|show me|enumerate)\\b",
-        "\\busers?\\b|\\bmembers?\\b|\\bpeople\\b"
-      ],
-      "terms": [
-        "list",
-        "users",
-        "user"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "user",
       "dataPaths": [
@@ -14106,31 +12963,6 @@
         "user": "me"
       }
     },
-    "discovery": {
-      "action": "get",
-      "entity": "user",
-      "actions": [
-        "get"
-      ],
-      "entities": [
-        "user"
-      ],
-      "intents": [
-        {
-          "action": "get",
-          "entity": "user"
-        }
-      ],
-      "phrases": [
-        "\\b(?:read|get|show|open|view|fetch|inspect|lookup)\\b",
-        "\\busers?\\b|\\bmembers?\\b|\\bpeople\\b"
-      ],
-      "terms": [
-        "get",
-        "user"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "user",
       "dataPaths": [
@@ -14245,31 +13077,6 @@
         "name": "work"
       }
     },
-    "discovery": {
-      "action": "switch",
-      "entity": "workspace",
-      "actions": [
-        "switch"
-      ],
-      "entities": [
-        "workspace"
-      ],
-      "intents": [
-        {
-          "action": "switch",
-          "entity": "workspace"
-        }
-      ],
-      "phrases": [
-        "\\b(?:switch|use)\\b",
-        "\\bworkspaces?\\b"
-      ],
-      "terms": [
-        "switch",
-        "workspace"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "workspace",
       "dataPaths": [
@@ -14294,7 +13101,7 @@
     "tool": {
       "name": "linear_save_initiative",
       "label": "Linear save initiative",
-      "description": "Create or update a initiative. Equivalent to linear { \"operation\": \"save_initiative\", \"variables\": { \"name\": \"Platform\" } }.",
+      "description": "Create or update an initiative. Equivalent to linear { \"operation\": \"save_initiative\", \"variables\": { \"name\": \"Platform\" } }.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -14625,7 +13432,7 @@
       "constrainedSampling": false
     },
     "domain": "initiatives",
-    "purpose": "Create or update a initiative.",
+    "purpose": "Create or update an initiative.",
     "kind": "mutation",
     "help": {
       "signature": "save_initiative(initiativeId?: InitiativeReference, name?: String, input?: Input)",
@@ -15361,45 +14168,6 @@
         "name": "Platform"
       }
     },
-    "discovery": {
-      "action": "save",
-      "entity": "initiative",
-      "actions": [
-        "create",
-        "update",
-        "save"
-      ],
-      "entities": [
-        "initiative"
-      ],
-      "intents": [
-        {
-          "action": "create",
-          "entity": "initiative"
-        },
-        {
-          "action": "update",
-          "entity": "initiative"
-        },
-        {
-          "action": "save",
-          "entity": "initiative"
-        }
-      ],
-      "phrases": [
-        "\\b(?:create|add|new|make|file|open a new)\\b",
-        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
-        "\\b(?:save)\\b",
-        "\\binitiatives?\\b"
-      ],
-      "terms": [
-        "save",
-        "initiative",
-        "create",
-        "update"
-      ],
-      "exactHelp": true
-    },
     "result": {
       "renderKind": "initiative",
       "dataPaths": [
@@ -15426,7 +14194,7 @@
     "tool": {
       "name": "linear_save_milestone",
       "label": "Linear save milestone",
-      "description": "Create or update a projectmilestone. Equivalent to linear { \"operation\": \"save_milestone\", \"variables\": { \"name\": \"Beta\", \"projectId\": \"project-id\" } }.",
+      "description": "Create or update a milestone. Equivalent to linear { \"operation\": \"save_milestone\", \"variables\": { \"name\": \"Beta\", \"projectId\": \"project-id\" } }.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -15554,7 +14322,7 @@
       "constrainedSampling": false
     },
     "domain": "milestones",
-    "purpose": "Create or update a projectmilestone.",
+    "purpose": "Create or update a milestone.",
     "kind": "mutation",
     "help": {
       "signature": "save_milestone(milestoneId?: MilestoneReference, name?: String, projectId?: ProjectReference, input?: Input)",
@@ -15917,45 +14685,6 @@
         "name": "Beta",
         "projectId": "project-id"
       }
-    },
-    "discovery": {
-      "action": "save",
-      "entity": "milestone",
-      "actions": [
-        "create",
-        "update",
-        "save"
-      ],
-      "entities": [
-        "milestone"
-      ],
-      "intents": [
-        {
-          "action": "create",
-          "entity": "milestone"
-        },
-        {
-          "action": "update",
-          "entity": "milestone"
-        },
-        {
-          "action": "save",
-          "entity": "milestone"
-        }
-      ],
-      "phrases": [
-        "\\b(?:create|add|new|make|file|open a new)\\b",
-        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
-        "\\b(?:save)\\b",
-        "\\bmilestones?\\b"
-      ],
-      "terms": [
-        "save",
-        "milestone",
-        "create",
-        "update"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "milestone",
@@ -17609,45 +16338,6 @@
           "team-id"
         ]
       }
-    },
-    "discovery": {
-      "action": "save",
-      "entity": "project",
-      "actions": [
-        "create",
-        "update",
-        "save"
-      ],
-      "entities": [
-        "project"
-      ],
-      "intents": [
-        {
-          "action": "create",
-          "entity": "project"
-        },
-        {
-          "action": "update",
-          "entity": "project"
-        },
-        {
-          "action": "save",
-          "entity": "project"
-        }
-      ],
-      "phrases": [
-        "\\b(?:create|add|new|make|file|open a new)\\b",
-        "\\b(?:set|change|update|move|rename|assign|close|reopen)\\b",
-        "\\b(?:save)\\b",
-        "\\bprojects?\\b"
-      ],
-      "terms": [
-        "save",
-        "project",
-        "create",
-        "update"
-      ],
-      "exactHelp": true
     },
     "result": {
       "renderKind": "project",

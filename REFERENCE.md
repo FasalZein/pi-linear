@@ -78,8 +78,8 @@ Accepted domains are `issues`, `comments`, `users`, `teams`, `projects`, `cycles
 | `list_users` | `linear_list_users` | users | none | List users. | `{"operation":"list_users","variables":{}}` |
 | `get_user` | `linear_get_user` | users | user | Get a user by me, UUID, email, name, or display name. | `{"operation":"get_user","variables":{"user":"me"}}` |
 | `switch_workspace` | `linear_switch_workspace` | workspace | name | Switch the active stored workspace without exposing credentials. | `{"operation":"switch_workspace","variables":{"name":"work"}}` |
-| `save_initiative` | `linear_save_initiative` | initiatives | none | Create or update a initiative. | `{"operation":"save_initiative","variables":{"name":"Platform"}}` |
-| `save_milestone` | `linear_save_milestone` | milestones | none | Create or update a projectmilestone. | `{"operation":"save_milestone","variables":{"name":"Beta","projectId":"project-id"}}` |
+| `save_initiative` | `linear_save_initiative` | initiatives | none | Create or update an initiative. | `{"operation":"save_initiative","variables":{"name":"Platform"}}` |
+| `save_milestone` | `linear_save_milestone` | milestones | none | Create or update a milestone. | `{"operation":"save_milestone","variables":{"name":"Beta","projectId":"project-id"}}` |
 | `save_project` | `linear_save_project` | projects | none | Create or update a project. | `{"operation":"save_project","variables":{"name":"Platform","teamIds":["team-id"]}}` |
 
 ### Loader envelopes
@@ -94,10 +94,6 @@ Accepted domains are `issues`, `comments`, `users`, `teams`, `projects`, `cycles
 
 ```json
 { "operation": "help", "variables": { "operation": "get_issue" } }
-```
-
-```json
-{ "operation": "help", "variables": { "query": "list comments on AEO-258" } }
 ```
 <!-- END GENERATED LINEAR OPERATIONS -->
 

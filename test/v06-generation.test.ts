@@ -109,12 +109,6 @@ describe('generated products', () => {
       '\t\tcanonical: {\n\t\t\t"fields": {\n\t\t\t\t"issue": "Float",\n\t\t\t\t"after": "String",\n\t\t\t\t"before": "String",\n\t\t\t\t"first": "Int",\n\t\t\t\t"last": "Int",\n\t\t\t\t"includeArchived": "Boolean",\n\t\t\t\t"orderBy": "PaginationOrderBy",\n\t\t\t\t"filter": "Filter"',
     ],
     [
-      'discovery term',
-      'extensions/operation-definition.ts',
-      'terms: [...new Set([...operation.name.split',
-      "terms: [...new Set(['drift-term', ...operation.name.split",
-    ],
-    [
       'renderer kind',
       'extensions/operations.ts',
       'renderKind: "issue",',
@@ -225,6 +219,13 @@ describe('generated products', () => {
       purpose: match[2]!,
     }));
     expect(published).toEqual(expected);
+  });
+
+  it('publishes grammatical save purposes in the generated catalog', () => {
+    const description = (linearApiTool() as any).description as string;
+    expect(description).toContain('save_initiative: Create or update an initiative.');
+    expect(description).toContain('save_milestone: Create or update a milestone.');
+    expect(description).toContain('save_project: Create or update a project.');
   });
 
   it('publishes one deployable manifest entry for each canonical operation', () => {

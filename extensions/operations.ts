@@ -276,7 +276,7 @@ type OperationSourceExtras = Pick<
 	"compatibilityBranches"
 > & Pick<
 	LinearOperation,
-	"semanticException" | "renderKind" | "renderTargetFields" | "renderEmpty" | "discoveryIntents"
+	"semanticException" | "renderKind" | "renderTargetFields" | "renderEmpty"
 >;
 
 function sourceExtras(config: OperationSourceExtras): OperationSourceExtras {
@@ -286,7 +286,6 @@ function sourceExtras(config: OperationSourceExtras): OperationSourceExtras {
 		renderKind: config.renderKind,
 		renderTargetFields: config.renderTargetFields,
 		renderEmpty: config.renderEmpty,
-		discoveryIntents: config.discoveryIntents,
 	};
 }
 
@@ -669,20 +668,6 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 			"postId",
 			"documentContentId",
 			"parentId"
-		],
-		discoveryIntents: [
-			{
-				"action": "comment",
-				"entity": "issue"
-			},
-			{
-				"action": "comment",
-				"entity": "comment"
-			},
-			{
-				"action": "create",
-				"entity": "comment"
-			}
 		],
 		canonical: {
 			"fields": {
@@ -1103,12 +1088,6 @@ const operationDefinitionsMutable: OperationDefinition[] = ([
 			}
 		],
 		renderKind: "view",
-		discoveryIntents: [
-			{
-				"action": "update",
-				"entity": "view_preference"
-			}
-		],
 		canonical: {
 			"fields": {
 				"viewId": "String",
@@ -3670,6 +3649,7 @@ function addSaveOperation(config: {
 	canonical: CanonicalOperation;
 	domain: OperationDomain;
 	entity: string;
+	noun: string;
 	entityKind: "project" | "initiative" | "projectMilestone";
 	documentName: string;
 	selection: string;
@@ -3751,7 +3731,7 @@ function addSaveOperation(config: {
 		canonical: config.canonical,
 		aliases: [],
 		domain: config.domain,
-		purpose: `Create or update a ${config.entity.toLowerCase()}.`,
+		purpose: `Create or update ${/^[aeiou]/i.test(config.noun) ? "an" : "a"} ${config.noun}.`,
 		parameters: cardParameters,
 		acceptedParameters: config.parameters,
 		example: { operation: config.name, variables: config.example },
@@ -4185,6 +4165,7 @@ addSaveOperation({
 	},
 	domain: "initiatives",
 	entity: "Initiative",
+	noun: "initiative",
 	entityKind: "initiative",
 	documentName: "Initiative",
 	selection: INITIATIVE_SELECTION,
@@ -4383,6 +4364,7 @@ addSaveOperation({
 	},
 	domain: "milestones",
 	entity: "ProjectMilestone",
+	noun: "milestone",
 	entityKind: "projectMilestone",
 	documentName: "Milestone",
 	selection: MILESTONE_SELECTION,
@@ -4944,6 +4926,7 @@ addSaveOperation({
 	},
 	domain: "projects",
 	entity: "Project",
+	noun: "project",
 	entityKind: "project",
 	documentName: "Project",
 	selection: PROJECT_DETAIL_SELECTION,
