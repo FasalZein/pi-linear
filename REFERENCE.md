@@ -93,6 +93,10 @@ Accepted domains are `issues`, `comments`, `users`, `teams`, `projects`, `cycles
 ```json
 { "operation": "help", "variables": { "operation": "get_issue" } }
 ```
+
+```json
+{ "operation": "batch", "variables": { "reads": [{ "key": "one", "operation": "get_issue", "variables": { "issue": "AEO-258" } }] } }
+```
 <!-- END GENERATED LINEAR OPERATIONS -->
 
 ## Exact references and fail-closed behavior

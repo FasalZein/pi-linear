@@ -218,7 +218,11 @@ describe('generated products', () => {
       name: match[1]!,
       purpose: match[2]!,
     }));
-    expect(published).toEqual(expected);
+    expect(published.filter(({ name }) => name !== 'batch')).toEqual(expected);
+    expect(published).toContainEqual({
+      name: 'batch',
+      purpose: 'Carry several independent named reads in one GraphQL request.',
+    });
   });
 
   it('publishes grammatical save purposes in the generated catalog', () => {

@@ -2,6 +2,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { BATCH_PURPOSE } from '../extensions/batch';
 import { operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
 import { buildTypedToolMetadata } from '../extensions/typed-tool-metadata';
 
@@ -76,7 +77,10 @@ function contracts() {
 }
 
 export function operationCatalogText(): string {
-  return operationDefinitions.map(({ name, purpose }) => `${name}: ${purpose}`).join('\n');
+  return [
+    ...operationDefinitions.map(({ name, purpose }) => `${name}: ${purpose}`),
+    `batch: ${BATCH_PURPOSE}`,
+  ].join('\n');
 }
 
 export function linearToolDescription(): string {
@@ -124,6 +128,10 @@ function referenceCatalog(): string {
     '',
     '```json',
     '{ "operation": "help", "variables": { "operation": "get_issue" } }',
+    '```',
+    '',
+    '```json',
+    '{ "operation": "batch", "variables": { "reads": [{ "key": "one", "operation": "get_issue", "variables": { "issue": "AEO-258" } }] } }',
     '```',
   ].join('\n');
 }

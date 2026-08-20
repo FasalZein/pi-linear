@@ -150,10 +150,12 @@ export function operationDocuments(
 	return operation.variants?.map(({ document }) => document) ?? [operation.document];
 }
 
-export const SAFE_NAMED_MUTATION_ROOTS = new Set(
-	operationDefinitions.flatMap((definition) =>
+export const BATCH_MUTATION_ROOTS = ["issueBatchCreate"] as const;
+export const SAFE_NAMED_MUTATION_ROOTS = new Set([
+	...operationDefinitions.flatMap((definition) =>
 		definition.graphql?.documents
 			.filter(({ kind }) => kind === "mutation")
 			.map(({ root }) => root) ?? [],
 	),
-);
+	...BATCH_MUTATION_ROOTS,
+]);

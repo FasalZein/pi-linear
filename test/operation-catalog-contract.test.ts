@@ -1,7 +1,7 @@
 import { Kind, parse } from "graphql";
 import { describe, expect, it } from "vitest";
 import { resolveRequest } from "../extensions/api";
-import { operationDocuments, operations } from "../extensions/operations";
+import { BATCH_MUTATION_ROOTS, operationDocuments, operations } from "../extensions/operations";
 import {
 	SAFE_NAMED_MUTATION_ROOTS,
 	getMutationFields,
@@ -109,7 +109,7 @@ describe("v0.4 operation inventory", () => {
 			expect([...actual].sort()).toEqual(operation.variants?.map(({ root }) => root).sort() ?? []);
 			actual.forEach((root) => roots.add(root));
 		}
-		expect([...SAFE_NAMED_MUTATION_ROOTS].sort()).toEqual([...roots].sort());
+		expect([...SAFE_NAMED_MUTATION_ROOTS].sort()).toEqual([...roots, ...BATCH_MUTATION_ROOTS].sort());
 	});
 
 	it("keeps aliases hidden and accepts all v0.3 request shapes", () => {
