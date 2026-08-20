@@ -7099,6 +7099,15 @@
       "parameters": {
         "type": "object",
         "properties": {
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "One or more issue identifiers such as ABC-123, or issue UUIDs.",
+            "minItems": 1
+          },
           "query": {
             "type": "string",
             "minLength": 1
@@ -7236,7 +7245,7 @@
     "purpose": "List issues with exact convenience filters.",
     "kind": "query",
     "help": {
-      "signature": "list_issues(query?: String, team?: TeamReference, state?: StateReference, stateType?: WorkflowStateType, assignee?: UserReference, after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, sort?: [SortInput!], view?: ResultView)",
+      "signature": "list_issues(issues?: [IssueReference!], query?: String, team?: TeamReference, state?: StateReference, stateType?: WorkflowStateType, assignee?: UserReference, after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, sort?: [SortInput!], view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "list_issues",
@@ -7246,6 +7255,7 @@
         }
       },
       "callFields": [
+        "issues",
         "query",
         "team",
         "state",
@@ -7265,6 +7275,11 @@
     "compatibility": {
       "operationAliases": [],
       "fields": [
+        {
+          "name": "issues",
+          "type": "[IssueReference!]",
+          "required": false
+        },
         {
           "name": "query",
           "type": "String",
@@ -7342,6 +7357,11 @@
         }
       ],
       "acceptedFields": [
+        {
+          "name": "issues",
+          "type": "String",
+          "required": false
+        },
         {
           "name": "query",
           "type": "String",
@@ -7507,6 +7527,11 @@
     "canonical": {
       "fields": [
         {
+          "name": "issues",
+          "type": "[IssueReference!]",
+          "required": false
+        },
+        {
           "name": "query",
           "type": "String",
           "required": false
@@ -7597,6 +7622,7 @@
     "render": {
       "entityKind": "issue",
       "callFields": [
+        "issues",
         "query",
         "team",
         "state",

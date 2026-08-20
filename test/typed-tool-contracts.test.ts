@@ -447,6 +447,8 @@ describe('typed schema validation across all 48 tools', () => {
     expect(accepts('linear_list_issues', { view: 'compact' })).toBe(false);
     expect(accepts('linear_list_issues', { view: 'summary' })).toBe(true);
     expect(accepts('linear_list_issues', { view: 'full' })).toBe(true);
+    expect(accepts('linear_list_issues', { issues: [] })).toBe(false);
+    expect(accepts('linear_list_issues', { issues: ['AEO-258', 'AEO-362'] })).toBe(true);
     expect(accepts('linear_get_issue', { issue: 'AEO-258', view: 'summary' })).toBe(true);
   });
 
@@ -946,6 +948,8 @@ describe('strict raw arguments before Pi conversion', () => {
     expect(rawAccepts('linear_set_view_preferences', { viewId: 'v', preferences: { issueGrouping: 'cycle' } })).toBe(true);
     expect(rawAccepts('linear_list_issues', { sort: [{ key: 'nonsense' }] })).toBe(false);
     expect(rawAccepts('linear_list_issues', { sort: [{ key: 'priority' }] })).toBe(true);
+    expect(rawAccepts('linear_list_issues', { issues: 'AEO-258' })).toBe(false);
+    expect(rawAccepts('linear_list_issues', { issues: ['AEO-258'] })).toBe(true);
   });
 
   it('makes zero network calls for a coerced-scalar call', async () => {
