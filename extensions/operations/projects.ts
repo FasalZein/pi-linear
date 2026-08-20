@@ -1,4 +1,5 @@
 import {
+	isLinearUrlSlug,
 	resolveIssueReference,
 	resolveNamedEntityReference,
 } from "../client";
@@ -15,6 +16,7 @@ import {
 	input,
 	filter,
 	sort,
+	isUuid,
 	getDocument,
 	workspaceEmpty,
 	listOperation,
@@ -87,12 +89,16 @@ export const projectReads: readonly OperationDefinition[] = ([
 		document: getDocument("GetProject", "project", projection("project", "detail")),
 		resolverPaths: { project: "resolveNamedEntityReference" },
 		async prepare(k, v, s) {
-			const x = await resolveNamedEntityReference(
-				k,
-				"project",
-				String(v.project ?? v.projectId),
-				s,
-			);
+			const requested = String(v.project ?? v.projectId);
+			const reference = requested.trim();
+			if (isUuid(reference) || isLinearUrlSlug(reference)) {
+				return {
+					variables: { id: reference },
+					exactNamed: { requested: reference, path: "project", kind: "project" },
+					resolution: { target: { requested: reference } },
+				};
+			}
+			const x = await resolveNamedEntityReference(k, "project", requested, s);
 			return {
 				variables: { id: x.id },
 				resolution: {

@@ -43,11 +43,17 @@ export type ExactIssueCheck = {
 	requested: string;
 	path: string;
 };
+export type ExactNamedCheck = {
+	requested: string;
+	path: string;
+	kind: "project" | "cycle" | "document";
+};
 export type OperationPreparation = {
 	variables: Record<string, unknown>;
 	resolution?: Record<string, unknown>;
 	variant?: GraphQLDocumentVariant;
 	exactIssue?: ExactIssueCheck;
+	exactNamed?: ExactNamedCheck;
 };
 export type PaginationMetadata = {
 	defaultPageSize: number;

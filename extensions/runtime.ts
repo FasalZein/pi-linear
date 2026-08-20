@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { activeSecrets } from './active-secrets';
-import { assertIssueNodeMatches, linearGraphQL, resolveApiKey } from './client';
+import { assertIssueNodeMatches, assertNamedNodeMatches, linearGraphQL, resolveApiKey } from './client';
 import type { GraphQLDocumentVariant, LocalResultExpectation, OperationPreparation } from './operation-types';
 import type { LinearOperation } from './operations';
 import { redactDeep, withRedactedErrors } from './redact';
@@ -268,6 +268,26 @@ function applyExactIssueCheck(prepared: OperationPreparation, data: JsonObject):
   };
 }
 
+function applyExactNamedCheck(prepared: OperationPreparation, data: JsonObject): void {
+  const check = prepared.exactNamed;
+  if (!check) return;
+  const node = objectAtPath(data, check.path);
+  assertNamedNodeMatches(check.kind, check.requested, node);
+  const target: Record<string, unknown> = {
+    requested: check.requested,
+    resolvedId: node.id,
+  };
+  if (typeof node.name === 'string') target.name = node.name;
+  if (typeof node.title === 'string') target.title = node.title;
+  const resolution = prepared.resolution && typeof prepared.resolution === 'object'
+    ? prepared.resolution
+    : {};
+  prepared.resolution = {
+    ...resolution,
+    target: { ...(typeof resolution.target === 'object' && resolution.target ? resolution.target : {}), ...target },
+  };
+}
+
 /**
  * Single execution path for one named operation. Both `linear` and the typed
  * tools route through here, so mutation gating, reference resolution, spill, and
@@ -303,6 +323,7 @@ export async function executeOperation(
     const data = await linearGraphQL<JsonObject>(apiKey, document, prepared.variables, signal);
     if (variant) validateMutationResult(operation.name, data, variant);
     applyExactIssueCheck(prepared, data);
+    applyExactNamedCheck(prepared, data);
     const result = await routeLinearResult(data, {
       label: operation.name,
       sink: options.sink,
