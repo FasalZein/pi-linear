@@ -57,6 +57,26 @@ export type OperationPreparation = {
 	exactNamed?: ExactNamedCheck;
 	resultView?: ResultView;
 };
+export type BatchLookupField = "parent" | "team" | "state" | "assignee";
+export type BatchLookup = {
+	field: BatchLookupField;
+	requested: string;
+	/** Independently known team key or UUID, required for a state name. */
+	team?: string;
+};
+export type BatchLookupValues = {
+	parent?: { id: string; identifier: string; teamId: string; teamKey: string };
+	team?: { id: string; key: string };
+	state?: { id: string; name: string; teamId: string };
+	assignee?: { id: string };
+};
+export type BatchPreparation =
+	| { kind: "local" }
+	| {
+			kind: "independent";
+			lookups: readonly BatchLookup[];
+			finish: (resolved: BatchLookupValues) => OperationPreparation;
+	  };
 export type PaginationMetadata = {
 	defaultPageSize: number;
 	filterType?: string;
@@ -85,6 +105,8 @@ export type LinearOperation = {
 		variables: Record<string, unknown>,
 		signal: AbortSignal | undefined,
 	) => Promise<OperationPreparation>;
+	/** Variable-dependent batch eligibility. Inspect lookups, not the operation name. */
+	batchPrepare?: (variables: Record<string, unknown>) => BatchPreparation;
 	executeLocal?: (
 		variables: Record<string, unknown>,
 		ctx: ExtensionContext,
@@ -149,6 +171,7 @@ export type OperationCompatibilityDefinition = {
 	semanticException?: string;
 	semanticValidateVariables?: LinearOperation["validateVariables"];
 	prepare?: LinearOperation["prepare"];
+	batchPrepare?: LinearOperation["batchPrepare"];
 	executeLocal?: LinearOperation["executeLocal"];
 	localResult?: LocalResultExpectation;
 };
@@ -164,6 +187,7 @@ export type OperationDefinition = {
 	preparation: {
 		resolverPaths: Readonly<Record<string, string>>;
 		prepare?: LinearOperation["prepare"];
+		batchPrepare?: LinearOperation["batchPrepare"];
 	};
 	safety: {
 		namedInputPolicy: "non-destructive";

@@ -371,7 +371,11 @@ describe('batch mutation phase', () => {
     await expect(execute({
       operation: 'batch',
       variables: {
-        mutations: [{ key: 'write', operation: 'create_issue', variables: { title: 'X', team: 'AEO' } }],
+        mutations: [{
+          key: 'write',
+          operation: 'create_cycle',
+          variables: { team: 'AEO', startsAt: '2026-08-17', endsAt: '2026-08-31' },
+        }],
       },
     })).rejects.toThrow(/preparation|fold/i);
     expect(fetch).not.toHaveBeenCalled();
@@ -392,10 +396,10 @@ describe('batch mutation phase', () => {
       variables: {
         mutations: [
           { key: 'a', operation: 'create_issue', variables: { title: 'A', team: 'AEO' } },
-          { key: 'b', operation: 'create_issue', variables: { title: 'B', team: 'AEO' } },
+          mutationEntry('b'),
         ],
       },
-    })).rejects.toThrow(/Transactional create support is not yet implemented/);
+    })).rejects.toThrow(/mixed|one ordinary named mutation/i);
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -441,5 +445,362 @@ describe('batch mutation phase', () => {
         mutations: [mutationEntry()],
       },
     })).rejects.toThrow('Linear network error: socket closed');
+  });
+});
+
+const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const STATE_ID = '44444444-4444-4444-8444-444444444444';
+const USER_ID = '55555555-5555-4555-8555-555555555555';
+
+function aliases(query: string, field: string): string[] {
+  return [...query.matchAll(new RegExp(`(\\w+)\\s*:\\s*${field}\\b`, 'g'))].map((match) => match[1]!);
+}
+
+function lookupData(query: string, overrides: Record<string, unknown> = {}) {
+  const data: Record<string, unknown> = {};
+  const user = { id: USER_ID, name: 'Me', displayName: 'Me', email: 'me@example.com' };
+  for (const alias of aliases(query, 'teams')) data[alias] = { nodes: [{ id: TEAM_ID, key: 'AEO' }] };
+  for (const alias of aliases(query, 'team')) data[alias] = { id: TEAM_ID, key: 'AEO' };
+  for (const alias of aliases(query, 'workflowStates')) {
+    data[alias] = { nodes: [{ id: STATE_ID, name: 'Todo', team: { id: TEAM_ID, key: 'AEO' } }] };
+  }
+  for (const alias of aliases(query, 'workflowState')) {
+    data[alias] = { id: STATE_ID, name: 'Todo', team: { id: TEAM_ID } };
+  }
+  for (const alias of aliases(query, 'viewer')) data[alias] = user;
+  for (const alias of aliases(query, 'user')) data[alias] = user;
+  for (const alias of aliases(query, 'users')) data[alias] = { nodes: [user] };
+  for (const alias of aliases(query, 'issue')) data[alias] = issueNode(ISSUE_A, 'AEO-1');
+  return { ...data, ...overrides };
+}
+
+function createIssue(key: string, title: string, extra: Record<string, unknown> = {}) {
+  return { key, operation: 'create_issue', variables: { title, team: 'AEO', ...extra } };
+}
+
+function batchIssues(request: { variables: Record<string, unknown> }) {
+  const input = request.variables.input as { issues?: Array<{ id: string; title: string; teamId?: string; stateId?: string; assigneeId?: string }> };
+  return input.issues ?? [];
+}
+
+describe('batch transactional create', () => {
+  it('maps two creates by generated id when Linear returns issues in reverse order', async () => {
+    const { requests } = graphqlStub((request) => {
+      if (request.query.includes('issueBatchCreate')) {
+        const issues = batchIssues(request);
+        expect(issues).toHaveLength(2);
+        expect(issues[0]!.id).toMatch(UUID_V4);
+        expect(issues[1]!.id).toMatch(UUID_V4);
+        expect(issues[0]!.id).not.toBe(issues[1]!.id);
+        const byTitle = Object.fromEntries(issues.map((issue) => [issue.title, issue.id]));
+        return {
+          body: {
+            data: {
+              issueBatchCreate: {
+                success: true,
+                issues: [
+                  { id: byTitle.B, identifier: 'AEO-2', title: 'B', team: { id: TEAM_ID, key: 'AEO' } },
+                  { id: byTitle.A, identifier: 'AEO-1', title: 'A', team: { id: TEAM_ID, key: 'AEO' } },
+                ],
+              },
+            },
+          },
+        };
+      }
+      return { body: { data: lookupData(request.query) } };
+    });
+
+    const result = await execute({
+      operation: 'batch',
+      variables: { mutations: [createIssue('first', 'A'), createIssue('second', 'B')] },
+    });
+
+    expect(requests).toHaveLength(2);
+    expect(requests[0]!.query).toMatch(/query/);
+    expect(requests[0]!.query).not.toMatch(/mutation/);
+    expect(requests[1]!.query).toContain('issueBatchCreate');
+    expect(requests[1]!.query).not.toContain('issueCreate');
+    expect(result.details.data.first.issueCreate.issue.title).toBe('A');
+    expect(result.details.data.second.issueCreate.issue.title).toBe('B');
+    expect(result.details.data.first.issueCreate.issue.id).toBe(batchIssues(requests[1]!).find((issue) => issue.title === 'A')!.id);
+    expect(result.details.data.second.issueCreate.issue.id).toBe(batchIssues(requests[1]!).find((issue) => issue.title === 'B')!.id);
+    expect(result.details.errors).toEqual([]);
+    expect(result.details.skipped).toEqual([]);
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
+  });
+
+  it('folds team, state, and assignee lookups into one read request', async () => {
+    const { requests } = graphqlStub((request) => {
+      if (request.query.includes('issueBatchCreate')) {
+        const issues = batchIssues(request);
+        expect(issues.every((issue) => issue.teamId === TEAM_ID)).toBe(true);
+        expect(issues.every((issue) => issue.stateId === STATE_ID)).toBe(true);
+        expect(issues.every((issue) => issue.assigneeId === USER_ID)).toBe(true);
+        return {
+          body: {
+            data: {
+              issueBatchCreate: {
+                success: true,
+                issues: issues.map((issue, index) => ({
+                  id: issue.id,
+                  identifier: `AEO-${index + 1}`,
+                  title: issue.title,
+                })),
+              },
+            },
+          },
+        };
+      }
+      expect(request.query).toMatch(/teams|team\(/);
+      expect(request.query).toMatch(/workflowStates/);
+      expect(request.query).toMatch(/viewer/);
+      expect(request.query).not.toMatch(/mutation/);
+      return { body: { data: lookupData(request.query) } };
+    });
+
+    const result = await execute({
+      operation: 'batch',
+      variables: {
+        mutations: [
+          createIssue('one', 'A', { state: 'Todo', assignee: 'me' }),
+          createIssue('two', 'B', { state: 'Todo', assignee: 'me' }),
+        ],
+      },
+    });
+
+    expect(requests).toHaveLength(2);
+    expect(result.details.errors).toEqual([]);
+    expect(Object.keys(result.details.data).sort()).toEqual(['one', 'two']);
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
+  });
+
+  it('shares one read lookup phase plus one mutation request with caller reads', async () => {
+    const { requests } = graphqlStub((request) => {
+      if (request.query.includes('issueBatchCreate')) {
+        const issues = batchIssues(request);
+        return {
+          body: {
+            data: {
+              issueBatchCreate: {
+                success: true,
+                issues: issues.map((issue) => ({ id: issue.id, identifier: 'AEO-9', title: issue.title })),
+              },
+            },
+          },
+        };
+      }
+      expect(request.query).toContain('ready: issue');
+      expect(request.query).toMatch(/teams|team\(/);
+      expect(request.query).not.toMatch(/mutation/);
+      return { body: { data: lookupData(request.query) } };
+    });
+
+    const result = await execute({
+      operation: 'batch',
+      variables: {
+        reads: [{ key: 'ready', operation: 'get_issue', variables: { issue: 'AEO-1' } }],
+        mutations: [createIssue('one', 'A'), createIssue('two', 'B')],
+      },
+    });
+
+    expect(requests).toHaveLength(2);
+    expect(result.details.data.ready.issue).toEqual(issueNode(ISSUE_A, 'AEO-1'));
+    expect(result.details.data.one.issueCreate.issue.title).toBe('A');
+    expect(result.details.data.two.issueCreate.issue.title).toBe('B');
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
+  });
+
+  it('rejects parent-only plus state name before any request', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = 'test-key';
+    await expect(execute({
+      operation: 'batch',
+      variables: {
+        mutations: [{
+          key: 'child',
+          operation: 'create_issue',
+          variables: { title: 'Child', parent: 'AEO-1', state: 'Todo' },
+        }],
+      },
+    })).rejects.toThrow(/state name|explicit team|sequential/i);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('skips every create when a preparation lookup fails', async () => {
+    const { requests } = graphqlStub((request) => {
+      expect(request.query).not.toMatch(/mutation/);
+      const data = lookupData(request.query);
+      const teamAlias = aliases(request.query, 'teams')[0] ?? aliases(request.query, 'team')[0];
+      return {
+        body: {
+          data: teamAlias ? { ...data, [teamAlias]: { nodes: [] } } : data,
+          errors: teamAlias ? [{ message: `missing team ${TOKEN}`, path: [teamAlias] }] : [],
+        },
+      };
+    });
+
+    const result = await execute({
+      operation: 'batch',
+      variables: { mutations: [createIssue('one', 'A'), createIssue('two', 'B')] },
+    });
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.query).not.toMatch(/mutation/);
+    expect(result.details.data).toEqual({});
+    expect(result.details.errors.length).toBeGreaterThan(0);
+    expect(JSON.stringify(result.details)).not.toContain(TOKEN);
+    expect(result.details.skipped.sort()).toEqual(['one', 'two']);
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 0 });
+  });
+
+  it('returns keyed errors when returned issue ids are missing or duplicated', async () => {
+    let round = 0;
+    graphqlStub((request) => {
+      if (!request.query.includes('issueBatchCreate')) return { body: { data: lookupData(request.query) } };
+      const issues = batchIssues(request);
+      round += 1;
+      const payload = round === 1
+        ? { success: true, issues: [{ id: issues[0]!.id, title: 'A' }] }
+        : { success: true, issues: [{ id: issues[0]!.id, title: 'A' }, { id: issues[0]!.id, title: 'B' }] };
+      return { body: { data: { issueBatchCreate: payload } } };
+    });
+
+    const missing = await execute({
+      operation: 'batch',
+      variables: { mutations: [createIssue('one', 'A'), createIssue('two', 'B')] },
+    });
+    expect(missing.details.data).toEqual({});
+    expect(missing.details.errors.map((error: { key: string }) => error.key).sort()).toEqual(['one', 'two']);
+    expect(missing.details.skipped).toEqual([]);
+    expect(missing.details.meta.requests).toEqual({ read: 1, mutation: 1 });
+
+    const duplicated = await execute({
+      operation: 'batch',
+      variables: { mutations: [createIssue('one', 'A'), createIssue('two', 'B')] },
+    });
+    expect(duplicated.details.data).toEqual({});
+    expect(duplicated.details.errors.map((error: { key: string }) => error.key).sort()).toEqual(['one', 'two']);
+    expect(duplicated.details.meta.requests).toEqual({ read: 1, mutation: 1 });
+  });
+
+  it('returns keyed errors when issueBatchCreate.success is false', async () => {
+    graphqlStub((request) => {
+      if (!request.query.includes('issueBatchCreate')) return { body: { data: lookupData(request.query) } };
+      return { body: { data: { issueBatchCreate: { success: false, issues: [] } } } };
+    });
+
+    const result = await execute({
+      operation: 'batch',
+      variables: { mutations: [createIssue('one', 'A'), createIssue('two', 'B')] },
+    });
+    expect(result.details.data).toEqual({});
+    expect(result.details.errors.map((error: { key: string }) => error.key).sort()).toEqual(['one', 'two']);
+    expect(result.details.skipped).toEqual([]);
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
+  });
+
+  it('returns keyed errors for GraphQL path errors on the transaction', async () => {
+    graphqlStub((request) => {
+      if (!request.query.includes('issueBatchCreate')) return { body: { data: lookupData(request.query) } };
+      return {
+        body: {
+          data: { issueBatchCreate: null },
+          errors: [{ message: `denied ${TOKEN}`, path: ['issueBatchCreate'] }],
+        },
+      };
+    });
+
+    const result = await execute({
+      operation: 'batch',
+      variables: { mutations: [createIssue('one', 'A'), createIssue('two', 'B')] },
+    });
+    expect(result.details.data).toEqual({});
+    expect(result.details.errors).toEqual([
+      { key: 'one', path: ['issueBatchCreate'], message: expect.stringMatching(/denied/) },
+      { key: 'two', path: ['issueBatchCreate'], message: expect.stringMatching(/denied/) },
+    ]);
+    expect(JSON.stringify(result.details)).not.toContain(TOKEN);
+    expect(result.details.skipped).toEqual([]);
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
+  });
+
+  it('redacts credentials from transactional create data', async () => {
+    graphqlStub((request) => {
+      if (!request.query.includes('issueBatchCreate')) return { body: { data: lookupData(request.query) } };
+      const issues = batchIssues(request);
+      return {
+        body: {
+          data: {
+            issueBatchCreate: {
+              success: true,
+              issues: issues.map((issue) => ({ id: issue.id, identifier: 'AEO-1', title: `see ${TOKEN}` })),
+            },
+          },
+        },
+      };
+    });
+
+    const result = await execute({
+      operation: 'batch',
+      variables: { mutations: [createIssue('one', 'A'), createIssue('two', 'B')] },
+    });
+    const text = JSON.stringify(result.details);
+    expect(text).not.toContain(TOKEN);
+    expect(text).toContain('[REDACTED]');
+  });
+
+  it('rejects transactional creates in read-only mode before network access', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = 'test-key';
+    await expect(execute({
+      operation: 'batch',
+      variables: { mutations: [createIssue('one', 'A'), createIssue('two', 'B')] },
+    }, 'readonly')).rejects.toThrow(/read-only/i);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('runs one create_issue as an ordinary mutation after folded lookups', async () => {
+    const { requests } = graphqlStub((request) => {
+      if (request.query.includes('issueCreate')) {
+        expect(request.query).not.toContain('issueBatchCreate');
+        return {
+          body: {
+            data: {
+              write: { success: true, issue: { id: ISSUE_A, identifier: 'AEO-1', title: 'Solo' } },
+            },
+          },
+        };
+      }
+      return { body: { data: lookupData(request.query) } };
+    });
+
+    const result = await execute({
+      operation: 'batch',
+      variables: { mutations: [createIssue('write', 'Solo')] },
+    });
+    expect(requests).toHaveLength(2);
+    expect(requests[1]!.query).toContain('write: issueCreate');
+    expect(result.details.data.write.issueCreate.issue.title).toBe('Solo');
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
+  });
+
+  it('leaves the single-operation create_issue path on issueCreate', async () => {
+    const { requests } = graphqlStub((request) => {
+      if (request.query.includes('issueCreate')) {
+        expect(request.query).toContain('mutation CreateIssue');
+        expect(request.query).not.toContain('issueBatchCreate');
+        expect(request.query).not.toContain('Batch');
+        return { body: { data: { issueCreate: { success: true, issue: { id: ISSUE_A, identifier: 'AEO-1', title: 'Solo' } } } } };
+      }
+      return { body: { data: { teams: { nodes: [{ id: TEAM_ID, key: 'AEO' }] } } } };
+    });
+
+    const result = await execute({ operation: 'create_issue', variables: { title: 'Solo', team: 'AEO' } });
+    expect(requests.some((request) => request.query.includes('issueCreate'))).toBe(true);
+    expect(requests.every((request) => !request.query.includes('issueBatchCreate'))).toBe(true);
+    expect(result.details.data.issueCreate.issue.title).toBe('Solo');
+    expect(result.details).not.toHaveProperty('skipped');
   });
 });

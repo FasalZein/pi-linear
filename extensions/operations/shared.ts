@@ -410,6 +410,7 @@ export function simpleMutation(config: {
 	example: Record<string, unknown>;
 	idKey?: string;
 	prepare?: LinearOperation["prepare"];
+	batchPrepare?: LinearOperation["batchPrepare"];
 	aliases?: readonly string[];
 	legacyParameters?: LinearOperation["legacyParameters"];
 	aliasParameters?: LinearOperation["aliasParameters"];
@@ -447,6 +448,7 @@ export function simpleMutation(config: {
 		prepare:
 			config.prepare ??
 			(config.idKey ? updateInputPrepare(config.idKey) : plainInputPrepare()),
+		...(config.batchPrepare ? { batchPrepare: config.batchPrepare } : {}),
 	};
 }
 

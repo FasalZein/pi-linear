@@ -159,6 +159,7 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
         semanticValidateVariables: operation.validateVariables,
       } : {}),
       ...(operation.prepare ? { prepare: operation.prepare } : {}),
+      ...(operation.batchPrepare ? { batchPrepare: operation.batchPrepare } : {}),
       ...(operation.executeLocal ? { executeLocal: operation.executeLocal } : {}),
       ...(operation.localResult ? { localResult: operation.localResult } : {}),
     },
@@ -166,6 +167,7 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
     preparation: {
       resolverPaths: operation.resolverPaths ?? {},
       ...(operation.prepare ? { prepare: operation.prepare } : {}),
+      ...(operation.batchPrepare ? { batchPrepare: operation.batchPrepare } : {}),
     },
     safety: {
       namedInputPolicy: 'non-destructive',
@@ -247,6 +249,7 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
         return compatibility.prepare!(apiKey, variables, signal);
       },
     } : {}),
+    ...(compatibility.batchPrepare ? { batchPrepare: compatibility.batchPrepare } : {}),
     ...(compatibility.localResult ? { localResult: compatibility.localResult } : {}),
     ...(compatibility.executeLocal ? {
       executeLocal: async (variables, ctx) => {

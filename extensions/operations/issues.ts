@@ -17,7 +17,10 @@ import {
 	paginationVariables,
 } from "../operation-types";
 import type {
+	BatchLookup,
+	BatchLookupValues,
 	LinearOperation,
+	OperationPreparation,
 	OperationSource,
 	OperationDefinition,
 } from "../operation-types";
@@ -108,6 +111,112 @@ const issueUpdateFields = [
 	"teamId",
 	"trashed",
 ].map((name) => p(name));
+
+function createIssueRefs(v: Record<string, unknown>) {
+	const input = mergedInput(v, [
+		"parent",
+		"team",
+		"teamKey",
+		"state",
+		"assignee",
+	]);
+	return {
+		input,
+		parentRef: v.parent ?? input.parentId,
+		teamRef: v.team ?? v.teamKey ?? input.teamId,
+		stateRef: v.state ?? input.stateId,
+		userRef: v.assignee ?? input.assigneeId,
+	};
+}
+
+function applyCreateIssueLookups(
+	v: Record<string, unknown>,
+	resolved: BatchLookupValues,
+): OperationPreparation {
+	const { input, parentRef, teamRef, stateRef, userRef } = createIssueRefs(v);
+	const parent = resolved.parent;
+	const team = resolved.team;
+	if (team && parent && team.id !== parent.teamId) {
+		throw new Error(
+			`Linear parent "${parent.identifier}" does not belong to team "${team.key}".`,
+		);
+	}
+	const teamId = team?.id ?? parent?.teamId;
+	if (!teamId) {
+		throw new Error(
+			"Issue team is required. Send team, teamKey, teamId, or parent.",
+		);
+	}
+	input.teamId = teamId;
+	if (parent) input.parentId = parent.id;
+	if (stateRef) {
+		const state = resolved.state;
+		if (!state) {
+			throw new Error(`Linear state "${String(stateRef)}" was not found.`);
+		}
+		if (state.teamId !== teamId) {
+			throw new Error(
+				`Linear state "${String(stateRef)}" does not belong to team "${teamId}".`,
+			);
+		}
+		input.stateId = state.id;
+	}
+	if (userRef) {
+		const assignee = resolved.assignee;
+		if (!assignee) {
+			throw new Error(`Linear user "${String(userRef)}" was not found.`);
+		}
+		input.assigneeId = assignee.id;
+	}
+	if (typeof input.title !== "string" || !input.title.trim()) {
+		throw new Error("Issue title is required for issueCreate (title).");
+	}
+	return {
+		variables: { input },
+		resolution: compactObject({
+			parent: parent ? issueTarget(String(parentRef), parent) : undefined,
+			team: {
+				requested: teamRef ?? parentRef,
+				resolvedId: teamId,
+				key: team?.key ?? parent?.teamKey,
+			},
+			state: stateRef
+				? { requested: stateRef, resolvedId: input.stateId }
+				: undefined,
+			assignee: userRef
+				? { requested: userRef, resolvedId: input.assigneeId }
+				: undefined,
+		}),
+	};
+}
+
+function createIssueBatchPrepare(
+	v: Record<string, unknown>,
+): { kind: "independent"; lookups: BatchLookup[]; finish: (resolved: BatchLookupValues) => OperationPreparation } {
+	const { parentRef, teamRef, stateRef, userRef } = createIssueRefs(v);
+	const stateIsName = typeof stateRef === "string" && stateRef.trim() && !isUuid(stateRef);
+	if (stateIsName && parentRef && !teamRef) {
+		throw new Error(
+			"Batch cannot fold sequential preparation lookups into one GraphQL request. A state name requires an explicit team when only parent is provided.",
+		);
+	}
+	const lookups: BatchLookup[] = [];
+	if (parentRef) lookups.push({ field: "parent", requested: String(parentRef) });
+	if (teamRef) lookups.push({ field: "team", requested: String(teamRef) });
+	if (stateRef) {
+		lookups.push(
+			isUuid(stateRef) || !teamRef
+				? { field: "state", requested: String(stateRef) }
+				: { field: "state", requested: String(stateRef), team: String(teamRef) },
+		);
+	}
+	if (userRef) lookups.push({ field: "assignee", requested: String(userRef) });
+	return {
+		kind: "independent",
+		lookups,
+		finish: (resolved) => applyCreateIssueLookups(v, resolved),
+	};
+}
 
 export const issues: readonly OperationDefinition[] = ([
 	listOperation({
@@ -488,6 +597,7 @@ export const issues: readonly OperationDefinition[] = ([
 				}),
 			};
 		},
+		batchPrepare: createIssueBatchPrepare,
 	}),
 	simpleMutation({
 		name: "update_issue",
