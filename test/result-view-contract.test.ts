@@ -132,6 +132,8 @@ describe('public summary and full views', () => {
     expect(document.meta).toMatchObject({ view: 'full' });
     expect(requests[0]!.query).toContain(projection('issue', 'list'));
     expect(requests[0]!.query).not.toContain('description');
+    expect(requests[0]!.query).not.toContain('labels');
+    expect(requests[0]!.query).not.toContain('state');
     expect(requests[0]!.variables.view).toBeUndefined();
     expect(requests[1]!.query).toContain(projection('issue', 'list'));
     expect(requests[2]!.query).toContain(projection('issue', 'detail'));
@@ -155,14 +157,14 @@ describe('public summary and full views', () => {
     expect(requests[1]!.query).not.toContain('description');
   });
 
-  it('paginates issue labels explicitly in both views', () => {
-    expect(projection('issue', 'list')).toContain('labels(first: 50)');
+  it('paginates issue labels explicitly only on full projections', () => {
+    expect(projection('issue', 'list')).not.toContain('labels');
     expect(projection('issue', 'detail')).toContain('labels(first: 50)');
-    expect(projection('issue', 'list')).not.toContain('labels { nodes');
     expect(projection('issue', 'detail')).not.toContain('labels { nodes');
-    expect(operations.create_issue!.document).toContain('labels(first: 50)');
-    expect(operations.list_issues!.document).toContain('labels(first: 50)');
+    expect(operations.list_issues!.document).not.toContain('labels');
     expect(operations.get_issue!.document).toContain('labels(first: 50)');
+    expect(operations.create_issue!.document).toContain('labels(first: 50)');
+    expect(operations.update_issue!.document).toContain('labels(first: 50)');
   });
 
   it('rejects an unknown view before any network call', async () => {
@@ -252,19 +254,8 @@ describe('result budget against summary and full shapes', () => {
     return {
       id: `issue-${index}`,
       identifier: `AEO-${index}`,
-      number: index,
       title: `Issue ${index}`,
-      priority: 3,
       url: `https://linear.app/aeo/issue/AEO-${index}`,
-      dueDate: null,
-      createdAt: '2026-08-01T00:00:00.000Z',
-      updatedAt: '2026-08-01T00:00:00.000Z',
-      priorityLabel: 'Medium',
-      state: { id: 'state-1', name: 'In Progress', type: 'started' },
-      team: { id: 'team-1', key: 'AEO', name: 'Aeon' },
-      assignee: { id: 'user-1', name: 'sam' },
-      labels: { nodes: [{ id: 'label-1', name: 'bug' }] },
-      project: { id: 'project-1', name: 'Platform' },
     };
   }
 

@@ -26,12 +26,7 @@ export type ResultViewEntity = "issue" | "project" | "document";
 const PAGE_INFO = `pageInfo { hasNextPage hasPreviousPage startCursor endCursor }`;
 const ISSUE_LABELS = `labels(first: 50) { nodes { id name } }`;
 const ISSUE_SUMMARY = `
-  id identifier number title priority url dueDate createdAt updatedAt priorityLabel
-  state { id name type }
-  team { id key name }
-  assignee { id name }
-  ${ISSUE_LABELS}
-  project { id name }
+  id identifier title url
 `;
 const ISSUE_FULL = `
   id identifier number title description priority url branchName dueDate createdAt updatedAt
@@ -53,9 +48,7 @@ const ISSUE_LABEL = `
   team { id key name } parent { id name }
 `;
 const PROJECT_SUMMARY = `
-  id name state priority slugId startDate targetDate health progress priorityLabel url
-  teams(first: 10) { nodes { id key name } }
-  lead { id name } status { id name }
+  id name url
 `;
 const PROJECT_FULL = `
   id name description color icon state priority slugId startDate targetDate completedAt
@@ -68,8 +61,7 @@ const PROJECT_LABEL = `
   id name description color isGroup createdAt updatedAt retiredAt parent { id name }
 `;
 const DOCUMENT_SUMMARY = `
-  id title summary slugId url createdAt updatedAt
-  team { id key name } project { id name } issue { id identifier title }
+  id title url
 `;
 const DOCUMENT_FULL = `
   id title content color icon slugId sortOrder hiddenAt trashed summary archivedAt createdAt updatedAt url

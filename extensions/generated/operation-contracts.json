@@ -3573,7 +3573,7 @@
         "operation": "list_documents",
         "variables": {}
       },
-      "document": "query ListDocuments(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: DocumentFilter\n    $sort: [DocumentSortInput!]\n    \n  ) {\n    documents(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id title summary slugId url createdAt updatedAt\n  team { id key name } project { id name } issue { id identifier title }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "document": "query ListDocuments(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: DocumentFilter\n    $sort: [DocumentSortInput!]\n    \n  ) {\n    documents(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id title url\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
       "pagination": {
         "defaultPageSize": 20,
         "filterType": "DocumentFilter",
@@ -3593,7 +3593,7 @@
     "graphql": {
       "documents": [
         {
-          "document": "query ListDocuments(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: DocumentFilter\n    $sort: [DocumentSortInput!]\n    \n  ) {\n    documents(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id title summary slugId url createdAt updatedAt\n  team { id key name } project { id name } issue { id identifier title }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+          "document": "query ListDocuments(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: DocumentFilter\n    $sort: [DocumentSortInput!]\n    \n  ) {\n    documents(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id title url\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
           "root": "documents",
           "kind": "query"
         }
@@ -7442,7 +7442,7 @@
           "stateType": "started"
         }
       },
-      "document": "query ListIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    $sort: [IssueSortInput!]\n    \n  ) {\n    issues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id identifier number title priority url dueDate createdAt updatedAt priorityLabel\n  state { id name type }\n  team { id key name }\n  assignee { id name }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "document": "query ListIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    $sort: [IssueSortInput!]\n    \n  ) {\n    issues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id identifier title url\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
       "pagination": {
         "defaultPageSize": 20,
         "filterType": "IssueFilter",
@@ -7487,7 +7487,7 @@
     "graphql": {
       "documents": [
         {
-          "document": "query ListIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    $sort: [IssueSortInput!]\n    \n  ) {\n    issues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id identifier number title priority url dueDate createdAt updatedAt priorityLabel\n  state { id name type }\n  team { id key name }\n  assignee { id name }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+          "document": "query ListIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    $sort: [IssueSortInput!]\n    \n  ) {\n    issues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id identifier title url\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
           "root": "issues",
           "kind": "query"
         }
@@ -9838,7 +9838,7 @@
           "term": "authentication"
         }
       },
-      "document": "query SearchIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    \n    $term: String! $includeComments: Boolean $teamId: String\n  ) {\n    searchIssues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  term: $term includeComments: $includeComments teamId: $teamId) {\n      nodes { \n  id identifier number title priority url dueDate createdAt updatedAt priorityLabel\n  state { id name type }\n  team { id key name }\n  assignee { id name }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "document": "query SearchIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    \n    $term: String! $includeComments: Boolean $teamId: String\n  ) {\n    searchIssues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  term: $term includeComments: $includeComments teamId: $teamId) {\n      nodes { \n  id identifier title url\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
       "pagination": {
         "defaultPageSize": 20,
         "filterType": "IssueFilter"
@@ -9852,7 +9852,7 @@
     "graphql": {
       "documents": [
         {
-          "document": "query SearchIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    \n    $term: String! $includeComments: Boolean $teamId: String\n  ) {\n    searchIssues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  term: $term includeComments: $includeComments teamId: $teamId) {\n      nodes { \n  id identifier number title priority url dueDate createdAt updatedAt priorityLabel\n  state { id name type }\n  team { id key name }\n  assignee { id name }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+          "document": "query SearchIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    \n    $term: String! $includeComments: Boolean $teamId: String\n  ) {\n    searchIssues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  term: $term includeComments: $includeComments teamId: $teamId) {\n      nodes { \n  id identifier title url\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
           "root": "searchIssues",
           "kind": "query"
         }
@@ -12067,7 +12067,7 @@
         "operation": "list_projects",
         "variables": {}
       },
-      "document": "query ListProjects(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: ProjectFilter\n    $sort: [ProjectSortInput!]\n    \n  ) {\n    projects(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id name state priority slugId startDate targetDate health progress priorityLabel url\n  teams(first: 10) { nodes { id key name } }\n  lead { id name } status { id name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "document": "query ListProjects(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: ProjectFilter\n    $sort: [ProjectSortInput!]\n    \n  ) {\n    projects(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id name url\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
       "pagination": {
         "defaultPageSize": 20,
         "filterType": "ProjectFilter",
@@ -12092,7 +12092,7 @@
     "graphql": {
       "documents": [
         {
-          "document": "query ListProjects(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: ProjectFilter\n    $sort: [ProjectSortInput!]\n    \n  ) {\n    projects(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id name state priority slugId startDate targetDate health progress priorityLabel url\n  teams(first: 10) { nodes { id key name } }\n  lead { id name } status { id name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+          "document": "query ListProjects(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: ProjectFilter\n    $sort: [ProjectSortInput!]\n    \n  ) {\n    projects(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id name url\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
           "root": "projects",
           "kind": "query"
         }
