@@ -28,6 +28,7 @@ import { redactDeep, redactError, withRedactedErrors } from './redact';
 import { renderLinearApiCall, renderLinearApiResult } from './renderers';
 import { typedToolName } from './tool-names';
 import { assertMutationAllowed, type MutationMode } from './safety';
+import { LINEAR_TOOL_DESCRIPTION } from './generated/operation-catalog';
 
 export {
   AUTO_SPILL_BYTES,
@@ -203,7 +204,7 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
   return defineTool({
     name: 'linear',
     label: 'Linear API',
-    description: 'Run a named Linear operation or raw GraphQL. Discover operations with { "operation": "help" }; help for one operation also loads its typed linear_* tool.',
+    description: LINEAR_TOOL_DESCRIPTION,
     parameters: Type.Object({
       operation: Type.Optional(Type.String({ description: 'Bundled operation name.' })),
       query: Type.Optional(Type.String({ description: 'Raw GraphQL escape hatch.' })),

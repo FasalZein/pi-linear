@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { contractProjection, generatedFiles, renderGeneratedFiles, staleGeneratedFiles, syncAllowlistFile } from '../scripts/generate';
+import { linearApiTool } from '../extensions/api';
 import manifest from '../extensions/generated/linear-tools.manifest.json';
 import contracts from '../extensions/generated/operation-contracts.json';
 import { operationDefinitions } from '../extensions/operations';
@@ -77,6 +78,12 @@ describe('generated products', () => {
   });
 
   it.each([
+    [
+      'operation purpose',
+      'extensions/operations.ts',
+      'purpose: "List comments, optionally for one exact issue."',
+      'purpose: "List comments for one exact issue only."',
+    ],
     [
       'compatibility branch',
       'extensions/operations.ts',
@@ -203,6 +210,21 @@ describe('generated products', () => {
     expect(listComments.graphql?.documents[0]).toMatchObject({
       kind: 'query', root: 'comments', document: expect.stringContaining('query ListComments'),
     });
+  });
+
+  it('publishes every catalog operation in the linear tool description and no others', () => {
+    const description = (linearApiTool() as any).description as string;
+    expect(description).toContain('{ "operation": "<name>", "variables": { … } }');
+    expect(description).toContain('{ "operation": "help", "variables": { "operation": "<name>" } }');
+    const expected = operationDefinitions.map(({ name, purpose }) => ({ name, purpose }));
+    for (const { name, purpose } of expected) {
+      expect(description).toContain(`${name}: ${purpose}`);
+    }
+    const published = [...description.matchAll(/^([a-z][a-z0-9_]*): (.*)$/gm)].map((match) => ({
+      name: match[1]!,
+      purpose: match[2]!,
+    }));
+    expect(published).toEqual(expected);
   });
 
   it('publishes one deployable manifest entry for each canonical operation', () => {

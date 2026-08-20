@@ -220,7 +220,7 @@ describe('runtime discovery', () => {
 
   it('keeps the description compact and bootstraps exact help', () => {
     const tool = linearApiTool() as any;
-    expect(tool.description).toContain('{ "operation": "help" }');
+    expect(tool.description).toContain('{ "operation": "help", "variables": { "operation": "<name>" } }');
     expect(tool.description).not.toContain('REFERENCE.md');
     expect(tool.description).not.toContain('/REFERENCE');
     expect(tool.description).not.toContain('get_issue(');

@@ -9,12 +9,14 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const generated = resolve(root, 'extensions/generated');
 const manifestPath = resolve(generated, 'linear-tools.manifest.json');
 const contractsPath = resolve(generated, 'operation-contracts.json');
+const catalogPath = resolve(generated, 'operation-catalog.ts');
 const readmePath = resolve(root, 'README.md');
 const referencePath = resolve(root, 'REFERENCE.md');
 const START = '<!-- BEGIN GENERATED LINEAR OPERATIONS -->';
 const END = '<!-- END GENERATED LINEAR OPERATIONS -->';
+const LINEAR_TOOL_USAGE = 'Run a named Linear operation or raw GraphQL. The operation names listed below are callable directly as { "operation": "<name>", "variables": { … } }. { "operation": "help", "variables": { "operation": "<name>" } } returns exact parameters and loads the strict typed tool.';
 
-export const generatedFiles = [manifestPath, contractsPath, readmePath, referencePath] as const;
+export const generatedFiles = [manifestPath, contractsPath, catalogPath, readmePath, referencePath] as const;
 
 const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
 
@@ -74,6 +76,18 @@ function contracts() {
   return operationDefinitions.map(contractProjection);
 }
 
+export function operationCatalogText(): string {
+  return operationDefinitions.map(({ name, purpose }) => `${name}: ${purpose}`).join('\n');
+}
+
+export function linearToolDescription(): string {
+  return `${LINEAR_TOOL_USAGE}\n${operationCatalogText()}`;
+}
+
+function catalogModule(): string {
+  return `export const LINEAR_OPERATION_CATALOG = ${JSON.stringify(operationCatalogText())};\nexport const LINEAR_TOOL_DESCRIPTION = ${JSON.stringify(linearToolDescription())};\n`;
+}
+
 function replaceGeneratedSection(source: string, body: string): string {
   const section = `${START}\n${body.trimEnd()}\n${END}`;
   const pattern = new RegExp(`${START}[\\s\\S]*?${END}`);
@@ -127,6 +141,7 @@ export async function renderGeneratedFiles(): Promise<Record<string, string>> {
   return {
     [manifestPath]: json(manifest()),
     [contractsPath]: json(contracts()),
+    [catalogPath]: catalogModule(),
     [readmePath]: replaceGeneratedSection(base.readme, readmeCatalog()),
     [referencePath]: replaceGeneratedSection(base.reference, referenceCatalog()),
   };
