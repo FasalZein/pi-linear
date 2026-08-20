@@ -28,6 +28,7 @@ import { renderLinearApiCall, renderLinearApiResult } from './renderers';
 import { typedToolName } from './tool-names';
 import { assertMutationAllowed, type MutationMode } from './safety';
 import { LINEAR_TOOL_DESCRIPTION } from './generated/operation-catalog';
+import { batchHelp, executeBatch } from './batch';
 
 export {
   AUTO_SPILL_BYTES,
@@ -143,6 +144,7 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
     };
   }
   if (typeof operationName === 'string') {
+    if (operationName === 'batch') return batchHelp();
     const operation = getOperation(operationName);
     return {
       ...activate(activator, [operation.name]),
@@ -186,6 +188,14 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
         if (signal?.aborted) throw new Error('Request cancelled.');
         if (params.operation === 'help' && !params.query) {
           return toolResult(helpResult(params.variables, activator), secrets);
+        }
+        if (params.operation === 'batch' && !params.query) {
+          return toolResult(await executeBatch(
+            { variables: params.variables, workspace: params.workspace },
+            mode,
+            ctx,
+            signal,
+          ), secrets);
         }
 
         const request = resolveRequest(params, mode);

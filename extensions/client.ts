@@ -237,12 +237,32 @@ function retryDelay(response: Response): number {
   return Math.max(0, Date.parse(value) - Date.now());
 }
 
+type LinearGraphQLFn = <TData>(
+  apiKey: string,
+  query: string,
+  variables?: Record<string, unknown>,
+  signal?: AbortSignal,
+) => Promise<TData>;
+
+let graphqlOverride: LinearGraphQLFn | undefined;
+
+export async function withLinearGraphQL<T>(override: LinearGraphQLFn, work: () => Promise<T>): Promise<T> {
+  const previous = graphqlOverride;
+  graphqlOverride = override;
+  try {
+    return await work();
+  } finally {
+    graphqlOverride = previous;
+  }
+}
+
 export async function linearGraphQL<TData>(
   apiKey: string,
   query: string,
   variables: Record<string, unknown> = {},
   signal?: AbortSignal,
 ): Promise<TData> {
+  if (graphqlOverride) return graphqlOverride(apiKey, query, variables, signal);
   let response: Response;
   for (let attempt = 0; ; attempt++) {
     try {
