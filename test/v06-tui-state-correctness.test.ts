@@ -369,24 +369,13 @@ describe('v0.6 state correctness', () => {
     expect(rendered).not.toContain('{"viewer"');
   });
 
-  it('wraps all help domains and labels natural-match alternatives', () => {
+  it('wraps all help domains', () => {
     const domains = ['issues', 'comments', 'users', 'teams', 'projects', 'cycles', 'milestones', 'initiatives', 'documents', 'views', 'labels', 'relations', 'workspace'];
     const domainComponent = api({ domains }, { operation: 'help' });
     for (const width of widths) {
       const rendered = compact(domainComponent, width);
       for (const domain of domains) expect(rendered).toContain(domain);
     }
-
-    const matches = text(api({
-      match: { name: 'get_issue', signature: 'get_issue(issue: IssueReference)', purpose: 'Get one issue.' },
-      alternatives: [
-        { signature: 'list_issues(team?: TeamReference)' },
-        { signature: 'search_issues(query: String)' },
-      ],
-    }, { operation: 'help', variables: { query: 'issue' } }), 26);
-    expect(matches).toContain('Alternatives');
-    expect(matches).toContain('list_issues');
-    expect(matches).toContain('search_issues');
   });
 
   it('falls back to an entity id, confirms tool loads, and scrubs secret-shaped data', () => {

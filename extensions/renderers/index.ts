@@ -495,18 +495,7 @@ function helpBlock(theme: Theme, details: Record<string, unknown>): LinearBlockC
     : [];
   const lines: Array<string | ReturnType<typeof wrapped>> = [];
 
-  if (Array.isArray(details.candidates)) {
-    const candidates = details.candidates as Array<{ name?: string; signature?: string }>;
-    lines.push(theme.fg('warning', `No tool loaded for "${asString(details.query) ?? ''}"`));
-    lines.push(wrapped(theme.fg('dim', 'Name one operation, or pick a candidate below.'), 2));
-    if (candidates.length) lines.push('');
-    for (const candidate of candidates.slice(0, PREVIEW_LIMIT)) {
-      lines.push(wrapped(theme.fg('muted', candidate.signature ?? candidate.name ?? ''), 2));
-    }
-    if (candidates.length > PREVIEW_LIMIT) {
-      lines.push(`  ${theme.fg('dim', `… ${candidates.length - PREVIEW_LIMIT} more in the JSON`)}`);
-    }
-  } else if (Array.isArray(details.domains)) {
+  if (Array.isArray(details.domains)) {
     lines.push(theme.fg('success', `✓ ${details.domains.length} domains`));
     lines.push(wrapped(theme.fg('muted', details.domains.join('  ')), 2));
     lines.push(wrapped(theme.fg('dim', 'Ask for one operation to load its typed tool.'), 2));
@@ -516,19 +505,6 @@ function helpBlock(theme: Theme, details: Record<string, unknown>): LinearBlockC
     lines.push('');
     for (const operation of operations.slice(0, PREVIEW_LIMIT)) {
       lines.push(wrapped(theme.fg('muted', operation.signature ?? operation.name ?? ''), 2));
-    }
-  } else if (asRecord(details.match)) {
-    const match = asRecord(details.match)!;
-    lines.push(theme.fg('success', `✓ ${asString(match.name) ?? 'match'}`));
-    lines.push(wrapped(theme.fg('muted', asString(match.signature) ?? ''), 2));
-    if (asString(match.purpose)) lines.push(wrapped(theme.fg('dim', asString(match.purpose)!), 2));
-    const alternatives = Array.isArray(details.alternatives) ? details.alternatives : [];
-    if (alternatives.length) lines.push('', theme.fg('muted', 'Alternatives'));
-    for (const alternative of alternatives.slice(0, PREVIEW_LIMIT) as Array<{ signature?: string }>) {
-      if (alternative.signature) lines.push(wrapped(theme.fg('dim', alternative.signature), 2));
-    }
-    if (alternatives.length > PREVIEW_LIMIT) {
-      lines.push(`  ${theme.fg('dim', `… ${alternatives.length - PREVIEW_LIMIT} more in the JSON`)}`);
     }
   } else if (asString(details.name) && Array.isArray(details.parameters)) {
     const parameters = details.parameters as Array<{ name: string; type: string; required: boolean }>;

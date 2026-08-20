@@ -420,28 +420,6 @@ describe('credential safety in result data', () => {
   });
 });
 
-describe('discovery feedback', () => {
-  it('says that nothing was loaded and lists the candidates', () => {
-    const text = block(renderLinearApiResult(
-      result({
-        query: 'issues',
-        note: 'No clause named exactly one operation, so no tool was loaded.',
-        candidates: [
-          { name: 'list_issues', signature: 'list_issues(query?: String)' },
-          { name: 'get_issue', signature: 'get_issue(issue: IssueReference)' },
-        ],
-      }),
-      { expanded: false, isPartial: false },
-      theme,
-      { args: { operation: 'help', variables: { query: 'issues' } } } as any,
-    ));
-    expect(text).toContain('No tool loaded for "issues"');
-    expect(text).toContain('Name one operation, or pick a candidate below.');
-    expect(text).toContain('list_issues(query?: String)');
-    expect(text).not.toContain('GraphQL response');
-  });
-});
-
 describe('clearing a field', () => {
   it('shows an explicit null in the call row', () => {
     const renderers = operationRenderers(getOperation('update_issue'));
