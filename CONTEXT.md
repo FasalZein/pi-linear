@@ -36,6 +36,26 @@ _Avoid_: Registration, discovery
 A request for the domain names, for one domain's operation signatures, or for one operation parameter card.
 _Avoid_: Catalog search, natural-language query
 
+**Batch request**:
+One operation request that groups independent entries for one workspace. It has a read phase and a mutation phase.
+_Avoid_: Tool-call merge, workflow
+
+**Batch entry**:
+One independent operation in a batch request. A unique key identifies its result.
+_Avoid_: Step, dependent operation
+
+**Read phase**:
+The batch entries that read data. The extension completes this phase before the mutation phase.
+_Avoid_: Preflight, lookup stage
+
+**Mutation phase**:
+The batch entries that change data. The extension skips this phase if the read phase has a failure.
+_Avoid_: Write queue, transaction
+
+**Batch result**:
+The result that separates completed data, failures, skipped entries, and request metadata.
+_Avoid_: Combined response, outcome map
+
 **Raw query**:
 A GraphQL document supplied directly for work outside the operation catalog.
 _Avoid_: Operation
