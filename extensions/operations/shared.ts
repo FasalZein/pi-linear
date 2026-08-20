@@ -137,6 +137,7 @@ export function listQueryDocument(
 		sortType?: string;
 		extras?: string;
 		extraArgs?: string;
+		totalCount?: boolean;
 	} = {},
 ) {
 	return `query ${name}(
@@ -147,7 +148,7 @@ export function listQueryDocument(
   ) {
     ${root}(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy
       ${options.filterType ? "filter: $filter" : ""} ${options.sortType ? "sort: $sort" : ""} ${options.extraArgs ?? ""}) {
-      nodes { ${selection} } ${projection("pageInfo", "list")}
+      nodes { ${selection} } ${projection("pageInfo", "list")}${options.totalCount ? " totalCount" : ""}
     }
   }`;
 }
@@ -309,6 +310,7 @@ export function listOperation(config: {
 	parameters?: readonly OperationParameter[];
 	extras?: string;
 	extraArgs?: string;
+	totalCount?: boolean;
 	prepare?: LinearOperation["prepare"];
 	aliases?: readonly string[];
 	example?: Record<string, unknown>;

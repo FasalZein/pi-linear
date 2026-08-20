@@ -122,12 +122,12 @@ The v0.3 `get_issue` shape `{ "teamKey": "AEO", "number": 258 }` remains accepte
 
 ## Pagination
 
-List operations and `search_issues` return `pageInfo` and accept supported cursor parameters such as `after`, `before`, `first`, and `last`. Their operation help cards show the exact parameters. Named operations apply fixed default page sizes when a size is omitted.
+List operations and `search_issues` return `pageInfo` and accept supported cursor parameters such as `after`, `before`, `first`, and `last`. `search_issues` also returns `totalCount`. `list_issues` does not: `IssueConnection` has no total count, so an incomplete page reports that more results exist without a total. Their operation help cards show the exact parameters. Named operations apply fixed default page sizes when a size is omitted.
 
 1. Make the first call without `after`.
-2. Read `pageInfo.hasNextPage` and `pageInfo.endCursor`.
+2. Read `totalCount` when present, then `pageInfo.hasNextPage` and `pageInfo.endCursor`.
 3. Repeat the same operation and variables with `after` set to that cursor.
-4. Stop when `hasNextPage` is false.
+4. Stop when `hasNextPage` is false, or when the returned count equals `totalCount`.
 
 ```json
 {

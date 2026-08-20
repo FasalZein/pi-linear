@@ -54,7 +54,7 @@ type Meta = {
 
 type Digest =
   | { kind: 'spill'; path: string; bytes: number; index: string[]; notes: string[] }
-  | { kind: 'list'; entities: Entity[]; notes: string[] }
+  | { kind: 'list'; entities: Entity[]; notes: string[]; totalCount?: number }
   | { kind: 'entity'; entity: Entity; notes: string[] }
   | { kind: 'not-found'; notes: string[] }
   | { kind: 'mutation'; success: boolean; entity?: Entity; notes: string[] }
@@ -83,11 +83,35 @@ function metaNotes(details: Record<string, unknown>): string[] {
   return notes;
 }
 
-function pageNote(connection: Record<string, unknown>): string | undefined {
+function asCount(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
+}
+
+function listCountHeadline(
+  shown: number,
+  totalCount: number | undefined,
+  noun: string,
+  pluralNoun: string | undefined,
+  summary: boolean,
+): string {
+  const count = totalCount !== undefined && shown < totalCount
+    ? `showing ${shown} of ${totalCount}, more available`
+    : `${plural(shown, noun, pluralNoun)} returned`;
+  return summary ? `${count} · summary view` : count;
+}
+
+function pageNote(connection: Record<string, unknown>, shown: number): string | undefined {
+  const total = asCount(connection.totalCount);
   const pageInfo = asRecord(connection.pageInfo);
+  const cursor = asString(pageInfo?.endCursor);
+  if (total !== undefined && shown < total) {
+    return cursor ? `more pages — request after="${cursor}"` : undefined;
+  }
+  if (total !== undefined) return undefined;
   if (pageInfo?.hasNextPage !== true) return undefined;
-  const cursor = asString(pageInfo.endCursor);
-  return cursor ? `more pages — request after="${cursor}"` : 'more pages available';
+  return cursor
+    ? `more results exist; total count is unavailable — request after="${cursor}"`
+    : 'more results exist; total count is unavailable';
 }
 
 /** Reduce one tool result to the smallest shape the TUI needs. */
@@ -116,11 +140,13 @@ export function digestResult(result: AgentToolResult<any>, expectedRoots: readon
   if (!record) return { kind: 'unknown', notes };
 
   if (Array.isArray(record.nodes)) {
-    const page = pageNote(record);
+    const entities = record.nodes.filter((node): node is Entity => !!asRecord(node));
+    const page = pageNote(record, entities.length);
     return {
       kind: 'list',
-      entities: record.nodes.filter((node): node is Entity => !!asRecord(node)),
+      entities,
       notes: page ? [...notes, page] : notes,
+      totalCount: asCount(record.totalCount),
     };
   }
   if ('success' in record) {
@@ -345,9 +371,13 @@ function renderDigest(
     const empty = emptyState(definition, spec, context);
     const summaryList = detailsView(result) === 'summary' && digest.entities.length > 0;
     return new LinearListComponent(digest.entities, theme, {
-      headline: summaryList
-        ? `${plural(digest.entities.length, spec.noun, spec.pluralNoun)} returned · summary view`
-        : `${plural(digest.entities.length, spec.noun, spec.pluralNoun)} returned`,
+      headline: listCountHeadline(
+        digest.entities.length,
+        digest.totalCount,
+        spec.noun,
+        spec.pluralNoun,
+        summaryList,
+      ),
       disclosure: summaryList ? SUMMARY_VIEW_NOTICE : undefined,
       emptyLabel: empty.fact,
       emptyAction: empty.action,

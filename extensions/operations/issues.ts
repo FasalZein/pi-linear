@@ -796,6 +796,7 @@ export const issues: readonly OperationDefinition[] = ([
 		purpose: "Search issues by text.",
 		pageSize: 20,
 		filterType: "IssueFilter",
+		totalCount: true,
 		parameters: [
 			p("term", "String", true),
 			p("includeComments", "Boolean"),
