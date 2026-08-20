@@ -37,9 +37,12 @@ function dropLastBoundary(value: unknown): boolean {
   }
   if (!value || typeof value !== 'object') return false;
   const object = value as JsonObject;
-  const key = Object.keys(object).at(-1);
+  const key = Object.keys(object).filter((name) => name !== 'pageInfo' && name !== 'totalCount').at(-1);
   if (!key) return false;
-  if (!dropLastBoundary(object[key])) delete object[key];
+  if (!dropLastBoundary(object[key])) {
+    if (key === 'nodes') return false;
+    delete object[key];
+  }
   return true;
 }
 

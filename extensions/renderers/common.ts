@@ -347,7 +347,7 @@ export class LinearListComponent<T> {
     } else {
       const limit = this.options.previewLimit ?? 20;
       const shown = this.items.slice(0, limit);
-      lines.push(theme.fg('success', `✓ ${this.options.headline}`));
+      lines.push(wrapped(theme.fg('success', `✓ ${this.options.headline}`)));
       if (this.options.disclosure) {
         lines.push(wrapped(theme.fg('dim', this.options.disclosure), 2));
       }

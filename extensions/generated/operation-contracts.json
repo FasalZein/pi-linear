@@ -9864,7 +9864,7 @@
           "term": "authentication"
         }
       },
-      "document": "query SearchIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    \n    $term: String! $includeComments: Boolean $teamId: String\n  ) {\n    searchIssues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  term: $term includeComments: $includeComments teamId: $teamId) {\n      nodes { \n  id identifier title url\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "document": "query SearchIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    \n    $term: String! $includeComments: Boolean $teamId: String\n  ) {\n    searchIssues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  term: $term includeComments: $includeComments teamId: $teamId) {\n      nodes { \n  id identifier title url\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor } totalCount\n    }\n  }",
       "pagination": {
         "defaultPageSize": 20,
         "filterType": "IssueFilter"
@@ -9878,7 +9878,7 @@
     "graphql": {
       "documents": [
         {
-          "document": "query SearchIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    \n    $term: String! $includeComments: Boolean $teamId: String\n  ) {\n    searchIssues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  term: $term includeComments: $includeComments teamId: $teamId) {\n      nodes { \n  id identifier title url\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+          "document": "query SearchIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    \n    $term: String! $includeComments: Boolean $teamId: String\n  ) {\n    searchIssues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  term: $term includeComments: $includeComments teamId: $teamId) {\n      nodes { \n  id identifier title url\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor } totalCount\n    }\n  }",
           "root": "searchIssues",
           "kind": "query"
         }
