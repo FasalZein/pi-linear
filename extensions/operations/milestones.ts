@@ -1,5 +1,5 @@
 import { resolveNamedEntityReference } from "../client";
-import { MILESTONE_SELECTION } from "../selections";
+import { projection } from "../selections";
 import { p } from "../operation-types";
 import type {
 	LinearOperation,
@@ -41,7 +41,7 @@ export const milestoneReads: readonly OperationDefinition[] = ([
 		},
 		domain: "milestones",
 		root: "projectMilestones",
-		selection: MILESTONE_SELECTION,
+		selection: projection("milestone", "list"),
 		purpose: "List project milestones.",
 		pageSize: 20,
 		filterType: "ProjectMilestoneFilter",
@@ -79,7 +79,7 @@ export const milestoneReads: readonly OperationDefinition[] = ([
 		document: getDocument(
 			"GetMilestone",
 			"projectMilestone",
-			MILESTONE_SELECTION,
+			projection("milestone", "detail"),
 		),
 		resolverPaths: { milestone: "resolveNamedEntityReference" },
 		async prepare(k, v, s) {
@@ -261,7 +261,7 @@ addSaveOperation({
 	noun: "milestone",
 	entityKind: "projectMilestone",
 	documentName: "Milestone",
-	selection: MILESTONE_SELECTION,
+	selection: projection("milestone", "detail"),
 	idKey: "milestoneId",
 	createRoot: "projectMilestoneCreate",
 	updateRoot: "projectMilestoneUpdate",

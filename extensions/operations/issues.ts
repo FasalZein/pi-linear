@@ -5,7 +5,7 @@ import {
 	resolveTeamReference,
 	resolveUserReference,
 } from "../client";
-import { ISSUE_SELECTION } from "../selections";
+import { projection } from "../selections";
 import {
 	compactObject,
 	mergeFilters,
@@ -137,7 +137,7 @@ export const issues: readonly OperationDefinition[] = ([
 		},
 		domain: "issues",
 		root: "issues",
-		selection: ISSUE_SELECTION,
+		selection: projection("issue", "list"),
 		purpose: "List issues with exact convenience filters.",
 		pageSize: 20,
 		filterType: "IssueFilter",
@@ -274,7 +274,7 @@ export const issues: readonly OperationDefinition[] = ([
 			[p("teamKey", "String", true), p("number", "Float", true)],
 		],
 		example: { operation: "get_issue", variables: { issue: "AEO-258" } },
-		document: getDocument("GetIssue", "issue", ISSUE_SELECTION),
+		document: getDocument("GetIssue", "issue", projection("issue", "detail")),
 		resolverPaths: { issue: "resolveIssueReference" },
 		async prepare(k, v, s) {
 			const ref = issueReference(v);
@@ -369,7 +369,7 @@ export const issues: readonly OperationDefinition[] = ([
 			"Create an issue. A parent reference supplies the team when team is omitted.",
 		root: "issueCreate",
 		inputType: "IssueCreateInput",
-		selection: `issue { ${ISSUE_SELECTION} }`,
+		selection: `issue { ${projection("issue", "detail")} }`,
 		parameters: [
 			p("title", "String", true),
 			p("parent", "IssueReference"),
@@ -643,7 +643,7 @@ export const issues: readonly OperationDefinition[] = ([
 		purpose: "Update an issue by exact identifier or UUID.",
 		root: "issueUpdate",
 		inputType: "IssueUpdateInput",
-		selection: `issue { ${ISSUE_SELECTION} }`,
+		selection: `issue { ${projection("issue", "detail")} }`,
 		idKey: "issue",
 		parameters: [
 			p("issue", "IssueReference", true),
@@ -774,7 +774,7 @@ export const issues: readonly OperationDefinition[] = ([
 		},
 		domain: "issues",
 		root: "searchIssues",
-		selection: ISSUE_SELECTION,
+		selection: projection("issue", "list"),
 		purpose: "Search issues by text.",
 		pageSize: 20,
 		filterType: "IssueFilter",

@@ -1,8 +1,5 @@
 import { resolveIssueReference } from "../client";
-import {
-	ISSUE_RELATION_SELECTION,
-	PROJECT_RELATION_SELECTION,
-} from "../selections";
+import { projection } from "../selections";
 import {
 	mergedInput,
 	p,
@@ -46,7 +43,7 @@ export const issueRelations: readonly OperationDefinition[] = ([
 		},
 		domain: "relations",
 		root: "issueRelations",
-		selection: ISSUE_RELATION_SELECTION,
+		selection: projection("issueRelation", "list"),
 		purpose: "List issue relations.",
 		pageSize: 20,
 	}),
@@ -97,7 +94,7 @@ export const issueRelations: readonly OperationDefinition[] = ([
 		purpose: "Create a relation between two issues.",
 		root: "issueRelationCreate",
 		inputType: "IssueRelationCreateInput",
-		selection: `issueRelation { ${ISSUE_RELATION_SELECTION} }`,
+		selection: `issueRelation { ${projection("issueRelation", "detail")} }`,
 		parameters: [
 			p("issue", "IssueReference", true),
 			p("relatedIssue", "IssueReference", true),
@@ -176,7 +173,7 @@ export const issueRelations: readonly OperationDefinition[] = ([
 		purpose: "Update an issue relation.",
 		root: "issueRelationUpdate",
 		inputType: "IssueRelationUpdateInput",
-		selection: `issueRelation { ${ISSUE_RELATION_SELECTION} }`,
+		selection: `issueRelation { ${projection("issueRelation", "detail")} }`,
 		parameters: [p("id", "String", true), input],
 		acceptedParameters: [
 			"id",
@@ -233,7 +230,7 @@ export const projectRelations: readonly OperationDefinition[] = ([
 		},
 		domain: "relations",
 		root: "projectRelations",
-		selection: PROJECT_RELATION_SELECTION,
+		selection: projection("projectRelation", "list"),
 		purpose: "List project relations.",
 		pageSize: 20,
 	}),
@@ -274,7 +271,7 @@ export const projectRelations: readonly OperationDefinition[] = ([
 		purpose: "Create a relation between two projects.",
 		root: "projectRelationCreate",
 		inputType: "ProjectRelationCreateInput",
-		selection: `projectRelation { ${PROJECT_RELATION_SELECTION} }`,
+		selection: `projectRelation { ${projection("projectRelation", "detail")} }`,
 		parameters: [
 			p("projectId", "String", true),
 			p("relatedProjectId", "String", true),
@@ -355,7 +352,7 @@ export const projectRelations: readonly OperationDefinition[] = ([
 		purpose: "Update a project relation.",
 		root: "projectRelationUpdate",
 		inputType: "ProjectRelationUpdateInput",
-		selection: `projectRelation { ${PROJECT_RELATION_SELECTION} }`,
+		selection: `projectRelation { ${projection("projectRelation", "detail")} }`,
 		parameters: [p("id", "String", true), input],
 		acceptedParameters: [
 			"id",

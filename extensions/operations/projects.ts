@@ -2,10 +2,7 @@ import {
 	resolveIssueReference,
 	resolveNamedEntityReference,
 } from "../client";
-import {
-	PROJECT_DETAIL_SELECTION,
-	PROJECT_LIST_SELECTION,
-} from "../selections";
+import { projection } from "../selections";
 import { p } from "../operation-types";
 import type {
 	LinearOperation,
@@ -50,7 +47,7 @@ export const projectReads: readonly OperationDefinition[] = ([
 		},
 		domain: "projects",
 		root: "projects",
-		selection: PROJECT_LIST_SELECTION,
+		selection: projection("project", "list"),
 		purpose: "List projects.",
 		pageSize: 20,
 		filterType: "ProjectFilter",
@@ -87,7 +84,7 @@ export const projectReads: readonly OperationDefinition[] = ([
 		parameters: [p("project", "ProjectReference", true)],
 		legacyParameters: [[p("projectId", "String", true)]],
 		example: { operation: "get_project", variables: { project: "Platform" } },
-		document: getDocument("GetProject", "project", PROJECT_DETAIL_SELECTION),
+		document: getDocument("GetProject", "project", projection("project", "detail")),
 		resolverPaths: { project: "resolveNamedEntityReference" },
 		async prepare(k, v, s) {
 			const x = await resolveNamedEntityReference(
@@ -652,7 +649,7 @@ addSaveOperation({
 	noun: "project",
 	entityKind: "project",
 	documentName: "Project",
-	selection: PROJECT_DETAIL_SELECTION,
+	selection: projection("project", "detail"),
 	idKey: "projectId",
 	createRoot: "projectCreate",
 	updateRoot: "projectUpdate",

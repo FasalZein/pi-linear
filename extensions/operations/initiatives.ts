@@ -1,5 +1,5 @@
 import { resolveNamedEntityReference } from "../client";
-import { INITIATIVE_SELECTION } from "../selections";
+import { projection } from "../selections";
 import { p } from "../operation-types";
 import type {
 	LinearOperation,
@@ -44,7 +44,7 @@ export const initiativeReads: readonly OperationDefinition[] = ([
 		},
 		domain: "initiatives",
 		root: "initiatives",
-		selection: INITIATIVE_SELECTION,
+		selection: projection("initiative", "list"),
 		purpose: "List initiatives.",
 		pageSize: 20,
 		filterType: "InitiativeFilter",
@@ -84,7 +84,7 @@ export const initiativeReads: readonly OperationDefinition[] = ([
 			operation: "get_initiative",
 			variables: { initiative: "Platform" },
 		},
-		document: getDocument("GetInitiative", "initiative", INITIATIVE_SELECTION),
+		document: getDocument("GetInitiative", "initiative", projection("initiative", "detail")),
 		resolverPaths: { initiative: "resolveNamedEntityReference" },
 		async prepare(k, v, s) {
 			const x = await resolveNamedEntityReference(
@@ -460,7 +460,7 @@ addSaveOperation({
 	noun: "initiative",
 	entityKind: "initiative",
 	documentName: "Initiative",
-	selection: INITIATIVE_SELECTION,
+	selection: projection("initiative", "detail"),
 	idKey: "initiativeId",
 	createRoot: "initiativeCreate",
 	updateRoot: "initiativeUpdate",

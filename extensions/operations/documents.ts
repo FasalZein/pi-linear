@@ -4,7 +4,7 @@ import {
 	resolveNamedEntityReference,
 	resolveTeamReference,
 } from "../client";
-import { DOCUMENT_SELECTION } from "../selections";
+import { projection } from "../selections";
 import {
 	mergedInput,
 	p,
@@ -54,7 +54,7 @@ export const documents: readonly OperationDefinition[] = ([
 		},
 		domain: "documents",
 		root: "documents",
-		selection: DOCUMENT_SELECTION,
+		selection: projection("document", "list"),
 		purpose: "List documents.",
 		pageSize: 20,
 		filterType: "DocumentFilter",
@@ -94,7 +94,7 @@ export const documents: readonly OperationDefinition[] = ([
 			operation: "get_document",
 			variables: { document: "Planning notes" },
 		},
-		document: getDocument("GetDocument", "document", DOCUMENT_SELECTION),
+		document: getDocument("GetDocument", "document", projection("document", "detail")),
 		resolverPaths: { document: "resolveNamedEntityReference" },
 		async prepare(k, v, s) {
 			const x = await resolveNamedEntityReference(
@@ -147,7 +147,7 @@ export const documents: readonly OperationDefinition[] = ([
 		purpose: "Create a document.",
 		root: "documentCreate",
 		inputType: "DocumentCreateInput",
-		selection: `document { ${DOCUMENT_SELECTION} }`,
+		selection: `document { ${projection("document", "detail")} }`,
 		parameters: [p("title", "String", true), input],
 		acceptedParameters: [
 			"color",
@@ -318,7 +318,7 @@ export const documents: readonly OperationDefinition[] = ([
 		purpose: "Update a document.",
 		root: "documentUpdate",
 		inputType: "DocumentUpdateInput",
-		selection: `document { ${DOCUMENT_SELECTION} }`,
+		selection: `document { ${projection("document", "detail")} }`,
 		parameters: [p("documentId", "DocumentReference", true), input],
 		acceptedParameters: [
 			"documentId",
