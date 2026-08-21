@@ -1,6 +1,6 @@
 # Linear API reference
 
-Version 0.7 of `pi-linear-lite` registers 49 tool surfaces: one active loader, `linear`, plus 48 inactive typed tools. The loader-only `batch` and `get_result` operations add no typed tools. The `linear` tool description publishes the operation catalog. Choose an operation from that catalog and call it directly. Send exactly one of `operation` or `query` to the loader. Send operation inputs through `variables`. Use operation help only when exact parameter names are needed. That call activates the matching typed tool.
+Version 0.9 of `pi-linear-lite` registers 49 tool surfaces: one active loader, `linear`, plus 48 inactive typed tools. The loader-only `batch` and `get_result` operations add no typed tools. The `linear` tool description publishes the operation catalog. Choose an operation from that catalog and call it directly. Send exactly one of `operation` or `query` to the loader. Send operation inputs through `variables`. Use operation help only when exact parameter names are needed. That call activates the matching typed tool.
 
 ## Help protocol
 
