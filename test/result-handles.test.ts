@@ -1,5 +1,5 @@
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from '@earendil-works/pi-coding-agent';
-import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -197,6 +197,29 @@ describe('result handles', () => {
     );
   });
 
+  it('rejects a substituted extension-owned parent directory for writes and reads', async () => {
+    const root = await artifactRoot();
+    const linear = join(root, 'linear');
+    const moved = join(root, 'trusted-linear');
+    const outside = await mkdtemp(join(tmpdir(), 'pi-linear-outside-'));
+    roots.push(outside);
+    await mkdir(join(linear, 'raw'), { recursive: true });
+    await rename(linear, moved);
+    await mkdir(join(outside, 'raw'), { recursive: true });
+    await symlink(outside, linear, 'dir');
+
+    await expect(artifact({ value: 'must not write outside' })).rejects.toThrow(/artifact directory|symbolic link/i);
+    expect(await readdir(join(outside, 'raw'))).toEqual([]);
+
+    const uuid = '55555555-5555-4555-8555-555555555555';
+    await writeFile(join(outside, 'raw', `${uuid}.json`), JSON.stringify({
+      data: { value: 'OUTSIDE_CONTENT_READ' }, meta: { truncations: [], stringsClipped: 0 },
+    }));
+    const error = await get(`linear-result:v1:${uuid}`).catch((caught: Error) => caught);
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).not.toContain('OUTSIDE_CONTENT_READ');
+  });
+
   it('rejects symlinks, malformed JSON, and non-envelope artifacts without exposing content', async () => {
     const root = await artifactRoot();
     const outside = join(root, 'outside-secret.json');
@@ -237,6 +260,52 @@ describe('result handles', () => {
     expect(retrieved.details.data.value).toBe('[REDACTED]');
     expect(JSON.stringify(retrieved.details)).not.toContain(token);
     expect(after).toEqual(before);
+  });
+
+  it('bounds a 1,000-alias artifact digest and recovers all stored data', async () => {
+    await artifactRoot();
+    const data = Object.fromEntries(Array.from({ length: 1_000 }, (_, index) => [
+      `alias_${index}_${'k'.repeat(80)}`,
+      { value: `${index}:` + 'x'.repeat(80) },
+    ]));
+    const stored = await artifact(data);
+    expectWithinBoundary(stored);
+    expect(stored.index.length).toBeLessThan(1_000);
+
+    const recovered: Record<string, unknown> = {};
+    let offset = 0;
+    do {
+      const part = await get(stored.handle, '/data', offset);
+      expectWithinBoundary(part.details);
+      Object.assign(recovered, part.details.data.value);
+      if (part.details.meta.retrieval.complete) break;
+      offset = part.details.meta.retrieval.nextOffset;
+    } while (true);
+    expect(recovered).toEqual(data);
+  });
+
+  it('keeps near-boundary string continuations representable and never publishes a string child pointer', async () => {
+    await artifactRoot();
+    const key = 'a'.repeat(Math.floor(DEFAULT_MAX_BYTES / 2) - 1_000);
+    const stored = await artifact({ [key]: '😀'.repeat(DEFAULT_MAX_BYTES) });
+    const part = await get(stored.handle, `/data/${key}`);
+    expectWithinBoundary(part.details);
+    expect(part.details.data.value).toMatch(/^😀+$/u);
+    expect(part.details.data.externalized).toBeUndefined();
+    expect(JSON.stringify(part.details)).not.toContain(`/data/${key}/0`);
+
+    const unrepresentable = `/data/${'b'.repeat(DEFAULT_MAX_BYTES)}`;
+    await expect(get(stored.handle, unrepresentable)).rejects.toThrow('Invalid JSON Pointer');
+  });
+
+  it('rejects an unrepresentable raw GraphQL alias before network access', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = 'test-key';
+    const alias = 'a'.repeat(DEFAULT_MAX_BYTES);
+    await expect(execute({ query: `query { ${alias}: viewer { id } }` }))
+      .rejects.toThrow(/alias|represent/i);
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('publishes loader help without adding a typed result tool', async () => {
