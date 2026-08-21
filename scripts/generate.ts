@@ -186,16 +186,12 @@ export async function generate(check = false): Promise<void> {
 }
 
 function replaceToolsLine(source: string, allowedTools: readonly string[]): string {
-  const match = source.match(/^tools:\s*(.*)$/m);
-  if (!match) throw new Error('Agent allowlist has no tools frontmatter field.');
-  const existing = match[1]!.split(',').map((value) => value.trim()).filter(Boolean);
-  const retained = existing.filter((name) => name !== 'linear' && !name.startsWith('linear_'));
-  return source.replace(/^tools:.*$/m, `tools: ${[...retained, ...allowedTools].join(', ')}`);
+  if (!/^tools:\s*(.*)$/m.test(source)) throw new Error('Agent allowlist has no tools frontmatter field.');
+  return source.replace(/^tools:.*$/m, `tools: ${['write', ...allowedTools].join(', ')}`);
 }
 
 export function defaultAllowlistPaths(): string[] {
-  const home = homedir();
-  return [resolve(home, '.pi/agent/agents/linear.md'), resolve(home, '.pi/agent/agents/linear-auditor.md')];
+  return [resolve(homedir(), '.pi/agent/agents/linear.md')];
 }
 
 export async function syncAllowlistFile(path: string, check = false): Promise<boolean> {
@@ -213,10 +209,7 @@ export async function runGenerationCommand(args = process.argv.slice(2)): Promis
   const [command, ...paths] = args;
   if (command === '--check') return generate(true);
   if (command === '--allowlists-check' || command === '--allowlists-sync') {
-    if (paths.length !== 0 && paths.length !== 2) {
-      throw new Error('Pass exactly two external Linear agent allowlist paths, or none to use the deployment defaults.');
-    }
-    const targets = paths.length === 2 ? paths.map((path) => resolve(path)) : defaultAllowlistPaths();
+    const targets = paths.length ? paths.map((path) => resolve(path)) : defaultAllowlistPaths();
     for (const path of targets) await syncAllowlistFile(path, command === '--allowlists-check');
     return;
   }

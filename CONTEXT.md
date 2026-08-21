@@ -60,12 +60,33 @@ _Avoid_: Combined response, outcome map
 A GraphQL document supplied directly for work outside the operation catalog.
 _Avoid_: Operation
 
+**Result handle**:
+An opaque identifier issued for one complete redacted stored result. Use it only through `get_result`.
+_Avoid_: Artifact path, filename
+
+**Result retrieval**:
+A loader-only `get_result` request that selects a stored value by handle, JSON Pointer path, and optional continuation offset.
+_Avoid_: File read, typed retrieval tool
+
+**Result routing**:
+The cardinality-aware choice between complete inline output and a complete stored result. It never removes returned data.
+_Avoid_: Compaction, truncation
+
+**Compatibility path**:
+The legacy artifact path retained for older integrations. New callers use the result handle.
+_Avoid_: Retrieval interface
+
+**Partial path error**:
+A GraphQL error tied to one response path while usable sibling data remains available.
+_Avoid_: Total failure
+
 **Issue reference**:
 An exact Linear issue identifier or UUID. Resolution must reject missing, ambiguous, or mismatched issues.
 _Avoid_: Search term, fuzzy issue name
 
 **Allowlist**:
-The set of mutation actions that a mode permits.
+The exact agent tool set. The restricted Linear agent receives `write` plus the generated Linear tools only.
+_Avoid_: Mutation roots, broad capability
 
 **Read-only entry**:
 An extension mode that permits reads and rejects all mutations.
@@ -73,5 +94,6 @@ An extension mode that permits reads and rejects all mutations.
 **Workspace**:
 A named Linear account and credential selection.
 
-**Truncation metadata**:
-Result information that identifies omitted data and supports a narrower request or next-page request.
+**Continuation offset**:
+The next code-point, item, or property position for ordered `get_result` recovery.
+_Avoid_: Page cursor, byte offset

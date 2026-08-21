@@ -245,13 +245,42 @@ describe('generated products', () => {
     expect(manifest.allowedTools).toEqual(expectedNames);
   });
 
-  it('syncs only the tools frontmatter field in external agent fixtures', async () => {
+  it('syncs an exact restricted tools field in external agent fixtures', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'linear-allowlist-'));
     const path = join(directory, 'agent.md');
-    await writeFile(path, '---\nname: fixture\ntools: read, bash, linear_old\nmode: background\n---\n\nBody.\n');
+    await writeFile(path, '---\nname: fixture\ntools: all, read, bash, linear_old\nmode: background\n---\n\nBody.\n');
     await syncAllowlistFile(path);
     expect(await readFile(path, 'utf8')).toBe(
-      `---\nname: fixture\ntools: read, bash, ${expectedNames.join(', ')}\nmode: background\n---\n\nBody.\n`,
+      `---\nname: fixture\ntools: write, ${expectedNames.join(', ')}\nmode: background\n---\n\nBody.\n`,
     );
+  });
+
+  it('keeps get_result loader-only and the public surface at 49 tools', () => {
+    expect(operationDefinitions).toHaveLength(48);
+    expect(typedLinearTools()).toHaveLength(48);
+    expect(expectedNames).toHaveLength(49);
+    expect(manifest.allowedTools).toHaveLength(49);
+    expect(manifest.allowedTools).not.toContain('linear_get_result');
+    expect((linearApiTool() as any).description).toContain('get_result: Retrieve a stored Linear result by handle.');
+  });
+
+  it('ships the complete restricted lossless contract in public documentation', async () => {
+    const [readme, reference, context, adr, changelog] = await Promise.all([
+      readFile('README.md', 'utf8'),
+      readFile('REFERENCE.md', 'utf8'),
+      readFile('CONTEXT.md', 'utf8'),
+      readFile('docs/adr/0003-result-routing.md', 'utf8'),
+      readFile('CHANGELOG.md', 'utf8'),
+    ]);
+    const published = [readme, reference, context, adr, changelog].join('\n');
+    for (const claim of [
+      'cardinality-aware', 'get_result', 'path-scoped errors', 'sink:inline',
+      'legacy compatibility path', 'exactly `write` plus',
+    ]) expect(published).toContain(claim);
+    expect(readme).toContain('49 tool surfaces');
+    expect(reference).toContain('48 inactive typed tools');
+    expect(published).not.toMatch(/\bTTL\b/i);
+    expect(published).not.toMatch(/registers? (?:a )?typed `linear_get_result`/i);
+    expect(published).not.toContain('linear-auditor.md');
   });
 });

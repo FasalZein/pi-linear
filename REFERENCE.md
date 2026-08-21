@@ -1,6 +1,6 @@
 # Linear API reference
 
-Version 0.7 of `pi-linear-lite` registers one active loader, `linear`, plus 48 inactive typed tools. The `linear` tool description publishes the operation catalog. Choose an operation from that catalog and call it directly. Send exactly one of `operation` or `query` to the loader. Send operation inputs through `variables`. Use operation help only when exact parameter names are needed. That call activates the matching typed tool.
+Version 0.7 of `pi-linear-lite` registers 49 tool surfaces: one active loader, `linear`, plus 48 inactive typed tools. The loader-only `batch` and `get_result` operations add no typed tools. The `linear` tool description publishes the operation catalog. Choose an operation from that catalog and call it directly. Send exactly one of `operation` or `query` to the loader. Send operation inputs through `variables`. Use operation help only when exact parameter names are needed. That call activates the matching typed tool.
 
 ## Help protocol
 
@@ -22,7 +22,7 @@ Domain help returns only the canonical names and compact signatures for that dom
 
 Operation help returns one parameter card and one valid invocation. That response is the authoritative parameter reference. This file does not duplicate 48 full schemas that can change or consume context unnecessarily.
 
-Every typed schema has a provider-safe object root. Save operations enforce exclusive create and update modes inside that root. All save target dates are nullable. Current live fields include initiative and project lead teams, initiative priority and labels, document owners, and create/update label retirement dates. `trashed` remains excluded from typed tools.
+Every typed schema has a provider-safe object root. Save operations enforce exclusive create and update modes inside that root. All save target dates are nullable. The packaged dated schema contract includes initiative and project lead teams, initiative priority and labels, document owners, and create/update label retirement dates. `trashed` remains excluded from typed tools.
 
 Accepted domains are `issues`, `comments`, `users`, `teams`, `projects`, `cycles`, `milestones`, `initiatives`, `documents`, `views`, `labels`, `relations`, and `workspace`. Invalid requests direct the caller to a valid help request instead of returning the full catalog.
 
@@ -130,7 +130,7 @@ The v0.3 `get_issue` shape `{ "teamKey": "AEO", "number": 258 }` remains accepte
 
 ## Pagination
 
-List operations and `search_issues` return `pageInfo` and accept supported cursor parameters such as `after`, `before`, `first`, and `last`. `search_issues` also returns `totalCount`. `list_issues` does not: `IssueConnection` has no total count, so an incomplete page reports that more results exist without a total. Their operation help cards show the exact parameters. Named operations apply fixed default page sizes when a size is omitted.
+List operations and `search_issues` return `pageInfo` and accept supported cursor parameters such as `after`, `before`, `first`, and `last`. `search_issues` also returns `totalCount`. `list_issues` does not: `IssueConnection` has no total count, so an incomplete page reports that more results exist without a total. Their operation help cards show the exact parameters. Named operations apply their documented defaults when a size is omitted. Result routing never changes the server request size or returned cursor.
 
 1. Make the first call without `after`.
 2. Read `totalCount` when present, then `pageInfo.hasNextPage` and `pageInfo.endCursor`.
@@ -146,11 +146,15 @@ List operations and `search_issues` return `pageInfo` and accept supported curso
 
 ## Result routing
 
-Collections, batches, and raw GraphQL results at or above 8KB automatically route to `${PI_ARTIFACT_PROJECT_ROOT:-$HOME/.pi/artifacts}/linear/raw/`. The returned digest includes a canonical `handle`, compatibility `path`, full `bytes`, a compact `index`, and `meta`. The artifact contains the complete JSON. Retrieve it through `{ "operation": "get_result", "variables": { "handle": "linear-result:v1:<UUID>" } }`.
+Named singular reads stay complete inline when their serialized result fits Pi's 50KB or 2,000-line custom-tool boundary. Collections, batches, and raw GraphQL results at or above 8KB automatically route to `${PI_ARTIFACT_PROJECT_ROOT:-$HOME/.pi/artifacts}/linear/raw/`. This routing is cardinality-aware: it preserves every returned entity and every caller key.
 
-Use `"sink": "artifact"` to force an artifact. Use `"sink": "inline"` to prefer complete inline output. Pi's 50KB or 2,000-line tool-output boundary can override the inline preference and return a recoverable handle. The runtime does not clip strings, cap returned nodes, remove object fields, remove rows, remove batch keys, or fabricate pagination. Linear's `pageInfo`, `totalCount`, and server cursors stay unchanged.
+The returned digest includes a canonical opaque `handle`, full `bytes`, a compact `index`, `meta`, and a legacy compatibility `path`. The artifact contains the complete redacted JSON. Retrieve it through loader-only `{ "operation": "get_result", "variables": { "handle": "linear-result:v1:<UUID>" } }`. Do not use arbitrary file-reading or shell tools. The compatibility path exists only for older integrations.
 
-Every batch caller key appears exactly once across `data`, `errors`, and `skipped`. A failed key has at most one error record. Its first `path` and `message` remain stable. Multiple path errors add `causes`. Usable failed data appears in `partial`. A batch artifact stores and recovers the complete `{ "data": {}, "errors": [], "skipped": [], "meta": {} }` envelope.
+Use `"sink": "artifact"` to force an artifact. Use `"sink": "inline"` to prefer complete inline output. Pi's boundary can override the inline preference and return one recoverable artifact. The runtime performs no lossy compaction: it does not clip strings, cap returned nodes, remove object fields, remove rows, remove batch keys, or fabricate pagination. Linear's `pageInfo`, `totalCount`, server cursors, and requested page size stay unchanged.
+
+`get_result` returns the complete selected value when it fits. For a large string, array, or object, it returns ordered code-point, item, or property segments. Follow `nextOffset` for the same JSON Pointer `path` until `complete` is true. If one child cannot fit, follow its `externalized` path with the same handle.
+
+Raw GraphQL returns usable partial data with all path-scoped errors instead of discarding successful siblings. Every batch caller key appears exactly once across `data`, `errors`, and `skipped`. A failed key has at most one error record. Its first `path` and `message` remain stable. Multiple path errors add `causes`. Usable failed data appears in `partial`. A batch artifact stores and recovers the complete `{ "data": {}, "errors": [], "skipped": [], "meta": {} }` envelope.
 
 Set `LINEAR_SPILL_BYTES` to change the automatic spill threshold for collection, batch, and raw GraphQL routing.
 
