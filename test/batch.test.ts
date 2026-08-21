@@ -1,9 +1,9 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { linearApiTool } from '../extensions/api';
-import { assertBatchAccounting } from '../extensions/batch';
+import { linearApiTool, resolveRequest } from '../extensions/api';
+import { assertBatchAccounting, batchHelp } from '../extensions/batch';
 import type { MutationMode } from '../extensions/safety';
 import { isolateLinearCredentials } from './helpers/credentials';
 
@@ -104,6 +104,21 @@ describe('batch help and catalog', () => {
       reads: [{ key: 'issue', operation: 'get_issue', variables: { issue: 'AEO-258' } }],
       mutations: [{ key: 'remove', operation: 'delete_issue_relation' }],
     });
+  });
+
+  it('validates every nested entry in every published batch example against its real operation contract', async () => {
+    const reference = await readFile('REFERENCE.md', 'utf8');
+    const documented = [...reference.matchAll(/```json\n([^`]*?"operation": "batch"[^`]*?)\n```/g)]
+      .map((match) => JSON.parse(match[1]!));
+    const examples = [batchHelp().example, ...documented] as Array<{
+      variables: { reads?: Array<{ operation: string; variables: Record<string, unknown> }>; mutations?: Array<{ operation: string; variables: Record<string, unknown> }> };
+    }>;
+    expect(examples).toHaveLength(2);
+    for (const example of examples) {
+      for (const entry of [...(example.variables.reads ?? []), ...(example.variables.mutations ?? [])]) {
+        expect(() => resolveRequest({ operation: entry.operation, variables: entry.variables }), entry.operation).not.toThrow();
+      }
+    }
   });
 
   it('publishes batch in the linear tool description without changing the TypeBox parameters', () => {

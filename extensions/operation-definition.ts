@@ -182,7 +182,7 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
     },
     render: {
       entityKind,
-      callFields: operation.parameters.map(({ name }) => name),
+      callFields: canonicalFields.map(({ name }) => name),
       action,
       ...(renderTargetFields ? { targetFields: renderTargetFields } : {}),
       ...(renderEmpty ? { empty: renderEmpty } : {}),

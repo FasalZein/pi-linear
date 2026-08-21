@@ -6,7 +6,14 @@ import { BATCH_PURPOSE } from '../extensions/batch';
 import { operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
 import { GET_RESULT_PURPOSE } from '../extensions/result-handles';
 import { buildTypedToolMetadata } from '../extensions/typed-tool-metadata';
-import { LINEAR_AGENT_QUERY_DISCIPLINE, LINEAR_AGENT_TOOL_SURFACE } from './linear-agent-contract';
+import {
+  LINEAR_AGENT_QUERY_DISCIPLINE,
+  LINEAR_AGENT_QUERY_DISCIPLINE_END,
+  LINEAR_AGENT_QUERY_DISCIPLINE_START,
+  LINEAR_AGENT_TOOL_SURFACE,
+  LINEAR_AGENT_TOOL_SURFACE_END,
+  LINEAR_AGENT_TOOL_SURFACE_START,
+} from './linear-agent-contract';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const generated = resolve(root, 'extensions/generated');
@@ -35,7 +42,7 @@ function manifest() {
 }
 
 export function contractProjection(definition: (typeof operationDefinitions)[number]) {
-  const signature = `${definition.name}(${definition.compatibility.fields
+  const signature = `${definition.name}(${definition.canonical.fields
     .map(({ name, type, required }) => `${name}${required ? '' : '?'}: ${type}`).join(', ')})`;
   const compatibility = definition.compatibility;
   const tool = buildTypedToolMetadata(projectCompatibilityOperation(definition));
@@ -48,8 +55,8 @@ export function contractProjection(definition: (typeof operationDefinitions)[num
     help: {
       signature,
       exact: true,
-      example: compatibility.example,
-      callFields: definition.render.callFields,
+      example: { operation: definition.name, variables: definition.canonical.example },
+      callFields: definition.canonical.fields.map(({ name }) => name),
     },
     compatibility: {
       operationAliases: compatibility.operationAliases,
@@ -186,16 +193,50 @@ export async function generate(check = false): Promise<void> {
   }
 }
 
-function replaceSection(source: string, heading: string, nextHeading: string, content: string): string {
-  const start = source.indexOf(`${heading}\n`);
-  const end = source.indexOf(nextHeading, start + heading.length);
-  if (start < 0 || end < 0) throw new Error(`External Linear agent is missing owned section boundary: ${heading}.`);
-  return `${source.slice(0, start)}${content}\n\n${source.slice(end)}`;
+function replaceOrInsertMarkerBlock(
+  source: string,
+  heading: string,
+  startMarker: string,
+  endMarker: string,
+  content: string,
+): string {
+  const start = source.indexOf(startMarker);
+  const end = source.indexOf(endMarker);
+  if ((start < 0) !== (end < 0) || (start >= 0 && end < start)) {
+    throw new Error(`External Linear agent has an incomplete generated block: ${startMarker}.`);
+  }
+  if (start >= 0) {
+    if (source.indexOf(startMarker, start + startMarker.length) >= 0 || source.indexOf(endMarker, end + endMarker.length) >= 0) {
+      throw new Error(`External Linear agent has duplicate generated markers: ${startMarker}.`);
+    }
+    return `${source.slice(0, start)}${content}${source.slice(end + endMarker.length)}`;
+  }
+
+  const headingLine = `${heading}\n`;
+  const headingStart = source.indexOf(headingLine);
+  if (headingStart >= 0) {
+    const insertAt = headingStart + headingLine.length;
+    return `${source.slice(0, insertAt)}\n${content}\n${source.slice(insertAt)}`;
+  }
+  const separator = source.endsWith('\n') ? '\n' : '\n\n';
+  return `${source}${separator}${heading}\n\n${content}\n`;
 }
 
 function replaceOwnedAgentContract(source: string): string {
-  const withTools = replaceSection(source, '## Tool surface', '## Query discipline', LINEAR_AGENT_TOOL_SURFACE);
-  return replaceSection(withTools, '## Query discipline', '## Job 1', LINEAR_AGENT_QUERY_DISCIPLINE);
+  const withTools = replaceOrInsertMarkerBlock(
+    source,
+    '## Tool surface',
+    LINEAR_AGENT_TOOL_SURFACE_START,
+    LINEAR_AGENT_TOOL_SURFACE_END,
+    LINEAR_AGENT_TOOL_SURFACE,
+  );
+  return replaceOrInsertMarkerBlock(
+    withTools,
+    '## Query discipline',
+    LINEAR_AGENT_QUERY_DISCIPLINE_START,
+    LINEAR_AGENT_QUERY_DISCIPLINE_END,
+    LINEAR_AGENT_QUERY_DISCIPLINE,
+  );
 }
 
 function replaceToolsLine(source: string, allowedTools: readonly string[]): string {

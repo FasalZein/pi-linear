@@ -33,7 +33,7 @@ export const BATCH_HELP_EXAMPLE = {
 			key: "remove",
 			operation: "delete_issue_relation",
 			variables: {
-				id: "11111111-1111-4111-8111-111111111111",
+				relationId: "11111111-1111-4111-8111-111111111111",
 				issueId: "22222222-2222-4222-8222-222222222222",
 				relatedIssueId: "33333333-3333-4333-8333-333333333333",
 				type: "related",
@@ -113,7 +113,9 @@ export function getOperationDefinition(name: string): OperationDefinition {
 }
 
 export function operationSignature(operation: LinearOperation): string {
-	return `${operation.name}(${operation.parameters.map(({ name, type, required }) => `${name}${required ? "" : "?"}: ${type}`).join(", ")})`;
+	return `${operation.name}(${Object.entries(operation.canonical.fields)
+		.map(([name, type]) => `${name}${operation.canonical.branches.every((branch) => branch.includes(name)) ? "" : "?"}: ${type}`)
+		.join(", ")})`;
 }
 export function formatInvocation(value: unknown): string {
 	if (Array.isArray(value))

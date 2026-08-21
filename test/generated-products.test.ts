@@ -172,6 +172,25 @@ describe('generated products', () => {
     expect(generated).toHaveLength(49);
   });
 
+  it('keeps every help-labeled generated projection canonical and compatibility explicit', () => {
+    for (const definition of operationDefinitions) {
+      const projected = contractProjection(definition);
+      const canonicalNames = definition.canonical.fields.map(({ name }) => name);
+      expect(projected.help.callFields, definition.name).toEqual(canonicalNames);
+      expect(projected.render.callFields, definition.name).toEqual(canonicalNames);
+      expect(Object.keys(projected.help.example.variables).every((name) => canonicalNames.includes(name)), definition.name).toBe(true);
+      for (const field of definition.canonical.fields) {
+        expect(projected.help.signature, `${definition.name}.${field.name}`).toContain(`${field.name}${field.required ? '' : '?'}: ${field.type}`);
+      }
+    }
+    const createIssue = contractProjection(operationDefinitions.find(({ name }) => name === 'create_issue')!);
+    expect(createIssue.help.signature).toContain('projectId?: UUID');
+    expect(createIssue.help.signature).toContain('labelIds?: [UUID!]');
+    expect(createIssue.help.signature).not.toContain('input');
+    expect(createIssue.help.callFields).not.toContain('input');
+    expect(createIssue.compatibility.fields.map(({ name }) => name)).toContain('input');
+  });
+
   it('serializes exhaustive compatibility and GraphQL products', () => {
     const createComment = contractProjection(operationDefinitions.find(({ name }) => name === 'create_comment')!);
     expect(createComment.compatibility).toMatchObject({
@@ -248,13 +267,15 @@ describe('generated products', () => {
   it('syncs the restricted tools field and owned dispatch sections in external agent fixtures', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'linear-allowlist-'));
     const path = join(directory, 'agent.md');
-    await writeFile(path, '---\nname: fixture\ntools: all, read, bash, linear_old\nmode: background\ncustom: keep\n---\n\nIntro.\n\n## Tool surface\n\nOld.\n\n## Query discipline\n\nOld.\n\n## Job 1 — Execute\n\nKeep job.\n');
+    await writeFile(path, '---\nname: fixture\ntools: all, read, bash, linear_old\nmode: background\ncustom: keep\n---\n\nIntro.\n\n## Tool surface\n\nOld tool custom.\n\n## Query discipline\n\nOld query custom.\n\n## Job 1 — Execute\n\nKeep job.\n');
     await syncAllowlistFile(path);
     const synced = await readFile(path, 'utf8');
     expect(synced).toContain(`tools: write, ${expectedNames.join(', ')}`);
     expect(synced).toContain('custom: keep');
     expect(synced).toContain('Intro.');
     expect(synced).toContain('Keep job.');
+    expect(synced).toContain('Old tool custom.');
+    expect(synced).toContain('Old query custom.');
     expect(synced).toContain('<!-- pi-linear:tool-surface:start -->');
     expect(synced).toContain('<!-- pi-linear:query-discipline:start -->');
   });

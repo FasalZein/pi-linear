@@ -441,7 +441,7 @@
     "purpose": "Create a comment on an issue or another supported target.",
     "kind": "mutation",
     "help": {
-      "signature": "create_comment(issue?: IssueReference, body?: String)",
+      "signature": "create_comment(issue?: IssueReference, projectId?: UUID, initiativeId?: UUID, projectUpdateId?: UUID, initiativeUpdateId?: UUID, postId?: UUID, documentContentId?: UUID, parentId?: UUID, body?: String, bodyData?: JsonObject, quotedText?: String, doNotSubscribeToIssue?: Boolean, createOnSyncedSlackThread?: Boolean, createdAt?: DateTime, id?: UUID)",
       "exact": true,
       "example": {
         "operation": "create_comment",
@@ -452,7 +452,20 @@
       },
       "callFields": [
         "issue",
-        "body"
+        "projectId",
+        "initiativeId",
+        "projectUpdateId",
+        "initiativeUpdateId",
+        "postId",
+        "documentContentId",
+        "parentId",
+        "body",
+        "bodyData",
+        "quotedText",
+        "doNotSubscribeToIssue",
+        "createOnSyncedSlackThread",
+        "createdAt",
+        "id"
       ]
     },
     "compatibility": {
@@ -865,7 +878,20 @@
       "entityKind": "comment",
       "callFields": [
         "issue",
-        "body"
+        "projectId",
+        "initiativeId",
+        "projectUpdateId",
+        "initiativeUpdateId",
+        "postId",
+        "documentContentId",
+        "parentId",
+        "body",
+        "bodyData",
+        "quotedText",
+        "doNotSubscribeToIssue",
+        "createOnSyncedSlackThread",
+        "createdAt",
+        "id"
       ],
       "action": "create",
       "targetFields": [
@@ -945,7 +971,7 @@
     "purpose": "Update a comment by id.",
     "kind": "mutation",
     "help": {
-      "signature": "update_comment(id: String, body?: String, bodyData?: String, quotedText?: String, skipEditedAt?: Boolean, input?: Input)",
+      "signature": "update_comment(id: String, body?: String, bodyData?: JsonObject, quotedText?: String, skipEditedAt?: Boolean)",
       "exact": true,
       "example": {
         "operation": "update_comment",
@@ -959,8 +985,7 @@
         "body",
         "bodyData",
         "quotedText",
-        "skipEditedAt",
-        "input"
+        "skipEditedAt"
       ]
     },
     "compatibility": {
@@ -1128,8 +1153,7 @@
         "body",
         "bodyData",
         "quotedText",
-        "skipEditedAt",
-        "input"
+        "skipEditedAt"
       ],
       "action": "update"
     }
@@ -1559,7 +1583,7 @@
     "purpose": "Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData.",
     "kind": "mutation",
     "help": {
-      "signature": "create_view(name: String, filterData?: Object, projectFilterData?: Object, initiativeFilterData?: Object, feedItemFilterData?: Object, team?: TeamReference)",
+      "signature": "create_view(name: String, team?: TeamReference, description?: String, icon?: String, color?: Color, shared?: Boolean, filterData?: FilterData, projectFilterData?: FilterData, initiativeFilterData?: FilterData, feedItemFilterData?: FilterData)",
       "exact": true,
       "example": {
         "operation": "create_view",
@@ -1570,11 +1594,15 @@
       },
       "callFields": [
         "name",
+        "team",
+        "description",
+        "icon",
+        "color",
+        "shared",
         "filterData",
         "projectFilterData",
         "initiativeFilterData",
-        "feedItemFilterData",
-        "team"
+        "feedItemFilterData"
       ]
     },
     "compatibility": {
@@ -1801,11 +1829,15 @@
       "entityKind": "view",
       "callFields": [
         "name",
+        "team",
+        "description",
+        "icon",
+        "color",
+        "shared",
         "filterData",
         "projectFilterData",
         "initiativeFilterData",
-        "feedItemFilterData",
-        "team"
+        "feedItemFilterData"
       ],
       "action": "create"
     }
@@ -1944,7 +1976,7 @@
     "purpose": "Update a custom view.",
     "kind": "mutation",
     "help": {
-      "signature": "update_view(id: String, input?: Input)",
+      "signature": "update_view(id: String, name?: String, description?: String, icon?: String, color?: Color, shared?: Boolean, filterData?: FilterData, projectFilterData?: FilterData, initiativeFilterData?: FilterData, feedItemFilterData?: FilterData)",
       "exact": true,
       "example": {
         "operation": "update_view",
@@ -1955,7 +1987,15 @@
       },
       "callFields": [
         "id",
-        "input"
+        "name",
+        "description",
+        "icon",
+        "color",
+        "shared",
+        "filterData",
+        "projectFilterData",
+        "initiativeFilterData",
+        "feedItemFilterData"
       ]
     },
     "compatibility": {
@@ -2200,7 +2240,15 @@
       "entityKind": "view",
       "callFields": [
         "id",
-        "input"
+        "name",
+        "description",
+        "icon",
+        "color",
+        "shared",
+        "filterData",
+        "projectFilterData",
+        "initiativeFilterData",
+        "feedItemFilterData"
       ],
       "action": "update"
     }
@@ -2294,7 +2342,7 @@
     "purpose": "Set preferences for a custom view.",
     "kind": "mutation",
     "help": {
-      "signature": "set_view_preferences(viewId: String, preferences: Object)",
+      "signature": "set_view_preferences(viewId: String, preferences: Preferences)",
       "exact": true,
       "example": {
         "operation": "set_view_preferences",
@@ -2895,7 +2943,7 @@
     "purpose": "Create a cycle.",
     "kind": "mutation",
     "help": {
-      "signature": "create_cycle(team: TeamReference, startsAt: DateTime, endsAt: DateTime)",
+      "signature": "create_cycle(team: TeamReference, startsAt: DateTime, endsAt: DateTime, name?: String, description?: String)",
       "exact": true,
       "example": {
         "operation": "create_cycle",
@@ -2908,7 +2956,9 @@
       "callFields": [
         "team",
         "startsAt",
-        "endsAt"
+        "endsAt",
+        "name",
+        "description"
       ]
     },
     "compatibility": {
@@ -3134,7 +3184,9 @@
       "callFields": [
         "team",
         "startsAt",
-        "endsAt"
+        "endsAt",
+        "name",
+        "description"
       ],
       "action": "create",
       "targetFields": [
@@ -3223,7 +3275,7 @@
     "purpose": "Update a cycle.",
     "kind": "mutation",
     "help": {
-      "signature": "update_cycle(id: String, name?: String, description?: String, startsAt?: String, endsAt?: String, completedAt?: String)",
+      "signature": "update_cycle(id: String, name?: String, description?: String, startsAt?: DateTime, endsAt?: DateTime, completedAt?: DateTime)",
       "exact": true,
       "example": {
         "operation": "update_cycle",
@@ -3506,13 +3558,14 @@
     "purpose": "List documents.",
     "kind": "query",
     "help": {
-      "signature": "list_documents(after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, sort?: [SortInput!], view?: ResultView)",
+      "signature": "list_documents(sort?: [DocumentSort!], after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "list_documents",
         "variables": {}
       },
       "callFields": [
+        "sort",
         "after",
         "before",
         "first",
@@ -3520,7 +3573,6 @@
         "includeArchived",
         "orderBy",
         "filter",
-        "sort",
         "view"
       ]
     },
@@ -3684,6 +3736,7 @@
     "render": {
       "entityKind": "document",
       "callFields": [
+        "sort",
         "after",
         "before",
         "first",
@@ -3691,7 +3744,6 @@
         "includeArchived",
         "orderBy",
         "filter",
-        "sort",
         "view"
       ],
       "action": "list",
@@ -3969,7 +4021,7 @@
     "purpose": "Create a document.",
     "kind": "mutation",
     "help": {
-      "signature": "create_document(title: String, input?: Input)",
+      "signature": "create_document(title: String, content?: String, icon?: String, color?: Color, issueId?: IssueReference, teamId?: TeamReference, projectId?: UUID, initiativeId?: UUID, cycleId?: UUID, releaseId?: UUID, resourceFolderId?: UUID, lastAppliedTemplateId?: UUID, ownerId?: UUID, subscriberIds?: [UUID!], sortOrder?: Float, id?: UUID)",
       "exact": true,
       "example": {
         "operation": "create_document",
@@ -3980,7 +4032,21 @@
       },
       "callFields": [
         "title",
-        "input"
+        "content",
+        "icon",
+        "color",
+        "issueId",
+        "teamId",
+        "projectId",
+        "initiativeId",
+        "cycleId",
+        "releaseId",
+        "resourceFolderId",
+        "lastAppliedTemplateId",
+        "ownerId",
+        "subscriberIds",
+        "sortOrder",
+        "id"
       ]
     },
     "compatibility": {
@@ -4259,7 +4325,21 @@
       "entityKind": "document",
       "callFields": [
         "title",
-        "input"
+        "content",
+        "icon",
+        "color",
+        "issueId",
+        "teamId",
+        "projectId",
+        "initiativeId",
+        "cycleId",
+        "releaseId",
+        "resourceFolderId",
+        "lastAppliedTemplateId",
+        "ownerId",
+        "subscriberIds",
+        "sortOrder",
+        "id"
       ],
       "action": "create"
     }
@@ -4476,7 +4556,7 @@
     "purpose": "Update a document.",
     "kind": "mutation",
     "help": {
-      "signature": "update_document(documentId: DocumentReference, input?: Input)",
+      "signature": "update_document(documentId: DocumentReference, title?: String, content?: String, icon?: String, color?: Color, issueId?: IssueReference, teamId?: TeamReference, projectId?: UUID, initiativeId?: UUID, cycleId?: UUID, releaseId?: UUID, resourceFolderId?: UUID, lastAppliedTemplateId?: UUID, ownerId?: UUID, subscriberIds?: [UUID!], sortOrder?: Float, hiddenAt?: NullableDateTime)",
       "exact": true,
       "example": {
         "operation": "update_document",
@@ -4487,7 +4567,22 @@
       },
       "callFields": [
         "documentId",
-        "input"
+        "title",
+        "content",
+        "icon",
+        "color",
+        "issueId",
+        "teamId",
+        "projectId",
+        "initiativeId",
+        "cycleId",
+        "releaseId",
+        "resourceFolderId",
+        "lastAppliedTemplateId",
+        "ownerId",
+        "subscriberIds",
+        "sortOrder",
+        "hiddenAt"
       ]
     },
     "compatibility": {
@@ -4864,7 +4959,22 @@
       "entityKind": "document",
       "callFields": [
         "documentId",
-        "input"
+        "title",
+        "content",
+        "icon",
+        "color",
+        "issueId",
+        "teamId",
+        "projectId",
+        "initiativeId",
+        "cycleId",
+        "releaseId",
+        "resourceFolderId",
+        "lastAppliedTemplateId",
+        "ownerId",
+        "subscriberIds",
+        "sortOrder",
+        "hiddenAt"
       ],
       "action": "update"
     }
@@ -4959,21 +5069,21 @@
     "purpose": "List initiatives.",
     "kind": "query",
     "help": {
-      "signature": "list_initiatives(after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, sort?: [SortInput!])",
+      "signature": "list_initiatives(sort?: [InitiativeSort!], after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
       "exact": true,
       "example": {
         "operation": "list_initiatives",
         "variables": {}
       },
       "callFields": [
+        "sort",
         "after",
         "before",
         "first",
         "last",
         "includeArchived",
         "orderBy",
-        "filter",
-        "sort"
+        "filter"
       ]
     },
     "compatibility": {
@@ -5130,14 +5240,14 @@
     "render": {
       "entityKind": "initiative",
       "callFields": [
+        "sort",
         "after",
         "before",
         "first",
         "last",
         "includeArchived",
         "orderBy",
-        "filter",
-        "sort"
+        "filter"
       ],
       "action": "list",
       "empty": {
@@ -5645,7 +5755,7 @@
     "purpose": "Create an issue label.",
     "kind": "mutation",
     "help": {
-      "signature": "create_issue_label(name: String, team?: TeamReference, input?: Input)",
+      "signature": "create_issue_label(name: String, team?: TeamReference, description?: String, color?: Color, isGroup?: Boolean, parentId?: UUID, retiredAt?: DateTime, replaceTeamLabels?: Boolean, id?: UUID)",
       "exact": true,
       "example": {
         "operation": "create_issue_label",
@@ -5657,7 +5767,13 @@
       "callFields": [
         "name",
         "team",
-        "input"
+        "description",
+        "color",
+        "isGroup",
+        "parentId",
+        "retiredAt",
+        "replaceTeamLabels",
+        "id"
       ]
     },
     "compatibility": {
@@ -5873,7 +5989,13 @@
       "callFields": [
         "name",
         "team",
-        "input"
+        "description",
+        "color",
+        "isGroup",
+        "parentId",
+        "retiredAt",
+        "replaceTeamLabels",
+        "id"
       ],
       "action": "create"
     }
@@ -5984,7 +6106,7 @@
     "purpose": "Update an issue label.",
     "kind": "mutation",
     "help": {
-      "signature": "update_issue_label(id: String, input?: Input)",
+      "signature": "update_issue_label(id: String, name?: String, description?: String, color?: Color, isGroup?: Boolean, parentId?: UUID, retiredAt?: NullableDateTime, replaceTeamLabels?: Boolean)",
       "exact": true,
       "example": {
         "operation": "update_issue_label",
@@ -5995,7 +6117,13 @@
       },
       "callFields": [
         "id",
-        "input"
+        "name",
+        "description",
+        "color",
+        "isGroup",
+        "parentId",
+        "retiredAt",
+        "replaceTeamLabels"
       ]
     },
     "compatibility": {
@@ -6208,7 +6336,13 @@
       "entityKind": "label",
       "callFields": [
         "id",
-        "input"
+        "name",
+        "description",
+        "color",
+        "isGroup",
+        "parentId",
+        "retiredAt",
+        "replaceTeamLabels"
       ],
       "action": "update"
     }
@@ -6722,7 +6856,7 @@
     "purpose": "Update an issue relation.",
     "kind": "mutation",
     "help": {
-      "signature": "update_issue_relation(id: String, input?: Input)",
+      "signature": "update_issue_relation(id: String, type?: IssueRelationType, issueId?: IssueReference, relatedIssueId?: IssueReference)",
       "exact": true,
       "example": {
         "operation": "update_issue_relation",
@@ -6733,7 +6867,9 @@
       },
       "callFields": [
         "id",
-        "input"
+        "type",
+        "issueId",
+        "relatedIssueId"
       ]
     },
     "compatibility": {
@@ -6888,7 +7024,9 @@
       "entityKind": "issue_relation",
       "callFields": [
         "id",
-        "input"
+        "type",
+        "issueId",
+        "relatedIssueId"
       ],
       "action": "update"
     }
@@ -7479,7 +7617,7 @@
     "purpose": "List issues with exact convenience filters.",
     "kind": "query",
     "help": {
-      "signature": "list_issues(issues?: [IssueReference!], query?: String, team?: TeamReference, state?: StateReference, stateType?: WorkflowStateType, assignee?: UserReference, after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, sort?: [SortInput!], view?: ResultView)",
+      "signature": "list_issues(issues?: [IssueReference!], query?: String, team?: TeamReference, state?: StateReference, stateType?: WorkflowStateType, assignee?: UserReference, sort?: [IssueSort!], after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "list_issues",
@@ -7495,6 +7633,7 @@
         "state",
         "stateType",
         "assignee",
+        "sort",
         "after",
         "before",
         "first",
@@ -7502,7 +7641,6 @@
         "includeArchived",
         "orderBy",
         "filter",
-        "sort",
         "view"
       ]
     },
@@ -7863,6 +8001,7 @@
         "state",
         "stateType",
         "assignee",
+        "sort",
         "after",
         "before",
         "first",
@@ -7870,7 +8009,6 @@
         "includeArchived",
         "orderBy",
         "filter",
-        "sort",
         "view"
       ],
       "action": "list",
@@ -8277,7 +8415,7 @@
     "purpose": "Create an issue. A parent reference supplies the team when team is omitted.",
     "kind": "mutation",
     "help": {
-      "signature": "create_issue(title: String, parent?: IssueReference, team?: TeamReference, state?: StateReference, assignee?: UserReference, input?: Input)",
+      "signature": "create_issue(title: String, team?: TeamReference, parent?: IssueReference, state?: StateReference, assignee?: UserReference, dueDate?: Date, description?: String, descriptionData?: JsonString, priority?: Priority, estimate?: Int, projectId?: UUID, projectMilestoneId?: UUID, cycleId?: UUID, labelIds?: [UUID!], subscriberIds?: [UUID!], delegateId?: UUID, lastAppliedTemplateId?: UUID, slaType?: SlaDayCountType, slaBreachesAt?: NullableDateTime, slaStartedAt?: NullableDateTime, sortOrder?: Float, subIssueSortOrder?: Float, prioritySortOrder?: Float, templateId?: UUID, useDefaultTemplate?: Boolean, preserveSortOrderOnCreate?: Boolean, referenceCommentId?: UUID, sourceCommentId?: UUID, sourcePullRequestCommentId?: UUID, createAsUser?: String, displayIconUrl?: Url, completedAt?: NullableDateTime, createdAt?: DateTime, id?: UUID)",
       "exact": true,
       "example": {
         "operation": "create_issue",
@@ -8288,11 +8426,39 @@
       },
       "callFields": [
         "title",
-        "parent",
         "team",
+        "parent",
         "state",
         "assignee",
-        "input"
+        "dueDate",
+        "description",
+        "descriptionData",
+        "priority",
+        "estimate",
+        "projectId",
+        "projectMilestoneId",
+        "cycleId",
+        "labelIds",
+        "subscriberIds",
+        "delegateId",
+        "lastAppliedTemplateId",
+        "slaType",
+        "slaBreachesAt",
+        "slaStartedAt",
+        "sortOrder",
+        "subIssueSortOrder",
+        "prioritySortOrder",
+        "templateId",
+        "useDefaultTemplate",
+        "preserveSortOrderOnCreate",
+        "referenceCommentId",
+        "sourceCommentId",
+        "sourcePullRequestCommentId",
+        "createAsUser",
+        "displayIconUrl",
+        "completedAt",
+        "createdAt",
+        "id"
       ]
     },
     "compatibility": {
@@ -8839,11 +9005,39 @@
       "entityKind": "issue",
       "callFields": [
         "title",
-        "parent",
         "team",
+        "parent",
         "state",
         "assignee",
-        "input"
+        "dueDate",
+        "description",
+        "descriptionData",
+        "priority",
+        "estimate",
+        "projectId",
+        "projectMilestoneId",
+        "cycleId",
+        "labelIds",
+        "subscriberIds",
+        "delegateId",
+        "lastAppliedTemplateId",
+        "slaType",
+        "slaBreachesAt",
+        "slaStartedAt",
+        "sortOrder",
+        "subIssueSortOrder",
+        "prioritySortOrder",
+        "templateId",
+        "useDefaultTemplate",
+        "preserveSortOrderOnCreate",
+        "referenceCommentId",
+        "sourceCommentId",
+        "sourcePullRequestCommentId",
+        "createAsUser",
+        "displayIconUrl",
+        "completedAt",
+        "createdAt",
+        "id"
       ],
       "action": "create"
     }
@@ -9224,7 +9418,7 @@
     "purpose": "Update an issue by exact identifier or UUID.",
     "kind": "mutation",
     "help": {
-      "signature": "update_issue(issue: IssueReference, state?: StateReference, assignee?: UserReference, parent?: IssueReference, input?: Input)",
+      "signature": "update_issue(issue: IssueReference, title?: String, state?: StateReference, assignee?: UserReference, parent?: IssueReference, teamId?: TeamReference, dueDate?: NullableDate, addedLabelIds?: [UUID!], removedLabelIds?: [UUID!], description?: String, descriptionData?: JsonString, priority?: Priority, estimate?: Int, projectId?: UUID, projectMilestoneId?: UUID, cycleId?: UUID, labelIds?: [UUID!], subscriberIds?: [UUID!], delegateId?: UUID, lastAppliedTemplateId?: UUID, slaType?: SlaDayCountType, slaBreachesAt?: NullableDateTime, slaStartedAt?: NullableDateTime, sortOrder?: Float, subIssueSortOrder?: Float, prioritySortOrder?: Float, autoClosedByParentClosing?: Boolean, snoozedById?: UUID, snoozedUntilAt?: NullableDateTime)",
       "exact": true,
       "example": {
         "operation": "update_issue",
@@ -9235,10 +9429,34 @@
       },
       "callFields": [
         "issue",
+        "title",
         "state",
         "assignee",
         "parent",
-        "input"
+        "teamId",
+        "dueDate",
+        "addedLabelIds",
+        "removedLabelIds",
+        "description",
+        "descriptionData",
+        "priority",
+        "estimate",
+        "projectId",
+        "projectMilestoneId",
+        "cycleId",
+        "labelIds",
+        "subscriberIds",
+        "delegateId",
+        "lastAppliedTemplateId",
+        "slaType",
+        "slaBreachesAt",
+        "slaStartedAt",
+        "sortOrder",
+        "subIssueSortOrder",
+        "prioritySortOrder",
+        "autoClosedByParentClosing",
+        "snoozedById",
+        "snoozedUntilAt"
       ]
     },
     "compatibility": {
@@ -9868,10 +10086,34 @@
       "entityKind": "issue",
       "callFields": [
         "issue",
+        "title",
         "state",
         "assignee",
         "parent",
-        "input"
+        "teamId",
+        "dueDate",
+        "addedLabelIds",
+        "removedLabelIds",
+        "description",
+        "descriptionData",
+        "priority",
+        "estimate",
+        "projectId",
+        "projectMilestoneId",
+        "cycleId",
+        "labelIds",
+        "subscriberIds",
+        "delegateId",
+        "lastAppliedTemplateId",
+        "slaType",
+        "slaBreachesAt",
+        "slaStartedAt",
+        "sortOrder",
+        "subIssueSortOrder",
+        "prioritySortOrder",
+        "autoClosedByParentClosing",
+        "snoozedById",
+        "snoozedUntilAt"
       ],
       "action": "update"
     }
@@ -10874,7 +11116,7 @@
     "purpose": "Create a project label.",
     "kind": "mutation",
     "help": {
-      "signature": "create_project_label(name: String, input?: Input)",
+      "signature": "create_project_label(name: String, description?: String, color?: Color, isGroup?: Boolean, parentId?: UUID, retiredAt?: DateTime)",
       "exact": true,
       "example": {
         "operation": "create_project_label",
@@ -10884,7 +11126,11 @@
       },
       "callFields": [
         "name",
-        "input"
+        "description",
+        "color",
+        "isGroup",
+        "parentId",
+        "retiredAt"
       ]
     },
     "compatibility": {
@@ -11048,7 +11294,11 @@
       "entityKind": "label",
       "callFields": [
         "name",
-        "input"
+        "description",
+        "color",
+        "isGroup",
+        "parentId",
+        "retiredAt"
       ],
       "action": "create"
     }
@@ -11150,7 +11400,7 @@
     "purpose": "Update a project label.",
     "kind": "mutation",
     "help": {
-      "signature": "update_project_label(id: String, input?: Input)",
+      "signature": "update_project_label(id: String, name?: String, description?: String, color?: Color, isGroup?: Boolean, parentId?: UUID, retiredAt?: NullableDateTime)",
       "exact": true,
       "example": {
         "operation": "update_project_label",
@@ -11161,7 +11411,12 @@
       },
       "callFields": [
         "id",
-        "input"
+        "name",
+        "description",
+        "color",
+        "isGroup",
+        "parentId",
+        "retiredAt"
       ]
     },
     "compatibility": {
@@ -11358,7 +11613,12 @@
       "entityKind": "label",
       "callFields": [
         "id",
-        "input"
+        "name",
+        "description",
+        "color",
+        "isGroup",
+        "parentId",
+        "retiredAt"
       ],
       "action": "update"
     }
@@ -11621,7 +11881,7 @@
     "purpose": "Create a relation between two projects.",
     "kind": "mutation",
     "help": {
-      "signature": "create_project_relation(projectId: String, relatedProjectId: String, type: String, anchorType: String, relatedAnchorType: String)",
+      "signature": "create_project_relation(projectId: String, relatedProjectId: String, type: String, anchorType: String, relatedAnchorType: String, projectMilestoneId?: UUID, relatedProjectMilestoneId?: UUID)",
       "exact": true,
       "example": {
         "operation": "create_project_relation",
@@ -11638,7 +11898,9 @@
         "relatedProjectId",
         "type",
         "anchorType",
-        "relatedAnchorType"
+        "relatedAnchorType",
+        "projectMilestoneId",
+        "relatedProjectMilestoneId"
       ]
     },
     "compatibility": {
@@ -11836,7 +12098,9 @@
         "relatedProjectId",
         "type",
         "anchorType",
-        "relatedAnchorType"
+        "relatedAnchorType",
+        "projectMilestoneId",
+        "relatedProjectMilestoneId"
       ],
       "action": "create"
     }
@@ -11943,7 +12207,7 @@
     "purpose": "Update a project relation.",
     "kind": "mutation",
     "help": {
-      "signature": "update_project_relation(id: String, input?: Input)",
+      "signature": "update_project_relation(id: String, type?: String, anchorType?: String, relatedAnchorType?: String, projectId?: UUID, relatedProjectId?: UUID, projectMilestoneId?: UUID, relatedProjectMilestoneId?: UUID)",
       "exact": true,
       "example": {
         "operation": "update_project_relation",
@@ -11954,7 +12218,13 @@
       },
       "callFields": [
         "id",
-        "input"
+        "type",
+        "anchorType",
+        "relatedAnchorType",
+        "projectId",
+        "relatedProjectId",
+        "projectMilestoneId",
+        "relatedProjectMilestoneId"
       ]
     },
     "compatibility": {
@@ -12167,7 +12437,13 @@
       "entityKind": "project_relation",
       "callFields": [
         "id",
-        "input"
+        "type",
+        "anchorType",
+        "relatedAnchorType",
+        "projectId",
+        "relatedProjectId",
+        "projectMilestoneId",
+        "relatedProjectMilestoneId"
       ],
       "action": "update"
     }
@@ -12271,13 +12547,14 @@
     "purpose": "List projects.",
     "kind": "query",
     "help": {
-      "signature": "list_projects(after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, sort?: [SortInput!], view?: ResultView)",
+      "signature": "list_projects(sort?: [ProjectSort!], after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "list_projects",
         "variables": {}
       },
       "callFields": [
+        "sort",
         "after",
         "before",
         "first",
@@ -12285,7 +12562,6 @@
         "includeArchived",
         "orderBy",
         "filter",
-        "sort",
         "view"
       ]
     },
@@ -12454,6 +12730,7 @@
     "render": {
       "entityKind": "project",
       "callFields": [
+        "sort",
         "after",
         "before",
         "first",
@@ -12461,7 +12738,6 @@
         "includeArchived",
         "orderBy",
         "filter",
-        "sort",
         "view"
       ],
       "action": "list",
@@ -13081,7 +13357,7 @@
     "purpose": "List users.",
     "kind": "query",
     "help": {
-      "signature": "list_users(includeDisabled?: Boolean, after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, sort?: [SortInput!])",
+      "signature": "list_users(includeDisabled?: Boolean, sort?: [UserSort!], after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
       "exact": true,
       "example": {
         "operation": "list_users",
@@ -13089,14 +13365,14 @@
       },
       "callFields": [
         "includeDisabled",
+        "sort",
         "after",
         "before",
         "first",
         "last",
         "includeArchived",
         "orderBy",
-        "filter",
-        "sort"
+        "filter"
       ]
     },
     "compatibility": {
@@ -13257,14 +13533,14 @@
       "entityKind": "user",
       "callFields": [
         "includeDisabled",
+        "sort",
         "after",
         "before",
         "first",
         "last",
         "includeArchived",
         "orderBy",
-        "filter",
-        "sort"
+        "filter"
       ],
       "action": "list",
       "empty": {
@@ -13875,7 +14151,7 @@
     "purpose": "Create or update an initiative.",
     "kind": "mutation",
     "help": {
-      "signature": "save_initiative(initiativeId?: InitiativeReference, name?: String, input?: Input)",
+      "signature": "save_initiative(initiativeId?: InitiativeReference, name?: String, description?: String, content?: String, icon?: String, color?: Color, status?: InitiativeStatus, targetDate?: NullableDate, targetDateResolution?: DateResolutionType, ownerId?: UUID, leadTeamId?: UUID, sortOrder?: Float, prioritySortOrder?: Float, priority?: Priority, labelIds?: [UUID!], id?: UUID, customIdentifier?: String, frequencyResolution?: FrequencyResolutionType, updateReminderFrequency?: Float, updateReminderFrequencyInWeeks?: Float, updateRemindersDay?: Day, updateRemindersHour?: Float)",
       "exact": true,
       "example": {
         "operation": "save_initiative",
@@ -13886,7 +14162,26 @@
       "callFields": [
         "initiativeId",
         "name",
-        "input"
+        "description",
+        "content",
+        "icon",
+        "color",
+        "status",
+        "targetDate",
+        "targetDateResolution",
+        "ownerId",
+        "leadTeamId",
+        "sortOrder",
+        "prioritySortOrder",
+        "priority",
+        "labelIds",
+        "id",
+        "customIdentifier",
+        "frequencyResolution",
+        "updateReminderFrequency",
+        "updateReminderFrequencyInWeeks",
+        "updateRemindersDay",
+        "updateRemindersHour"
       ]
     },
     "compatibility": {
@@ -14621,7 +14916,26 @@
       "callFields": [
         "initiativeId",
         "name",
-        "input"
+        "description",
+        "content",
+        "icon",
+        "color",
+        "status",
+        "targetDate",
+        "targetDateResolution",
+        "ownerId",
+        "leadTeamId",
+        "sortOrder",
+        "prioritySortOrder",
+        "priority",
+        "labelIds",
+        "id",
+        "customIdentifier",
+        "frequencyResolution",
+        "updateReminderFrequency",
+        "updateReminderFrequencyInWeeks",
+        "updateRemindersDay",
+        "updateRemindersHour"
       ],
       "action": "save",
       "targetFields": [
@@ -14766,7 +15080,7 @@
     "purpose": "Create or update a milestone.",
     "kind": "mutation",
     "help": {
-      "signature": "save_milestone(milestoneId?: MilestoneReference, name?: String, projectId?: ProjectReference, input?: Input)",
+      "signature": "save_milestone(milestoneId?: MilestoneReference, name?: String, projectId?: ProjectReference, description?: String, descriptionData?: JsonString, targetDate?: NullableDate, sortOrder?: Float, id?: UUID)",
       "exact": true,
       "example": {
         "operation": "save_milestone",
@@ -14779,7 +15093,11 @@
         "milestoneId",
         "name",
         "projectId",
-        "input"
+        "description",
+        "descriptionData",
+        "targetDate",
+        "sortOrder",
+        "id"
       ]
     },
     "compatibility": {
@@ -15141,7 +15459,11 @@
         "milestoneId",
         "name",
         "projectId",
-        "input"
+        "description",
+        "descriptionData",
+        "targetDate",
+        "sortOrder",
+        "id"
       ],
       "action": "save",
       "targetFields": [
@@ -15687,7 +16009,7 @@
     "purpose": "Create or update a project.",
     "kind": "mutation",
     "help": {
-      "signature": "save_project(projectId?: ProjectReference, name?: String, input?: Input)",
+      "signature": "save_project(projectId?: ProjectReference, name?: String, teamIds?: [ID!], description?: String, content?: String, icon?: String, color?: Color, priority?: Priority, startDate?: Date, startDateResolution?: DateResolutionType, targetDate?: NullableDate, targetDateResolution?: DateResolutionType, statusId?: UUID, leadId?: UUID, leadTeamId?: UUID, memberIds?: [UUID!], labelIds?: [UUID!], convertedFromIssueId?: IssueReference, lastAppliedTemplateId?: UUID, sortOrder?: Float, prioritySortOrder?: Float, canceledAt?: NullableDateTime, completedAt?: NullableDateTime, projectUpdateRemindersPausedUntilAt?: NullableDateTime, slackIssueComments?: Boolean, slackIssueStatuses?: Boolean, slackNewIssue?: Boolean, slackChannelName?: String, templateId?: UUID, useDefaultTemplate?: Boolean, id?: UUID, frequencyResolution?: FrequencyResolutionType, updateReminderFrequency?: Float, updateReminderFrequencyInWeeks?: Float, updateRemindersDay?: Day, updateRemindersHour?: Float)",
       "exact": true,
       "example": {
         "operation": "save_project",
@@ -15701,7 +16023,40 @@
       "callFields": [
         "projectId",
         "name",
-        "input"
+        "teamIds",
+        "description",
+        "content",
+        "icon",
+        "color",
+        "priority",
+        "startDate",
+        "startDateResolution",
+        "targetDate",
+        "targetDateResolution",
+        "statusId",
+        "leadId",
+        "leadTeamId",
+        "memberIds",
+        "labelIds",
+        "convertedFromIssueId",
+        "lastAppliedTemplateId",
+        "sortOrder",
+        "prioritySortOrder",
+        "canceledAt",
+        "completedAt",
+        "projectUpdateRemindersPausedUntilAt",
+        "slackIssueComments",
+        "slackIssueStatuses",
+        "slackNewIssue",
+        "slackChannelName",
+        "templateId",
+        "useDefaultTemplate",
+        "id",
+        "frequencyResolution",
+        "updateReminderFrequency",
+        "updateReminderFrequencyInWeeks",
+        "updateRemindersDay",
+        "updateRemindersHour"
       ]
     },
     "compatibility": {
@@ -16794,7 +17149,40 @@
       "callFields": [
         "projectId",
         "name",
-        "input"
+        "teamIds",
+        "description",
+        "content",
+        "icon",
+        "color",
+        "priority",
+        "startDate",
+        "startDateResolution",
+        "targetDate",
+        "targetDateResolution",
+        "statusId",
+        "leadId",
+        "leadTeamId",
+        "memberIds",
+        "labelIds",
+        "convertedFromIssueId",
+        "lastAppliedTemplateId",
+        "sortOrder",
+        "prioritySortOrder",
+        "canceledAt",
+        "completedAt",
+        "projectUpdateRemindersPausedUntilAt",
+        "slackIssueComments",
+        "slackIssueStatuses",
+        "slackNewIssue",
+        "slackChannelName",
+        "templateId",
+        "useDefaultTemplate",
+        "id",
+        "frequencyResolution",
+        "updateReminderFrequency",
+        "updateReminderFrequencyInWeeks",
+        "updateRemindersDay",
+        "updateRemindersHour"
       ],
       "action": "save",
       "targetFields": [

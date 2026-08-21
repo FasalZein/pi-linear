@@ -26,7 +26,20 @@
     "entityKind": "comment",
     "callFields": [
       "issue",
-      "body"
+      "projectId",
+      "initiativeId",
+      "projectUpdateId",
+      "initiativeUpdateId",
+      "postId",
+      "documentContentId",
+      "parentId",
+      "body",
+      "bodyData",
+      "quotedText",
+      "doNotSubscribeToIssue",
+      "createOnSyncedSlackThread",
+      "createdAt",
+      "id"
     ],
     "action": "create",
     "targetFields": [
@@ -47,8 +60,7 @@
       "body",
       "bodyData",
       "quotedText",
-      "skipEditedAt",
-      "input"
+      "skipEditedAt"
     ],
     "action": "update"
   },
@@ -82,11 +94,15 @@
     "entityKind": "view",
     "callFields": [
       "name",
+      "team",
+      "description",
+      "icon",
+      "color",
+      "shared",
       "filterData",
       "projectFilterData",
       "initiativeFilterData",
-      "feedItemFilterData",
-      "team"
+      "feedItemFilterData"
     ],
     "action": "create"
   },
@@ -94,7 +110,15 @@
     "entityKind": "view",
     "callFields": [
       "id",
-      "input"
+      "name",
+      "description",
+      "icon",
+      "color",
+      "shared",
+      "filterData",
+      "projectFilterData",
+      "initiativeFilterData",
+      "feedItemFilterData"
     ],
     "action": "update"
   },
@@ -138,7 +162,9 @@
     "callFields": [
       "team",
       "startsAt",
-      "endsAt"
+      "endsAt",
+      "name",
+      "description"
     ],
     "action": "create",
     "targetFields": [
@@ -160,6 +186,7 @@
   "list_documents": {
     "entityKind": "document",
     "callFields": [
+      "sort",
       "after",
       "before",
       "first",
@@ -167,7 +194,6 @@
       "includeArchived",
       "orderBy",
       "filter",
-      "sort",
       "view"
     ],
     "action": "list",
@@ -190,7 +216,21 @@
     "entityKind": "document",
     "callFields": [
       "title",
-      "input"
+      "content",
+      "icon",
+      "color",
+      "issueId",
+      "teamId",
+      "projectId",
+      "initiativeId",
+      "cycleId",
+      "releaseId",
+      "resourceFolderId",
+      "lastAppliedTemplateId",
+      "ownerId",
+      "subscriberIds",
+      "sortOrder",
+      "id"
     ],
     "action": "create"
   },
@@ -198,21 +238,36 @@
     "entityKind": "document",
     "callFields": [
       "documentId",
-      "input"
+      "title",
+      "content",
+      "icon",
+      "color",
+      "issueId",
+      "teamId",
+      "projectId",
+      "initiativeId",
+      "cycleId",
+      "releaseId",
+      "resourceFolderId",
+      "lastAppliedTemplateId",
+      "ownerId",
+      "subscriberIds",
+      "sortOrder",
+      "hiddenAt"
     ],
     "action": "update"
   },
   "list_initiatives": {
     "entityKind": "initiative",
     "callFields": [
+      "sort",
       "after",
       "before",
       "first",
       "last",
       "includeArchived",
       "orderBy",
-      "filter",
-      "sort"
+      "filter"
     ],
     "action": "list",
     "empty": {
@@ -254,7 +309,13 @@
     "callFields": [
       "name",
       "team",
-      "input"
+      "description",
+      "color",
+      "isGroup",
+      "parentId",
+      "retiredAt",
+      "replaceTeamLabels",
+      "id"
     ],
     "action": "create"
   },
@@ -262,7 +323,13 @@
     "entityKind": "label",
     "callFields": [
       "id",
-      "input"
+      "name",
+      "description",
+      "color",
+      "isGroup",
+      "parentId",
+      "retiredAt",
+      "replaceTeamLabels"
     ],
     "action": "update"
   },
@@ -301,7 +368,9 @@
     "entityKind": "issue_relation",
     "callFields": [
       "id",
-      "input"
+      "type",
+      "issueId",
+      "relatedIssueId"
     ],
     "action": "update"
   },
@@ -349,6 +418,7 @@
       "state",
       "stateType",
       "assignee",
+      "sort",
       "after",
       "before",
       "first",
@@ -356,7 +426,6 @@
       "includeArchived",
       "orderBy",
       "filter",
-      "sort",
       "view"
     ],
     "action": "list",
@@ -379,11 +448,39 @@
     "entityKind": "issue",
     "callFields": [
       "title",
-      "parent",
       "team",
+      "parent",
       "state",
       "assignee",
-      "input"
+      "dueDate",
+      "description",
+      "descriptionData",
+      "priority",
+      "estimate",
+      "projectId",
+      "projectMilestoneId",
+      "cycleId",
+      "labelIds",
+      "subscriberIds",
+      "delegateId",
+      "lastAppliedTemplateId",
+      "slaType",
+      "slaBreachesAt",
+      "slaStartedAt",
+      "sortOrder",
+      "subIssueSortOrder",
+      "prioritySortOrder",
+      "templateId",
+      "useDefaultTemplate",
+      "preserveSortOrderOnCreate",
+      "referenceCommentId",
+      "sourceCommentId",
+      "sourcePullRequestCommentId",
+      "createAsUser",
+      "displayIconUrl",
+      "completedAt",
+      "createdAt",
+      "id"
     ],
     "action": "create"
   },
@@ -391,10 +488,34 @@
     "entityKind": "issue",
     "callFields": [
       "issue",
+      "title",
       "state",
       "assignee",
       "parent",
-      "input"
+      "teamId",
+      "dueDate",
+      "addedLabelIds",
+      "removedLabelIds",
+      "description",
+      "descriptionData",
+      "priority",
+      "estimate",
+      "projectId",
+      "projectMilestoneId",
+      "cycleId",
+      "labelIds",
+      "subscriberIds",
+      "delegateId",
+      "lastAppliedTemplateId",
+      "slaType",
+      "slaBreachesAt",
+      "slaStartedAt",
+      "sortOrder",
+      "subIssueSortOrder",
+      "prioritySortOrder",
+      "autoClosedByParentClosing",
+      "snoozedById",
+      "snoozedUntilAt"
     ],
     "action": "update"
   },
@@ -470,7 +591,11 @@
     "entityKind": "label",
     "callFields": [
       "name",
-      "input"
+      "description",
+      "color",
+      "isGroup",
+      "parentId",
+      "retiredAt"
     ],
     "action": "create"
   },
@@ -478,7 +603,12 @@
     "entityKind": "label",
     "callFields": [
       "id",
-      "input"
+      "name",
+      "description",
+      "color",
+      "isGroup",
+      "parentId",
+      "retiredAt"
     ],
     "action": "update"
   },
@@ -507,7 +637,9 @@
       "relatedProjectId",
       "type",
       "anchorType",
-      "relatedAnchorType"
+      "relatedAnchorType",
+      "projectMilestoneId",
+      "relatedProjectMilestoneId"
     ],
     "action": "create"
   },
@@ -515,13 +647,20 @@
     "entityKind": "project_relation",
     "callFields": [
       "id",
-      "input"
+      "type",
+      "anchorType",
+      "relatedAnchorType",
+      "projectId",
+      "relatedProjectId",
+      "projectMilestoneId",
+      "relatedProjectMilestoneId"
     ],
     "action": "update"
   },
   "list_projects": {
     "entityKind": "project",
     "callFields": [
+      "sort",
       "after",
       "before",
       "first",
@@ -529,7 +668,6 @@
       "includeArchived",
       "orderBy",
       "filter",
-      "sort",
       "view"
     ],
     "action": "list",
@@ -578,14 +716,14 @@
     "entityKind": "user",
     "callFields": [
       "includeDisabled",
+      "sort",
       "after",
       "before",
       "first",
       "last",
       "includeArchived",
       "orderBy",
-      "filter",
-      "sort"
+      "filter"
     ],
     "action": "list",
     "empty": {
@@ -614,7 +752,26 @@
     "callFields": [
       "initiativeId",
       "name",
-      "input"
+      "description",
+      "content",
+      "icon",
+      "color",
+      "status",
+      "targetDate",
+      "targetDateResolution",
+      "ownerId",
+      "leadTeamId",
+      "sortOrder",
+      "prioritySortOrder",
+      "priority",
+      "labelIds",
+      "id",
+      "customIdentifier",
+      "frequencyResolution",
+      "updateReminderFrequency",
+      "updateReminderFrequencyInWeeks",
+      "updateRemindersDay",
+      "updateRemindersHour"
     ],
     "action": "save",
     "targetFields": [
@@ -628,7 +785,11 @@
       "milestoneId",
       "name",
       "projectId",
-      "input"
+      "description",
+      "descriptionData",
+      "targetDate",
+      "sortOrder",
+      "id"
     ],
     "action": "save",
     "targetFields": [
@@ -642,7 +803,40 @@
     "callFields": [
       "projectId",
       "name",
-      "input"
+      "teamIds",
+      "description",
+      "content",
+      "icon",
+      "color",
+      "priority",
+      "startDate",
+      "startDateResolution",
+      "targetDate",
+      "targetDateResolution",
+      "statusId",
+      "leadId",
+      "leadTeamId",
+      "memberIds",
+      "labelIds",
+      "convertedFromIssueId",
+      "lastAppliedTemplateId",
+      "sortOrder",
+      "prioritySortOrder",
+      "canceledAt",
+      "completedAt",
+      "projectUpdateRemindersPausedUntilAt",
+      "slackIssueComments",
+      "slackIssueStatuses",
+      "slackNewIssue",
+      "slackChannelName",
+      "templateId",
+      "useDefaultTemplate",
+      "id",
+      "frequencyResolution",
+      "updateReminderFrequency",
+      "updateReminderFrequencyInWeeks",
+      "updateRemindersDay",
+      "updateRemindersHour"
     ],
     "action": "save",
     "targetFields": [

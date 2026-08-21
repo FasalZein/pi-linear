@@ -256,6 +256,10 @@ describe('runtime discovery', () => {
     expect(domain.details.operations.map(({ name }: any) => name)).toEqual([
       'list_issues', 'get_issue', 'create_issue', 'update_issue', 'search_issues',
     ]);
+    const createIssueSignature = domain.details.operations.find(({ name }: any) => name === 'create_issue').signature;
+    expect(createIssueSignature).toContain('projectId?: UUID');
+    expect(createIssueSignature).toContain('labelIds?: [UUID!]');
+    expect(createIssueSignature).not.toContain('input');
 
     const comments = await execute(tool, { operation: 'help', variables: { domain: 'comments' } });
     expect(comments.details.operations.map(({ name }: any) => name)).toEqual([
