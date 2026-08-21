@@ -53,7 +53,7 @@ type Meta = {
 };
 
 type Digest =
-  | { kind: 'spill'; path: string; bytes: number; index: string[]; notes: string[] }
+  | { kind: 'spill'; handle?: string; path: string; bytes: number; index: string[]; notes: string[] }
   | { kind: 'list'; entities: Entity[]; notes: string[]; totalCount?: number }
   | { kind: 'entity'; entity: Entity; notes: string[] }
   | { kind: 'not-found'; notes: string[] }
@@ -123,6 +123,7 @@ export function digestResult(result: AgentToolResult<any>, expectedRoots: readon
   if (path) {
     return {
       kind: 'spill',
+      handle: asString(details.handle),
       path,
       bytes: typeof details.bytes === 'number' ? details.bytes : 0,
       index: Array.isArray(details.index) ? details.index.filter((entry): entry is string => typeof entry === 'string') : [],
@@ -233,7 +234,7 @@ function spillBlock(theme: Theme, digest: Extract<Digest, { kind: 'spill' }>): A
   const lines: Array<string | ReturnType<typeof wrapped>> = [
     '',
     theme.fg('success', `✓ ${size} written to disk`),
-    `  ${theme.fg('dim', digest.path)}`,
+    `  ${theme.fg('dim', `Compatibility path: ${digest.path}`)}`,
   ];
   for (const entry of digest.index.slice(0, 8)) {
     lines.push(`  ${theme.fg('muted', cleanOneLine(entry))}`);
@@ -241,7 +242,9 @@ function spillBlock(theme: Theme, digest: Extract<Digest, { kind: 'spill' }>): A
   if (digest.index.length > 8) {
     lines.push(`  ${theme.fg('dim', `… ${digest.index.length - 8} more entries in the file`)}`);
   }
-  lines.push(wrapped(theme.fg('dim', 'Read the file for the full payload.'), 2));
+  lines.push(wrapped(theme.fg('dim', digest.handle
+    ? `Retrieve: linear { operation: "get_result", variables: { handle: "${digest.handle}" } }`
+    : 'This legacy artifact has no result handle.'), 2));
   for (const note of digest.notes) lines.push(wrapped(theme.fg('dim', note), 2));
   return [...lines, '', wrapped(theme.fg('dim', jsonHint()))];
 }

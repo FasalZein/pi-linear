@@ -29,6 +29,7 @@ import { typedToolName } from './tool-names';
 import { assertMutationAllowed, type MutationMode } from './safety';
 import { LINEAR_TOOL_DESCRIPTION } from './generated/operation-catalog';
 import { batchHelp, executeBatch } from './batch';
+import { GET_RESULT_HELP, getResult } from './result-handles';
 
 export {
   AUTO_SPILL_BYTES,
@@ -124,6 +125,7 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
       domains: DEFINITION_DOMAINS,
       domainHelp: { operation: 'help', variables: { domain: 'issues' } },
       operationHelp: { operation: 'help', variables: { operation: 'get_issue' } },
+      resultHelp: { operation: 'help', variables: { operation: 'get_result' } },
     };
   }
 
@@ -145,6 +147,7 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
   }
   if (typeof operationName === 'string') {
     if (operationName === 'batch') return batchHelp();
+    if (operationName === 'get_result') return GET_RESULT_HELP;
     const operation = getOperation(operationName);
     return {
       ...activate(activator, [operation.name]),
@@ -196,6 +199,11 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
             ctx,
             signal,
           ), secrets);
+        }
+        if (params.operation === 'get_result' && !params.query) {
+          if (params.sink !== undefined) throw new Error('get_result does not accept sink.');
+          if (params.workspace !== undefined) throw new Error('get_result does not accept workspace.');
+          return toolResult(await getResult(params.variables), secrets);
         }
 
         const request = resolveRequest(params, mode);
