@@ -90,6 +90,15 @@ try {
   loaded.registerLinearExtension(pi);
   for (const handler of sessionHandlers) handler();
   if (registered.length !== 49) throw new Error(`Extracted package registered ${registered.length} tools.`);
+  if (registered.some(({ name }) => name === 'linear_get_result')) throw new Error('Extracted package registered a typed get_result tool.');
+  const manifest = JSON.parse(await readFile(join(packageRoot, 'extensions/generated/linear-tools.manifest.json'), 'utf8')) as { allowedTools: string[] };
+  if (manifest.allowedTools.length !== 49 || manifest.allowedTools.includes('linear_get_result')) {
+    throw new Error('Extracted package manifest does not contain the exact 49-tool loader and typed surface.');
+  }
+  const readme = await readFile(join(packageRoot, 'README.md'), 'utf8');
+  if (!readme.includes('49 tool surfaces') || readme.includes('linear-auditor.md')) {
+    throw new Error('Extracted package documentation does not contain the current restricted-agent contract.');
+  }
   const linearActive = active.filter((name) => name === 'linear' || name.startsWith('linear_'));
   if (linearActive.join(',') !== 'linear') throw new Error(`Active Linear tools: ${linearActive.join(', ')}`);
   if (!commands.has('linear-auth') || !commands.has('linear-settings')) {
