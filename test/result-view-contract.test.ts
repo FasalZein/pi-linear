@@ -291,15 +291,16 @@ describe('result budget against summary and full shapes', () => {
     expect(Buffer.byteLength(JSON.stringify(compacted))).toBeLessThan(RESULT_BUDGET);
   });
 
-  it('drops whole full issue nodes once descriptions and labels blow the budget', () => {
+  it('keeps every full issue node even when the legacy budget is exceeded', () => {
+    const nodes = Array.from({ length: 20 }, (_, index) => fullNode(index + 1));
     const compacted = compactLinearResult({
       issues: {
-        nodes: Array.from({ length: 20 }, (_, index) => fullNode(index + 1)),
+        nodes,
         pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: 'a', endCursor: 't' },
       },
     });
-    expect(compacted.meta.resultBudget).toEqual({ maxBytes: RESULT_BUDGET, truncated: true });
-    expect(compacted.data.issues.nodes.length).toBeLessThan(20);
-    expect(compacted.data.issues.nodes.length).toBeGreaterThan(0);
+    expect(Buffer.byteLength(JSON.stringify(compacted))).toBeGreaterThan(RESULT_BUDGET);
+    expect(compacted.meta).toEqual({ truncations: [], stringsClipped: 0 });
+    expect(compacted.data.issues.nodes).toEqual(nodes);
   });
 });

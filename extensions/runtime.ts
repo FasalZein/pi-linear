@@ -51,27 +51,6 @@ export type ResultMeta = {
   };
 };
 
-function byteLength(value: unknown): number {
-  return Buffer.byteLength(JSON.stringify(value), 'utf8');
-}
-
-function dropLastBoundary(value: unknown): boolean {
-  if (Array.isArray(value)) {
-    if (!value.length) return false;
-    value.pop();
-    return true;
-  }
-  if (!value || typeof value !== 'object') return false;
-  const object = value as JsonObject;
-  const key = Object.keys(object).filter((name) => name !== 'pageInfo' && name !== 'totalCount').at(-1);
-  if (!key) return false;
-  if (!dropLastBoundary(object[key])) {
-    if (key === 'nodes') return false;
-    delete object[key];
-  }
-  return true;
-}
-
 function spillThreshold(): number {
   const configured = Number(process.env.LINEAR_SPILL_BYTES);
   return Number.isFinite(configured) && configured > 0 ? configured : AUTO_SPILL_BYTES;
@@ -100,50 +79,9 @@ function artifactIndex(data: JsonObject): string[] {
 
 export function compactLinearResult<T extends JsonObject>(
   input: T,
-  options: { nodeCap?: number; resultBudget?: number } = { nodeCap: NODE_CAP },
+  _options: { nodeCap?: number; resultBudget?: number } = {},
 ): { data: T; meta: ResultMeta } {
-  const truncations: Truncation[] = [];
-  let stringsClipped = 0;
-
-  const visit = (value: unknown, path: string, key?: string, endCursor?: string): unknown => {
-    if (typeof value === 'string' && value.length > STRING_CAP) {
-      stringsClipped++;
-      return `${value.slice(0, STRING_CAP)}…[truncated ${STRING_CAP}/${value.length} chars — refetch with a narrower query]`;
-    }
-    if (Array.isArray(value)) {
-      const cap = key === 'nodes' ? options.nodeCap : undefined;
-      const items = cap === undefined ? value : value.slice(0, cap);
-      if (items.length < value.length) {
-        truncations.push({ path, kept: items.length, ...(endCursor ? { endCursor } : {}) });
-      }
-      return items.map((item, index) => visit(item, `${path}[${index}]`));
-    }
-    if (value && typeof value === 'object') {
-      const object = value as JsonObject;
-      const cursor = typeof (object.pageInfo as JsonObject | undefined)?.endCursor === 'string'
-        ? (object.pageInfo as JsonObject).endCursor as string
-        : undefined;
-      return Object.fromEntries(Object.entries(object).map(([childKey, child]) => [
-        childKey,
-        visit(child, path ? `${path}.${childKey}` : childKey, childKey, cursor),
-      ]));
-    }
-    return value;
-  };
-
-  const data = visit(input, '') as T;
-  const meta: ResultMeta = {
-    ...(options.nodeCap === undefined ? {} : { nodeCap: options.nodeCap }),
-    truncations,
-    stringsClipped,
-  };
-  const result = { data, meta };
-  const budget = options.resultBudget ?? RESULT_BUDGET;
-  if (byteLength(result) > budget) {
-    meta.resultBudget = { maxBytes: budget, truncated: true };
-    while (byteLength(result) > budget && dropLastBoundary(data));
-  }
-  return result;
+  return { data: input, meta: { truncations: [], stringsClipped: 0 } };
 }
 
 type RoutedEnvelope<T extends JsonObject> = {
@@ -205,25 +143,12 @@ export async function routeLinearResult<T extends JsonObject>(
   const serialized = JSON.stringify(complete);
   const bytes = Buffer.byteLength(serialized, 'utf8');
   const exceedsBoundary = !withinToolBoundary(serialized);
-  const spillForPolicy = options.category !== 'singular' && bytes > spillThreshold();
+  const spillForPolicy = options.category !== 'singular' && bytes >= spillThreshold();
   const spill = requestedSink === 'artifact'
     || exceedsBoundary
     || (requestedSink === 'auto' && spillForPolicy);
 
-  if (!spill) {
-    if (options.category !== 'collection') return complete;
-    const compact = compactLinearResult(data, { nodeCap: options.nodeCap });
-    return {
-      data: compact.data,
-      ...(errors ? { errors } : {}),
-      meta: {
-        ...compact.meta,
-        ...(options.view ? { view: options.view } : {}),
-        routing: { requestedSink, actualSink: 'inline', inlineComplete: true },
-      },
-      ...(resolution ? { resolution } : {}),
-    };
-  }
+  if (!spill) return complete;
 
   const directory = resultArtifactRoot();
   const uuid = randomUUID();

@@ -284,13 +284,16 @@ describe('data extremes', () => {
     state: { name: 'Todo' },
   });
 
-  it('previews a large list and says how much is left', () => {
-    const text = block(render('list_issues', {
+  it('previews a large list without mutating result details', () => {
+    const details = {
       data: { issues: { nodes: Array.from({ length: 1000 }, (_, index) => issue(index)) } },
       meta,
-    }));
+    };
+    const before = structuredClone(details);
+    const text = block(render('list_issues', details));
     expect(text).toContain('1000 issues returned');
     expect(text).toContain('980 more issues in the JSON');
+    expect(details).toEqual(before);
   });
 
   it('keeps columns aligned for long titles, emoji, and a single row', () => {

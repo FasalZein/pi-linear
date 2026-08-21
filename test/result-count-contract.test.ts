@@ -111,39 +111,25 @@ describe('root-specific totalCount', () => {
   });
 });
 
-describe('compact count metadata', () => {
-  it('keeps totalCount and pageInfo while dropping nodes to fit the budget', () => {
-    const compacted = compactLinearResult(
-      {
-        searchIssues: {
-          nodes: Array.from({ length: 20 }, (_, index) => ({
-            id: `issue-${index}`,
-            title: 'x'.repeat(200),
-          })),
-          pageInfo: {
-            hasNextPage: true,
-            hasPreviousPage: false,
-            startCursor: 'a',
-            endCursor: 'z',
-          },
-          totalCount: 91,
-        },
-      },
-      { resultBudget: 2000 },
-    );
-
-    expect(compacted.meta.resultBudget).toEqual({ maxBytes: 2000, truncated: true });
-    expect(compacted.data.searchIssues.totalCount).toBe(91);
-    expect(compacted.data.searchIssues.pageInfo).toEqual({
+describe('lossless count metadata', () => {
+  it('keeps every node with exact totalCount and server pageInfo', () => {
+    const nodes = Array.from({ length: 20 }, (_, index) => ({
+      id: `issue-${index}`,
+      title: 'x'.repeat(200),
+    }));
+    const pageInfo = {
       hasNextPage: true,
       hasPreviousPage: false,
       startCursor: 'a',
       endCursor: 'z',
-    });
-    expect(compacted.data.searchIssues.nodes.length).toBeGreaterThan(0);
-    expect(compacted.data.searchIssues.nodes.length).toBeLessThan(20);
-    expect(compacted.data.searchIssues.nodes[0]).toEqual({ id: 'issue-0', title: 'x'.repeat(200) });
-    expect(compacted.data.searchIssues.nodes[0]).not.toHaveProperty('totalCount');
+    };
+    const compacted = compactLinearResult(
+      { searchIssues: { nodes, pageInfo, totalCount: 91 } },
+      { resultBudget: 2000 },
+    );
+
+    expect(compacted.meta).toEqual({ truncations: [], stringsClipped: 0 });
+    expect(compacted.data.searchIssues).toEqual({ nodes, pageInfo, totalCount: 91 });
   });
 
   it('preserves a zero totalCount on an empty connection', () => {

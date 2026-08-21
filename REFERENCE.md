@@ -146,11 +146,11 @@ List operations and `search_issues` return `pageInfo` and accept supported curso
 
 ## Result routing
 
-Results larger than 8KB automatically route to `${PI_ARTIFACT_PROJECT_ROOT:-$HOME/.pi/artifacts}/linear/raw/`. The returned digest includes the absolute `path`, full `bytes`, a compact `index`, and `meta`. The artifact contains the complete JSON.
+Collections and raw GraphQL results at or above 8KB automatically route to `${PI_ARTIFACT_PROJECT_ROOT:-$HOME/.pi/artifacts}/linear/raw/`. The returned digest includes a canonical `handle`, compatibility `path`, full `bytes`, a compact `index`, and `meta`. The artifact contains the complete JSON. Retrieve it through `{ "operation": "get_result", "variables": { "handle": "linear-result:v1:<UUID>" } }`.
 
-Use `"sink": "artifact"` to force an artifact. Use `"sink": "inline"` to force inline output. Inline raw results cap each `nodes` array at 100 items. Inline strings cap at 2,000 characters. The total inline budget is 50KB. Named operations retain their server page sizes and do not apply the raw node cap. Truncation metadata identifies every omitted value.
+Use `"sink": "artifact"` to force an artifact. Use `"sink": "inline"` to prefer complete inline output. Pi's 50KB or 2,000-line tool-output boundary can override the inline preference and return a recoverable handle. The runtime does not clip strings, cap returned nodes, remove object fields, remove rows, or fabricate pagination. Linear's `pageInfo`, `totalCount`, and server cursors stay unchanged.
 
-Set `LINEAR_SPILL_BYTES` to change the automatic spill threshold.
+Set `LINEAR_SPILL_BYTES` to change the automatic spill threshold for collection and raw GraphQL routing.
 
 ## Workspaces and authentication
 

@@ -450,41 +450,20 @@ describe('reference preparation pipeline', () => {
   });
 });
 
-describe('compactLinearResult', () => {
-  it('reports each capped nodes path with its nearest cursor', () => {
-    const nodes = Array.from({ length: NODE_CAP + 2 }, (_, id) => ({ id }));
-    const result = compactLinearResult({
-      issues: { nodes, pageInfo: { endCursor: 'issue-cursor' }, nested: { nodes } },
-    });
+describe('compactLinearResult compatibility', () => {
+  it('preserves nodes, fields, and long strings without destructive metadata', () => {
+    const nodes = Array.from({ length: NODE_CAP + 2 }, (_, id) => ({ id, body: 'x'.repeat(STRING_CAP + 17) }));
+    const input = { issues: { nodes, pageInfo: { endCursor: 'issue-cursor' }, totalCount: 400 } };
+    const result = compactLinearResult(input, { nodeCap: NODE_CAP, resultBudget: 500 });
 
-    expect(result.data.issues.nodes).toHaveLength(NODE_CAP);
-    expect(result.data.issues.nested.nodes).toHaveLength(NODE_CAP);
-    expect(result.meta.truncations).toEqual([
-      { path: 'issues.nodes', kept: NODE_CAP, endCursor: 'issue-cursor' },
-      { path: 'issues.nested.nodes', kept: NODE_CAP },
-    ]);
+    expect(result.data).toEqual(input);
+    expect(result.meta).toEqual({ truncations: [], stringsClipped: 0 });
   });
 
-  it('clips long strings with a refetch marker', () => {
-    const result = compactLinearResult({ body: 'x'.repeat(STRING_CAP + 17) });
-    expect(result.data.body).toBe(
-      `${'x'.repeat(STRING_CAP)}…[truncated ${STRING_CAP}/${STRING_CAP + 17} chars — refetch with a narrower query]`,
-    );
-    expect(result.meta.stringsClipped).toBe(1);
-  });
-
-  it('drops complete values to keep the serialized result in budget', () => {
-    const result = compactLinearResult(
-      { rows: Array.from({ length: 20 }, (_, id) => ({ id, value: 'x'.repeat(100) })) },
-      { resultBudget: 500 },
-    );
-    expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThanOrEqual(500);
-    expect(result.meta.resultBudget).toEqual({ maxBytes: 500, truncated: true });
-    expect(result.data.rows.length).toBeLessThan(20);
-  });
-
-  it('uses the 50KB default result budget', () => {
+  it('keeps the exported compatibility constants', () => {
     expect(RESULT_BUDGET).toBe(50 * 1024);
+    expect(NODE_CAP).toBe(100);
+    expect(STRING_CAP).toBe(2_000);
   });
 });
 
