@@ -2,6 +2,7 @@
 
 ## 0.7.0
 
+- Added internal Linear rate-limit telemetry for every documented response header. Results show compact `meta.rateLimit` details only when one similar request may exhaust the request, endpoint, or complexity budget. Search reads retry one documented GraphQL `RATELIMITED` 400 response, while HTTP 429 keeps its existing one-retry boundary.
 - Renamed the `linear_api` tool to `linear`. No alias is registered.
 - Removed natural help. `help` no longer accepts `query` or `search`; those variables fail with a message that names the catalog and the exact-name form.
 - Published a generated `name: purpose` catalog of all 48 operations in the `linear` tool description. Call an operation directly from that catalog. Use `help { "operation": "<name>" }` only for exact parameters; that call also loads the typed tool.

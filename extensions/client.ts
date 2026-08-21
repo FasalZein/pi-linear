@@ -2,7 +2,9 @@ import type { ExtensionContext } from '@earendil-works/pi-coding-agent';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { redactText } from './redact';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { Kind, parse, type FragmentDefinitionNode, type SelectionSetNode } from 'graphql';
+import { redactDeep, redactText } from './redact';
 
 const LINEAR_GRAPHQL_ENDPOINT = 'https://api.linear.app/graphql';
 
@@ -176,6 +178,57 @@ export type LinearGraphQLPathError = {
 };
 
 const LINEAR_GRAPHQL_ERRORS = Symbol('linearGraphQLErrors');
+const LINEAR_RATE_LIMIT_TELEMETRY = Symbol('linearRateLimitTelemetry');
+
+export type LinearRateLimitHeaders = Partial<{
+  'X-Complexity': number;
+  'X-RateLimit-Requests-Limit': number;
+  'X-RateLimit-Requests-Remaining': number;
+  'X-RateLimit-Requests-Reset': number;
+  'X-RateLimit-Endpoint-Requests-Limit': number;
+  'X-RateLimit-Endpoint-Requests-Remaining': number;
+  'X-RateLimit-Endpoint-Requests-Reset': number;
+  'X-RateLimit-Endpoint-Name': string;
+  'X-RateLimit-Complexity-Limit': number;
+  'X-RateLimit-Complexity-Remaining': number;
+  'X-RateLimit-Complexity-Reset': number;
+  'Retry-After': string;
+}>;
+
+export type LinearRateLimitSnapshot = {
+  phase?: 'read' | 'mutation';
+  attempt: number;
+  headers: LinearRateLimitHeaders;
+};
+
+const telemetryStorage = new AsyncLocalStorage<LinearRateLimitSnapshot[]>();
+
+export function withLinearRateLimitTelemetry<T>(work: () => Promise<T>): Promise<T> {
+  if (telemetryStorage.getStore()) return work();
+  const snapshots: LinearRateLimitSnapshot[] = [];
+  return telemetryStorage.run(snapshots, async () => {
+    try {
+      return await work();
+    } catch (error) {
+      if (error instanceof Error) attachTelemetry(error, snapshots, 'linearTelemetry');
+      throw error;
+    }
+  });
+}
+
+export function currentLinearRateLimitTelemetry(): readonly LinearRateLimitSnapshot[] {
+  return telemetryStorage.getStore() ?? [];
+}
+
+export function linearRateLimitTelemetry(value: unknown): readonly LinearRateLimitSnapshot[] {
+  if (!value || typeof value !== 'object') return [];
+  return (value as { [LINEAR_RATE_LIMIT_TELEMETRY]?: readonly LinearRateLimitSnapshot[] })[LINEAR_RATE_LIMIT_TELEMETRY] ?? [];
+}
+
+export function linearErrorTelemetry(error: unknown): readonly LinearRateLimitSnapshot[] {
+  if (!(error instanceof Error)) return [];
+  return (error as Error & { linearTelemetry?: readonly LinearRateLimitSnapshot[] }).linearTelemetry ?? [];
+}
 
 export function linearGraphQLErrors(data: unknown): readonly LinearGraphQLPathError[] {
   if (!data || typeof data !== 'object') return [];
@@ -229,15 +282,93 @@ function errorText(error: GraphQLErrorBody): string {
   return asString(error.message) ?? asString(extensions.type) ?? asString(extensions.code) ?? 'Unknown Linear GraphQL error';
 }
 
-function retryDelay(response: Response): number {
-  const value = response.headers.get('Retry-After');
-  if (!value) return 3_000;
-  const seconds = Number(value);
-  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1_000);
-  return Math.max(0, Date.parse(value) - Date.now());
+const NUMERIC_RATE_LIMIT_HEADERS = [
+  'X-Complexity',
+  'X-RateLimit-Requests-Limit',
+  'X-RateLimit-Requests-Remaining',
+  'X-RateLimit-Requests-Reset',
+  'X-RateLimit-Endpoint-Requests-Limit',
+  'X-RateLimit-Endpoint-Requests-Remaining',
+  'X-RateLimit-Endpoint-Requests-Reset',
+  'X-RateLimit-Complexity-Limit',
+  'X-RateLimit-Complexity-Remaining',
+  'X-RateLimit-Complexity-Reset',
+] as const;
+
+export function parseLinearRateLimitHeaders(headers: Headers): LinearRateLimitHeaders {
+  const parsed: LinearRateLimitHeaders = {};
+  for (const name of NUMERIC_RATE_LIMIT_HEADERS) {
+    const raw = headers.get(name);
+    if (raw === null || !raw.trim()) continue;
+    const value = Number(raw);
+    if (Number.isFinite(value) && value >= 0) parsed[name] = value;
+  }
+  const endpoint = headers.get('X-RateLimit-Endpoint-Name')?.trim();
+  if (endpoint) parsed['X-RateLimit-Endpoint-Name'] = endpoint;
+  const retryAfter = headers.get('Retry-After')?.trim();
+  if (retryAfter && retryAfterDelay(retryAfter) !== undefined) parsed['Retry-After'] = retryAfter;
+  return parsed;
 }
 
-export type LinearGraphQLOptions = { preserveUnusableRoot?: boolean };
+function retryAfterDelay(value: string): number | undefined {
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1_000;
+  const date = Date.parse(value);
+  if (Number.isFinite(date)) return Math.max(0, date - Date.now());
+  return undefined;
+}
+
+function retryDelay(snapshot: LinearRateLimitSnapshot): number {
+  const retryAfter = snapshot.headers['Retry-After'];
+  if (retryAfter) return retryAfterDelay(retryAfter) ?? 3_000;
+  const endpointRemaining = snapshot.headers['X-RateLimit-Endpoint-Requests-Remaining'];
+  const endpointReset = snapshot.headers['X-RateLimit-Endpoint-Requests-Reset'];
+  if (endpointRemaining !== undefined && endpointRemaining <= 0 && endpointReset !== undefined) {
+    return Math.max(0, endpointReset - Date.now());
+  }
+  return 3_000;
+}
+
+function searchRead(query: string): boolean {
+  try {
+    const document = parse(query);
+    const fragments = new Map(document.definitions
+      .filter((definition): definition is FragmentDefinitionNode => definition.kind === Kind.FRAGMENT_DEFINITION)
+      .map((fragment) => [fragment.name.value, fragment]));
+    const roots = new Set<string>();
+    const collect = (selectionSet: SelectionSetNode, seen: Set<string>): void => {
+      for (const selection of selectionSet.selections) {
+        if (selection.kind === Kind.FIELD) roots.add(selection.name.value);
+        else if (selection.kind === Kind.INLINE_FRAGMENT) collect(selection.selectionSet, seen);
+        else if (!seen.has(selection.name.value)) {
+          const fragment = fragments.get(selection.name.value);
+          if (fragment) collect(fragment.selectionSet, new Set([...seen, selection.name.value]));
+        }
+      }
+    };
+    for (const definition of document.definitions) {
+      if (definition.kind !== Kind.OPERATION_DEFINITION || definition.operation !== 'query') continue;
+      collect(definition.selectionSet, new Set());
+    }
+    return roots.has('searchIssues') || roots.has('semanticSearch');
+  } catch {
+    return false;
+  }
+}
+
+function rateLimited(errors: readonly GraphQLErrorBody[]): boolean {
+  return errors.some(({ extensions }) =>
+    extensions?.code === 'RATELIMITED' || extensions?.type === 'RATELIMITED');
+}
+
+function attachTelemetry(target: object, snapshots: readonly LinearRateLimitSnapshot[], key: symbol | string): void {
+  Object.defineProperty(target, key, { value: snapshots.map((snapshot) => redactDeep(snapshot)), configurable: true });
+}
+
+export type LinearGraphQLOptions = {
+  preserveUnusableRoot?: boolean;
+  phase?: 'read' | 'mutation';
+};
 
 type LinearGraphQLFn = <TData>(
   apiKey: string,
@@ -267,7 +398,12 @@ export async function linearGraphQL<TData>(
   options?: LinearGraphQLOptions,
 ): Promise<TData> {
   if (graphqlOverride) return graphqlOverride(apiKey, query, variables, signal, options);
-  let response: Response;
+  const snapshots: LinearRateLimitSnapshot[] = [];
+  const collected = telemetryStorage.getStore();
+  const isSearchRead = searchRead(query);
+  let response!: Response;
+  let body: { data?: TData; errors?: GraphQLErrorBody[] } = {};
+
   for (let attempt = 0; ; attempt++) {
     try {
       response = await fetch(linearGraphQLEndpoint(), {
@@ -278,23 +414,40 @@ export async function linearGraphQL<TData>(
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Linear network error: ${redactText(message, [apiKey])}`);
+      const failure = new Error(`Linear network error: ${redactText(message, [apiKey])}`);
+      attachTelemetry(failure, snapshots, 'linearTelemetry');
+      throw failure;
     }
-    if (response.status !== 429 || attempt === 1) break;
-    await new Promise((resolve) => setTimeout(resolve, retryDelay(response)));
-  }
 
-  let body: { data?: TData; errors?: GraphQLErrorBody[] } = {};
-  try {
-    body = (await response.json()) as typeof body;
-  } catch {
-    // Use the HTTP status below for non-JSON responses.
+    const snapshot: LinearRateLimitSnapshot = {
+      ...(options?.phase ? { phase: options.phase } : {}),
+      attempt: attempt + 1,
+      headers: redactDeep(parseLinearRateLimitHeaders(response.headers ?? new Headers()), [apiKey]),
+    };
+    snapshots.push(snapshot);
+    collected?.push(snapshot);
+    body = {};
+    try {
+      body = (await response.json()) as typeof body;
+    } catch {
+      // Use the HTTP status below for non-JSON responses.
+    }
+
+    const retryHttp = response.status === 429;
+    const retryGraphQL = response.status === 400 && isSearchRead && rateLimited(body.errors ?? []);
+    if (attempt === 0 && (retryHttp || retryGraphQL)) {
+      await new Promise((resolve) => setTimeout(resolve, retryDelay(snapshot)));
+      continue;
+    }
+    break;
   }
 
   const detail = redactText([...new Set((body.errors ?? []).map(errorText))].join('; '), [apiKey]);
   if (!response.ok) {
     const status = redactText(`${response.status} ${response.statusText}`, [apiKey]);
-    throw new Error(`Linear API request failed: ${detail || status}`);
+    const failure = new Error(`Linear API request failed: ${detail || status}`);
+    attachTelemetry(failure, snapshots, 'linearTelemetry');
+    throw failure;
   }
   if (body.errors?.length) {
     const data = body.data;
@@ -302,12 +455,22 @@ export async function linearGraphQL<TData>(
       const scoped = scopedPathErrors(body.errors, apiKey);
       if (scoped && (hasUsableRoot(data, scoped) || options?.preserveUnusableRoot)) {
         Object.defineProperty(data, LINEAR_GRAPHQL_ERRORS, { value: scoped });
+        attachTelemetry(data, snapshots, LINEAR_RATE_LIMIT_TELEMETRY);
         return data;
       }
     }
-    throw new Error(`Linear GraphQL error: ${detail}`);
+    const failure = new Error(`Linear GraphQL error: ${detail}`);
+    attachTelemetry(failure, snapshots, 'linearTelemetry');
+    throw failure;
   }
-  if (!body.data) throw new Error('Linear GraphQL response did not include data.');
+  if (!body.data) {
+    const failure = new Error('Linear GraphQL response did not include data.');
+    attachTelemetry(failure, snapshots, 'linearTelemetry');
+    throw failure;
+  }
+  if (typeof body.data === 'object' && body.data !== null) {
+    attachTelemetry(body.data, snapshots, LINEAR_RATE_LIMIT_TELEMETRY);
+  }
   return body.data;
 }
 

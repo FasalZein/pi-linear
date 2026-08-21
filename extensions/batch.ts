@@ -16,6 +16,7 @@ import {
   linearGraphQLErrors,
   requireIssueReference,
   withLinearGraphQL,
+  withLinearRateLimitTelemetry,
 } from './client';
 import {
   formatInvocation,
@@ -824,7 +825,7 @@ function applyIndependentLookups(
   }
 }
 
-export async function executeBatch(
+async function executeBatchWithTelemetry(
   params: { variables?: Record<string, unknown>; workspace?: string; sink?: 'inline' | 'artifact' },
   mode: MutationMode,
   ctx: ExtensionContext,
@@ -880,7 +881,7 @@ export async function executeBatch(
       query,
       variables,
       signal,
-      { preserveUnusableRoot: true },
+      { preserveUnusableRoot: true, phase: 'read' },
     );
     readRequests = 1;
     const pathErrors = linearGraphQLErrors(raw);
@@ -918,7 +919,7 @@ export async function executeBatch(
       ISSUE_BATCH_CREATE_DOCUMENT,
       { input: { issues: stamped.map((entry) => entry.input) } },
       signal,
-      { preserveUnusableRoot: true },
+      { preserveUnusableRoot: true, phase: 'mutation' },
     );
     mutationRequests = 1;
     collectTransactionalCreates(stamped, raw, linearGraphQLErrors(raw), data, errors);
@@ -943,7 +944,7 @@ export async function executeBatch(
       query,
       mutation.variables,
       signal,
-      { preserveUnusableRoot: true },
+      { preserveUnusableRoot: true, phase: 'mutation' },
     );
     mutationRequests = 1;
     collectAlias(mutation, raw, linearGraphQLErrors(raw), data, errors);
@@ -959,4 +960,13 @@ export async function executeBatch(
     params.sink,
     secrets,
   );
+}
+
+export async function executeBatch(
+  params: { variables?: Record<string, unknown>; workspace?: string; sink?: 'inline' | 'artifact' },
+  mode: MutationMode,
+  ctx: ExtensionContext,
+  signal: AbortSignal | undefined,
+): Promise<JsonObject> {
+  return withLinearRateLimitTelemetry(() => executeBatchWithTelemetry(params, mode, ctx, signal));
 }

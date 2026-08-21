@@ -7,10 +7,13 @@ import { activeSecrets } from './active-secrets';
 import {
   assertIssueNodeMatches,
   assertNamedNodeMatches,
+  currentLinearRateLimitTelemetry,
   linearGraphQL,
   linearGraphQLErrors,
   resolveApiKey,
+  withLinearRateLimitTelemetry,
   type LinearGraphQLPathError,
+  type LinearRateLimitSnapshot,
 } from './client';
 import type {
   GraphQLDocumentVariant,
@@ -55,6 +58,11 @@ export type ResultMeta = {
     reason?: 'requested' | 'spill-threshold' | 'tool-output-boundary';
     inlineComplete: boolean;
     externalized?: Array<{ path: ''; handle: string; bytes: number }>;
+  };
+  rateLimit?: {
+    scopes: Array<'requests' | 'endpoint' | 'complexity'>;
+    retryAttempts: number;
+    responses: Array<Record<string, string | number>>;
   };
 };
 
@@ -109,6 +117,33 @@ type ArtifactResult = {
 
 type RouteCategory = Exclude<ResultCategory, 'local'> | 'composite' | 'batch';
 
+type RateLimitScope = 'requests' | 'endpoint' | 'complexity';
+
+function rateLimitWarning(snapshots: readonly LinearRateLimitSnapshot[]): ResultMeta['rateLimit'] | undefined {
+  const scopes = new Set<RateLimitScope>();
+  for (const { headers } of snapshots) {
+    const requests = headers['X-RateLimit-Requests-Remaining'];
+    if (requests !== undefined && requests <= 1) scopes.add('requests');
+    const endpoint = headers['X-RateLimit-Endpoint-Requests-Remaining'];
+    if (endpoint !== undefined && endpoint <= 1) scopes.add('endpoint');
+    const complexity = headers['X-Complexity'];
+    const complexityRemaining = headers['X-RateLimit-Complexity-Remaining'];
+    if (complexity !== undefined && complexityRemaining !== undefined && complexityRemaining <= complexity) {
+      scopes.add('complexity');
+    }
+  }
+  if (!scopes.size) return undefined;
+  return {
+    scopes: [...scopes],
+    retryAttempts: snapshots.filter(({ attempt }) => attempt > 1).length,
+    responses: snapshots.map(({ phase, attempt, headers }) => ({
+      ...(phase ? { phase } : {}),
+      attempt,
+      ...headers,
+    })),
+  };
+}
+
 function withinToolBoundary(serialized: string): boolean {
   return Buffer.byteLength(serialized, 'utf8') <= DEFAULT_MAX_BYTES
     && serialized.split('\n').length <= DEFAULT_MAX_LINES;
@@ -135,10 +170,12 @@ export async function routeLinearEnvelope<T extends JsonObject>(
     category: RouteCategory;
     sink?: 'inline' | 'artifact';
     secrets?: readonly string[];
+    telemetry?: readonly LinearRateLimitSnapshot[];
   },
 ): Promise<T | ArtifactResult> {
   // Redact before anything is measured, serialized, indexed, written, or returned.
   const envelope = redactDeep(rawEnvelope, options.secrets ?? []) as T;
+  const warning = rateLimitWarning(options.telemetry ?? currentLinearRateLimitTelemetry());
   const existingMeta = envelope.meta;
   if (!existingMeta || typeof existingMeta !== 'object' || Array.isArray(existingMeta)) {
     throw new Error(`Linear ${options.label} result envelope is missing metadata.`);
@@ -148,6 +185,7 @@ export async function routeLinearEnvelope<T extends JsonObject>(
     ...envelope,
     meta: {
       ...(existingMeta as JsonObject),
+      ...(warning ? { rateLimit: warning } : {}),
       routing: { requestedSink, actualSink: 'inline', inlineComplete: true },
     },
   } as T;
@@ -179,6 +217,7 @@ export async function routeLinearEnvelope<T extends JsonObject>(
     index: [],
     meta: {
       ...(existingMeta as JsonObject),
+      ...(warning ? { rateLimit: warning } : {}),
       ...(exceedsBoundary ? {
         resultBudget: {
           maxBytes: DEFAULT_MAX_BYTES,
@@ -224,6 +263,7 @@ export async function routeLinearResult<T extends JsonObject>(
     errors?: readonly LinearGraphQLPathError[];
     view?: ResultView;
     resolution?: JsonObject;
+    telemetry?: readonly LinearRateLimitSnapshot[];
   },
 ): Promise<RoutedEnvelope<T> | ArtifactResult> {
   return routeLinearEnvelope({
@@ -396,7 +436,7 @@ function applyExactNamedCheck(prepared: OperationPreparation, data: JsonObject):
  * tools route through here, so mutation gating, reference resolution, spill, and
  * result routing exist exactly once.
  */
-export async function executeOperation(
+async function executeOperationWithTelemetry(
   operation: LinearOperation,
   options: OperationRunOptions,
   mode: MutationMode,
@@ -440,4 +480,15 @@ export async function executeOperation(
       resolution: prepared.resolution,
     });
   }, secrets);
+}
+
+export async function executeOperation(
+  operation: LinearOperation,
+  options: OperationRunOptions,
+  mode: MutationMode,
+  ctx: ExtensionContext,
+  signal: AbortSignal | undefined,
+): Promise<JsonObject> {
+  return withLinearRateLimitTelemetry(() =>
+    executeOperationWithTelemetry(operation, options, mode, ctx, signal));
 }

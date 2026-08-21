@@ -158,6 +158,14 @@ Raw GraphQL returns usable partial data with all path-scoped errors instead of d
 
 Set `LINEAR_SPILL_BYTES` to change the automatic spill threshold for collection, batch, and raw GraphQL routing.
 
+## Rate-limit telemetry
+
+The extension captures Linear's request, endpoint-request, complexity, reset, endpoint-name, response-complexity, and `Retry-After` headers from each response. This capture makes no extra request. It stays internal and does not change ordinary result JSON.
+
+A result adds one compact `meta.rateLimit` object only when another similar call may exhaust a budget. The request or endpoint scope warns when its remaining count is at most one. The complexity scope warns when its remaining budget is at most the current response's `X-Complexity`. The object contains only received header values, triggered scopes, response attempt identity, and the retry count. Batch responses also identify the read or mutation phase. Artifact routing and `get_result` preserve this object.
+
+HTTP 429 responses keep one automatic retry. For `searchIssues` and `semanticSearch` query reads, a documented GraphQL `RATELIMITED` HTTP 400 response also gets one retry. An explicit `Retry-After` value takes priority. Otherwise, an exhausted endpoint budget uses its endpoint reset time. Other GraphQL validation errors and mutation-body `RATELIMITED` responses do not add retries. Thrown HTTP and GraphQL errors keep redacted telemetry in a non-enumerable internal `linearTelemetry` field without changing the error message.
+
 ## Workspaces and authentication
 
 The optional top-level `workspace` argument selects one stored workspace for one request without changing the active workspace:
