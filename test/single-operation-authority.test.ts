@@ -68,8 +68,8 @@ describe('no second operation-keyed authority', () => {
 });
 
 describe('definitions project from the source', () => {
-  it('gives all 48 operations authored compatibility branches', () => {
-    expect(names).toHaveLength(48);
+  it('gives all 49 operations authored compatibility branches', () => {
+    expect(names).toHaveLength(49);
     for (const definition of operationDefinitions) {
       expect(definition.compatibility.branches.length, definition.name).toBeGreaterThan(0);
     }

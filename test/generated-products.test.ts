@@ -169,7 +169,7 @@ describe('generated products', () => {
       };
       expect(generated.get(operationName), runtime.name).toEqual(metadata);
     }
-    expect(generated).toHaveLength(48);
+    expect(generated).toHaveLength(49);
   });
 
   it('serializes exhaustive compatibility and GraphQL products', () => {
@@ -221,7 +221,7 @@ describe('generated products', () => {
     expect(published.filter(({ name }) => name !== 'batch' && name !== 'get_result')).toEqual(expected);
     expect(published).toContainEqual({
       name: 'batch',
-      purpose: 'Carry several independent named reads in one GraphQL request.',
+      purpose: 'Carry independent reads and optionally one guarded issue-relation delete in two phases.',
     });
     expect(published).toContainEqual({
       name: 'get_result',
@@ -255,11 +255,11 @@ describe('generated products', () => {
     );
   });
 
-  it('keeps get_result loader-only and the public surface at 49 tools', () => {
-    expect(operationDefinitions).toHaveLength(48);
-    expect(typedLinearTools()).toHaveLength(48);
-    expect(expectedNames).toHaveLength(49);
-    expect(manifest.allowedTools).toHaveLength(49);
+  it('keeps get_result loader-only and the public surface at 50 tools', () => {
+    expect(operationDefinitions).toHaveLength(49);
+    expect(typedLinearTools()).toHaveLength(49);
+    expect(expectedNames).toHaveLength(50);
+    expect(manifest.allowedTools).toHaveLength(50);
     expect(manifest.allowedTools).not.toContain('linear_get_result');
     expect((linearApiTool() as any).description).toContain('get_result: Retrieve a stored Linear result by handle.');
   });
@@ -277,8 +277,11 @@ describe('generated products', () => {
       'cardinality-aware', 'get_result', 'path-scoped errors', 'sink:inline',
       'legacy compatibility path', 'exactly `write` plus',
     ]) expect(published).toContain(claim);
-    expect(readme).toContain('49 tool surfaces');
-    expect(reference).toContain('48 inactive typed tools');
+    expect(readme).toContain('50 tool surfaces');
+    expect(readme).toContain('published across all 49 tools');
+    expect(readme).toContain('The guarded `linear_delete_issue_relation` tool is the only delete tool.');
+    expect(readme).not.toContain('Delete, archive, and unarchive tools do not exist.');
+    expect(reference).toContain('49 inactive typed tools');
     expect(published).not.toMatch(/\bTTL\b/i);
     expect(published).not.toMatch(/registers? (?:a )?typed `linear_get_result`/i);
     expect(published).not.toContain('linear-auditor.md');

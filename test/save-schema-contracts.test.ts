@@ -273,7 +273,7 @@ describe('mode-specific field ownership', () => {
 });
 
 describe('provider-facing schemas', () => {
-  it('keeps all 48 typed tools rooted at an object with explicit properties', () => {
+  it('keeps all 49 typed tools rooted at an object with explicit properties', () => {
     for (const tool of tools.values()) {
       const root = tool.parameters as any;
       expect(root.type, tool.name).toBe('object');
@@ -285,7 +285,7 @@ describe('provider-facing schemas', () => {
     for (const useParameters of [false, true]) {
       const converted = convertTools([...tools.values()] as any, useParameters, false)!;
       const declarations = converted[0]!.functionDeclarations as any[];
-      expect(declarations).toHaveLength(48);
+      expect(declarations).toHaveLength(49);
       for (const declaration of declarations) {
         const parameters = declaration.parametersJsonSchema ?? declaration.parameters;
         expect(parameters.type, declaration.name).toBe('object');

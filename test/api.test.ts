@@ -250,7 +250,7 @@ describe('runtime discovery', () => {
     ]);
     const relations = await execute(tool, { operation: 'help', variables: { domain: 'relations' } });
     expect(relations.details.operations.map(({ name }: any) => name)).toEqual([
-      'list_issue_relations', 'create_issue_relation', 'update_issue_relation',
+      'list_issue_relations', 'create_issue_relation', 'update_issue_relation', 'delete_issue_relation',
       'list_project_relations', 'create_project_relation', 'update_project_relation',
     ]);
     const workspace = await execute(tool, { operation: 'help', variables: { domain: 'workspace' } });

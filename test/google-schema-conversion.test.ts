@@ -21,11 +21,11 @@ function walk(value: unknown, visit: (node: Record<string, unknown>) => void): v
 }
 
 describe('Google schema conversion', () => {
-  it('converts all 48 runtime schemas through both Google paths', () => {
-    expect(tools).toHaveLength(48);
+  it('converts all 49 runtime schemas through both Google paths', () => {
+    expect(tools).toHaveLength(49);
     for (const useParameters of [false, true]) {
       const converted = declarations(useParameters);
-      expect(converted, `useParameters=${useParameters}`).toHaveLength(48);
+      expect(converted, `useParameters=${useParameters}`).toHaveLength(49);
       for (const declaration of converted) {
         const parameters = (declaration.parametersJsonSchema ?? declaration.parameters) as Record<string, unknown>;
         expect(declaration.name).toMatch(/^linear_/);

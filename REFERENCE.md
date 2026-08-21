@@ -1,6 +1,6 @@
 # Linear API reference
 
-Version 0.9 of `pi-linear-lite` registers 49 tool surfaces: one active loader, `linear`, plus 48 inactive typed tools. The loader-only `batch` and `get_result` operations add no typed tools. The `linear` tool description publishes the operation catalog. Choose an operation from that catalog and call it directly. Send exactly one of `operation` or `query` to the loader. Send operation inputs through `variables`. Use operation help only when exact parameter names are needed. That call activates the matching typed tool.
+Version 0.9 of `pi-linear-lite` registers 50 tool surfaces: one active loader, `linear`, plus 49 inactive typed tools. The loader-only `batch` and `get_result` operations add no typed tools. The `linear` tool description publishes the operation catalog. Choose an operation from that catalog and call it directly. Send exactly one of `operation` or `query` to the loader. Send operation inputs through `variables`. Use operation help only when exact parameter names are needed. That call activates the matching typed tool.
 
 ## Help protocol
 
@@ -55,6 +55,7 @@ Accepted domains are `issues`, `comments`, `users`, `teams`, `projects`, `cycles
 | `list_issue_relations` | `linear_list_issue_relations` | relations | none | List issue relations. | `{"operation":"list_issue_relations","variables":{}}` |
 | `create_issue_relation` | `linear_create_issue_relation` | relations | issue, relatedIssue, type | Create a relation between two issues. | `{"operation":"create_issue_relation","variables":{"issue":"AEO-258","relatedIssue":"AEO-259","type":"related"}}` |
 | `update_issue_relation` | `linear_update_issue_relation` | relations | id | Update an issue relation. | `{"operation":"update_issue_relation","variables":{"id":"relation-id","type":"blocks"}}` |
+| `delete_issue_relation` | `linear_delete_issue_relation` | relations | relationId, issueId, relatedIssueId, type | Delete one issue relation after exact relation and endpoint verification. | `{"operation":"delete_issue_relation","variables":{"relationId":"33333333-3333-4333-8333-333333333333","issueId":"11111111-1111-4111-8111-111111111111","relatedIssueId":"22222222-2222-4222-8222-222222222222","type":"related"}}` |
 | `list_issue_statuses` | `linear_list_issue_statuses` | workspace | none | List issue workflow states. | `{"operation":"list_issue_statuses","variables":{}}` |
 | `list_issues` | `linear_list_issues` | issues | none | List issues with exact convenience filters. | `{"operation":"list_issues","variables":{"assignee":"me","stateType":"started"}}` |
 | `get_issue` | `linear_get_issue` | issues | issue | Get one issue by exact identifier or UUID. | `{"operation":"get_issue","variables":{"issue":"AEO-258"}}` |
@@ -95,13 +96,15 @@ Accepted domains are `issues`, `comments`, `users`, `teams`, `projects`, `cycles
 ```
 
 ```json
-{ "operation": "batch", "variables": { "reads": [{ "key": "one", "operation": "get_issue", "variables": { "issue": "AEO-258" } }] } }
+{ "operation": "batch", "variables": { "reads": [{ "key": "one", "operation": "get_issue", "variables": { "issue": "AEO-258" } }], "mutations": [{ "key": "remove", "operation": "delete_issue_relation", "variables": { "relationId": "33333333-3333-4333-8333-333333333333", "issueId": "11111111-1111-4111-8111-111111111111", "relatedIssueId": "22222222-2222-4222-8222-222222222222", "type": "related" } }] } }
 ```
 
 ```json
 { "operation": "get_result", "variables": { "handle": "linear-result:v1:550e8400-e29b-41d4-a716-446655440000", "path": "", "offset": 0 } }
 ```
 <!-- END GENERATED LINEAR OPERATIONS -->
+
+A batch can combine independent reads with one guarded `delete_issue_relation`. Its read request includes the exact relation preflight. The delete request runs only after every guard matches and the read-error gate passes.
 
 ## Exact references and fail-closed behavior
 
@@ -189,4 +192,4 @@ Use `query` only when no named operation covers the work. Select only required f
 
 The default entry point authorizes safe mutations by canonical or compatible named operation. Each named operation declares exact mutation roots, and the runtime checks its parsed GraphQL document against that declaration and the safe named-root set.
 
-Raw GraphQL mutations are disabled by default. Set `LINEAR_MUTATIONS=all` to allow them. The read-only entry point and `LINEAR_READONLY=1` reject all named and raw mutations, and `LINEAR_MUTATIONS=all` cannot override them. Ask for user authorization before a mutation even when the runtime permits it.
+Raw GraphQL mutations are disabled by default. Set `LINEAR_MUTATIONS=all` to allow them. The guarded `delete_issue_relation` operation uses normal named mutation authority and does not require that setting. The read-only entry point and `LINEAR_READONLY=1` reject all named and raw mutations, and `LINEAR_MUTATIONS=all` cannot override them. Ask for user authorization before a mutation even when the runtime permits it.

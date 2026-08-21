@@ -2,6 +2,8 @@
 
 ## 0.9.0
 
+- Added `delete_issue_relation`, the only named delete operation. It requires exact relation, source issue, target issue, and relation-type guards, verifies them with one preflight read, and deletes only after an exact match under normal named mutation authority. Generic batch can fold this guard into its read phase before one ordinary mutation.
+- Normalized guarded relation preflight and delete failures to stable operation-specific errors that expose no supplied UUID or active credential.
 - Added the loader-only batch transport: compatible reads share one aliased query, one ordinary mutation runs after the read gate, and independent issue creates use `issueBatchCreate`.
 - Added internal telemetry for every documented Linear rate-limit header. Results show compact `meta.rateLimit` details only when one similar call may exhaust a budget. Search reads retry one documented GraphQL `RATELIMITED` 400 response.
 

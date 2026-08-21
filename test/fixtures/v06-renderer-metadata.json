@@ -305,6 +305,22 @@
     ],
     "action": "update"
   },
+  "delete_issue_relation": {
+    "entityKind": "issue_relation",
+    "callFields": [
+      "relationId",
+      "issueId",
+      "relatedIssueId",
+      "type"
+    ],
+    "action": "delete",
+    "targetFields": [
+      "relationId",
+      "issueId",
+      "relatedIssueId",
+      "type"
+    ]
+  },
   "list_issue_statuses": {
     "entityKind": "issue_status",
     "callFields": [

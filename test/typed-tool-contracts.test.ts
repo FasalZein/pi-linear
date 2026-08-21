@@ -80,7 +80,7 @@ describe('typed tool registration', () => {
     expect(names).toContain('linear');
     expect(names.filter((name) => name !== 'linear').sort())
       .toEqual([...typedToolNames()].sort());
-    expect(typedToolNames()).toHaveLength(48);
+    expect(typedToolNames()).toHaveLength(49);
   });
 
   it('uses upstream tool names', () => {
@@ -90,10 +90,9 @@ describe('typed tool registration', () => {
     }
   });
 
-  it('registers no destructive operation', () => {
-    for (const name of typedToolNames()) {
-      expect(name).not.toMatch(/^linear_(delete|archive|unarchive)_/);
-    }
+  it('registers only the guarded issue-relation delete as a destructive operation', () => {
+    expect(typedToolNames().filter((name) => /^linear_(delete|archive|unarchive)_/.test(name)))
+      .toEqual(['linear_delete_issue_relation']);
   });
 
   it('keeps every typed tool inactive at session start and preserves other tools', () => {
@@ -310,7 +309,7 @@ function forbiddenAliases(operationName: string): string[] {
 describe('canonical typed contract', () => {
   it('covers every catalog operation exactly once', () => {
     expect(missingCanonicalOperations()).toEqual([]);
-    expect(Object.keys(CANONICAL_OPERATIONS)).toHaveLength(48);
+    expect(Object.keys(CANONICAL_OPERATIONS)).toHaveLength(49);
   });
 
   it('publishes no v0.4 compatibility alias', () => {
@@ -347,7 +346,7 @@ describe('canonical typed contract', () => {
   });
 });
 
-describe('typed schema validation across all 48 tools', () => {
+describe('typed schema validation across all 49 tools', () => {
   it('accepts one canonical sample for every valid branch', () => {
     for (const [operationName, contract] of Object.entries(CANONICAL_OPERATIONS)) {
       const toolName = `linear_${operationName}`;
@@ -638,7 +637,7 @@ describe('schema cost', () => {
     const sorted = [...typed].sort((left, right) => left.bytes - right.bytes);
 
     console.log(`always-on linear schema: ${alwaysOn} bytes`);
-    console.log(`all 48 typed schemas: ${total} bytes (median ${sorted[Math.floor(sorted.length / 2)]!.bytes}, min ${sorted[0]!.bytes} ${sorted[0]!.name}, max ${sorted.at(-1)!.bytes} ${sorted.at(-1)!.name})`);
+    console.log(`all 49 typed schemas: ${total} bytes (median ${sorted[Math.floor(sorted.length / 2)]!.bytes}, min ${sorted[0]!.bytes} ${sorted[0]!.name}, max ${sorted.at(-1)!.bytes} ${sorted.at(-1)!.name})`);
     for (const name of ['linear_get_issue', 'linear_list_issues', 'linear_create_issue', 'linear_create_comment', 'linear_update_issue']) {
       console.log(`  ${name}: ${typed.find((tool) => tool.name === name)!.bytes} bytes`);
     }

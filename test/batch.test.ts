@@ -102,7 +102,7 @@ describe('batch help and catalog', () => {
 
   it('publishes batch in the linear tool description without changing the TypeBox parameters', () => {
     const tool = linearApiTool() as any;
-    expect(tool.description).toContain('batch: Carry several independent named reads in one GraphQL request.');
+    expect(tool.description).toContain('batch: Carry independent reads and optionally one guarded issue-relation delete in two phases.');
     expect(Object.keys(tool.parameters.properties).sort()).toEqual(['operation', 'query', 'sink', 'variables', 'workspace']);
   });
 });

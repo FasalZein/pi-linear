@@ -1,11 +1,13 @@
-import { resolveIssueReference } from "../client";
+import { linearGraphQL, linearGraphQLErrors, resolveIssueReference } from "../client";
 import { projection } from "../selections";
 import {
 	mergedInput,
 	p,
 } from "../operation-types";
 import type {
+	BatchLookupValues,
 	LinearOperation,
+	OperationPreparation,
 	OperationSource,
 	OperationDefinition,
 } from "../operation-types";
@@ -18,6 +20,60 @@ import {
 	listOperation,
 	simpleMutation,
 } from "./shared";
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ISSUE_RELATION_TYPES = new Set(["blocks", "duplicate", "related", "similar"]);
+const RELATION_GUARD_ERROR = "Linear issue relation did not match the exact delete guard.";
+const RELATION_PREFLIGHT_ERROR = "Linear issue relation delete preflight failed.";
+const RELATION_DELETE_ERROR = "Linear issue relation delete failed.";
+const VERIFY_ISSUE_RELATION_DOCUMENT = `query VerifyIssueRelationDelete($id: String!) {
+  issueRelation(id: $id) { id type issue { id } relatedIssue { id } }
+}`;
+const DELETE_ISSUE_RELATION_DOCUMENT = `mutation DeleteIssueRelation($id: String!) {
+  issueRelationDelete(id: $id) { success }
+}`;
+const DELETE_ISSUE_RELATION_VARIANT = {
+	document: DELETE_ISSUE_RELATION_DOCUMENT,
+	root: "issueRelationDelete",
+	mutationResult: {
+		successPath: "success",
+		successValue: true as const,
+		requiredEntityPaths: [],
+	},
+};
+
+type GuardedIssueRelation = {
+	id: string;
+	type: string;
+	issueId: string;
+	relatedIssueId: string;
+};
+
+function guardedDeletePreparation(
+	variables: Record<string, unknown>,
+	relation: GuardedIssueRelation,
+): OperationPreparation {
+	const relationId = String(variables.relationId);
+	const issueId = String(variables.issueId);
+	const relatedIssueId = String(variables.relatedIssueId);
+	const type = String(variables.type);
+	if (
+		relation.id !== relationId
+		|| relation.type !== type
+		|| relation.issueId !== issueId
+		|| relation.relatedIssueId !== relatedIssueId
+	) throw new Error(RELATION_GUARD_ERROR);
+	return {
+		variant: DELETE_ISSUE_RELATION_VARIANT,
+		variables: { id: relationId },
+		telemetryPhase: "mutation",
+		requireNoGraphQLErrors: true,
+		failureMessage: RELATION_DELETE_ERROR,
+		acknowledgement: {
+			issueRelationDelete: { relationId, issueId, relatedIssueId, type, deleted: true },
+		},
+	};
+}
 
 export const issueRelations: readonly OperationDefinition[] = ([
 	listOperation({
@@ -202,6 +258,96 @@ export const issueRelations: readonly OperationDefinition[] = ([
 			return { variables: { id: v.id, input: x }, resolution };
 		},
 	}),
+	{
+		name: "delete_issue_relation",
+		compatibilityBranches: [{ all: ["relationId", "issueId", "relatedIssueId", "type"] }],
+		canonical: {
+			fields: {
+				relationId: "UUID",
+				issueId: "UUID",
+				relatedIssueId: "UUID",
+				type: "IssueRelationType",
+			},
+			branches: [["relationId", "issueId", "relatedIssueId", "type"]],
+		},
+		aliases: [],
+		domain: "relations",
+		purpose: "Delete one issue relation after exact relation and endpoint verification.",
+		resultCategory: "singular",
+		parameters: [
+			p("relationId", "UUID", true),
+			p("issueId", "UUID", true),
+			p("relatedIssueId", "UUID", true),
+			p("type", "IssueRelationType", true),
+		],
+		example: {
+			operation: "delete_issue_relation",
+			variables: {
+				relationId: "33333333-3333-4333-8333-333333333333",
+				issueId: "11111111-1111-4111-8111-111111111111",
+				relatedIssueId: "22222222-2222-4222-8222-222222222222",
+				type: "related",
+			},
+		},
+		document: DELETE_ISSUE_RELATION_DOCUMENT,
+		variants: [DELETE_ISSUE_RELATION_VARIANT],
+		renderKind: "issue_relation",
+		renderTargetFields: ["relationId", "issueId", "relatedIssueId", "type"],
+		semanticException: "All delete guards must be exact UUIDs and the relation type must be closed.",
+		validateVariables(variables) {
+			for (const name of ["relationId", "issueId", "relatedIssueId"])
+				if (typeof variables[name] !== "string" || !UUID.test(variables[name]))
+					throw new Error(`Invalid ${name}: expected a UUID.`);
+			if (typeof variables.type !== "string" || !ISSUE_RELATION_TYPES.has(variables.type))
+				throw new Error("Invalid type: expected blocks, duplicate, related, or similar.");
+		},
+		async prepare(apiKey, variables, signal) {
+			const relationId = String(variables.relationId);
+			let data: {
+				issueRelation: {
+					id?: unknown;
+					type?: unknown;
+					issue?: { id?: unknown } | null;
+					relatedIssue?: { id?: unknown } | null;
+				} | null;
+			};
+			try {
+				data = await linearGraphQL(apiKey, VERIFY_ISSUE_RELATION_DOCUMENT, { id: relationId }, signal, { phase: "read" });
+				if (linearGraphQLErrors(data).length) throw new Error(RELATION_PREFLIGHT_ERROR);
+			} catch {
+				throw new Error(RELATION_PREFLIGHT_ERROR);
+			}
+			const relation = data.issueRelation;
+			if (
+				!relation
+				|| typeof relation.id !== "string"
+				|| typeof relation.type !== "string"
+				|| typeof relation.issue?.id !== "string"
+				|| typeof relation.relatedIssue?.id !== "string"
+			) throw new Error(RELATION_GUARD_ERROR);
+			return guardedDeletePreparation(variables, {
+				id: relation.id,
+				type: relation.type,
+				issueId: relation.issue.id,
+				relatedIssueId: relation.relatedIssue.id,
+			});
+		},
+		batchPrepare(variables) {
+			return {
+				kind: "independent" as const,
+				deferDocument: true as const,
+				lookups: [{
+					field: "issueRelation" as const,
+					requested: String(variables.relationId),
+					failureMessage: RELATION_PREFLIGHT_ERROR,
+				}],
+				finish(resolved: BatchLookupValues) {
+					if (!resolved.issueRelation) throw new Error(RELATION_PREFLIGHT_ERROR);
+					return guardedDeletePreparation(variables, resolved.issueRelation);
+				},
+			};
+		},
+	},
 ] satisfies OperationSource[]).map((operation) =>
 	defineOperation(operation as LinearOperation),
 );

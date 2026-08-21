@@ -470,9 +470,9 @@ function installResolvers() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("independent upstream operation matrix", () => {
-	it("covers all 48 canonical operations exactly once", () => {
+	it("covers the 48 unchanged upstream operations exactly once", () => {
 		expect(UPSTREAM_MATRIX.map(({ name }) => name).sort()).toEqual(
-			Object.keys(operations).sort(),
+			Object.keys(operations).filter((name) => name !== "delete_issue_relation").sort(),
 		);
 	});
 

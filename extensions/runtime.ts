@@ -463,14 +463,30 @@ async function executeOperationWithTelemetry(
     const document = variant?.document ?? operation.document;
     assertMutationAllowed(document, mode, variant ? [variant.root] : []);
     if (variant) mutationExpectation(operation.name, variant);
-    const data = await linearGraphQL<JsonObject>(apiKey, document, prepared.variables, signal);
-    const errors = linearGraphQLErrors(data);
-    if (variant) validateMutationResult(operation.name, data, variant);
-    applyExactIssueCheck(prepared, data);
-    applyExactNamedCheck(prepared, data);
+    let data: JsonObject;
+    let errors: readonly LinearGraphQLPathError[];
+    try {
+      data = await linearGraphQL<JsonObject>(
+        apiKey,
+        document,
+        prepared.variables,
+        signal,
+        prepared.telemetryPhase ? { phase: prepared.telemetryPhase } : undefined,
+      );
+      errors = linearGraphQLErrors(data);
+      if (prepared.requireNoGraphQLErrors && errors.length) {
+        throw new Error(`Linear operation "${operation.name}" returned a GraphQL error.`);
+      }
+      if (variant) validateMutationResult(operation.name, data, variant);
+      applyExactIssueCheck(prepared, data);
+      applyExactNamedCheck(prepared, data);
+    } catch (error) {
+      if (prepared.failureMessage) throw new Error(prepared.failureMessage);
+      throw error;
+    }
     const category = prepared.resultCategory ?? operation.resultCategory;
     if (category === 'local') throw new Error(`Network operation "${operation.name}" cannot use local result routing.`);
-    return routeLinearResult(data, {
+    return routeLinearResult(prepared.acknowledgement ?? data, {
       label: operation.name,
       category,
       sink: options.sink,

@@ -31,6 +31,7 @@ const EXPECTED_MUTATIONS = {
   update_issue_label: { issueLabelUpdate: 'issueLabel' },
   create_issue_relation: { issueRelationCreate: 'issueRelation' },
   update_issue_relation: { issueRelationUpdate: 'issueRelation' },
+  delete_issue_relation: { issueRelationDelete: null },
   create_issue: { issueCreate: 'issue' },
   update_issue: { issueUpdate: 'issue' },
   save_milestone: { projectMilestoneCreate: 'projectMilestone', projectMilestoneUpdate: 'projectMilestone' },
@@ -52,7 +53,7 @@ function selectsPath(selectionSet: SelectionSetNode, path: readonly string[]): b
 
 describe('mutation document result contracts', () => {
   it('co-locates one executable expectation with every current named mutation root', () => {
-    const actual: Record<string, Record<string, string>> = {};
+    const actual: Record<string, Record<string, string | null>> = {};
 
     for (const [name, operation] of Object.entries(operations)) {
       const variants = operation.variants ?? [];
@@ -67,26 +68,26 @@ describe('mutation document result contracts', () => {
         expect(variant.root).toBe(rootSelection.name.value);
         expect(variant.mutationResult.successPath).toBe('success');
         expect(variant.mutationResult.successValue).toBe(true);
-        expect(variant.mutationResult.requiredEntityPaths).toHaveLength(1);
-
-        const entityPath = variant.mutationResult.requiredEntityPaths[0]!;
         const declaredForOperation = EXPECTED_MUTATIONS[
           name as keyof typeof EXPECTED_MUTATIONS
-        ] as Record<string, string> | undefined;
+        ] as Record<string, string | null> | undefined;
         const declaredEntityPath = declaredForOperation?.[variant.root];
         const payloadSelections = rootSelection.selectionSet;
-        expect(declaredEntityPath).toBe(entityPath);
+        expect(variant.mutationResult.requiredEntityPaths).toEqual(
+          declaredEntityPath ? [declaredEntityPath] : [],
+        );
         expect(payloadSelections).toBeDefined();
-        if (!declaredEntityPath || !payloadSelections) throw new Error('Invalid mutation fixture.');
+        if (declaredEntityPath === undefined || !payloadSelections) throw new Error('Invalid mutation fixture.');
         expect(selectsPath(payloadSelections, ['success'])).toBe(true);
-        expect(selectsPath(payloadSelections, declaredEntityPath.split('.'))).toBe(true);
+        if (declaredEntityPath) expect(selectsPath(payloadSelections, declaredEntityPath.split('.'))).toBe(true);
         actual[name] ??= {};
-        actual[name]![variant.root] = entityPath;
+        actual[name]![variant.root] = declaredEntityPath;
 
-        const valid = { [variant.root]: { success: true, [entityPath]: { id: 'entity-id' } } };
+        const entity = declaredEntityPath ? { [declaredEntityPath]: { id: 'entity-id' } } : {};
+        const valid = { [variant.root]: { success: true, ...entity } };
         expect(() => validateMutationResult(name, valid, variant)).not.toThrow();
         expect(() => validateMutationResult(name, {
-          [variant.root]: { success: false, [entityPath]: { id: 'entity-id' } },
+          [variant.root]: { success: false, ...entity },
         }, variant)).toThrow(`Linear operation "${name}" failed mutation expectation: ${variant.root}.success must be true.`);
       }
     }

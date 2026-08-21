@@ -45,7 +45,7 @@ import {
 import { assertMutationAllowed, type MutationMode } from './safety';
 import { projection } from './selections';
 
-export const BATCH_PURPOSE = 'Carry several independent named reads in one GraphQL request.';
+export const BATCH_PURPOSE = 'Carry independent reads and optionally one guarded issue-relation delete in two phases.';
 
 const ALIAS = /^[_A-Za-z][_0-9A-Za-z]*$/;
 const FORBIDDEN_OPERATIONS = new Set(['help', 'batch']);
@@ -131,6 +131,7 @@ type CompiledLookup = {
   aliases: string[];
   ast: DocumentNode;
   variables: Record<string, unknown>;
+  failureMessage?: string;
   resolve: (
     raw: JsonObject,
     pathErrors: ReturnType<typeof linearGraphQLErrors>,
@@ -147,6 +148,7 @@ type PlannedEntry = {
   variant?: GraphQLDocumentVariant;
   lookups?: CompiledLookup[];
   batchFinish?: IndependentPlan['finish'];
+  deferredDocument?: string;
 };
 
 const ISSUE_BATCH_CREATE_DOCUMENT = `mutation BatchIssueCreate($input: IssueBatchCreateInput!) {
@@ -465,6 +467,39 @@ function compileLookup(entryKey: string, lookup: BatchLookup): CompiledLookup {
       },
     };
   }
+  if (lookup.field === 'issueRelation') {
+    const compiled = aliasLookup(prefix, `query ($id: String!) {
+  issueRelation(id: $id) { id type issue { id } relatedIssue { id } }
+}`, { id: lookup.requested });
+    return {
+      field: lookup.field,
+      failureMessage: lookup.failureMessage,
+      ...compiled,
+      resolve(raw, pathErrors) {
+        const scoped = pathErrors.filter((error) => compiled.aliases.includes(String(error.path[0])));
+        if (scoped.length) throw new Error(lookup.failureMessage ?? 'Linear dependent lookup failed.');
+        const relation = raw[compiled.aliases[0]!] as {
+          id?: unknown;
+          type?: unknown;
+          issue?: { id?: unknown } | null;
+          relatedIssue?: { id?: unknown } | null;
+        } | null;
+        if (
+          !relation
+          || typeof relation.id !== 'string'
+          || typeof relation.type !== 'string'
+          || typeof relation.issue?.id !== 'string'
+          || typeof relation.relatedIssue?.id !== 'string'
+        ) throw new Error(lookup.failureMessage ?? 'Linear dependent lookup failed.');
+        return {
+          id: relation.id,
+          type: relation.type,
+          issueId: relation.issue.id,
+          relatedIssueId: relation.relatedIssue.id,
+        };
+      },
+    };
+  }
   const selection = 'id name displayName email';
   if (lookup.requested.toLowerCase() === 'me') {
     const compiled = aliasLookup(prefix, `query { viewer { ${selection} } }`, {});
@@ -570,16 +605,18 @@ async function planEntry(
   if (batchPlan?.kind === 'independent') {
     const document = operation.document;
     if (!document) throw new Error(`Batch entry "${entry.key}" is missing a GraphQL document.`);
-    const { ast, root } = aliasDocument(entry.key, document);
+    const variant = operation.variants?.[0];
+    const compiled = batchPlan.deferDocument ? undefined : aliasDocument(entry.key, document);
     return {
       key: entry.key,
-      root,
-      document: print(ast),
+      root: compiled?.root ?? variant?.root ?? '',
+      document: compiled ? print(compiled.ast) : '',
       variables: {},
       operationName: operation.name,
-      variant: operation.variants?.[0],
+      variant,
       lookups: batchPlan.lookups.map((lookup) => compileLookup(entry.key, lookup)),
       batchFinish: batchPlan.finish,
+      ...(batchPlan.deferDocument ? { deferredDocument: document } : {}),
     };
   }
   const prepared = await localPrepare(entry.key, operation, entry.variables, signal);
@@ -607,8 +644,12 @@ function collectAlias(
   const scoped = pathErrors.filter((error) => error.path[0] === entry.key);
   if (scoped.length) {
     const partial = raw[entry.key] == null ? undefined : { [entry.root]: raw[entry.key] };
-    for (const error of scoped) {
-      errors.push({ key: entry.key, path: error.path, message: error.message, ...(partial ? { partial } : {}) });
+    if (entry.prepared?.failureMessage) {
+      errors.push({ key: entry.key, path: [entry.key], message: entry.prepared.failureMessage });
+    } else {
+      for (const error of scoped) {
+        errors.push({ key: entry.key, path: error.path, message: error.message, ...(partial ? { partial } : {}) });
+      }
     }
     return;
   }
@@ -631,11 +672,12 @@ function collectAlias(
     }
     if (entry.variant?.mutationResult) validateMutationResult(entry.operationName, mapped, entry.variant);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = entry.prepared?.failureMessage
+      ?? (error instanceof Error ? error.message : String(error));
     errors.push({ key: entry.key, path: [entry.key], message, ...(value == null ? {} : { partial: mapped }) });
     return;
   }
-  data[entry.key] = mapped;
+  data[entry.key] = entry.prepared?.acknowledgement ?? mapped;
 }
 
 export type BatchError = {
@@ -818,6 +860,14 @@ function applyIndependentLookups(
     try {
       entry.prepared = entry.batchFinish(resolved);
       entry.variables = prefixVariables(entry.key, entry.prepared.variables);
+      if (entry.deferredDocument) {
+        const document = entry.prepared.variant?.document ?? entry.deferredDocument;
+        const compiled = aliasDocument(entry.key, document);
+        entry.document = print(compiled.ast);
+        entry.root = compiled.root;
+        entry.variant = entry.prepared.variant ?? entry.variant;
+        entry.deferredDocument = undefined;
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       errors.push({ key: entry.key, path: [entry.key], message });
@@ -863,6 +913,7 @@ async function executeBatchWithTelemetry(
   const errors: BatchError[] = [];
   let readRequests = 0;
   let mutationRequests = 0;
+  let readPhaseFailed = false;
   const aliasCount = reads.length + mutations.length;
 
   const readDocuments = [
@@ -876,20 +927,28 @@ async function executeBatchWithTelemetry(
       ...reads.map((entry) => entry.variables),
       ...lookups.map((lookup) => lookup.variables),
     );
-    const raw = await linearGraphQL<JsonObject>(
-      apiKey,
-      query,
-      variables,
-      signal,
-      { preserveUnusableRoot: true, phase: 'read' },
-    );
+    let raw: JsonObject;
+    try {
+      raw = await linearGraphQL<JsonObject>(
+        apiKey,
+        query,
+        variables,
+        signal,
+        { preserveUnusableRoot: true, phase: 'read' },
+      );
+    } catch (error) {
+      const failureMessage = lookups.find((lookup) => lookup.failureMessage)?.failureMessage;
+      if (failureMessage) throw new Error(failureMessage);
+      throw error;
+    }
     readRequests = 1;
     const pathErrors = linearGraphQLErrors(raw);
+    readPhaseFailed = pathErrors.length > 0;
     for (const entry of reads) collectAlias(entry, raw, pathErrors, data, errors);
     applyIndependentLookups(mutations, raw, pathErrors, errors);
   }
 
-  if (errors.length && mutations.length) {
+  if ((readPhaseFailed || errors.length) && mutations.length) {
     const mutationKeys = new Set(mutations.map(({ key }) => key));
     const attemptedErrors = errors.filter(({ key }) => !mutationKeys.has(key));
     return envelope(
@@ -939,15 +998,29 @@ async function executeBatchWithTelemetry(
     const mutation = mutations[0]!;
     const query = mergeDocuments(OperationTypeNode.MUTATION, 'BatchMutation', [parse(mutation.document)]);
     assertMutationAllowed(query, mode, [mutation.root]);
-    const raw = await linearGraphQL<JsonObject>(
-      apiKey,
-      query,
-      mutation.variables,
-      signal,
-      { preserveUnusableRoot: true, phase: 'mutation' },
-    );
-    mutationRequests = 1;
-    collectAlias(mutation, raw, linearGraphQLErrors(raw), data, errors);
+    let raw: JsonObject | undefined;
+    try {
+      raw = await linearGraphQL<JsonObject>(
+        apiKey,
+        query,
+        mutation.variables,
+        signal,
+        { preserveUnusableRoot: true, phase: 'mutation' },
+      );
+      mutationRequests = 1;
+    } catch (error) {
+      if (!mutation.prepared?.failureMessage) throw error;
+      mutationRequests = 1;
+      errors.push({ key: mutation.key, path: [mutation.key], message: mutation.prepared.failureMessage });
+    }
+    if (raw) {
+      const pathErrors = linearGraphQLErrors(raw);
+      if (mutation.prepared?.failureMessage && pathErrors.length) {
+        errors.push({ key: mutation.key, path: [mutation.key], message: mutation.prepared.failureMessage });
+      } else {
+        collectAlias(mutation, raw, pathErrors, data, errors);
+      }
+    }
   }
 
   return envelope(
