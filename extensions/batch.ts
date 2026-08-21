@@ -913,6 +913,7 @@ async function executeBatchWithTelemetry(
   const errors: BatchError[] = [];
   let readRequests = 0;
   let mutationRequests = 0;
+  let readPhaseFailed = false;
   const aliasCount = reads.length + mutations.length;
 
   const readDocuments = [
@@ -942,11 +943,12 @@ async function executeBatchWithTelemetry(
     }
     readRequests = 1;
     const pathErrors = linearGraphQLErrors(raw);
+    readPhaseFailed = pathErrors.length > 0;
     for (const entry of reads) collectAlias(entry, raw, pathErrors, data, errors);
     applyIndependentLookups(mutations, raw, pathErrors, errors);
   }
 
-  if (errors.length && mutations.length) {
+  if ((readPhaseFailed || errors.length) && mutations.length) {
     const mutationKeys = new Set(mutations.map(({ key }) => key));
     const attemptedErrors = errors.filter(({ key }) => !mutationKeys.has(key));
     return envelope(
@@ -996,7 +998,7 @@ async function executeBatchWithTelemetry(
     const mutation = mutations[0]!;
     const query = mergeDocuments(OperationTypeNode.MUTATION, 'BatchMutation', [parse(mutation.document)]);
     assertMutationAllowed(query, mode, [mutation.root]);
-    let raw: JsonObject;
+    let raw: JsonObject | undefined;
     try {
       raw = await linearGraphQL<JsonObject>(
         apiKey,
@@ -1005,12 +1007,20 @@ async function executeBatchWithTelemetry(
         signal,
         { preserveUnusableRoot: true, phase: 'mutation' },
       );
+      mutationRequests = 1;
     } catch (error) {
-      if (mutation.prepared?.failureMessage) throw new Error(mutation.prepared.failureMessage);
-      throw error;
+      if (!mutation.prepared?.failureMessage) throw error;
+      mutationRequests = 1;
+      errors.push({ key: mutation.key, path: [mutation.key], message: mutation.prepared.failureMessage });
     }
-    mutationRequests = 1;
-    collectAlias(mutation, raw, linearGraphQLErrors(raw), data, errors);
+    if (raw) {
+      const pathErrors = linearGraphQLErrors(raw);
+      if (mutation.prepared?.failureMessage && pathErrors.length) {
+        errors.push({ key: mutation.key, path: [mutation.key], message: mutation.prepared.failureMessage });
+      } else {
+        collectAlias(mutation, raw, pathErrors, data, errors);
+      }
+    }
   }
 
   return envelope(

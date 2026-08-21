@@ -278,6 +278,50 @@ describe('delete_issue_relation strict guarded delete', () => {
     for (const secret of [RELATION, ISSUE, RELATED, SECRET]) expect(text).not.toContain(secret);
   });
 
+  it('blocks the guarded mutation after an unexpected-alias read error', async () => {
+    const upstreamError = { path: ['unexpected'], message: leaked };
+    const requests: Array<{ query: string }> = [];
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const request = JSON.parse(String(init.body));
+      requests.push(request);
+      return response({
+        data: {
+          _lookup_remove_issueRelation: { id: RELATION, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: RELATED } },
+        },
+        errors: [upstreamError],
+      });
+    });
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = SECRET;
+    const result = await batchDelete();
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.query).not.toContain('issueRelationDelete');
+    expect(result.details).toMatchObject({ data: {}, errors: [], skipped: ['remove'] });
+    const text = JSON.stringify(result.details);
+    for (const secret of [RELATION, ISSUE, RELATED, SECRET]) expect(text).not.toContain(secret);
+  });
+
+  it('blocks the guarded mutation after a pathless read error', async () => {
+    const requests: Array<{ query: string }> = [];
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const request = JSON.parse(String(init.body));
+      requests.push(request);
+      return response({
+        data: {
+          _lookup_remove_issueRelation: { id: RELATION, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: RELATED } },
+        },
+        errors: [{ message: leaked }],
+      });
+    });
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = SECRET;
+    const error = await batchDelete().catch((value: Error) => value);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.query).not.toContain('issueRelationDelete');
+    expect(error.message).toBe('Linear issue relation delete preflight failed.');
+    for (const secret of [RELATION, ISSUE, RELATED, SECRET]) expect(error.message).not.toContain(secret);
+  });
+
   it('uses the existing read-error gate and keeps the guarded mutation unsent', async () => {
     const requests: Array<{ query: string }> = [];
     const fetch = vi.fn(async (_url: string, init: RequestInit) => {
@@ -301,6 +345,33 @@ describe('delete_issue_relation strict guarded delete', () => {
       skipped: ['remove'],
       meta: { requests: { read: 1, mutation: 0 } },
     });
+  });
+
+  it.each([
+    ['unexpected alias', { path: ['unexpected'], message: leaked }],
+    ['pathless', { message: leaked }],
+  ])('rejects a false batch acknowledgement after an %s delete error', async (_case, upstreamError) => {
+    const requests: Array<{ query: string }> = [];
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const request = JSON.parse(String(init.body));
+      requests.push(request);
+      if (request.query.includes('BatchRead')) return response({ data: {
+        _lookup_remove_issueRelation: { id: RELATION, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: RELATED } },
+      } });
+      return response({ data: { remove: { success: true } }, errors: [upstreamError] });
+    });
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = SECRET;
+    const result = await batchDelete();
+    expect(requests).toHaveLength(2);
+    expect(result.details).toMatchObject({
+      data: {},
+      errors: [{ key: 'remove', path: ['remove'], message: 'Linear issue relation delete failed.' }],
+      skipped: [],
+    });
+    expect(result.details.data.remove).toBeUndefined();
+    const text = JSON.stringify(result.details);
+    for (const secret of [RELATION, ISSUE, RELATED, SECRET]) expect(text).not.toContain(secret);
   });
 
   it('keeps batch delete failures keyed and strips echoed guards and credentials', async () => {
