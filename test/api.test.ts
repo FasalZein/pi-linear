@@ -108,12 +108,12 @@ describe('named operations', () => {
     expect(() => resolveRequest({ operation: 'get_issue', query: 'query { viewer { id } }' })).toThrow(message);
   });
 
-  it('teaches help for unknown operations and the example for invalid parameters', () => {
+  it('teaches help for unknown operations and complete canonical fields for invalid parameters', () => {
     expect(() => resolveRequest({ operation: 'missing' })).toThrow(
       'Unknown Linear operation "missing". Send { "operation": "help" }.',
     );
     expect(() => resolveRequest({ operation: 'get_issue', variables: { teamKey: 'AEO', extra: true } })).toThrow(
-      'Invalid parameters for "get_issue": missing issue; unknown extra. Valid parameters: issue: IssueReference (required), view: ResultView (optional). Example: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }.',
+      'Invalid parameters for "get_issue": missing issue; unknown extra. Valid parameters: canonical fields issue, view. Example: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }.',
     );
   });
 
@@ -226,6 +226,19 @@ describe('runtime discovery', () => {
     expect(tool.description).not.toContain('get_issue(');
   });
 
+  it('publishes the complete create_issue canonical contract without raw input guidance', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const result = await execute(linearApiTool() as any, {
+      operation: 'help', variables: { operation: 'create_issue' },
+    });
+    const names = result.details.parameters.map(({ name }: { name: string }) => name);
+    expect(names).toContain('projectId');
+    expect(names).toContain('labelIds');
+    expect(names).not.toContain('input');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('returns zero-argument, domain, and operation help without network calls', async () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
@@ -315,8 +328,10 @@ describe('runtime discovery', () => {
       'Unknown Linear operation "missing". Send { "operation": "help" }.',
     );
     await expect(execute(tool, { operation: 'get_issue', variables: { teamKey: 'AEO' } })).rejects.toThrow(
-      'Valid parameters: issue: IssueReference (required), view: ResultView (optional). Example: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }.',
+      'Valid parameters: canonical fields issue, view. Example: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }.',
     );
+    await expect(execute(tool, { operation: 'create_issue', variables: { title: 'T', project: 'Roadmap', labels: ['bad'] } }))
+      .rejects.toThrow(/Valid parameters: canonical fields .*projectId.*labelIds/);
     expect(fetch).not.toHaveBeenCalled();
   });
 

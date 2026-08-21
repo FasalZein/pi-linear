@@ -25,6 +25,23 @@ import { users } from "./users";
 import { views } from "./views";
 import { issueStatuses, workspaceSwitch } from "./workspace";
 
+export const BATCH_HELP_EXAMPLE = {
+	operation: "batch",
+	variables: {
+		reads: [{ key: "issue", operation: "get_issue", variables: { issue: "AEO-258" } }],
+		mutations: [{
+			key: "remove",
+			operation: "delete_issue_relation",
+			variables: {
+				id: "11111111-1111-4111-8111-111111111111",
+				issueId: "22222222-2222-4222-8222-222222222222",
+				relatedIssueId: "33333333-3333-4333-8333-333333333333",
+				type: "related",
+			},
+		}],
+	},
+} as const;
+
 export const DOMAINS = [
 	"issues",
 	"comments",

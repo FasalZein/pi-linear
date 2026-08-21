@@ -67,7 +67,7 @@ export type OperationPreparation = {
 	/** Stable external error for an upstream mutation failure. */
 	failureMessage?: string;
 };
-export type BatchLookupField = "parent" | "team" | "state" | "assignee" | "issueRelation";
+export type BatchLookupField = "parent" | "team" | "state" | "assignee" | "project" | "issueRelation";
 export type BatchLookup = {
 	field: BatchLookupField;
 	requested: string;
@@ -81,6 +81,7 @@ export type BatchLookupValues = {
 	team?: { id: string; key: string };
 	state?: { id: string; name: string; teamId: string };
 	assignee?: { id: string };
+	project?: { id: string; name: string };
 	issueRelation?: {
 		id: string;
 		type: string;

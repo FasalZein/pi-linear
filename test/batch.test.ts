@@ -93,11 +93,17 @@ describe('batch help and catalog', () => {
     expect(result.details.loadedTools).toBeUndefined();
     expect(result.details.parameters).toEqual(
       expect.arrayContaining([
-        { name: 'reads', type: 'BatchEntry[]', required: false },
-        { name: 'mutations', type: 'BatchEntry[]', required: false },
+        { name: 'reads', type: '{ key, operation, variables }[]', required: false },
+        { name: 'mutations', type: '{ key, operation, variables }[]', required: false },
       ]),
     );
-    expect(result.details.example).toMatchObject({ operation: 'batch' });
+    expect(result.details.entry).toContain('{ key, operation, variables }');
+    expect(result.details.entry).toMatch(/valid GraphQL alias/i);
+    expect(result.details.entry).toMatch(/unique/i);
+    expect(result.details.example.variables).toMatchObject({
+      reads: [{ key: 'issue', operation: 'get_issue', variables: { issue: 'AEO-258' } }],
+      mutations: [{ key: 'remove', operation: 'delete_issue_relation' }],
+    });
   });
 
   it('publishes batch in the linear tool description without changing the TypeBox parameters', () => {
@@ -212,6 +218,15 @@ describe('batch read phase', () => {
     ]);
     expect(result.details.skipped).toEqual(['edit']);
     expect(result.details.meta.requests).toEqual({ read: 1, mutation: 0 });
+  });
+
+  it('directly corrects the observed name field mistake with the exact entry shape', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    await expect(batch([
+      { name: 'issue', operation: 'get_issue', variables: { issue: 'AEO-1' } },
+    ])).rejects.toThrow('Batch entries use "key", not "name". Send { key, operation, variables }.');
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('rejects duplicate, invalid, and empty keys before network access', async () => {
@@ -500,6 +515,8 @@ describe('batch mutation phase', () => {
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const STATE_ID = '44444444-4444-4444-8444-444444444444';
 const USER_ID = '55555555-5555-4555-8555-555555555555';
+const PROJECT_ID = '66666666-6666-4666-8666-666666666666';
+const LABEL_ID = '77777777-7777-4777-8777-777777777777';
 
 function aliases(query: string, field: string): string[] {
   return [...query.matchAll(new RegExp(`(\\w+)\\s*:\\s*${field}\\b`, 'g'))].map((match) => match[1]!);
@@ -519,6 +536,7 @@ function lookupData(query: string, overrides: Record<string, unknown> = {}) {
   for (const alias of aliases(query, 'viewer')) data[alias] = user;
   for (const alias of aliases(query, 'user')) data[alias] = user;
   for (const alias of aliases(query, 'users')) data[alias] = { nodes: [user] };
+  for (const alias of aliases(query, 'projects')) data[alias] = { nodes: [{ id: PROJECT_ID, name: 'Dispatch' }] };
   for (const alias of aliases(query, 'issue')) data[alias] = issueNode(ISSUE_A, 'AEO-1');
   return { ...data, ...overrides };
 }
@@ -870,6 +888,27 @@ describe('batch transactional create', () => {
     expect(requests[1]!.query).toContain('write: issueCreate');
     expect(result.details.data.write.issueCreate.issue.title).toBe('Solo');
     expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
+  });
+
+  it('converts loader project and labels aliases inside a batch create', async () => {
+    const { requests } = graphqlStub((request) => {
+      if (request.query.includes('issueCreate')) {
+        const input = Object.values(request.variables).find((value) =>
+          typeof value === 'object' && value !== null && 'projectId' in value,
+        ) as Record<string, unknown>;
+        expect(input).toMatchObject({ projectId: PROJECT_ID, labelIds: [LABEL_ID] });
+        expect(input).not.toHaveProperty('project');
+        expect(input).not.toHaveProperty('labels');
+        return { body: { data: { write: { success: true, issue: { id: ISSUE_A, identifier: 'AEO-1', title: 'Solo' } } } } };
+      }
+      return { body: { data: lookupData(request.query) } };
+    });
+    const result = await execute({
+      operation: 'batch',
+      variables: { mutations: [createIssue('write', 'Solo', { project: 'Dispatch', labels: [LABEL_ID] })] },
+    });
+    expect(requests).toHaveLength(2);
+    expect(result.details.data.write.issueCreate.issue.title).toBe('Solo');
   });
 
   it('leaves the single-operation create_issue path on issueCreate', async () => {

@@ -8554,6 +8554,16 @@
           "required": false
         },
         {
+          "name": "project",
+          "type": "ProjectReference",
+          "required": false
+        },
+        {
+          "name": "labels",
+          "type": "[UUID!]",
+          "required": false
+        },
+        {
           "name": "input",
           "type": "Input",
           "required": false

@@ -9,7 +9,7 @@ import manifest from '../extensions/generated/linear-tools.manifest.json';
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const expectedTools = ['write', ...manifest.allowedTools].join(', ');
 const staleAgent = (name: string) =>
-  `---\nname: ${name}\ntools: all, read, bash, linear_old\nmode: background\n---\n\nBody for ${name}.\n`;
+  `---\nname: ${name}\ntools: all, read, bash, linear_old\nmode: background\ncustom: preserve-${name}\n---\n\nIntro for ${name}.\n\n## Tool surface\n\nOld tool rules.\n\n## Query discipline\n\nAlways use first: 10. Never paginate to exhaustion.\n\n## Job 1 — Execute a Linear task\n\nPreserve job instructions for ${name}.\n`;
 
 function npm(script: string, home: string, paths: string[] = []) {
   return spawnSync('npm', ['run', script, ...(paths.length ? ['--', ...paths] : [])], {
@@ -45,14 +45,35 @@ describe('bound Linear agent allowlist package scripts', () => {
     expect(`${result.stdout}${result.stderr}`).toContain('External Linear agent allowlist is stale');
   }, 120_000);
 
-  it('writes exactly write plus current Linear tools on the bare sync', async () => {
+  it('synchronizes owned dispatch rules while preserving unrelated frontmatter and job instructions', async () => {
     expect(npm('sync:linear-agent-allowlists', home).status).toBe(0);
-    expect(await readFile(linear, 'utf8')).toBe(
-      `---\nname: linear\ntools: ${expectedTools}\nmode: background\n---\n\nBody for linear.\n`,
-    );
+    const synced = await readFile(linear, 'utf8');
+    expect(synced).toContain(`tools: ${expectedTools}`);
+    expect(synced).toContain('custom: preserve-linear');
+    expect(synced).toContain('Intro for linear.');
+    expect(synced).toContain('Preserve job instructions for linear.');
+    expect(synced).toContain('Before the first use of an unfamiliar named operation, call loader help');
+    expect(synced).toContain('Help is local and makes no Linear network request.');
+    expect(synced).toContain('call that typed tool with only its declared direct parameters');
+    expect(synced).toContain('Never send loader fields');
+    expect(synced).toContain('A batch entry is exactly `{ key, operation, variables }`');
+    expect(synced).toContain('Do not guess parameter names or nested `input` shapes.');
+    expect(synced).toContain('Use `get_result` through the loader for lossless recovery');
+    expect(synced).toContain('Continue through pages only until the requested result is complete.');
+    expect(synced).not.toContain('first: 10');
+    expect(synced).not.toContain('Never paginate to exhaustion');
     expect(npm('check:linear-agent-allowlists', home).status).toBe(0);
     expect(npm('generate:check', home).status).toBe(0);
   }, 180_000);
+
+  it('detects owned instruction drift and sync repairs only the owned section', async () => {
+    const before = await readFile(linear, 'utf8');
+    const drifted = before.replace('Help is local and makes no Linear network request.', 'Help might use the network.');
+    await writeFile(linear, drifted);
+    expect(npm('check:linear-agent-allowlists', home).status).toBe(1);
+    expect(npm('sync:linear-agent-allowlists', home).status).toBe(0);
+    expect(await readFile(linear, 'utf8')).toBe(before);
+  }, 120_000);
 
   it('does not require the retired linear-auditor deployment file', async () => {
     expect(await readFile(linear, 'utf8')).toContain(`tools: ${expectedTools}`);
@@ -66,9 +87,13 @@ describe('bound Linear agent allowlist package scripts', () => {
 
     expect(npm('sync:linear-agent-allowlists', home, paths).status).toBe(0);
     for (const [index, path] of paths.entries()) {
-      expect(await readFile(path, 'utf8')).toBe(
-        `---\nname: custom-${index + 1}\ntools: ${expectedTools}\nmode: background\n---\n\nBody for custom-${index + 1}.\n`,
-      );
+      const synced = await readFile(path, 'utf8');
+      expect(synced).toContain(`name: custom-${index + 1}`);
+      expect(synced).toContain(`tools: ${expectedTools}`);
+      expect(synced).toContain(`custom: preserve-custom-${index + 1}`);
+      expect(synced).toContain(`Preserve job instructions for custom-${index + 1}.`);
+      expect(synced).toContain('<!-- pi-linear:tool-surface:start -->');
+      expect(synced).toContain('<!-- pi-linear:query-discipline:start -->');
     }
     expect(npm('check:linear-agent-allowlists', home, [paths[0]!]).status).toBe(0);
     expect(npm('check:linear-agent-allowlists', home, paths).status).toBe(0);

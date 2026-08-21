@@ -6,6 +6,7 @@ import { BATCH_PURPOSE } from '../extensions/batch';
 import { operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
 import { GET_RESULT_PURPOSE } from '../extensions/result-handles';
 import { buildTypedToolMetadata } from '../extensions/typed-tool-metadata';
+import { LINEAR_AGENT_QUERY_DISCIPLINE, LINEAR_AGENT_TOOL_SURFACE } from './linear-agent-contract';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const generated = resolve(root, 'extensions/generated');
@@ -185,6 +186,18 @@ export async function generate(check = false): Promise<void> {
   }
 }
 
+function replaceSection(source: string, heading: string, nextHeading: string, content: string): string {
+  const start = source.indexOf(`${heading}\n`);
+  const end = source.indexOf(nextHeading, start + heading.length);
+  if (start < 0 || end < 0) throw new Error(`External Linear agent is missing owned section boundary: ${heading}.`);
+  return `${source.slice(0, start)}${content}\n\n${source.slice(end)}`;
+}
+
+function replaceOwnedAgentContract(source: string): string {
+  const withTools = replaceSection(source, '## Tool surface', '## Query discipline', LINEAR_AGENT_TOOL_SURFACE);
+  return replaceSection(withTools, '## Query discipline', '## Job 1', LINEAR_AGENT_QUERY_DISCIPLINE);
+}
+
 function replaceToolsLine(source: string, allowedTools: readonly string[]): string {
   if (!/^tools:\s*(.*)$/m.test(source)) throw new Error('Agent allowlist has no tools frontmatter field.');
   return source.replace(/^tools:.*$/m, `tools: ${['write', ...allowedTools].join(', ')}`);
@@ -198,7 +211,7 @@ export async function syncAllowlistFile(path: string, check = false): Promise<bo
   const source = await readFile(path, 'utf8').catch(() => {
     throw new Error(`External Linear agent allowlist is missing: ${path}`);
   });
-  const next = replaceToolsLine(source, manifest().allowedTools);
+  const next = replaceOwnedAgentContract(replaceToolsLine(source, manifest().allowedTools));
   if (next === source) return false;
   if (check) throw new Error(`External Linear agent allowlist is stale: ${path}`);
   await writeFile(path, next);

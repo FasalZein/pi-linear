@@ -40,6 +40,80 @@ function graphqlStub(
 
 afterEach(() => vi.unstubAllGlobals());
 
+describe("loader create_issue compatibility", () => {
+	it("converts project and labels aliases into canonical mutation input", async () => {
+		const { requests } = graphqlStub((query) => query.includes("ResolveNamedEntityByName")
+			? { projects: { nodes: [{ id: PROJECT_ID, name: "Dispatch" }] } }
+			: { teams: { nodes: [{ id: INITIATIVE_ID, key: "AEO" }] } });
+		resolveRequest({ operation: "create_issue", variables: {
+			title: "Fix dispatch", team: "AEO", project: "Dispatch", labels: [MILESTONE_ID],
+		} });
+		const result = await prepare("create_issue", {
+			title: "Fix dispatch", team: "AEO", project: "Dispatch", labels: [MILESTONE_ID],
+		});
+		expect(requests).toHaveLength(2);
+		expect(result.variables.input).toMatchObject({ projectId: PROJECT_ID, labelIds: [MILESTONE_ID] });
+		expect(result.variables.input).not.toHaveProperty("project");
+		expect(result.variables.input).not.toHaveProperty("labels");
+	});
+
+	it("accepts UUID project alias without a project lookup and preserves nested canonical input", async () => {
+		const { requests } = graphqlStub(() => ({ teams: { nodes: [{ id: INITIATIVE_ID, key: "AEO" }] } }));
+		const alias = await prepare("create_issue", { title: "T", team: "AEO", project: PROJECT_ID });
+		expect(alias.variables.input).toMatchObject({ projectId: PROJECT_ID });
+		const nested = await prepare("create_issue", {
+			title: "T", team: "AEO", input: { projectId: PROJECT_ID, labelIds: [MILESTONE_ID] },
+		});
+		expect(nested.variables.input).toMatchObject({ projectId: PROJECT_ID, labelIds: [MILESTONE_ID] });
+		expect(requests).toHaveLength(2);
+	});
+
+	it("executes nested canonical projectId and labelIds through normal mutation preparation", async () => {
+		const original = process.env.LINEAR_API_KEY;
+		process.env.LINEAR_API_KEY = "test-key";
+		const { requests } = graphqlStub((query) => query.includes("issueCreate")
+			? { issueCreate: { success: true, issue: { id: INITIATIVE_ID, identifier: "AEO-9", title: "T" } } }
+			: { teams: { nodes: [{ id: INITIATIVE_ID, key: "AEO" }] } });
+		try {
+			const result = await (linearApiTool() as any).execute(
+				"call", { operation: "create_issue", variables: {
+					title: "T", team: "AEO", input: { projectId: PROJECT_ID, labelIds: [MILESTONE_ID] },
+				} }, undefined, undefined, { hasUI: false },
+			);
+			expect(requests).toHaveLength(2);
+			expect(result.details.data.issueCreate.issue.identifier).toBe("AEO-9");
+			expect(JSON.stringify(result)).not.toContain("Operation aborted");
+		} finally {
+			if (original === undefined) delete process.env.LINEAR_API_KEY;
+			else process.env.LINEAR_API_KEY = original;
+		}
+	});
+
+	it.each([
+		[{ project: "Dispatch", projectId: PROJECT_ID }, /project/],
+		[{ project: "Dispatch", input: { projectId: PROJECT_ID } }, /project/],
+		[{ labels: [MILESTONE_ID], labelIds: [MILESTONE_ID] }, /labels/],
+		[{ labels: [MILESTONE_ID], input: { labelIds: [MILESTONE_ID] } }, /labels/],
+	])("rejects conflicting create aliases before mutation preparation", (extra, message) => {
+		expect(() => resolveRequest({ operation: "create_issue", variables: { title: "T", team: "AEO", ...extra } }))
+			.toThrow(message);
+	});
+
+	it.each([
+		[{ project: "" }, /project/],
+		[{ labels: [] }, /labels/],
+		[{ labels: ["bad"] }, /labels/],
+	])("rejects malformed create aliases before any network request", async (extra, message) => {
+		const fetch = vi.fn();
+		vi.stubGlobal("fetch", fetch);
+		await expect((linearApiTool() as any).execute(
+			"call", { operation: "create_issue", variables: { title: "T", team: "AEO", ...extra } },
+			undefined, undefined, { hasUI: false },
+		)).rejects.toThrow(message);
+		expect(fetch).not.toHaveBeenCalled();
+	});
+});
+
 describe("comment list convenience preparation", () => {
 	it("resolves an exact issue reference into a valid CommentFilter", async () => {
 		const { requests } = graphqlStub((query) =>

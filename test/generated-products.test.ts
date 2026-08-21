@@ -245,14 +245,18 @@ describe('generated products', () => {
     expect(manifest.allowedTools).toEqual(expectedNames);
   });
 
-  it('syncs an exact restricted tools field in external agent fixtures', async () => {
+  it('syncs the restricted tools field and owned dispatch sections in external agent fixtures', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'linear-allowlist-'));
     const path = join(directory, 'agent.md');
-    await writeFile(path, '---\nname: fixture\ntools: all, read, bash, linear_old\nmode: background\n---\n\nBody.\n');
+    await writeFile(path, '---\nname: fixture\ntools: all, read, bash, linear_old\nmode: background\ncustom: keep\n---\n\nIntro.\n\n## Tool surface\n\nOld.\n\n## Query discipline\n\nOld.\n\n## Job 1 — Execute\n\nKeep job.\n');
     await syncAllowlistFile(path);
-    expect(await readFile(path, 'utf8')).toBe(
-      `---\nname: fixture\ntools: write, ${expectedNames.join(', ')}\nmode: background\n---\n\nBody.\n`,
-    );
+    const synced = await readFile(path, 'utf8');
+    expect(synced).toContain(`tools: write, ${expectedNames.join(', ')}`);
+    expect(synced).toContain('custom: keep');
+    expect(synced).toContain('Intro.');
+    expect(synced).toContain('Keep job.');
+    expect(synced).toContain('<!-- pi-linear:tool-surface:start -->');
+    expect(synced).toContain('<!-- pi-linear:query-discipline:start -->');
   });
 
   it('keeps get_result loader-only and the public surface at 50 tools', () => {

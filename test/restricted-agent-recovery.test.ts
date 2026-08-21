@@ -64,7 +64,7 @@ describe('restricted Linear agent recovery', () => {
     process.env.LINEAR_API_KEY = 'test-key';
 
     const agentPath = join(root, 'linear.md');
-    await writeFile(agentPath, '---\nname: linear\ntools: all, read, bash, exec, linear_old\nmode: background\n---\n\nRestricted agent.\n');
+    await writeFile(agentPath, '---\nname: linear\ntools: all, read, bash, exec, linear_old\nmode: background\n---\n\nRestricted agent.\n\n## Tool surface\n\nOld.\n\n## Query discipline\n\nOld.\n\n## Job 1 — Recover\n\nKeep.\n');
     await syncAllowlistFile(agentPath);
     const allowed = toolsFromAgent(await readFile(agentPath, 'utf8'));
 

@@ -187,12 +187,13 @@ describe('v0.6 operation definition authority', () => {
     assertRendererFixtureParity();
   });
 
-  it('projects help, examples, preparation, and raw fallback without behavior changes', () => {
+  it('projects complete canonical help while preserving examples, preparation, and raw fallback', () => {
     for (const definition of operationDefinitions) {
       expect(helpResult({ operation: definition.name })).toMatchObject({
         name: definition.name,
         purpose: definition.purpose,
-        parameters: definition.compatibility.fields,
+        parameters: definition.canonical.fields,
+        requirements: definition.canonical.branches.map(({ all }) => all),
         example: definition.compatibility.example,
       });
       expect(() => resolveRequest(definition.compatibility.example)).not.toThrow();

@@ -53,10 +53,8 @@ const NATURAL_SEARCH_REMOVED = 'Natural search was removed. The operation catalo
 const definitionDomainSet = new Set(operationDefinitions.map(({ domain }) => domain));
 const DEFINITION_DOMAINS = DOMAINS.filter((domain) => definitionDomainSet.has(domain));
 
-function parameterList(operation: LinearOperation): string {
-  return operation.parameters.map(({ name, type, required }) =>
-    `${name}: ${type}${required ? ' (required)' : ' (optional)'}`,
-  ).join(', ');
+function canonicalFieldList(operation: LinearOperation): string {
+  return Object.keys(operation.canonical.fields).join(', ');
 }
 
 function validateVariables(
@@ -78,7 +76,7 @@ function validateVariables(
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(
-        `Invalid parameters for "${operation.name}": ${message}. Valid parameters: ${parameterList(operation)}. Example: ${formatInvocation(operation.example)}.`,
+        `Invalid parameters for "${operation.name}": ${message}. Valid parameters: canonical fields ${canonicalFieldList(operation)}. Example: ${formatInvocation(operation.example)}.`,
       );
     }
   }
@@ -91,7 +89,7 @@ function validateVariables(
     ...(unknown.length ? [`unknown ${unknown.join(', ')}`] : []),
   ].join('; ') || 'parameters do not match one accepted shape';
   throw new Error(
-    `Invalid parameters for "${operation.name}": ${problems}. Valid parameters: ${parameterList(operation)}. Example: ${formatInvocation(operation.example)}.`,
+    `Invalid parameters for "${operation.name}": ${problems}. Valid parameters: canonical fields ${canonicalFieldList(operation)}. Example: ${formatInvocation(operation.example)}.`,
   );
 }
 
@@ -156,12 +154,19 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
     if (operationName === 'batch') return batchHelp();
     if (operationName === 'get_result') return GET_RESULT_HELP;
     const operation = getOperation(operationName);
+    const canonical = operation.canonical;
+    const alwaysRequired = new Set(
+      canonical.branches.length
+        ? canonical.branches.reduce<string[]>((shared, branch) => shared.filter((field) => branch.includes(field)), [...canonical.branches[0]!])
+        : [],
+    );
     return {
       ...activate(activator, [operation.name]),
       name: operation.name,
       domain: operation.domain,
       purpose: operation.purpose,
-      parameters: operation.parameters,
+      parameters: Object.entries(canonical.fields).map(([name, type]) => ({ name, type, required: alwaysRequired.has(name) })),
+      requirements: canonical.branches,
       example: operation.example,
     };
   }

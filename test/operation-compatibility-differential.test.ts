@@ -17,7 +17,7 @@ type AcceptanceFixture = {
   caseCount: number;
 };
 
-// Static output from parent e44519d. This test does not use parameterShapes or branch projectors.
+// Static compatibility output after the dispatch-usability aliases and conflict guards. This test does not use parameterShapes or branch projectors.
 const FIXTURE = JSON.parse(readFileSync(
   new URL('./fixtures/v06-compatibility-acceptance.json', import.meta.url),
   'utf8',
@@ -89,9 +89,9 @@ function accepts(operation: string, variables: Record<string, unknown>): boolean
   }
 }
 
-describe('e44519d compatibility differential', () => {
+describe('loader compatibility differential', () => {
   it('matches all 52 requested shapes across 1,007 representative field-presence cases', () => {
-    expect(FIXTURE.parent).toBe('e44519d');
+    expect(FIXTURE.parent).toBe('c8c4ac3+dispatch-usability');
     expect(FIXTURE.requests).toHaveLength(52);
     expect(new Set(FIXTURE.requests.map(({ operationName }) => operationName)).size).toBe(48);
 

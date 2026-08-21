@@ -3,6 +3,7 @@ import {
 	parseIssueReferenceSet,
 	requireIssueReference,
 	resolveIssueReference,
+	resolveNamedEntityReference,
 	resolveStateIdReference,
 	resolveStateReference,
 	resolveTeamReference,
@@ -119,13 +120,19 @@ function createIssueRefs(v: Record<string, unknown>) {
 		"teamKey",
 		"state",
 		"assignee",
+		"project",
+		"labels",
 	]);
+	const projectRef = v.project;
+	if (isUuid(projectRef)) input.projectId = projectRef;
+	if (Array.isArray(v.labels)) input.labelIds = v.labels;
 	return {
 		input,
 		parentRef: v.parent ?? input.parentId,
 		teamRef: v.team ?? v.teamKey ?? input.teamId,
 		stateRef: v.state ?? input.stateId,
 		userRef: v.assignee ?? input.assigneeId,
+		projectRef: typeof projectRef === "string" && !isUuid(projectRef) ? projectRef : undefined,
 	};
 }
 
@@ -133,7 +140,7 @@ function applyCreateIssueLookups(
 	v: Record<string, unknown>,
 	resolved: BatchLookupValues,
 ): OperationPreparation {
-	const { input, parentRef, teamRef, stateRef, userRef } = createIssueRefs(v);
+	const { input, parentRef, teamRef, stateRef, userRef, projectRef } = createIssueRefs(v);
 	const parent = resolved.parent;
 	const team = resolved.team;
 	if (team && parent && team.id !== parent.teamId) {
@@ -168,6 +175,11 @@ function applyCreateIssueLookups(
 		}
 		input.assigneeId = assignee.id;
 	}
+	if (projectRef) {
+		const project = resolved.project;
+		if (!project) throw new Error(`Linear project "${projectRef}" was not found.`);
+		input.projectId = project.id;
+	}
 	if (typeof input.title !== "string" || !input.title.trim()) {
 		throw new Error("Issue title is required for issueCreate (title).");
 	}
@@ -186,6 +198,9 @@ function applyCreateIssueLookups(
 			assignee: userRef
 				? { requested: userRef, resolvedId: input.assigneeId }
 				: undefined,
+			project: projectRef
+				? { requested: projectRef, resolvedId: input.projectId }
+				: undefined,
 		}),
 	};
 }
@@ -193,7 +208,7 @@ function applyCreateIssueLookups(
 function createIssueBatchPrepare(
 	v: Record<string, unknown>,
 ): { kind: "independent"; lookups: BatchLookup[]; finish: (resolved: BatchLookupValues) => OperationPreparation } {
-	const { parentRef, teamRef, stateRef, userRef } = createIssueRefs(v);
+	const { parentRef, teamRef, stateRef, userRef, projectRef } = createIssueRefs(v);
 	const stateIsName = typeof stateRef === "string" && stateRef.trim() && !isUuid(stateRef);
 	if (stateIsName && parentRef && !teamRef) {
 		throw new Error(
@@ -211,6 +226,7 @@ function createIssueBatchPrepare(
 		);
 	}
 	if (userRef) lookups.push({ field: "assignee", requested: String(userRef) });
+	if (projectRef) lookups.push({ field: "project", requested: projectRef });
 	return {
 		kind: "independent",
 		lookups,
@@ -505,12 +521,29 @@ export const issues: readonly OperationDefinition[] = ([
 			p("team"),
 			p("state"),
 			p("assignee"),
+			p("project", "ProjectReference"),
+			p("labels", "[UUID!]"),
 			input,
 		],
 		legacyParameters: [[p("input", "IssueCreateInput", true)]],
 		example: { title: "v0.4 trial child", parent: "AEO-258" },
 		validateVariables(variables) {
 			const raw = object(variables.input) ?? {};
+			const projectSources = [variables.project, variables.projectId, raw.projectId].filter((value) => value !== undefined);
+			if (projectSources.length > 1) throw new Error("project, projectId, and input.projectId conflict; send exactly one");
+			if (variables.project !== undefined && (typeof variables.project !== "string" || !variables.project.trim())) {
+				throw new Error("project must be an exact non-empty project name or UUID");
+			}
+			for (const projectId of [variables.projectId, raw.projectId].filter((value) => value !== undefined)) {
+				if (!isUuid(projectId)) throw new Error("projectId must be a UUID");
+			}
+			const labelSources = [variables.labels, variables.labelIds, raw.labelIds].filter((value) => value !== undefined);
+			if (labelSources.length > 1) throw new Error("labels, labelIds, and input.labelIds conflict; send exactly one");
+			for (const labels of labelSources) {
+				if (!Array.isArray(labels) || !labels.length || labels.some((label) => !isUuid(label))) {
+					throw new Error("labels and labelIds must be a non-empty list of exact issue-label UUIDs");
+				}
+			}
 			const title = variables.title ?? raw.title;
 			if (typeof title !== "string" || !title.trim()) {
 				throw new Error(
@@ -548,7 +581,15 @@ export const issues: readonly OperationDefinition[] = ([
 				"teamKey",
 				"state",
 				"assignee",
+				"project",
+				"labels",
 			]);
+			const projectRef = v.project;
+			if (isUuid(projectRef)) x.projectId = projectRef;
+			else if (typeof projectRef === "string") {
+				x.projectId = (await resolveNamedEntityReference(k, "project", projectRef, s)).id;
+			}
+			if (Array.isArray(v.labels)) x.labelIds = v.labels;
 			const parentRef = v.parent ?? x.parentId;
 			const parent = parentRef
 				? await resolveIssueReference(k, String(parentRef), s)
@@ -593,6 +634,9 @@ export const issues: readonly OperationDefinition[] = ([
 						: undefined,
 					assignee: userRef
 						? { requested: userRef, resolvedId: x.assigneeId }
+						: undefined,
+					project: typeof projectRef === "string"
+						? { requested: projectRef, resolvedId: x.projectId }
 						: undefined,
 				}),
 			};
