@@ -311,4 +311,16 @@ describe('generated products', () => {
     expect(published).not.toMatch(/registers? (?:a )?typed `linear_get_result`/i);
     expect(published).not.toContain('linear-auditor.md');
   });
+
+  it('links the accepted result and batch ADR to its domain language', async () => {
+    const [context, adr, changelog] = await Promise.all([
+      readFile('CONTEXT.md', 'utf8'),
+      readFile('docs/adr/0007-shape-results-and-batch-transport-by-phase.md', 'utf8'),
+      readFile('CHANGELOG.md', 'utf8'),
+    ]);
+    expect(adr).toContain('## Status\n\nAccepted.');
+    expect(context).toContain('**Result view**:');
+    expect(context).toContain('**Exact-root routing**:');
+    expect(changelog).toContain('[`ADR 0007`](./docs/adr/0007-shape-results-and-batch-transport-by-phase.md)');
+  });
 });
