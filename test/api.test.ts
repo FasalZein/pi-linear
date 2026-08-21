@@ -236,6 +236,7 @@ describe('runtime discovery', () => {
       domains: DOMAINS,
       domainHelp: { operation: 'help', variables: { domain: 'issues' } },
       operationHelp: { operation: 'help', variables: { operation: 'get_issue' } },
+      resultHelp: { operation: 'help', variables: { operation: 'get_result' } },
     });
 
     const domain = await execute(tool, { operation: 'help', variables: { domain: 'issues' } });
@@ -493,7 +494,11 @@ describe('result routing', () => {
     await artifactRoot();
     const result = await routeLinearResult({ body: 'x'.repeat(AUTO_SPILL_BYTES) }, { label: 'get_issue' });
 
-    expect(result).toMatchObject({ bytes: expect.any(Number), path: expect.stringContaining('/linear/raw/get_issue-') });
+    expect(result).toMatchObject({
+      handle: expect.stringMatching(/^linear-result:v1:[0-9a-f-]+$/),
+      bytes: expect.any(Number),
+      path: expect.stringMatching(/\/linear\/raw\/[0-9a-f-]+\.json$/),
+    });
     expect(result).not.toHaveProperty('data');
   });
 
@@ -547,7 +552,16 @@ describe('result routing', () => {
     const file = JSON.parse(await readFile(result.path, 'utf8'));
 
     expect(file.data.comments.nodes[0].body).toBe(body);
-    expect(result.meta).toEqual({ truncations: [], stringsClipped: 0 });
+    expect(result.meta).toMatchObject({
+      truncations: [],
+      stringsClipped: 0,
+      routing: {
+        requestedSink: 'artifact',
+        actualSink: 'artifact',
+        reason: 'requested',
+        inlineComplete: false,
+      },
+    });
     expect(Buffer.byteLength(JSON.stringify(file))).toBe(result.bytes);
   });
 

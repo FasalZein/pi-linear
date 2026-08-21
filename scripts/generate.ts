@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BATCH_PURPOSE } from '../extensions/batch';
 import { operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
+import { GET_RESULT_PURPOSE } from '../extensions/result-handles';
 import { buildTypedToolMetadata } from '../extensions/typed-tool-metadata';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -15,7 +16,7 @@ const readmePath = resolve(root, 'README.md');
 const referencePath = resolve(root, 'REFERENCE.md');
 const START = '<!-- BEGIN GENERATED LINEAR OPERATIONS -->';
 const END = '<!-- END GENERATED LINEAR OPERATIONS -->';
-const LINEAR_TOOL_USAGE = 'Run a named Linear operation or raw GraphQL. The operation names listed below are callable directly as { "operation": "<name>", "variables": { … } }. { "operation": "help", "variables": { "operation": "<name>" } } returns exact parameters and loads the strict typed tool.';
+const LINEAR_TOOL_USAGE = 'Run a named Linear operation or raw GraphQL. The operation names listed below are callable directly as { "operation": "<name>", "variables": { … } }. { "operation": "help", "variables": { "operation": "<name>" } } returns exact parameters. For canonical named operations, it also loads the strict typed tool. Loader-only batch and get_result do not add typed tools.';
 
 export const generatedFiles = [manifestPath, contractsPath, catalogPath, readmePath, referencePath] as const;
 
@@ -80,6 +81,7 @@ export function operationCatalogText(): string {
   return [
     ...operationDefinitions.map(({ name, purpose }) => `${name}: ${purpose}`),
     `batch: ${BATCH_PURPOSE}`,
+    `get_result: ${GET_RESULT_PURPOSE}`,
   ].join('\n');
 }
 
@@ -132,6 +134,10 @@ function referenceCatalog(): string {
     '',
     '```json',
     '{ "operation": "batch", "variables": { "reads": [{ "key": "one", "operation": "get_issue", "variables": { "issue": "AEO-258" } }] } }',
+    '```',
+    '',
+    '```json',
+    '{ "operation": "get_result", "variables": { "handle": "linear-result:v1:550e8400-e29b-41d4-a716-446655440000", "path": "", "offset": 0 } }',
     '```',
   ].join('\n');
 }

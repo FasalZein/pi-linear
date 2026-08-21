@@ -218,10 +218,14 @@ describe('generated products', () => {
       name: match[1]!,
       purpose: match[2]!,
     }));
-    expect(published.filter(({ name }) => name !== 'batch')).toEqual(expected);
+    expect(published.filter(({ name }) => name !== 'batch' && name !== 'get_result')).toEqual(expected);
     expect(published).toContainEqual({
       name: 'batch',
       purpose: 'Carry several independent named reads in one GraphQL request.',
+    });
+    expect(published).toContainEqual({
+      name: 'get_result',
+      purpose: 'Retrieve a stored Linear result by handle.',
     });
   });
 

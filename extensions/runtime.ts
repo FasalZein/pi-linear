@@ -1,13 +1,14 @@
 import type { ExtensionContext } from '@earendil-works/pi-coding-agent';
+import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { activeSecrets } from './active-secrets';
 import { assertIssueNodeMatches, assertNamedNodeMatches, linearGraphQL, resolveApiKey } from './client';
 import type { GraphQLDocumentVariant, LocalResultExpectation, OperationPreparation } from './operation-types';
 import type { LinearOperation } from './operations';
 import type { ResultView } from './selections';
 import { redactDeep, withRedactedErrors } from './redact';
+import { resultArtifactRoot, resultHandle } from './result-handles';
 import { assertMutationAllowed, assertNamedInputAllowed, getMutationFields, type MutationMode } from './safety';
 
 export const NODE_CAP = 100;
@@ -23,6 +24,13 @@ export type ResultMeta = {
   stringsClipped: number;
   resultBudget?: { maxBytes: number; truncated: true };
   view?: ResultView;
+  routing?: {
+    requestedSink: 'auto' | 'inline' | 'artifact';
+    actualSink: 'artifact';
+    reason: 'requested' | 'spill-threshold';
+    inlineComplete: false;
+    externalized: Array<{ path: ''; handle: string; bytes: number }>;
+  };
 };
 
 function byteLength(value: unknown): number {
@@ -123,7 +131,7 @@ export function compactLinearResult<T extends JsonObject>(
 export async function routeLinearResult<T extends JsonObject>(
   rawData: T,
   options: { label: string; sink?: 'inline' | 'artifact'; nodeCap?: number; secrets?: readonly string[] },
-): Promise<{ data: T; meta: ResultMeta } | { path: string; bytes: number; index: string[]; meta: ResultMeta }> {
+): Promise<{ data: T; meta: ResultMeta } | { handle: string; path: string; bytes: number; index: string[]; meta: ResultMeta }> {
   // Redact before anything is measured, compacted, serialized, or written: the model
   // content, the details object, the artifact file, and its index all derive from here.
   const data = redactDeep(rawData, options.secrets ?? []);
@@ -133,11 +141,28 @@ export async function routeLinearResult<T extends JsonObject>(
   const spill = options.sink === 'artifact' || (options.sink !== 'inline' && bytes > spillThreshold());
   if (!spill) return compactLinearResult(data, { nodeCap: options.nodeCap });
 
-  const directory = resolve(process.env.PI_ARTIFACT_PROJECT_ROOT ?? join(homedir(), '.pi/artifacts'), 'linear/raw');
-  const path = join(directory, `${options.label}-${new Date().toISOString()}.json`);
+  const directory = resultArtifactRoot();
+  const uuid = randomUUID();
+  const handle = resultHandle(uuid);
+  const path = join(directory, `${uuid}.json`);
   await mkdir(directory, { recursive: true });
   await writeFile(path, serialized);
-  return { path, bytes, index: artifactIndex(data), meta: full.meta };
+  return {
+    handle,
+    path,
+    bytes,
+    index: artifactIndex(data),
+    meta: {
+      ...full.meta,
+      routing: {
+        requestedSink: options.sink ?? 'auto',
+        actualSink: 'artifact',
+        reason: options.sink === 'artifact' ? 'requested' : 'spill-threshold',
+        inlineComplete: false,
+        externalized: [{ path: '', handle, bytes }],
+      },
+    },
+  };
 }
 
 export async function apiKeyForWorkspace(ctx: ExtensionContext, workspace?: string): Promise<string> {

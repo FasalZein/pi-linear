@@ -182,15 +182,17 @@ describe('result states', () => {
 
   it('renders a spilled result as a digest plus the artifact path', () => {
     const text = block(render('list_issues', {
-      path: '/tmp/linear/raw/list_issues.json',
+      handle: 'linear-result:v1:550e8400-e29b-41d4-a716-446655440000',
+      path: '/tmp/linear/raw/550e8400-e29b-41d4-a716-446655440000.json',
       bytes: 42_000,
       index: ['AEO-258 · Fix login redirect · In Progress'],
       meta,
     }));
     expect(text).toContain('41 KB written to disk');
-    expect(text).toContain('/tmp/linear/raw/list_issues.json');
+    expect(text).toContain('Compatibility path: /tmp/linear/raw/550e8400-e29b-41d4-a716-446655440000.json');
     expect(text).toContain('AEO-258 · Fix login redirect');
-    expect(text).toContain('Read the file for the full payload.');
+    expect(text.replace(/\s+/g, ' ')).toContain('linear { operation: "get_result", variables: { handle: "linear-result:v1:550e8400-e29b-41d4-a716-446655440000" } }');
+    expect(text).not.toContain('Read the file');
   });
 
   it('shows the error and the next valid action, never a credential', () => {
