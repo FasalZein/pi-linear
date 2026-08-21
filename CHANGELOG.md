@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.9.0
+
+- Added the loader-only batch transport: compatible reads share one aliased query, one ordinary mutation runs after the read gate, and independent issue creates use `issueBatchCreate`.
+- Added internal telemetry for every documented Linear rate-limit header. Results show compact `meta.rateLimit` details only when one similar call may exhaust a budget. Search reads retry one documented GraphQL `RATELIMITED` 400 response.
+
+## 0.8.0
+
+- Added exact issue and named-root routing, named issue-set reads, summary and full result views, and unseen result counts.
+- Made singular, collection, batch, and raw GraphQL results lossless. Added path-scoped partial errors, exact batch accounting, opaque result handles, and loader-only `get_result` recovery.
+
+## 0.7.1
+
+- Split operations into domain modules and moved selections into a projection module. Updated the shipped glossary and acceptance evidence.
+- Removed unreachable natural-help renderer paths. Renamed tests by guarded behavior. Kept multiline tool arguments inside one TUI row.
+
 ## 0.7.0
 
 - Renamed the `linear_api` tool to `linear`. No alias is registered.
@@ -7,13 +22,7 @@
 - Published a generated `name: purpose` catalog of all 48 operations in the `linear` tool description. Call an operation directly from that catalog. Use `help { "operation": "<name>" }` only for exact parameters; that call also loads the typed tool.
 - Corrected the `save_initiative` and `save_milestone` purposes.
 - Moved the initial active schema from 669 bytes / 168 Pi-estimated tokens to 3,170 bytes / 793 tokens.
-- Added lossless, cardinality-aware result routing. Named singular reads stay complete inline within Pi's 50KB or 2,000-line boundary. Collections, batches, and raw GraphQL keep the 8KB artifact threshold without removing data.
-- Added opaque result handles and loader-only `get_result` recovery. Large selected values use ordered continuation offsets. No typed `linear_get_result` tool exists.
-- Made `sink:inline` fall back to one recoverable artifact at Pi's boundary. Kept artifact paths as legacy compatibility output only.
-- Preserved usable raw GraphQL partial data with path-scoped errors. Added exact batch accounting across `data`, `errors`, and `skipped`, including grouped causes and partial failed data.
-- Restricted generated Linear agent allowlists to exactly `write` plus the 49 registered Linear names. Removed `all`, `read`, `bash`, `exec`, stale names, and arbitrary filesystem access.
-- Changed bare allowlist check and sync to target only `~/.pi/agent/agents/linear.md`. Explicit custom paths remain supported.
-- See [`docs/adr/0003-result-routing.md`](./docs/adr/0003-result-routing.md), [`docs/adr/0006-publish-the-operation-catalog.md`](./docs/adr/0006-publish-the-operation-catalog.md), and [`docs/v06-discovery-evidence.md`](./docs/v06-discovery-evidence.md).
+- See [`docs/adr/0006-publish-the-operation-catalog.md`](./docs/adr/0006-publish-the-operation-catalog.md) and [`docs/v06-discovery-evidence.md`](./docs/v06-discovery-evidence.md).
 
 ## 0.6.0
 

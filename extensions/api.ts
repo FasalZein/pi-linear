@@ -2,7 +2,7 @@ import { StringEnum } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 import { Kind, parse, type FragmentDefinitionNode, type SelectionSetNode } from 'graphql';
-import { linearGraphQL, linearGraphQLErrors } from './client';
+import { linearGraphQL, linearGraphQLErrors, linearRateLimitTelemetry } from './client';
 import {
   DOMAINS,
   formatInvocation,
@@ -265,6 +265,7 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
           nodeCap: NODE_CAP,
           secrets,
           errors,
+          telemetry: linearRateLimitTelemetry(data),
         }), secrets);
       }, secrets);
     },

@@ -40,7 +40,7 @@ for (const [name, additions] of scenarios) {
   const current = schemaBytes(active);
   const expected = fixture[name];
   if (!expected) throw new Error(`Missing schema-byte fixture for ${name}.`);
-  console.log(`${name}: v0.5 baseline ${expected.baseline} bytes; v0.7 current ${current} bytes`);
+  console.log(`${name}: v0.5 baseline ${expected.baseline} bytes; v0.9 current ${current} bytes`);
   if (current !== expected.current) {
     console.error(`${name}: expected current ${expected.current} bytes`);
     failed = true;
