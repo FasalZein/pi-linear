@@ -33,10 +33,11 @@ import type {
   GraphQLDocumentVariant,
   OperationPreparation,
 } from './operation-types';
+import { activeSecrets } from './active-secrets';
 import {
   apiKeyForWorkspace,
   assertOperationAllowed,
-  compactLinearResult,
+  routeLinearEnvelope,
   validateMutationResult,
   type JsonObject,
 } from './runtime';
@@ -600,11 +601,14 @@ function collectAlias(
   raw: JsonObject,
   pathErrors: ReturnType<typeof linearGraphQLErrors>,
   data: JsonObject,
-  errors: Array<{ key: string; path: ReadonlyArray<string | number>; message: string }>,
+  errors: BatchError[],
 ): void {
   const scoped = pathErrors.filter((error) => error.path[0] === entry.key);
   if (scoped.length) {
-    for (const error of scoped) errors.push({ key: entry.key, path: error.path, message: error.message });
+    const partial = raw[entry.key] == null ? undefined : { [entry.root]: raw[entry.key] };
+    for (const error of scoped) {
+      errors.push({ key: entry.key, path: error.path, message: error.message, ...(partial ? { partial } : {}) });
+    }
     return;
   }
   const value = raw[entry.key];
@@ -627,34 +631,73 @@ function collectAlias(
     if (entry.variant?.mutationResult) validateMutationResult(entry.operationName, mapped, entry.variant);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    errors.push({ key: entry.key, path: [entry.key], message });
+    errors.push({ key: entry.key, path: [entry.key], message, ...(value == null ? {} : { partial: mapped }) });
     return;
   }
   data[entry.key] = mapped;
 }
 
-function envelope(
+export type BatchError = {
+  key: string;
+  path: ReadonlyArray<string | number>;
+  message: string;
+  causes?: Array<{ path: ReadonlyArray<string | number>; message: string }>;
+  partial?: JsonObject;
+};
+
+function consolidateBatchErrors(errors: readonly BatchError[]): BatchError[] {
+  const grouped = new Map<string, BatchError[]>();
+  for (const error of errors) grouped.set(error.key, [...(grouped.get(error.key) ?? []), error]);
+  return [...grouped.entries()].map(([key, entries]) => {
+    const first = entries[0]!;
+    const causes = entries.flatMap((entry) => entry.causes ?? [{ path: entry.path, message: entry.message }]);
+    const partial = entries.find((entry) => entry.partial)?.partial;
+    return {
+      key,
+      path: first.path,
+      message: first.message,
+      ...(causes.length > 1 ? { causes } : {}),
+      ...(partial ? { partial } : {}),
+    };
+  });
+}
+
+export function assertBatchAccounting(
+  requestedKeys: readonly string[],
   data: JsonObject,
-  errors: Array<{ key: string; path: ReadonlyArray<string | number>; message: string }>,
+  errors: readonly BatchError[],
+  skipped: readonly string[],
+): void {
+  const requested = new Set(requestedKeys);
+  const buckets = [...Object.keys(data), ...errors.map(({ key }) => key), ...skipped];
+  const accounted = new Set(buckets);
+  if (requested.size !== requestedKeys.length
+    || accounted.size !== buckets.length
+    || requested.size !== accounted.size
+    || [...requested].some((key) => !accounted.has(key))) {
+    throw new Error('Internal batch accounting mismatch: every requested key must appear exactly once in data, errors, or skipped.');
+  }
+}
+
+async function envelope(
+  requestedKeys: readonly string[],
+  data: JsonObject,
+  rawErrors: readonly BatchError[],
   skipped: string[],
   requests: { read: number; mutation: number },
   aliases: number,
-): JsonObject {
-  const compact = compactLinearResult(data);
-  return {
-    data: compact.data,
+  sink: 'inline' | 'artifact' | undefined,
+  secrets: readonly string[],
+): Promise<JsonObject> {
+  const errors = consolidateBatchErrors(rawErrors);
+  assertBatchAccounting(requestedKeys, data, errors, skipped);
+  return routeLinearEnvelope({
+    data,
     errors,
     skipped,
-    meta: {
-      requests,
-      aliases,
-      truncations: compact.meta.truncations,
-      stringsClipped: compact.meta.stringsClipped,
-    },
-  };
+    meta: { requests, aliases, truncations: [], stringsClipped: 0 },
+  }, { label: 'batch', category: 'batch', sink, secrets });
 }
-
-type BatchError = { key: string; path: ReadonlyArray<string | number>; message: string };
 
 function failTransaction(keys: readonly string[], message: string): BatchError[] {
   return keys.map((key) => ({ key, path: ['issueBatchCreate'], message }));
@@ -670,7 +713,9 @@ function collectTransactionalCreates(
   const keys = plans.map((plan) => plan.key);
   const scoped = pathErrors.filter((error) => error.path[0] === 'issueBatchCreate');
   if (scoped.length) {
-    errors.push(...keys.map((key) => ({ key, path: scoped[0]!.path, message: scoped[0]!.message })));
+    for (const key of keys) {
+      for (const error of scoped) errors.push({ key, path: error.path, message: error.message });
+    }
     return;
   }
   const payload = raw.issueBatchCreate;
@@ -748,7 +793,7 @@ function applyIndependentLookups(
 }
 
 export async function executeBatch(
-  params: { variables?: Record<string, unknown>; workspace?: string },
+  params: { variables?: Record<string, unknown>; workspace?: string; sink?: 'inline' | 'artifact' },
   mode: MutationMode,
   ctx: ExtensionContext,
   signal: AbortSignal | undefined,
@@ -779,6 +824,8 @@ export async function executeBatch(
   }
 
   const apiKey = await apiKeyForWorkspace(ctx, params.workspace);
+  const secrets = [...activeSecrets(), apiKey];
+  const requestedKeys = [...reads, ...mutations].map(({ key }) => key);
   const data: JsonObject = {};
   const errors: BatchError[] = [];
   let readRequests = 0;
@@ -810,7 +857,18 @@ export async function executeBatch(
   }
 
   if (errors.length && mutations.length) {
-    return envelope(data, errors, mutations.map((entry) => entry.key), { read: readRequests, mutation: 0 }, aliasCount);
+    const mutationKeys = new Set(mutations.map(({ key }) => key));
+    const attemptedErrors = errors.filter(({ key }) => !mutationKeys.has(key));
+    return envelope(
+      requestedKeys,
+      data,
+      attemptedErrors,
+      mutations.map((entry) => entry.key),
+      { read: readRequests, mutation: 0 },
+      aliasCount,
+      params.sink,
+      secrets,
+    );
   }
 
   if (transactional) {
@@ -832,7 +890,16 @@ export async function executeBatch(
     );
     mutationRequests = 1;
     collectTransactionalCreates(stamped, raw, linearGraphQLErrors(raw), data, errors);
-    return envelope(data, errors, [], { read: readRequests, mutation: mutationRequests }, aliasCount);
+    return envelope(
+      requestedKeys,
+      data,
+      errors,
+      [],
+      { read: readRequests, mutation: mutationRequests },
+      aliasCount,
+      params.sink,
+      secrets,
+    );
   }
 
   if (mutations.length) {
@@ -851,10 +918,13 @@ export async function executeBatch(
   }
 
   return envelope(
+    requestedKeys,
     data,
     errors,
     [],
     { read: readRequests, mutation: mutationRequests },
     aliasCount,
+    params.sink,
+    secrets,
   );
 }

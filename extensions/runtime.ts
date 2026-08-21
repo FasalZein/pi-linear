@@ -91,55 +91,45 @@ type RoutedEnvelope<T extends JsonObject> = {
   resolution?: JsonObject;
 };
 
-type RouteCategory = Exclude<ResultCategory, 'local'> | 'composite';
+type ArtifactResult = {
+  handle: string;
+  path: string;
+  bytes: number;
+  index: string[];
+  meta: ResultMeta & JsonObject;
+  resolution?: JsonObject;
+};
+
+type RouteCategory = Exclude<ResultCategory, 'local'> | 'composite' | 'batch';
 
 function withinToolBoundary(serialized: string): boolean {
   return Buffer.byteLength(serialized, 'utf8') <= DEFAULT_MAX_BYTES
     && serialized.split('\n').length <= DEFAULT_MAX_LINES;
 }
 
-export async function routeLinearResult<T extends JsonObject>(
-  rawData: T,
+export async function routeLinearEnvelope<T extends JsonObject>(
+  rawEnvelope: T,
   options: {
     label: string;
     category: RouteCategory;
     sink?: 'inline' | 'artifact';
-    nodeCap?: number;
     secrets?: readonly string[];
-    errors?: readonly LinearGraphQLPathError[];
-    view?: ResultView;
-    resolution?: JsonObject;
   },
-): Promise<RoutedEnvelope<T> | {
-  handle: string;
-  path: string;
-  bytes: number;
-  index: string[];
-  meta: ResultMeta;
-  resolution?: JsonObject;
-}> {
+): Promise<T | ArtifactResult> {
   // Redact before anything is measured, serialized, indexed, written, or returned.
-  const secrets = options.secrets ?? [];
-  const data = redactDeep(rawData, secrets);
-  const errors = options.errors?.length
-    ? redactDeep(options.errors, secrets) as LinearGraphQLPathError[]
-    : undefined;
-  const resolution = options.resolution ? redactDeep(options.resolution, secrets) : undefined;
+  const envelope = redactDeep(rawEnvelope, options.secrets ?? []) as T;
+  const existingMeta = envelope.meta;
+  if (!existingMeta || typeof existingMeta !== 'object' || Array.isArray(existingMeta)) {
+    throw new Error(`Linear ${options.label} result envelope is missing metadata.`);
+  }
   const requestedSink = options.sink ?? 'auto';
-  const baseMeta: ResultMeta = {
-    truncations: [],
-    stringsClipped: 0,
-    ...(options.view ? { view: options.view } : {}),
-  };
-  const complete: RoutedEnvelope<T> = {
-    data,
-    ...(errors ? { errors } : {}),
+  const complete = {
+    ...envelope,
     meta: {
-      ...baseMeta,
+      ...(existingMeta as JsonObject),
       routing: { requestedSink, actualSink: 'inline', inlineComplete: true },
     },
-    ...(resolution ? { resolution } : {}),
-  };
+  } as T;
   const serialized = JSON.stringify(complete);
   const bytes = Buffer.byteLength(serialized, 'utf8');
   const exceedsBoundary = !withinToolBoundary(serialized);
@@ -161,13 +151,14 @@ export async function routeLinearResult<T extends JsonObject>(
     : exceedsBoundary
       ? 'tool-output-boundary'
       : 'spill-threshold';
+  const data = envelope.data;
   return {
     handle,
     path,
     bytes,
-    index: artifactIndex(data),
+    index: artifactIndex(data && typeof data === 'object' && !Array.isArray(data) ? data as JsonObject : {}),
     meta: {
-      ...baseMeta,
+      ...(existingMeta as JsonObject),
       ...(exceedsBoundary ? {
         resultBudget: {
           maxBytes: DEFAULT_MAX_BYTES,
@@ -184,9 +175,36 @@ export async function routeLinearResult<T extends JsonObject>(
         inlineComplete: false,
         externalized: [{ path: '', handle, bytes }],
       },
-    },
-    ...(resolution ? { resolution } : {}),
+    } as ResultMeta & JsonObject,
+    ...(envelope.resolution && typeof envelope.resolution === 'object' && !Array.isArray(envelope.resolution)
+      ? { resolution: envelope.resolution as JsonObject }
+      : {}),
   };
+}
+
+export async function routeLinearResult<T extends JsonObject>(
+  rawData: T,
+  options: {
+    label: string;
+    category: RouteCategory;
+    sink?: 'inline' | 'artifact';
+    nodeCap?: number;
+    secrets?: readonly string[];
+    errors?: readonly LinearGraphQLPathError[];
+    view?: ResultView;
+    resolution?: JsonObject;
+  },
+): Promise<RoutedEnvelope<T> | ArtifactResult> {
+  return routeLinearEnvelope({
+    data: rawData,
+    ...(options.errors?.length ? { errors: options.errors } : {}),
+    meta: {
+      truncations: [],
+      stringsClipped: 0,
+      ...(options.view ? { view: options.view } : {}),
+    },
+    ...(options.resolution ? { resolution: options.resolution } : {}),
+  } as RoutedEnvelope<T>, options);
 }
 
 export async function apiKeyForWorkspace(ctx: ExtensionContext, workspace?: string): Promise<string> {
