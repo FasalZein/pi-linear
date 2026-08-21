@@ -12,7 +12,7 @@ import {
 import { requirementBranchMatches } from '../extensions/operation-definition';
 import type { RequirementBranch } from '../extensions/operation-types';
 
-// Independent parent fixture from b5bed54. Tests never generate it from operationDefinitions.
+// Static renderer fixture updated for canonical invocation fields. Tests never generate it during verification.
 const RENDERER_FIXTURE = JSON.parse(readFileSync(
   new URL('./fixtures/v06-renderer-metadata.json', import.meta.url),
   'utf8',
@@ -77,7 +77,7 @@ describe('v0.6 operation definition authority', () => {
       expect(definition.compatibility.branches.length).toBeGreaterThan(0);
       expect(definition.compatibility.prepare ?? definition.compatibility.executeLocal).toBeTypeOf('function');
       expect(definition.result.renderKind).toBeTruthy();
-      expect(definition.render.callFields).toEqual(definition.compatibility.fields.map(({ name }) => name));
+      expect(definition.render.callFields).toEqual(definition.canonical.fields.map(({ name }) => name));
       expect(definition.canonical.strictRawArguments).toBe(true);
     }
   });
@@ -187,12 +187,13 @@ describe('v0.6 operation definition authority', () => {
     assertRendererFixtureParity();
   });
 
-  it('projects help, examples, preparation, and raw fallback without behavior changes', () => {
+  it('projects complete canonical help while preserving examples, preparation, and raw fallback', () => {
     for (const definition of operationDefinitions) {
       expect(helpResult({ operation: definition.name })).toMatchObject({
         name: definition.name,
         purpose: definition.purpose,
-        parameters: definition.compatibility.fields,
+        parameters: definition.canonical.fields,
+        requirements: definition.canonical.branches.map(({ all }) => all),
         example: definition.compatibility.example,
       });
       expect(() => resolveRequest(definition.compatibility.example)).not.toThrow();

@@ -573,6 +573,15 @@ describe('execution boundary rejects non-canonical arguments before any network 
     return requests;
   }
 
+  it('keeps typed tools strict when loader-style dispatch or compatibility aliases are sent', async () => {
+    const requests = installServer();
+    await expect(execute(tools.get('linear_get_document')!, { query: 'Dispatch doc' }))
+      .rejects.toThrow(/query|document/);
+    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', project: 'Dispatch' })).toBe(false);
+    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', labels: [UUID_SAMPLE] })).toBe(false);
+    expect(requests).toHaveLength(0);
+  });
+
   it.each([
     ['linear_create_comment', { issue: 'AEO-258', body: 'hi', issueId: 'AEO-999' }, /issueId/],
     ['linear_create_issue', { title: 'T', team: 'AEO', teamId: 'team-9' }, /teamId/],

@@ -19,6 +19,7 @@ import {
   withLinearRateLimitTelemetry,
 } from './client';
 import {
+  BATCH_HELP_EXAMPLE,
   formatInvocation,
   getOperation,
   getOperationDefinition,
@@ -57,18 +58,11 @@ export function batchHelp(): JsonObject {
     name: 'batch',
     purpose: BATCH_PURPOSE,
     parameters: [
-      { name: 'reads', type: 'BatchEntry[]', required: false },
-      { name: 'mutations', type: 'BatchEntry[]', required: false },
+      { name: 'reads', type: '{ key, operation, variables }[]', required: false },
+      { name: 'mutations', type: '{ key, operation, variables }[]', required: false },
     ],
-    example: {
-      operation: 'batch',
-      variables: {
-        reads: [
-          { key: 'one', operation: 'get_issue', variables: { issue: 'AEO-258' } },
-          { key: 'two', operation: 'get_issue', variables: { issue: 'AEO-361' } },
-        ],
-      },
-    },
+    entry: 'Each entry is { key, operation, variables }. key must be a valid GraphQL alias and unique across both phases.',
+    example: BATCH_HELP_EXAMPLE,
   };
 }
 
@@ -233,6 +227,7 @@ function parsePhase(value: unknown, label: string, seen: Set<string>): RawEntry[
   return value.map((entry, index) => {
     const record = asObject(entry, `Batch ${label} entry ${index}`);
     const extra = Object.keys(record).filter((name) => name !== 'key' && name !== 'operation' && name !== 'variables');
+    if (extra.includes('name')) throw new Error('Batch entries use "key", not "name". Send { key, operation, variables }.');
     if (extra.length) throw new Error(`Unknown batch entry field "${extra[0]}".`);
     if (typeof record.key !== 'string' || !isAlias(record.key)) {
       throw new Error(`Batch key "${String(record.key)}" is not a valid unique GraphQL alias.`);
@@ -464,6 +459,21 @@ function compileLookup(entryKey: string, lookup: BatchLookup): CompiledLookup {
         const state = requireOne(matches, `state "${lookup.requested}" in team "${team}"`);
         if (typeof state.team?.id !== 'string') throw new Error(`Linear state "${lookup.requested}" has no team.`);
         return { id: state.id, name: state.name, teamId: state.team.id };
+      },
+    };
+  }
+  if (lookup.field === 'project') {
+    const compiled = aliasLookup(prefix, `query ($name: String!) {
+  projects(first: 2, filter: { name: { eq: $name } }) { nodes { id name } }
+}`, { name: lookup.requested });
+    return {
+      field: lookup.field,
+      ...compiled,
+      resolve(raw, pathErrors) {
+        throwIfLookupPath(compiled.aliases, pathErrors);
+        const connection = raw[compiled.aliases[0]!] as { nodes?: Array<{ id: string; name: string }> } | null;
+        const matches = (connection?.nodes ?? []).filter((project) => project.name === lookup.requested);
+        return requireOne(matches, `project "${lookup.requested}"`);
       },
     };
   }
