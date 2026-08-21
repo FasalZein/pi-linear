@@ -6,6 +6,7 @@
 - Normalized guarded relation preflight and delete failures to stable operation-specific errors that expose no supplied UUID or active credential.
 - Added the loader-only batch transport: compatible reads share one aliased query, one ordinary mutation runs after the read gate, and independent issue creates use `issueBatchCreate`.
 - Added internal telemetry for every documented Linear rate-limit header. Results show compact `meta.rateLimit` details only when one similar call may exhaust a budget. Search reads retry one documented GraphQL `RATELIMITED` 400 response.
+- Architecture references: [`ADR 0006`](./docs/adr/0006-publish-the-operation-catalog.md) publishes the catalog. [`ADR 0003`](./docs/adr/0003-result-routing.md) defines lossless routing. [`ADR 0007`](./docs/adr/0007-shape-results-and-batch-transport-by-phase.md) records result views, exact roots, and phased batch transport.
 
 ## 0.8.0
 

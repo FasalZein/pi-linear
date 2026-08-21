@@ -311,4 +311,41 @@ describe('generated products', () => {
     expect(published).not.toMatch(/registers? (?:a )?typed `linear_get_result`/i);
     expect(published).not.toContain('linear-auditor.md');
   });
+
+  it('guards the accepted result and batch architecture contract', async () => {
+    const [context, adr, evidence, changelog] = await Promise.all([
+      readFile('CONTEXT.md', 'utf8'),
+      readFile('docs/adr/0007-shape-results-and-batch-transport-by-phase.md', 'utf8'),
+      readFile('docs/v09-result-transport-evidence.md', 'utf8'),
+      readFile('CHANGELOG.md', 'utf8'),
+    ]);
+    expect(adr).toContain('## Status\n\nAccepted.');
+    expect(adr).toContain('ADR 0006 publishes the operation catalog.');
+    expect(adr).toContain('This ADR does not repeat or reopen that decision.');
+    expect(adr).toContain('This ADR begins after operation selection.');
+    expect(adr).toContain('Result routing stays lossless for both views.');
+    expect(adr).toContain('as ADR 0003 defines.');
+    expect(adr).toContain('[portable evidence ledger](../v09-result-transport-evidence.md)');
+    for (const claim of [
+      'singular read uses the complete `full` result view',
+      'collection uses the disclosed `summary` result view',
+      'Exact issue identifiers, UUIDs',
+      'Mutations follow in a second phase.',
+      'Each requested key appears exactly once',
+      'not GraphQL complexity or response payload size',
+    ]) expect(adr).toContain(claim);
+    for (const measurement of [
+      '`429` for the full issue-list projection and `50` for summary',
+      'recorded design baseline was `18` and `6`',
+      '`64,827` bytes for full and `3,664` bytes for summary',
+      '`X-Complexity: 18` and 49,162 response bytes for full',
+      '`X-Complexity: 4` and 4,811 response bytes',
+      'returned and kept 20 nodes without truncation',
+    ]) expect(adr).toContain(measurement);
+    expect(evidence).toContain('aeo-372-live-measurements.json');
+    expect(evidence).toMatch(/`[a-f0-9]{64}`/);
+    expect(context).toContain('**Result view**:');
+    expect(context).toContain('**Exact-root routing**:');
+    expect(changelog).toContain('[`ADR 0007`](./docs/adr/0007-shape-results-and-batch-transport-by-phase.md)');
+  });
 });

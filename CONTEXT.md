@@ -68,9 +68,17 @@ _Avoid_: Artifact path, filename
 A loader-only `get_result` request that selects a stored value by handle, JSON Pointer path, and optional continuation offset.
 _Avoid_: File read, typed retrieval tool
 
+**Result view**:
+The disclosed level of detail for a result. A result view is `summary` or `full`.
+_Avoid_: Compaction, truncation
+
 **Result routing**:
 The cardinality-aware choice between complete inline output and a complete stored result. It never removes returned data.
 _Avoid_: Compaction, truncation
+
+**Exact-root routing**:
+The use of a singular resource identity for exact access. Search remains the path for discovery.
+_Avoid_: Exact-name search, resolver lookup
 
 **Compatibility path**:
 The legacy artifact path retained for older integrations. New callers use the result handle.
