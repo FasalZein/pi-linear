@@ -1,6 +1,7 @@
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, type ExtensionContext } from '@earendil-works/pi-coding-agent';
 import { randomUUID } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { open } from 'node:fs/promises';
 import { join } from 'node:path';
 import { activeSecrets } from './active-secrets';
 import {
@@ -20,7 +21,13 @@ import type {
 import type { LinearOperation } from './operations';
 import type { ResultView } from './selections';
 import { redactDeep, withRedactedErrors } from './redact';
-import { resultArtifactRoot, resultHandle } from './result-handles';
+import {
+  assertTrustedResultDirectory,
+  fitsResultBoundary,
+  resolveTrustedResultDirectory,
+  resultArtifactRoot,
+  resultHandle,
+} from './result-handles';
 import { assertMutationAllowed, assertNamedInputAllowed, getMutationFields, type MutationMode } from './safety';
 
 export const NODE_CAP = 100;
@@ -107,6 +114,20 @@ function withinToolBoundary(serialized: string): boolean {
     && serialized.split('\n').length <= DEFAULT_MAX_LINES;
 }
 
+async function writeResultArtifact(directory: string, uuid: string, serialized: string): Promise<string> {
+  await assertTrustedResultDirectory(directory);
+  const path = join(directory, `${uuid}.json`);
+  const file = await open(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | (constants.O_NOFOLLOW ?? 0), 0o600);
+  try {
+    if (!(await file.stat()).isFile()) throw new Error('Linear result artifact file is not regular.');
+    await file.writeFile(serialized, 'utf8');
+    await assertTrustedResultDirectory(directory);
+  } finally {
+    await file.close();
+  }
+  return path;
+}
+
 export async function routeLinearEnvelope<T extends JsonObject>(
   rawEnvelope: T,
   options: {
@@ -140,23 +161,22 @@ export async function routeLinearEnvelope<T extends JsonObject>(
 
   if (!spill) return complete;
 
-  const directory = resultArtifactRoot();
+  const directory = await resolveTrustedResultDirectory(true);
   const uuid = randomUUID();
   const handle = resultHandle(uuid);
-  const path = join(directory, `${uuid}.json`);
-  await mkdir(directory, { recursive: true });
-  await writeFile(path, serialized);
+  await writeResultArtifact(directory, uuid, serialized);
+  const path = join(resultArtifactRoot(), `${uuid}.json`);
   const reason = requestedSink === 'artifact'
     ? 'requested'
     : exceedsBoundary
       ? 'tool-output-boundary'
       : 'spill-threshold';
   const data = envelope.data;
-  return {
+  const base: ArtifactResult = {
     handle,
     path,
     bytes,
-    index: artifactIndex(data && typeof data === 'object' && !Array.isArray(data) ? data as JsonObject : {}),
+    index: [],
     meta: {
       ...(existingMeta as JsonObject),
       ...(exceedsBoundary ? {
@@ -176,10 +196,21 @@ export async function routeLinearEnvelope<T extends JsonObject>(
         externalized: [{ path: '', handle, bytes }],
       },
     } as ResultMeta & JsonObject,
-    ...(envelope.resolution && typeof envelope.resolution === 'object' && !Array.isArray(envelope.resolution)
-      ? { resolution: envelope.resolution as JsonObject }
-      : {}),
   };
+  if (!fitsResultBoundary(base)) throw new Error('Linear artifact digest exceeds the tool output boundary.');
+
+  let digest = base;
+  if (envelope.resolution && typeof envelope.resolution === 'object' && !Array.isArray(envelope.resolution)) {
+    const candidate = { ...digest, resolution: envelope.resolution as JsonObject };
+    if (fitsResultBoundary(candidate)) digest = candidate;
+  }
+  for (const entry of artifactIndex(data && typeof data === 'object' && !Array.isArray(data) ? data as JsonObject : {})) {
+    const candidate = { ...digest, index: [...digest.index, entry] };
+    if (!fitsResultBoundary(candidate)) break;
+    digest = candidate;
+  }
+  if (!fitsResultBoundary(digest)) throw new Error('Linear artifact digest exceeds the tool output boundary.');
+  return digest;
 }
 
 export async function routeLinearResult<T extends JsonObject>(

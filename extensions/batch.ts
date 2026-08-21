@@ -712,9 +712,12 @@ function collectTransactionalCreates(
 ): void {
   const keys = plans.map((plan) => plan.key);
   const scoped = pathErrors.filter((error) => error.path[0] === 'issueBatchCreate');
-  if (scoped.length) {
+  const rootErrors = scoped.filter((error) => error.path.length < 3
+    || error.path[1] !== 'issues'
+    || typeof error.path[2] !== 'number');
+  if (rootErrors.length) {
     for (const key of keys) {
-      for (const error of scoped) errors.push({ key, path: error.path, message: error.message });
+      for (const error of rootErrors) errors.push({ key, path: error.path, message: error.message });
     }
     return;
   }
@@ -757,8 +760,37 @@ function collectTransactionalCreates(
     ));
     return;
   }
+
+  const keyById = new Map(plans.map((plan) => [plan.uuid, plan.key]));
+  const affected = new Map<string, typeof scoped>();
+  for (const error of scoped) {
+    const index = error.path[2] as number;
+    if (!Number.isSafeInteger(index) || index < 0 || index >= record.issues.length) {
+      errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned uncorrelatable transaction errors.'));
+      return;
+    }
+    const issue = record.issues[index] as JsonObject;
+    const key = keyById.get(issue.id as string);
+    if (!key) {
+      errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned uncorrelatable transaction errors.'));
+      return;
+    }
+    affected.set(key, [...(affected.get(key) ?? []), error]);
+  }
+
   for (const plan of plans) {
-    data[plan.key] = { issueCreate: { success: true, issue: byId.get(plan.uuid) } };
+    const mapped = { issueCreate: { success: true, issue: byId.get(plan.uuid) } };
+    const issueErrors = affected.get(plan.key);
+    if (issueErrors?.length) {
+      for (const error of issueErrors) errors.push({
+        key: plan.key,
+        path: error.path,
+        message: error.message,
+        partial: mapped,
+      });
+    } else {
+      data[plan.key] = mapped;
+    }
   }
 }
 
@@ -848,7 +880,7 @@ export async function executeBatch(
       query,
       variables,
       signal,
-      lookups.length ? { preserveUnusableRoot: true } : undefined,
+      { preserveUnusableRoot: true },
     );
     readRequests = 1;
     const pathErrors = linearGraphQLErrors(raw);

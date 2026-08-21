@@ -183,6 +183,37 @@ describe('batch read phase', () => {
     expect(result.details.meta.requests).toEqual({ read: 1, mutation: 0 });
   });
 
+  it('accounts every failed read and skips a pending mutation', async () => {
+    graphqlStub(() => ({
+      body: {
+        data: { one: null, two: null },
+        errors: [
+          { message: 'Missing one', path: ['one'] },
+          { message: 'Missing two', path: ['two'] },
+        ],
+      },
+    }));
+
+    const result = await execute({
+      operation: 'batch',
+      variables: {
+        reads: [
+          { key: 'one', operation: 'get_issue', variables: { issue: 'AEO-1' } },
+          { key: 'two', operation: 'get_issue', variables: { issue: 'AEO-2' } },
+        ],
+        mutations: [{ key: 'edit', operation: 'update_issue', variables: { issue: 'AEO-3', title: 'Later' } }],
+      },
+    });
+
+    expect(result.details.data).toEqual({});
+    expect(result.details.errors).toEqual([
+      { key: 'one', path: ['one'], message: 'Missing one' },
+      { key: 'two', path: ['two'], message: 'Missing two' },
+    ]);
+    expect(result.details.skipped).toEqual(['edit']);
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 0 });
+  });
+
   it('rejects duplicate, invalid, and empty keys before network access', async () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
@@ -716,6 +747,43 @@ describe('batch transactional create', () => {
     expect(result.details.errors.map((error: { key: string }) => error.key).sort()).toEqual(['one', 'two']);
     expect(result.details.skipped).toEqual([]);
     expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
+  });
+
+  it('maps an indexed transaction error only to its returned issue', async () => {
+    graphqlStub((request) => {
+      if (!request.query.includes('issueBatchCreate')) return { body: { data: lookupData(request.query) } };
+      const issues = batchIssues(request);
+      return {
+        body: {
+          data: {
+            issueBatchCreate: {
+              success: true,
+              issues: [
+                { id: issues[1]!.id, identifier: 'AEO-2', title: 'B' },
+                { id: issues[0]!.id, identifier: 'AEO-1', title: 'A', description: null },
+              ],
+            },
+          },
+          errors: [{ message: 'Description unavailable', path: ['issueBatchCreate', 'issues', 1, 'description'] }],
+        },
+      };
+    });
+
+    const result = await execute({
+      operation: 'batch',
+      variables: { mutations: [createIssue('first', 'A'), createIssue('second', 'B')] },
+    });
+
+    expect(result.details.data).toEqual({
+      second: { issueCreate: { success: true, issue: expect.objectContaining({ identifier: 'AEO-2', title: 'B' }) } },
+    });
+    expect(result.details.errors).toEqual([{
+      key: 'first',
+      path: ['issueBatchCreate', 'issues', 1, 'description'],
+      message: 'Description unavailable',
+      partial: { issueCreate: { success: true, issue: expect.objectContaining({ identifier: 'AEO-1', title: 'A' }) } },
+    }]);
+    expect(result.details.skipped).toEqual([]);
   });
 
   it('returns keyed errors for GraphQL path errors on the transaction', async () => {

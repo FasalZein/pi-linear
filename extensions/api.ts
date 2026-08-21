@@ -1,6 +1,7 @@
 import { StringEnum } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
+import { Kind, parse, type FragmentDefinitionNode, type SelectionSetNode } from 'graphql';
 import { linearGraphQL, linearGraphQLErrors } from './client';
 import {
   DOMAINS,
@@ -29,7 +30,13 @@ import { typedToolName } from './tool-names';
 import { assertMutationAllowed, type MutationMode } from './safety';
 import { LINEAR_TOOL_DESCRIPTION } from './generated/operation-catalog';
 import { batchHelp, executeBatch } from './batch';
-import { GET_RESULT_HELP, getResult } from './result-handles';
+import {
+  GET_RESULT_HELP,
+  childPointer,
+  getResult,
+  resultChildPointerRepresentable,
+  resultPointerRepresentable,
+} from './result-handles';
 
 export {
   AUTO_SPILL_BYTES,
@@ -166,6 +173,34 @@ function toolResult(details: JsonObject, secrets: readonly string[] = []) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(redacted) }], details: redacted };
 }
 
+function assertRawResultPointersRepresentable(query: string): void {
+  const document = parse(query);
+  const fragments = new Map(document.definitions
+    .filter((definition): definition is FragmentDefinitionNode => definition.kind === Kind.FRAGMENT_DEFINITION)
+    .map((fragment) => [fragment.name.value, fragment]));
+
+  const walk = (selectionSet: SelectionSetNode, parent: string, stack: ReadonlySet<string>): void => {
+    for (const selection of selectionSet.selections) {
+      if (selection.kind === Kind.FIELD) {
+        const child = childPointer(parent, selection.alias?.value ?? selection.name.value);
+        if (!resultPointerRepresentable(child) || !resultChildPointerRepresentable(parent, child)) {
+          throw new Error('Raw GraphQL response alias cannot be represented within the tool output boundary.');
+        }
+        if (selection.selectionSet) walk(selection.selectionSet, child, stack);
+      } else if (selection.kind === Kind.INLINE_FRAGMENT) {
+        walk(selection.selectionSet, parent, stack);
+      } else if (!stack.has(selection.name.value)) {
+        const fragment = fragments.get(selection.name.value);
+        if (fragment) walk(fragment.selectionSet, parent, new Set([...stack, selection.name.value]));
+      }
+    }
+  };
+
+  for (const definition of document.definitions) {
+    if (definition.kind === Kind.OPERATION_DEFINITION) walk(definition.selectionSet, '/data', new Set());
+  }
+}
+
 export function linearApiTool(mode: MutationMode = 'allowlist', activator?: ToolActivator) {
   return defineTool({
     name: 'linear',
@@ -217,6 +252,7 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
           ), secrets);
         }
 
+        assertRawResultPointersRepresentable(request.query);
         assertMutationAllowed(request.query, mode);
         const apiKey = await apiKeyForWorkspace(ctx, params.workspace);
         secrets.push(apiKey);
