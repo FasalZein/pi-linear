@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { linearApiTool } from '../extensions/api';
+import { linearErrorTelemetry } from '../extensions/client';
 import { operations } from '../extensions/operations';
 import { SAFE_NAMED_MUTATION_ROOTS } from '../extensions/safety';
 import { typedLinearTools } from '../extensions/typed-tools';
@@ -114,35 +115,71 @@ describe('delete_issue_relation strict guarded delete', () => {
     expect(requests).toHaveLength(1);
   });
 
+  const leaked = `${RELATION} ${ISSUE} ${RELATED} ${SECRET}`;
+
   it.each([
-    ['transport', async () => { throw new Error(`offline ${SECRET}`); }, '[REDACTED]'],
+    ['transport', async () => { throw new Error(`offline ${leaked}`); }],
     ['GraphQL', async () => response({
       data: { issueRelation: { id: RELATION, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: RELATED } } },
-      errors: [{ path: ['issueRelation'], message: `failed ${SECRET}` }],
-    }), 'Linear issue relation did not match the exact delete guard.'],
-  ])('does not delete after a preflight %s failure and keeps the error stable and redacted', async (_case, fetcher, expected) => {
+      errors: [{ path: ['issueRelation'], message: `failed ${leaked}` }],
+    })],
+    ['HTTP', async () => new Response(JSON.stringify({ message: leaked }), {
+      status: 502,
+      statusText: leaked,
+      headers: { 'Content-Type': 'application/json' },
+    })],
+  ])('does not delete after a preflight %s failure and exposes no guard or credential', async (_case, fetcher) => {
     process.env.LINEAR_API_KEY = SECRET;
     const fetch = vi.fn(fetcher);
     vi.stubGlobal('fetch', fetch);
     const error = await execute({ operation: 'delete_issue_relation', variables }).catch((value: Error) => value);
-    expect(error.message).toContain(expected);
-    expect(error.message).not.toContain(SECRET);
+    expect(error.message).toBe('Linear issue relation delete preflight failed.');
+    for (const secret of [RELATION, ISSUE, RELATED, SECRET]) expect(error.message).not.toContain(secret);
     expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it('retains safe phase telemetry on normalized failures', async () => {
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const { query } = JSON.parse(String(init.body));
+      if (query.includes('VerifyIssueRelationDelete')) {
+        return response({ data: { issueRelation: { id: RELATION, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: RELATED } } } }, {
+          'X-RateLimit-Requests-Remaining': '9',
+        });
+      }
+      return response({ errors: [{ message: leaked }] }, { 'X-RateLimit-Complexity-Remaining': '8' });
+    });
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = SECRET;
+    const error = await execute({ operation: 'delete_issue_relation', variables }).catch((value: Error) => value);
+    expect(error.message).toBe('Linear issue relation delete failed.');
+    expect(linearErrorTelemetry(error)).toEqual([
+      { phase: 'read', attempt: 1, headers: { 'X-RateLimit-Requests-Remaining': 9 } },
+      { phase: 'mutation', attempt: 1, headers: { 'X-RateLimit-Complexity-Remaining': 8 } },
+    ]);
+    const text = JSON.stringify(linearErrorTelemetry(error));
+    for (const secret of [RELATION, ISSUE, RELATED, SECRET]) expect(text).not.toContain(secret);
   });
 
   it.each([
     ['success false', { data: { issueRelationDelete: { success: false } } }],
-    ['delete GraphQL error', { data: { issueRelationDelete: null }, errors: [{ path: ['issueRelationDelete'], message: 'denied' }] }],
-  ])('does not acknowledge upstream %s', async (_case, deleteBody) => {
+    ['GraphQL error', { data: { issueRelationDelete: null }, errors: [{ path: ['issueRelationDelete'], message: leaked }] }],
+    ['HTTP error', null],
+    ['transport error', undefined],
+  ])('normalizes upstream delete %s without exposing a guard or credential', async (_case, deleteBody) => {
     const fetch = vi.fn(async (_url: string, init: RequestInit) => {
       const { query } = JSON.parse(String(init.body));
-      return query.includes('VerifyIssueRelationDelete')
-        ? response({ data: { issueRelation: { id: RELATION, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: RELATED } } } })
-        : response(deleteBody);
+      if (query.includes('VerifyIssueRelationDelete')) {
+        return response({ data: { issueRelation: { id: RELATION, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: RELATED } } } });
+      }
+      if (deleteBody === undefined) throw new Error(leaked);
+      if (deleteBody === null) return new Response(JSON.stringify({ message: leaked }), { status: 502, statusText: leaked });
+      return response(deleteBody);
     });
     vi.stubGlobal('fetch', fetch);
     process.env.LINEAR_API_KEY = SECRET;
-    await expect(execute({ operation: 'delete_issue_relation', variables })).rejects.toThrow();
+    const error = await execute({ operation: 'delete_issue_relation', variables }).catch((value: Error) => value);
+    expect(error.message).toBe('Linear issue relation delete failed.');
+    for (const secret of [RELATION, ISSUE, RELATED, SECRET]) expect(error.message).not.toContain(secret);
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
@@ -157,14 +194,151 @@ describe('delete_issue_relation strict guarded delete', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('rejects the dependent operation in batch before network access', async () => {
-    const fetch = vi.fn();
-    vi.stubGlobal('fetch', fetch);
-    await expect(execute({
+  function batchDelete(reads: unknown[] = []) {
+    return execute({
       operation: 'batch',
-      variables: { mutations: [{ key: 'delete', operation: 'delete_issue_relation', variables }] },
-    })).rejects.toThrow('cannot fold its preparation lookups into one GraphQL request');
-    expect(fetch).not.toHaveBeenCalled();
+      variables: {
+        reads,
+        mutations: [{ key: 'remove', operation: 'delete_issue_relation', variables }],
+      },
+    });
+  }
+
+  it('folds a guarded preflight beside reads, then returns the keyed acknowledgement', async () => {
+    const requests: Array<{ query: string; variables: Record<string, unknown> }> = [];
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const request = JSON.parse(String(init.body));
+      requests.push(request);
+      if (request.query.includes('BatchRead')) return response({ data: {
+        read: { id: ISSUE, identifier: 'AEO-1', title: 'Read' },
+        _lookup_remove_issueRelation: { id: RELATION, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: RELATED } },
+      } });
+      return response({ data: { remove: { success: true } } });
+    });
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = SECRET;
+    const result = await batchDelete([{ key: 'read', operation: 'get_issue', variables: { issue: ISSUE } }]);
+    expect(requests).toHaveLength(2);
+    expect(requests[0]!.query).toContain('read: issue');
+    expect(requests[0]!.query).toContain('_lookup_remove_issueRelation: issueRelation');
+    expect(requests[0]!.query).not.toContain('issueRelationDelete');
+    expect(requests[1]!.query).toContain('remove: issueRelationDelete');
+    expect(result.details).toMatchObject({
+      data: {
+        read: { issue: { id: ISSUE } },
+        remove: { issueRelationDelete: { ...variables, deleted: true } },
+      },
+      errors: [],
+      skipped: [],
+      meta: { requests: { read: 1, mutation: 1 } },
+    });
+    expect([...Object.keys(result.details.data), ...result.details.skipped]).toEqual(['read', 'remove']);
+  });
+
+  it.each([
+    ['absent', null],
+    ['wrong relation', { id: ISSUE, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: RELATED } }],
+    ['wrong source', { id: RELATION, type: 'related', issue: { id: RELATED }, relatedIssue: { id: RELATED } }],
+    ['wrong target', { id: RELATION, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: ISSUE } }],
+    ['reversed endpoints', { id: RELATION, type: 'related', issue: { id: RELATED }, relatedIssue: { id: ISSUE } }],
+    ['wrong type', { id: RELATION, type: 'blocks', issue: { id: ISSUE }, relatedIssue: { id: RELATED } }],
+  ])('skips the guarded batch delete after %s and never compiles or sends the mutation', async (_case, relation) => {
+    const requests: Array<{ query: string }> = [];
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const request = JSON.parse(String(init.body));
+      requests.push(request);
+      return response({ data: { _lookup_remove_issueRelation: relation } });
+    });
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = SECRET;
+    const result = await batchDelete();
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.query).not.toContain('issueRelationDelete');
+    expect(result.details).toMatchObject({
+      data: {}, errors: [], skipped: ['remove'], meta: { requests: { read: 1, mutation: 0 } },
+    });
+  });
+
+  it('accounts a preflight GraphQL failure as skipped and exposes none of the echoed values', async () => {
+    const requests: Array<{ query: string }> = [];
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const request = JSON.parse(String(init.body));
+      requests.push(request);
+      return response({
+        data: { _lookup_remove_issueRelation: null },
+        errors: [{ path: ['_lookup_remove_issueRelation'], message: leaked }],
+      });
+    });
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = SECRET;
+    const result = await batchDelete();
+    expect(requests).toHaveLength(1);
+    expect(result.details).toMatchObject({ data: {}, errors: [], skipped: ['remove'] });
+    const text = JSON.stringify(result.details);
+    for (const secret of [RELATION, ISSUE, RELATED, SECRET]) expect(text).not.toContain(secret);
+  });
+
+  it('uses the existing read-error gate and keeps the guarded mutation unsent', async () => {
+    const requests: Array<{ query: string }> = [];
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const request = JSON.parse(String(init.body));
+      requests.push(request);
+      return response({
+        data: {
+          broken: null,
+          _lookup_remove_issueRelation: { id: RELATION, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: RELATED } },
+        },
+        errors: [{ path: ['broken'], message: 'Read failed safely.' }],
+      });
+    });
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = SECRET;
+    const result = await batchDelete([{ key: 'broken', operation: 'get_issue', variables: { issue: ISSUE } }]);
+    expect(requests).toHaveLength(1);
+    expect(result.details).toMatchObject({
+      data: {},
+      errors: [{ key: 'broken', path: ['broken'], message: 'Read failed safely.' }],
+      skipped: ['remove'],
+      meta: { requests: { read: 1, mutation: 0 } },
+    });
+  });
+
+  it('keeps batch delete failures keyed and strips echoed guards and credentials', async () => {
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const { query } = JSON.parse(String(init.body));
+      if (query.includes('BatchRead')) return response({ data: {
+        _lookup_remove_issueRelation: { id: RELATION, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: RELATED } },
+      } });
+      return response({ data: { remove: null }, errors: [{ path: ['remove'], message: leaked }] });
+    });
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = SECRET;
+    const result = await batchDelete();
+    expect(result.details).toMatchObject({
+      data: {},
+      errors: [{ key: 'remove', path: ['remove'], message: 'Linear issue relation delete failed.' }],
+      skipped: [],
+      meta: { requests: { read: 1, mutation: 1 } },
+    });
+    const text = JSON.stringify(result.details);
+    for (const secret of [RELATION, ISSUE, RELATED, SECRET]) expect(text).not.toContain(secret);
+  });
+
+  it('preserves read and mutation phase telemetry for a guarded batch delete', async () => {
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const { query } = JSON.parse(String(init.body));
+      if (query.includes('BatchRead')) return response({ data: {
+        _lookup_remove_issueRelation: { id: RELATION, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: RELATED } },
+      } }, { 'X-RateLimit-Requests-Remaining': '1' });
+      return response({ data: { remove: { success: true } } }, { 'X-RateLimit-Complexity-Remaining': '1' });
+    });
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = SECRET;
+    const result = await batchDelete();
+    expect(result.details.meta.rateLimit.responses).toEqual([
+      { phase: 'read', attempt: 1, 'X-RateLimit-Requests-Remaining': 1 },
+      { phase: 'mutation', attempt: 1, 'X-RateLimit-Complexity-Remaining': 1 },
+    ]);
   });
 
   it('aggregates near-exhaustion telemetry with read and mutation phase identity', async () => {

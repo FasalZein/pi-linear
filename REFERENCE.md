@@ -96,13 +96,15 @@ Accepted domains are `issues`, `comments`, `users`, `teams`, `projects`, `cycles
 ```
 
 ```json
-{ "operation": "batch", "variables": { "reads": [{ "key": "one", "operation": "get_issue", "variables": { "issue": "AEO-258" } }] } }
+{ "operation": "batch", "variables": { "reads": [{ "key": "one", "operation": "get_issue", "variables": { "issue": "AEO-258" } }], "mutations": [{ "key": "remove", "operation": "delete_issue_relation", "variables": { "relationId": "33333333-3333-4333-8333-333333333333", "issueId": "11111111-1111-4111-8111-111111111111", "relatedIssueId": "22222222-2222-4222-8222-222222222222", "type": "related" } }] } }
 ```
 
 ```json
 { "operation": "get_result", "variables": { "handle": "linear-result:v1:550e8400-e29b-41d4-a716-446655440000", "path": "", "offset": 0 } }
 ```
 <!-- END GENERATED LINEAR OPERATIONS -->
+
+A batch can combine independent reads with one guarded `delete_issue_relation`. Its read request includes the exact relation preflight. The delete request runs only after every guard matches and the read-error gate passes.
 
 ## Exact references and fail-closed behavior
 

@@ -221,7 +221,7 @@ describe('generated products', () => {
     expect(published.filter(({ name }) => name !== 'batch' && name !== 'get_result')).toEqual(expected);
     expect(published).toContainEqual({
       name: 'batch',
-      purpose: 'Carry several independent named reads in one GraphQL request.',
+      purpose: 'Carry independent reads and optionally one guarded issue-relation delete in two phases.',
     });
     expect(published).toContainEqual({
       name: 'get_result',
@@ -278,6 +278,9 @@ describe('generated products', () => {
       'legacy compatibility path', 'exactly `write` plus',
     ]) expect(published).toContain(claim);
     expect(readme).toContain('50 tool surfaces');
+    expect(readme).toContain('published across all 49 tools');
+    expect(readme).toContain('The guarded `linear_delete_issue_relation` tool is the only delete tool.');
+    expect(readme).not.toContain('Delete, archive, and unarchive tools do not exist.');
     expect(reference).toContain('49 inactive typed tools');
     expect(published).not.toMatch(/\bTTL\b/i);
     expect(published).not.toMatch(/registers? (?:a )?typed `linear_get_result`/i);

@@ -64,19 +64,29 @@ export type OperationPreparation = {
 	acknowledgement?: Record<string, unknown>;
 	/** Dependent mutations fail instead of acknowledging a partial GraphQL response. */
 	requireNoGraphQLErrors?: boolean;
+	/** Stable external error for an upstream mutation failure. */
+	failureMessage?: string;
 };
-export type BatchLookupField = "parent" | "team" | "state" | "assignee";
+export type BatchLookupField = "parent" | "team" | "state" | "assignee" | "issueRelation";
 export type BatchLookup = {
 	field: BatchLookupField;
 	requested: string;
 	/** Independently known team key or UUID, required for a state name. */
 	team?: string;
+	/** Stable external error for this dependent read. */
+	failureMessage?: string;
 };
 export type BatchLookupValues = {
 	parent?: { id: string; identifier: string; teamId: string; teamKey: string };
 	team?: { id: string; key: string };
 	state?: { id: string; name: string; teamId: string };
 	assignee?: { id: string };
+	issueRelation?: {
+		id: string;
+		type: string;
+		issueId: string;
+		relatedIssueId: string;
+	};
 };
 export type BatchPreparation =
 	| { kind: "local" }
@@ -84,6 +94,8 @@ export type BatchPreparation =
 			kind: "independent";
 			lookups: readonly BatchLookup[];
 			finish: (resolved: BatchLookupValues) => OperationPreparation;
+			/** Compile the mutation only after all dependent lookups pass. */
+			deferDocument?: true;
 	  };
 export type PaginationMetadata = {
 	defaultPageSize: number;
