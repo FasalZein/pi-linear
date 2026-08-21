@@ -194,7 +194,7 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
         }
         if (params.operation === 'batch' && !params.query) {
           return toolResult(await executeBatch(
-            { variables: params.variables, workspace: params.workspace },
+            { variables: params.variables, workspace: params.workspace, sink: params.sink },
             mode,
             ctx,
             signal,

@@ -146,11 +146,13 @@ List operations and `search_issues` return `pageInfo` and accept supported curso
 
 ## Result routing
 
-Collections and raw GraphQL results at or above 8KB automatically route to `${PI_ARTIFACT_PROJECT_ROOT:-$HOME/.pi/artifacts}/linear/raw/`. The returned digest includes a canonical `handle`, compatibility `path`, full `bytes`, a compact `index`, and `meta`. The artifact contains the complete JSON. Retrieve it through `{ "operation": "get_result", "variables": { "handle": "linear-result:v1:<UUID>" } }`.
+Collections, batches, and raw GraphQL results at or above 8KB automatically route to `${PI_ARTIFACT_PROJECT_ROOT:-$HOME/.pi/artifacts}/linear/raw/`. The returned digest includes a canonical `handle`, compatibility `path`, full `bytes`, a compact `index`, and `meta`. The artifact contains the complete JSON. Retrieve it through `{ "operation": "get_result", "variables": { "handle": "linear-result:v1:<UUID>" } }`.
 
-Use `"sink": "artifact"` to force an artifact. Use `"sink": "inline"` to prefer complete inline output. Pi's 50KB or 2,000-line tool-output boundary can override the inline preference and return a recoverable handle. The runtime does not clip strings, cap returned nodes, remove object fields, remove rows, or fabricate pagination. Linear's `pageInfo`, `totalCount`, and server cursors stay unchanged.
+Use `"sink": "artifact"` to force an artifact. Use `"sink": "inline"` to prefer complete inline output. Pi's 50KB or 2,000-line tool-output boundary can override the inline preference and return a recoverable handle. The runtime does not clip strings, cap returned nodes, remove object fields, remove rows, remove batch keys, or fabricate pagination. Linear's `pageInfo`, `totalCount`, and server cursors stay unchanged.
 
-Set `LINEAR_SPILL_BYTES` to change the automatic spill threshold for collection and raw GraphQL routing.
+Every batch caller key appears exactly once across `data`, `errors`, and `skipped`. A failed key has at most one error record. Its first `path` and `message` remain stable. Multiple path errors add `causes`. Usable failed data appears in `partial`. A batch artifact stores and recovers the complete `{ "data": {}, "errors": [], "skipped": [], "meta": {} }` envelope.
+
+Set `LINEAR_SPILL_BYTES` to change the automatic spill threshold for collection, batch, and raw GraphQL routing.
 
 ## Workspaces and authentication
 

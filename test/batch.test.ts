@@ -1,5 +1,9 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { linearApiTool } from '../extensions/api';
+import { assertBatchAccounting } from '../extensions/batch';
 import type { MutationMode } from '../extensions/safety';
 import { isolateLinearCredentials } from './helpers/credentials';
 
@@ -10,11 +14,25 @@ const ISSUE_B = '22222222-2222-4222-8222-222222222222';
 const TEAM_ID = '33333333-3333-4333-8333-333333333333';
 const TOKEN = 'lin_api_secret123456789abcdef';
 const originalKey = process.env.LINEAR_API_KEY;
+const originalArtifactRoot = process.env.PI_ARTIFACT_PROJECT_ROOT;
+const originalSpillBytes = process.env.LINEAR_SPILL_BYTES;
+const artifactRoots: string[] = [];
 
-afterEach(() => {
+async function useArtifactRoot() {
+  const root = await mkdtemp(join(tmpdir(), 'pi-linear-batch-'));
+  artifactRoots.push(root);
+  process.env.PI_ARTIFACT_PROJECT_ROOT = root;
+}
+
+afterEach(async () => {
   vi.unstubAllGlobals();
   if (originalKey === undefined) delete process.env.LINEAR_API_KEY;
   else process.env.LINEAR_API_KEY = originalKey;
+  if (originalArtifactRoot === undefined) delete process.env.PI_ARTIFACT_PROJECT_ROOT;
+  else process.env.PI_ARTIFACT_PROJECT_ROOT = originalArtifactRoot;
+  if (originalSpillBytes === undefined) delete process.env.LINEAR_SPILL_BYTES;
+  else process.env.LINEAR_SPILL_BYTES = originalSpillBytes;
+  await Promise.all(artifactRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
 function execute(params: Record<string, unknown>, mode: MutationMode = 'allowlist') {
@@ -648,7 +666,7 @@ describe('batch transactional create', () => {
     expect(requests).toHaveLength(1);
     expect(requests[0]!.query).not.toMatch(/mutation/);
     expect(result.details.data).toEqual({});
-    expect(result.details.errors.length).toBeGreaterThan(0);
+    expect(result.details.errors).toEqual([]);
     expect(JSON.stringify(result.details)).not.toContain(TOKEN);
     expect(result.details.skipped.sort()).toEqual(['one', 'two']);
     expect(result.details.meta.requests).toEqual({ read: 1, mutation: 0 });
@@ -802,5 +820,183 @@ describe('batch transactional create', () => {
     expect(requests.every((request) => !request.query.includes('issueBatchCreate'))).toBe(true);
     expect(result.details.data.issueCreate.issue.title).toBe('Solo');
     expect(result.details).not.toHaveProperty('skipped');
+  });
+});
+
+describe('exact batch accounting and routing', () => {
+  it('preserves all 30 aliases and every selected field across auto, inline, and artifact recovery', async () => {
+    await useArtifactRoot();
+    const reads = Array.from({ length: 30 }, (_, index) => ({
+      key: `item${index + 1}`,
+      operation: 'get_issue',
+      variables: { issue: `AEO-${index + 1}` },
+    }));
+    graphqlStub((request) => ({
+      body: {
+        data: Object.fromEntries(reads.map((entry, index) => [entry.key, {
+          id: `${String(index + 1).padStart(8, '0')}-1111-4111-8111-111111111111`,
+          identifier: entry.variables.issue,
+          title: `Issue ${index + 1}`,
+          description: `field-${index + 1}-${'x'.repeat(120)}`,
+          team: { id: TEAM_ID, key: 'AEO' },
+        }])),
+      },
+    }));
+
+    const run = async (sink?: 'inline' | 'artifact') => {
+      const result = await execute({ operation: 'batch', variables: { reads }, ...(sink ? { sink } : {}) });
+      if (!result.details.handle) return result.details;
+      const recovered = await execute({
+        operation: 'get_result',
+        variables: { handle: result.details.handle },
+      });
+      return recovered.details.data.value;
+    };
+
+    process.env.LINEAR_SPILL_BYTES = '100';
+    const auto = await run();
+    const inline = await run('inline');
+    const artifact = await run('artifact');
+    for (const envelope of [auto, inline, artifact]) {
+      expect(Object.keys(envelope.data)).toEqual(reads.map(({ key }) => key));
+      expect(envelope.errors).toEqual([]);
+      expect(envelope.skipped).toEqual([]);
+      expect(envelope.meta.requests).toEqual({ read: 1, mutation: 0 });
+      expect(envelope.meta.aliases).toBe(30);
+      for (const [index, entry] of reads.entries()) {
+        expect(envelope.data[entry.key].issue).toMatchObject({
+          identifier: entry.variables.issue,
+          title: `Issue ${index + 1}`,
+          description: `field-${index + 1}-${'x'.repeat(120)}`,
+          team: { id: TEAM_ID, key: 'AEO' },
+        });
+      }
+    }
+    expect(auto.data).toEqual(inline.data);
+    expect(artifact.data).toEqual(inline.data);
+  });
+
+  it('falls back from inline at Pi output boundary and recovers the complete batch field', async () => {
+    await useArtifactRoot();
+    const description = 'batch-boundary-'.repeat(5_000);
+    graphqlStub(() => ({
+      body: {
+        data: {
+          one: { id: ISSUE_A, identifier: 'AEO-1', title: 'Large', description, team: { id: TEAM_ID, key: 'AEO' } },
+        },
+      },
+    }));
+    const result = await execute({
+      operation: 'batch',
+      variables: { reads: [{ key: 'one', operation: 'get_issue', variables: { issue: 'AEO-1' } }] },
+      sink: 'inline',
+    });
+    expect(result.details).toMatchObject({
+      handle: expect.stringMatching(/^linear-result:v1:/),
+      meta: { routing: { requestedSink: 'inline', actualSink: 'artifact', reason: 'tool-output-boundary' } },
+    });
+
+    let offset = 0;
+    let recovered = '';
+    do {
+      const part = await execute({
+        operation: 'get_result',
+        variables: { handle: result.details.handle, path: '/data/one/issue/description', offset },
+      });
+      recovered += part.details.data.value;
+      offset = part.details.meta.retrieval.nextOffset;
+    } while (offset !== undefined);
+    expect(recovered).toBe(description);
+  });
+
+  it('consolidates multiple path errors for one key and preserves partial data and a successful sibling', async () => {
+    graphqlStub(() => ({
+      body: {
+        data: {
+          partial: { id: ISSUE_A, identifier: 'AEO-1', title: 'Known', description: null, team: { id: TEAM_ID, key: 'AEO' } },
+          ready: issueNode(ISSUE_B, 'AEO-2'),
+        },
+        errors: [
+          { message: 'Description unavailable', path: ['partial', 'description'] },
+          { message: 'Comments unavailable', path: ['partial', 'comments'] },
+        ],
+      },
+    }));
+
+    const result = await batch([
+      { key: 'partial', operation: 'get_issue', variables: { issue: 'AEO-1' } },
+      { key: 'ready', operation: 'get_issue', variables: { issue: 'AEO-2' } },
+    ]);
+
+    expect(result.details.data).toEqual({ ready: { issue: issueNode(ISSUE_B, 'AEO-2') } });
+    expect(result.details.errors).toEqual([{
+      key: 'partial',
+      path: ['partial', 'description'],
+      message: 'Description unavailable',
+      causes: [
+        { path: ['partial', 'description'], message: 'Description unavailable' },
+        { path: ['partial', 'comments'], message: 'Comments unavailable' },
+      ],
+      partial: {
+        issue: { id: ISSUE_A, identifier: 'AEO-1', title: 'Known', description: null, team: { id: TEAM_ID, key: 'AEO' } },
+      },
+    }]);
+    expect(result.details.skipped).toEqual([]);
+  });
+
+  it('keeps a mutation skipped after a read failure only in skipped', async () => {
+    graphqlStub(() => ({
+      body: {
+        data: { missing: null, ready: issueNode(ISSUE_B, 'AEO-2') },
+        errors: [{ message: 'Not found', path: ['missing'] }],
+      },
+    }));
+    const result = await execute({
+      operation: 'batch',
+      variables: {
+        reads: [
+          { key: 'missing', operation: 'get_issue', variables: { issue: 'AEO-1' } },
+          { key: 'ready', operation: 'get_issue', variables: { issue: 'AEO-2' } },
+        ],
+        mutations: [{ key: 'edit', operation: 'update_issue', variables: { issue: 'AEO-1', title: 'New title' } }],
+      },
+    });
+    expect(result.details.errors.map((error: { key: string }) => error.key)).toEqual(['missing']);
+    expect(result.details.skipped).toEqual(['edit']);
+    expect(result.details.data).not.toHaveProperty('edit');
+  });
+
+  it('rejects duplicate buckets, duplicate records, missing keys, and unexpected keys', () => {
+    const valid = { data: { one: {} }, errors: [{ key: 'two', path: ['two'], message: 'failed' }], skipped: ['three'] };
+    expect(() => assertBatchAccounting(['one', 'two', 'three'], valid.data, valid.errors, valid.skipped)).not.toThrow();
+    expect(() => assertBatchAccounting(['one'], { one: {} }, [{ key: 'one', path: ['one'], message: 'failed' }], []))
+      .toThrow(/accounting/i);
+    expect(() => assertBatchAccounting(['one'], {}, [
+      { key: 'one', path: ['one'], message: 'first' },
+      { key: 'one', path: ['one'], message: 'second' },
+    ], [])).toThrow(/accounting/i);
+    expect(() => assertBatchAccounting(['one'], {}, [], [])).toThrow(/accounting/i);
+    expect(() => assertBatchAccounting(['one'], { extra: {} }, [], ['one'])).toThrow(/accounting/i);
+  });
+
+  it('passes top-level sink through batch execution', async () => {
+    await useArtifactRoot();
+    graphqlStub(() => ({ body: { data: { one: issueNode(ISSUE_A, 'AEO-1') } } }));
+    const result = await execute({
+      operation: 'batch',
+      variables: { reads: [{ key: 'one', operation: 'get_issue', variables: { issue: 'AEO-1' } }] },
+      sink: 'artifact',
+    });
+    expect(result.details).toMatchObject({
+      handle: expect.stringMatching(/^linear-result:v1:/),
+      meta: { routing: { requestedSink: 'artifact', actualSink: 'artifact', reason: 'requested' } },
+    });
+    const recovered = await execute({ operation: 'get_result', variables: { handle: result.details.handle } });
+    expect(recovered.details.data.value).toMatchObject({
+      data: { one: { issue: issueNode(ISSUE_A, 'AEO-1') } },
+      errors: [],
+      skipped: [],
+      meta: { requests: { read: 1, mutation: 0 }, aliases: 1 },
+    });
   });
 });
