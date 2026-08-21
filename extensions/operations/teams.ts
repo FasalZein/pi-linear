@@ -46,6 +46,7 @@ export const teams: readonly OperationDefinition[] = ([
 	}),
 	{
 		name: "get_team",
+		resultCategory: "singular",
 		compatibilityBranches: [
 			{
 				"all": [

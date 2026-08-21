@@ -941,6 +941,7 @@ export const issues: readonly OperationDefinition[] = ([
 					exactIssue: { requested: term, path: "issue" },
 					resolution: { target: { requested: term } },
 					resultView: view,
+					resultCategory: "singular",
 				};
 			}
 			const teamRef = v.team ?? v.teamId;

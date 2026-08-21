@@ -492,7 +492,7 @@ describe('result routing', () => {
   it('auto-spills results above the default threshold', async () => {
     expect(AUTO_SPILL_BYTES).toBe(8 * 1024);
     await artifactRoot();
-    const result = await routeLinearResult({ body: 'x'.repeat(AUTO_SPILL_BYTES) }, { label: 'get_issue' });
+    const result = await routeLinearResult({ body: 'x'.repeat(AUTO_SPILL_BYTES) }, { label: 'query', category: 'composite' });
 
     expect(result).toMatchObject({
       handle: expect.stringMatching(/^linear-result:v1:[0-9a-f-]+$/),
@@ -504,10 +504,10 @@ describe('result routing', () => {
 
   it('honors forced artifact and inline sinks', async () => {
     await artifactRoot();
-    const forcedArtifact = await routeLinearResult({ ok: true }, { label: 'query', sink: 'artifact' });
+    const forcedArtifact = await routeLinearResult({ ok: true }, { label: 'query', category: 'composite', sink: 'artifact' });
     const forcedInline = await routeLinearResult(
       { body: 'x'.repeat(AUTO_SPILL_BYTES + 1) },
-      { label: 'query', sink: 'inline' },
+      { label: 'query', category: 'composite', sink: 'inline' },
     );
 
     expect(forcedArtifact).toHaveProperty('path');
@@ -522,7 +522,7 @@ describe('result routing', () => {
       title: `Issue ${index + 1}`,
       state: { name: 'Open' },
     }));
-    const result = await routeLinearResult({ issues: { nodes } }, { label: 'query', sink: 'artifact' });
+    const result = await routeLinearResult({ issues: { nodes } }, { label: 'query', category: 'composite', sink: 'artifact' });
 
     expect('index' in result).toBe(true);
     if (!('index' in result)) throw new Error('Expected artifact result.');
@@ -535,7 +535,7 @@ describe('result routing', () => {
     await artifactRoot();
     const result = await routeLinearResult(
       { teams: { nodes: [{ id: '1' }, { id: '2' }] }, viewer: { id: 'me' } },
-      { label: 'list_teams', sink: 'artifact' },
+      { label: 'list_teams', category: 'collection', sink: 'artifact' },
     );
 
     expect('index' in result).toBe(true);
@@ -546,7 +546,7 @@ describe('result routing', () => {
   it('writes complete strings to the artifact without inline clipping', async () => {
     await artifactRoot();
     const body = 'x'.repeat(STRING_CAP + 792);
-    const result = await routeLinearResult({ comments: { nodes: [{ body }] } }, { label: 'get_issue', sink: 'artifact' });
+    const result = await routeLinearResult({ comments: { nodes: [{ body }] } }, { label: 'get_issue', category: 'singular', sink: 'artifact' });
     expect('path' in result).toBe(true);
     if (!('path' in result)) throw new Error('Expected artifact result.');
     const file = JSON.parse(await readFile(result.path, 'utf8'));
@@ -568,7 +568,7 @@ describe('result routing', () => {
   it('uses LINEAR_SPILL_BYTES as the auto-spill threshold', async () => {
     await artifactRoot();
     process.env.LINEAR_SPILL_BYTES = '100';
-    const result = await routeLinearResult({ body: 'x'.repeat(100) }, { label: 'query' });
+    const result = await routeLinearResult({ body: 'x'.repeat(100) }, { label: 'query', category: 'composite' });
 
     expect(result).toHaveProperty('path');
   });

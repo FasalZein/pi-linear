@@ -51,6 +51,7 @@ export const views: readonly OperationDefinition[] = ([
 	}),
 	{
 		name: "get_view",
+		resultCategory: "singular",
 		compatibilityBranches: [
 			{
 				"all": [

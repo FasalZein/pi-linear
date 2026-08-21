@@ -57,6 +57,7 @@ export const users: readonly OperationDefinition[] = ([
 	}),
 	{
 		name: "get_user",
+		resultCategory: "singular",
 		compatibilityBranches: [
 			{
 				"all": [

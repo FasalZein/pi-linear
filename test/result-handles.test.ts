@@ -24,7 +24,7 @@ function execute(params: Record<string, unknown>) {
 }
 
 async function artifact(data: Record<string, unknown>) {
-  const result = await routeLinearResult(data, { label: 'caller-controlled/operation', sink: 'artifact' });
+  const result = await routeLinearResult(data, { label: 'caller-controlled/operation', category: 'singular', sink: 'artifact' });
   if (!('handle' in result)) throw new Error('Expected artifact result.');
   return result;
 }
