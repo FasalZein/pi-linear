@@ -126,6 +126,11 @@
       "domain": "relations"
     },
     {
+      "name": "linear_delete_issue_relation",
+      "operation": "delete_issue_relation",
+      "domain": "relations"
+    },
+    {
       "name": "linear_list_issue_statuses",
       "operation": "list_issue_statuses",
       "domain": "workspace"
@@ -272,6 +277,7 @@
     "linear_list_issue_relations",
     "linear_create_issue_relation",
     "linear_update_issue_relation",
+    "linear_delete_issue_relation",
     "linear_list_issue_statuses",
     "linear_list_issues",
     "linear_get_issue",

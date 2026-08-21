@@ -1,4 +1,4 @@
-import { resolveIssueReference } from "../client";
+import { linearGraphQL, linearGraphQLErrors, resolveIssueReference } from "../client";
 import { projection } from "../selections";
 import {
 	mergedInput,
@@ -18,6 +18,22 @@ import {
 	listOperation,
 	simpleMutation,
 } from "./shared";
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ISSUE_RELATION_TYPES = new Set(["blocks", "duplicate", "related", "similar"]);
+const RELATION_GUARD_ERROR = "Linear issue relation did not match the exact delete guard.";
+const DELETE_ISSUE_RELATION_DOCUMENT = `mutation DeleteIssueRelation($id: String!) {
+  issueRelationDelete(id: $id) { success }
+}`;
+const DELETE_ISSUE_RELATION_VARIANT = {
+	document: DELETE_ISSUE_RELATION_DOCUMENT,
+	root: "issueRelationDelete",
+	mutationResult: {
+		successPath: "success",
+		successValue: true as const,
+		requiredEntityPaths: [],
+	},
+};
 
 export const issueRelations: readonly OperationDefinition[] = ([
 	listOperation({
@@ -202,6 +218,83 @@ export const issueRelations: readonly OperationDefinition[] = ([
 			return { variables: { id: v.id, input: x }, resolution };
 		},
 	}),
+	{
+		name: "delete_issue_relation",
+		compatibilityBranches: [{ all: ["relationId", "issueId", "relatedIssueId", "type"] }],
+		canonical: {
+			fields: {
+				relationId: "UUID",
+				issueId: "UUID",
+				relatedIssueId: "UUID",
+				type: "IssueRelationType",
+			},
+			branches: [["relationId", "issueId", "relatedIssueId", "type"]],
+		},
+		aliases: [],
+		domain: "relations",
+		purpose: "Delete one issue relation after exact relation and endpoint verification.",
+		resultCategory: "singular",
+		parameters: [
+			p("relationId", "UUID", true),
+			p("issueId", "UUID", true),
+			p("relatedIssueId", "UUID", true),
+			p("type", "IssueRelationType", true),
+		],
+		example: {
+			operation: "delete_issue_relation",
+			variables: {
+				relationId: "33333333-3333-4333-8333-333333333333",
+				issueId: "11111111-1111-4111-8111-111111111111",
+				relatedIssueId: "22222222-2222-4222-8222-222222222222",
+				type: "related",
+			},
+		},
+		document: DELETE_ISSUE_RELATION_DOCUMENT,
+		variants: [DELETE_ISSUE_RELATION_VARIANT],
+		renderKind: "issue_relation",
+		renderTargetFields: ["relationId", "issueId", "relatedIssueId", "type"],
+		semanticException: "All delete guards must be exact UUIDs and the relation type must be closed.",
+		validateVariables(variables) {
+			for (const name of ["relationId", "issueId", "relatedIssueId"])
+				if (typeof variables[name] !== "string" || !UUID.test(variables[name]))
+					throw new Error(`Invalid ${name}: expected a UUID.`);
+			if (typeof variables.type !== "string" || !ISSUE_RELATION_TYPES.has(variables.type))
+				throw new Error("Invalid type: expected blocks, duplicate, related, or similar.");
+		},
+		async prepare(apiKey, variables, signal) {
+			const relationId = String(variables.relationId);
+			const issueId = String(variables.issueId);
+			const relatedIssueId = String(variables.relatedIssueId);
+			const type = String(variables.type);
+			const data = await linearGraphQL<{
+				issueRelation: {
+					id?: unknown;
+					type?: unknown;
+					issue?: { id?: unknown } | null;
+					relatedIssue?: { id?: unknown } | null;
+				} | null;
+			}>(apiKey, `query VerifyIssueRelationDelete($id: String!) {
+  issueRelation(id: $id) { id type issue { id } relatedIssue { id } }
+}`, { id: relationId }, signal, { phase: "read" });
+			const relation = data.issueRelation;
+			if (linearGraphQLErrors(data).length) throw new Error(RELATION_GUARD_ERROR);
+			if (
+				relation?.id !== relationId
+				|| relation.type !== type
+				|| relation.issue?.id !== issueId
+				|| relation.relatedIssue?.id !== relatedIssueId
+			) throw new Error(RELATION_GUARD_ERROR);
+			return {
+				variant: DELETE_ISSUE_RELATION_VARIANT,
+				variables: { id: relationId },
+				telemetryPhase: "mutation" as const,
+				requireNoGraphQLErrors: true,
+				acknowledgement: {
+					issueRelationDelete: { relationId, issueId, relatedIssueId, type, deleted: true },
+				},
+			};
+		},
+	},
 ] satisfies OperationSource[]).map((operation) =>
 	defineOperation(operation as LinearOperation),
 );

@@ -48,6 +48,7 @@
       "issueLabelCreate",
       "issueLabelUpdate",
       "issueRelationCreate",
+      "issueRelationDelete",
       "issueRelationUpdate",
       "issueUpdate",
       "projectCreate",
@@ -160,6 +161,9 @@
     ],
     "projectUpdate": [
       "project",
+      "success"
+    ],
+    "issueRelationDelete": [
       "success"
     ]
   }

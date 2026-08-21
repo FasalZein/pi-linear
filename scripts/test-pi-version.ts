@@ -93,7 +93,7 @@ const harness = createPi();
 register(harness.pi);
 for (const handler of harness.sessionHandlers) await handler();
 const names = harness.registered.map((tool) => tool.name);
-if (names.length !== 49) throw new Error(\`Expected 49 tools, registered \${names.length}.\`);
+if (names.length !== 50) throw new Error(\`Expected 50 tools, registered \${names.length}.\`);
 if (!names.includes('linear')) throw new Error('linear was not registered.');
 const linearActive = harness.activeTools().filter((name) => name === 'linear' || name.startsWith('linear_'));
 if (linearActive.join(',') !== 'linear') throw new Error(\`Active Linear tools: \${linearActive.join(', ')}\`);

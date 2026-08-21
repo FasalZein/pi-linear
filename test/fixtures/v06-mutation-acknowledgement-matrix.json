@@ -479,6 +479,17 @@
       "target": "id"
     }
   ],
+  "delete_issue_relation": [
+    {
+      "required": [
+        "relationId",
+        "issueId",
+        "relatedIssueId",
+        "type"
+      ],
+      "target": "relationId"
+    }
+  ],
   "create_issue": [
     {
       "required": [

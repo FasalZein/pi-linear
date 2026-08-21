@@ -409,6 +409,15 @@
           "success"
         ]
       },
+      "issueRelationDelete": {
+        "returns": "DeletePayload!",
+        "arguments": {
+          "id": "String!"
+        },
+        "selectedPayloadFields": [
+          "success"
+        ]
+      },
       "issueRelationUpdate": {
         "returns": "IssueRelationPayload!",
         "arguments": {
@@ -3602,6 +3611,12 @@
     "ViewPreferences": {
       "kind": "OBJECT",
       "fields": {}
+    },
+    "DeletePayload": {
+      "kind": "OBJECT",
+      "fields": {
+        "success": "Boolean!"
+      }
     }
   },
   "scalars": {
@@ -3652,7 +3667,7 @@
     "sourceQuery": "scripts/fixtures/readonly-introspection.graphql",
     "sourceQuerySha256": "8f8319dd72fea1824c5f5b365415eb152f1876b7df3d935619ab06606a917cf9",
     "scope": "scripts/fixtures/readonly-schema-scope.json",
-    "scopeSha256": "87374c027fd41d7108437a1ef7bee5aeab388192082224fa2afa742fe72d1c99",
-    "normalizedSha256": "70c180fc5049ae1470346c3d568f45ab2b5212b769af3ac922a9ffcf8e629910"
+    "scopeSha256": "c43353deac90b91c7171931bdb605823ec970fcd01101083f5098f742062acf1",
+    "normalizedSha256": "17e130ebf0f5540f2701e2ab7c6586ba564f0513e2b754df22b64982868935e9"
   }
 }

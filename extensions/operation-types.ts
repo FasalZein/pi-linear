@@ -58,6 +58,12 @@ export type OperationPreparation = {
 	exactNamed?: ExactNamedCheck;
 	resultView?: ResultView;
 	resultCategory?: ResultCategory;
+	/** Phase label for the prepared network request after any preparation reads. */
+	telemetryPhase?: "read" | "mutation";
+	/** Compact result synthesized only after the upstream request passes its checks. */
+	acknowledgement?: Record<string, unknown>;
+	/** Dependent mutations fail instead of acknowledging a partial GraphQL response. */
+	requireNoGraphQLErrors?: boolean;
 };
 export type BatchLookupField = "parent" | "team" | "state" | "assignee";
 export type BatchLookup = {

@@ -33,6 +33,7 @@ const CANONICAL = [
 	"list_issue_relations",
 	"create_issue_relation",
 	"update_issue_relation",
+	"delete_issue_relation",
 	"list_issue_statuses",
 	"list_issues",
 	"get_issue",
@@ -68,16 +69,13 @@ function operationType(document: string) {
 }
 
 describe("v0.4 operation inventory", () => {
-	it("contains exactly the 48 non-destructive upstream canonical names", () => {
+	it("contains the 48 upstream names plus only the guarded relation delete", () => {
 		expect(Object.keys(operations).sort()).toEqual([...CANONICAL].sort());
-		expect(Object.keys(operations)).toHaveLength(48);
-		for (const operation of Object.values(operations)) {
-			expect(
-				[operation.name, ...operation.aliases].some((name) =>
-					/^(delete|archive|unarchive)_/.test(name),
-				),
-			).toBe(false);
-		}
+		expect(Object.keys(operations)).toHaveLength(49);
+		expect(Object.values(operations)
+			.flatMap((operation) => [operation.name, ...operation.aliases])
+			.filter((name) => /^(delete|archive|unarchive)_/.test(name)))
+			.toEqual(["delete_issue_relation"]);
 	});
 
 	it("provides executable, scoped discovery metadata for every operation", () => {

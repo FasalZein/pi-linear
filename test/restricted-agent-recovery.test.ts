@@ -86,7 +86,7 @@ describe('restricted Linear agent recovery', () => {
     vi.stubGlobal('fetch', fetch);
 
     const harness = policyHarness(allowed);
-    expect(harness.registered).toHaveLength(49);
+    expect(harness.registered).toHaveLength(50);
     expect(harness.registered.map(({ name }) => name)).not.toContain('linear_get_result');
     expect(harness.active()).toEqual(['write', 'linear']);
 

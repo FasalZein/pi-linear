@@ -48,7 +48,7 @@ const CANONICAL_NAMES = [
   'list_documents', 'get_document', 'create_document', 'update_document', 'list_initiatives',
   'get_initiative', 'list_issue_labels', 'create_issue_label',
   'update_issue_label', 'list_issue_relations', 'create_issue_relation', 'update_issue_relation',
-  'list_issue_statuses', 'list_issues', 'get_issue', 'create_issue', 'update_issue', 'search_issues',
+  'delete_issue_relation', 'list_issue_statuses', 'list_issues', 'get_issue', 'create_issue', 'update_issue', 'search_issues',
   'list_milestones', 'get_milestone', 'list_project_labels',
   'create_project_label', 'update_project_label', 'list_project_relations',
   'create_project_relation', 'update_project_relation', 'list_projects', 'get_project',
@@ -64,9 +64,9 @@ const COMPATIBILITY_ALIASES = {
 } as const;
 
 describe('v0.6 operation definition authority', () => {
-  it('owns all 48 unique operation identities and required contract sections', () => {
+  it('owns all 49 unique operation identities and required contract sections', () => {
     expect(operationDefinitions.map(({ name }) => name)).toEqual(CANONICAL_NAMES);
-    expect(new Set(operationDefinitions.map(({ name }) => name)).size).toBe(48);
+    expect(new Set(operationDefinitions.map(({ name }) => name)).size).toBe(49);
     for (const definition of operationDefinitions) {
       expect(definition.toolName).toBe(`linear_${definition.name}`);
       expect(definition.compatibility.example).toEqual({
@@ -96,11 +96,11 @@ describe('v0.6 operation definition authority', () => {
     }
   });
 
-  it('owns every GraphQL document and all 25 mutation expectations', () => {
+  it('owns every GraphQL document and all 26 mutation expectations', () => {
     const mutations = operationDefinitions.flatMap((definition) =>
       definition.graphql?.documents.filter((variant) => variant.kind === 'mutation') ?? [],
     );
-    expect(mutations).toHaveLength(25);
+    expect(mutations).toHaveLength(26);
     for (const definition of operationDefinitions) {
       expect(operationDocuments(operations[definition.name])).toEqual(
         definition.graphql?.documents.map(({ document }) => document) ?? [definition.compatibility.document],
@@ -144,6 +144,7 @@ describe('v0.6 operation definition authority', () => {
       list_issues: 'state-name-requires-team',
       create_issue: 'non-empty-title-and-team-or-parent',
       create_project_label: 'nested-name-type',
+      delete_issue_relation: 'All delete guards must be exact UUIDs and the relation type must be closed.',
       save_initiative: 'save-value-types',
       save_milestone: 'save-value-types',
       save_project: 'save-value-types',
