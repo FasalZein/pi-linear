@@ -1,10 +1,22 @@
-import type { ExtensionContext } from '@earendil-works/pi-coding-agent';
+import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, type ExtensionContext } from '@earendil-works/pi-coding-agent';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { activeSecrets } from './active-secrets';
-import { assertIssueNodeMatches, assertNamedNodeMatches, linearGraphQL, resolveApiKey } from './client';
-import type { GraphQLDocumentVariant, LocalResultExpectation, OperationPreparation } from './operation-types';
+import {
+  assertIssueNodeMatches,
+  assertNamedNodeMatches,
+  linearGraphQL,
+  linearGraphQLErrors,
+  resolveApiKey,
+  type LinearGraphQLPathError,
+} from './client';
+import type {
+  GraphQLDocumentVariant,
+  LocalResultExpectation,
+  OperationPreparation,
+  ResultCategory,
+} from './operation-types';
 import type { LinearOperation } from './operations';
 import type { ResultView } from './selections';
 import { redactDeep, withRedactedErrors } from './redact';
@@ -22,14 +34,20 @@ export type ResultMeta = {
   nodeCap?: number;
   truncations: Truncation[];
   stringsClipped: number;
-  resultBudget?: { maxBytes: number; truncated: true };
+  resultBudget?: {
+    maxBytes: number;
+    maxLines?: number;
+    truncated: true;
+    recoverable?: true;
+    omissions?: Array<{ path: ''; handle: string; originalBytes: number; inlineBytes: 0 }>;
+  };
   view?: ResultView;
   routing?: {
     requestedSink: 'auto' | 'inline' | 'artifact';
-    actualSink: 'artifact';
-    reason: 'requested' | 'spill-threshold';
-    inlineComplete: false;
-    externalized: Array<{ path: ''; handle: string; bytes: number }>;
+    actualSink: 'inline' | 'artifact';
+    reason?: 'requested' | 'spill-threshold' | 'tool-output-boundary';
+    inlineComplete: boolean;
+    externalized?: Array<{ path: ''; handle: string; bytes: number }>;
   };
 };
 
@@ -128,18 +146,84 @@ export function compactLinearResult<T extends JsonObject>(
   return result;
 }
 
+type RoutedEnvelope<T extends JsonObject> = {
+  data: T;
+  errors?: LinearGraphQLPathError[];
+  meta: ResultMeta;
+  resolution?: JsonObject;
+};
+
+type RouteCategory = Exclude<ResultCategory, 'local'> | 'composite';
+
+function withinToolBoundary(serialized: string): boolean {
+  return Buffer.byteLength(serialized, 'utf8') <= DEFAULT_MAX_BYTES
+    && serialized.split('\n').length <= DEFAULT_MAX_LINES;
+}
+
 export async function routeLinearResult<T extends JsonObject>(
   rawData: T,
-  options: { label: string; sink?: 'inline' | 'artifact'; nodeCap?: number; secrets?: readonly string[] },
-): Promise<{ data: T; meta: ResultMeta } | { handle: string; path: string; bytes: number; index: string[]; meta: ResultMeta }> {
-  // Redact before anything is measured, compacted, serialized, or written: the model
-  // content, the details object, the artifact file, and its index all derive from here.
-  const data = redactDeep(rawData, options.secrets ?? []);
-  const full = { data, meta: { truncations: [], stringsClipped: 0 } as ResultMeta };
-  const serialized = JSON.stringify(full);
+  options: {
+    label: string;
+    category: RouteCategory;
+    sink?: 'inline' | 'artifact';
+    nodeCap?: number;
+    secrets?: readonly string[];
+    errors?: readonly LinearGraphQLPathError[];
+    view?: ResultView;
+    resolution?: JsonObject;
+  },
+): Promise<RoutedEnvelope<T> | {
+  handle: string;
+  path: string;
+  bytes: number;
+  index: string[];
+  meta: ResultMeta;
+  resolution?: JsonObject;
+}> {
+  // Redact before anything is measured, serialized, indexed, written, or returned.
+  const secrets = options.secrets ?? [];
+  const data = redactDeep(rawData, secrets);
+  const errors = options.errors?.length
+    ? redactDeep(options.errors, secrets) as LinearGraphQLPathError[]
+    : undefined;
+  const resolution = options.resolution ? redactDeep(options.resolution, secrets) : undefined;
+  const requestedSink = options.sink ?? 'auto';
+  const baseMeta: ResultMeta = {
+    truncations: [],
+    stringsClipped: 0,
+    ...(options.view ? { view: options.view } : {}),
+  };
+  const complete: RoutedEnvelope<T> = {
+    data,
+    ...(errors ? { errors } : {}),
+    meta: {
+      ...baseMeta,
+      routing: { requestedSink, actualSink: 'inline', inlineComplete: true },
+    },
+    ...(resolution ? { resolution } : {}),
+  };
+  const serialized = JSON.stringify(complete);
   const bytes = Buffer.byteLength(serialized, 'utf8');
-  const spill = options.sink === 'artifact' || (options.sink !== 'inline' && bytes > spillThreshold());
-  if (!spill) return compactLinearResult(data, { nodeCap: options.nodeCap });
+  const exceedsBoundary = !withinToolBoundary(serialized);
+  const spillForPolicy = options.category !== 'singular' && bytes > spillThreshold();
+  const spill = requestedSink === 'artifact'
+    || exceedsBoundary
+    || (requestedSink === 'auto' && spillForPolicy);
+
+  if (!spill) {
+    if (options.category !== 'collection') return complete;
+    const compact = compactLinearResult(data, { nodeCap: options.nodeCap });
+    return {
+      data: compact.data,
+      ...(errors ? { errors } : {}),
+      meta: {
+        ...compact.meta,
+        ...(options.view ? { view: options.view } : {}),
+        routing: { requestedSink, actualSink: 'inline', inlineComplete: true },
+      },
+      ...(resolution ? { resolution } : {}),
+    };
+  }
 
   const directory = resultArtifactRoot();
   const uuid = randomUUID();
@@ -147,21 +231,36 @@ export async function routeLinearResult<T extends JsonObject>(
   const path = join(directory, `${uuid}.json`);
   await mkdir(directory, { recursive: true });
   await writeFile(path, serialized);
+  const reason = requestedSink === 'artifact'
+    ? 'requested'
+    : exceedsBoundary
+      ? 'tool-output-boundary'
+      : 'spill-threshold';
   return {
     handle,
     path,
     bytes,
     index: artifactIndex(data),
     meta: {
-      ...full.meta,
+      ...baseMeta,
+      ...(exceedsBoundary ? {
+        resultBudget: {
+          maxBytes: DEFAULT_MAX_BYTES,
+          maxLines: DEFAULT_MAX_LINES,
+          truncated: true,
+          recoverable: true,
+          omissions: [{ path: '', handle, originalBytes: bytes, inlineBytes: 0 }],
+        },
+      } : {}),
       routing: {
-        requestedSink: options.sink ?? 'auto',
+        requestedSink,
         actualSink: 'artifact',
-        reason: options.sink === 'artifact' ? 'requested' : 'spill-threshold',
+        reason,
         inlineComplete: false,
         externalized: [{ path: '', handle, bytes }],
       },
     },
+    ...(resolution ? { resolution } : {}),
   };
 }
 
@@ -351,19 +450,20 @@ export async function executeOperation(
     assertMutationAllowed(document, mode, variant ? [variant.root] : []);
     if (variant) mutationExpectation(operation.name, variant);
     const data = await linearGraphQL<JsonObject>(apiKey, document, prepared.variables, signal);
+    const errors = linearGraphQLErrors(data);
     if (variant) validateMutationResult(operation.name, data, variant);
     applyExactIssueCheck(prepared, data);
     applyExactNamedCheck(prepared, data);
-    const result = await routeLinearResult(data, {
+    const category = prepared.resultCategory ?? operation.resultCategory;
+    if (category === 'local') throw new Error(`Network operation "${operation.name}" cannot use local result routing.`);
+    return routeLinearResult(data, {
       label: operation.name,
+      category,
       sink: options.sink,
       secrets,
+      errors,
+      view: prepared.resultView,
+      resolution: prepared.resolution,
     });
-    const withView = prepared.resultView
-      ? { ...result, meta: { ...result.meta, view: prepared.resultView } }
-      : result;
-    return prepared.resolution
-      ? { ...withView, resolution: redactDeep(prepared.resolution, secrets) }
-      : withView;
   }, secrets);
 }

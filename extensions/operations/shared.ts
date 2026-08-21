@@ -178,7 +178,7 @@ export function applyResultView(
 }
 
 export function withGetResultView(
-	source: OperationSource,
+	source: Omit<OperationSource, "resultCategory">,
 	entity: ResultViewEntity,
 	root: string,
 	queryName: string,
@@ -191,6 +191,7 @@ export function withGetResultView(
 	const innerPrepare = source.prepare;
 	return {
 		...source,
+		resultCategory: "singular",
 		canonical: {
 			...source.canonical,
 			fields: { ...source.canonical.fields, view: "ResultView" },
@@ -346,6 +347,7 @@ export function listOperation(config: {
 	return {
 		...sourceExtras(config),
 		name: config.name,
+		resultCategory: "collection",
 		canonical: config.resultView
 			? {
 					...config.canonical,
@@ -432,6 +434,7 @@ export function simpleMutation(config: {
 	return {
 		...sourceExtras(config),
 		name: config.name,
+		resultCategory: "singular",
 		canonical: config.canonical,
 		aliases: config.aliases ?? [],
 		domain: config.domain,
@@ -537,6 +540,7 @@ export function addSaveOperation(config: {
 	return defineOperation({
 		...sourceExtras(config),
 		name: config.name,
+		resultCategory: "singular",
 		canonical: config.canonical,
 		aliases: [],
 		domain: config.domain,

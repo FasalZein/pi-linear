@@ -85,6 +85,7 @@ export const cycles: readonly OperationDefinition[] = ([
 	}),
 	{
 		name: "get_cycle",
+		resultCategory: "singular",
 		compatibilityBranches: [
 			{
 				"all": [

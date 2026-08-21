@@ -53,6 +53,7 @@ export const initiativeReads: readonly OperationDefinition[] = ([
 	}),
 	{
 		name: "get_initiative",
+		resultCategory: "singular",
 		compatibilityBranches: [
 			{
 				"all": [

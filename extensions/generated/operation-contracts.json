@@ -219,6 +219,7 @@
       }
     },
     "result": {
+      "category": "collection",
       "renderKind": "comment",
       "dataPaths": [
         "comments"
@@ -854,6 +855,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "comment",
       "dataPaths": [
         "commentCreate"
@@ -1113,6 +1115,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "comment",
       "dataPaths": [
         "commentUpdate"
@@ -1325,6 +1328,7 @@
       "example": {}
     },
     "result": {
+      "category": "collection",
       "renderKind": "view",
       "dataPaths": [
         "customViews"
@@ -1459,6 +1463,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "view",
       "dataPaths": [
         "customView"
@@ -1786,6 +1791,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "view",
       "dataPaths": [
         "customViewCreate"
@@ -2184,6 +2190,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "view",
       "dataPaths": [
         "customViewUpdate"
@@ -2390,6 +2397,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "view",
       "dataPaths": [
         "viewPreferencesCreate"
@@ -2669,6 +2677,7 @@
       "example": {}
     },
     "result": {
+      "category": "collection",
       "renderKind": "cycle",
       "dataPaths": [
         "cycles"
@@ -2822,6 +2831,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "cycle",
       "dataPaths": [
         "cycle"
@@ -3113,6 +3123,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "cycle",
       "dataPaths": [
         "cycleCreate"
@@ -3382,6 +3393,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "cycle",
       "dataPaths": [
         "cycleUpdate"
@@ -3663,6 +3675,7 @@
       "example": {}
     },
     "result": {
+      "category": "collection",
       "renderKind": "document",
       "dataPaths": [
         "documents"
@@ -3836,6 +3849,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "document",
       "dataPaths": [
         "document"
@@ -4235,6 +4249,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "document",
       "dataPaths": [
         "documentCreate"
@@ -4839,6 +4854,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "document",
       "dataPaths": [
         "documentUpdate"
@@ -5105,6 +5121,7 @@
       "example": {}
     },
     "result": {
+      "category": "collection",
       "renderKind": "initiative",
       "dataPaths": [
         "initiatives"
@@ -5258,6 +5275,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "initiative",
       "dataPaths": [
         "initiative"
@@ -5536,6 +5554,7 @@
       "example": {}
     },
     "result": {
+      "category": "collection",
       "renderKind": "label",
       "dataPaths": [
         "issueLabels"
@@ -5843,6 +5862,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "label",
       "dataPaths": [
         "issueLabelCreate"
@@ -6178,6 +6198,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "label",
       "dataPaths": [
         "issueLabelUpdate"
@@ -6366,6 +6387,7 @@
       "example": {}
     },
     "result": {
+      "category": "collection",
       "renderKind": "issue_relation",
       "dataPaths": [
         "issueRelations"
@@ -6614,6 +6636,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "issue_relation",
       "dataPaths": [
         "issueRelationCreate"
@@ -6855,6 +6878,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "issue_relation",
       "dataPaths": [
         "issueRelationUpdate"
@@ -7065,6 +7089,7 @@
       "example": {}
     },
     "result": {
+      "category": "collection",
       "renderKind": "issue_status",
       "dataPaths": [
         "workflowStates"
@@ -7614,6 +7639,7 @@
       }
     },
     "result": {
+      "category": "collection",
       "renderKind": "issue",
       "dataPaths": [
         "issues"
@@ -7799,6 +7825,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "issue",
       "dataPaths": [
         "issue"
@@ -8583,6 +8610,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "issue",
       "dataPaths": [
         "issueCreate"
@@ -9611,6 +9639,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "issue",
       "dataPaths": [
         "issueUpdate"
@@ -9964,6 +9993,7 @@
       }
     },
     "result": {
+      "category": "collection",
       "renderKind": "issue",
       "dataPaths": [
         "searchIssues"
@@ -10187,6 +10217,7 @@
       "example": {}
     },
     "result": {
+      "category": "collection",
       "renderKind": "milestone",
       "dataPaths": [
         "projectMilestones"
@@ -10339,6 +10370,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "milestone",
       "dataPaths": [
         "projectMilestone"
@@ -10546,6 +10578,7 @@
       "example": {}
     },
     "result": {
+      "category": "collection",
       "renderKind": "label",
       "dataPaths": [
         "projectLabels"
@@ -10786,6 +10819,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "label",
       "dataPaths": [
         "projectLabelCreate"
@@ -11095,6 +11129,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "label",
       "dataPaths": [
         "projectLabelUpdate"
@@ -11283,6 +11318,7 @@
       "example": {}
     },
     "result": {
+      "category": "collection",
       "renderKind": "project_relation",
       "dataPaths": [
         "projectRelations"
@@ -11568,6 +11604,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "project_relation",
       "dataPaths": [
         "projectRelationCreate"
@@ -11901,6 +11938,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "project_relation",
       "dataPaths": [
         "projectRelationUpdate"
@@ -12188,6 +12226,7 @@
       "example": {}
     },
     "result": {
+      "category": "collection",
       "renderKind": "project",
       "dataPaths": [
         "projects"
@@ -12361,6 +12400,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "project",
       "dataPaths": [
         "project"
@@ -12569,6 +12609,7 @@
       "example": {}
     },
     "result": {
+      "category": "collection",
       "renderKind": "team",
       "dataPaths": [
         "teams"
@@ -12721,6 +12762,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "team",
       "dataPaths": [
         "team"
@@ -12986,6 +13028,7 @@
       "example": {}
     },
     "result": {
+      "category": "collection",
       "renderKind": "user",
       "dataPaths": [
         "users"
@@ -13140,6 +13183,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "user",
       "dataPaths": [
         "user"
@@ -13254,6 +13298,7 @@
       }
     },
     "result": {
+      "category": "local",
       "renderKind": "workspace",
       "dataPaths": [
         "active"
@@ -14345,6 +14390,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "initiative",
       "dataPaths": [
         "initiativeCreate",
@@ -14863,6 +14909,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "milestone",
       "dataPaths": [
         "projectMilestoneCreate",
@@ -16516,6 +16563,7 @@
       }
     },
     "result": {
+      "category": "singular",
       "renderKind": "project",
       "dataPaths": [
         "projectCreate",

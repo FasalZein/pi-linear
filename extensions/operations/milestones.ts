@@ -48,6 +48,7 @@ export const milestoneReads: readonly OperationDefinition[] = ([
 	}),
 	{
 		name: "get_milestone",
+		resultCategory: "singular",
 		compatibilityBranches: [
 			{
 				"all": [

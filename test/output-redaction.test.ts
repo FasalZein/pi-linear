@@ -212,10 +212,10 @@ describe('redaction at the execution boundary', () => {
     expect(Buffer.byteLength(contents, 'utf8')).toBe(result.details.bytes);
   });
 
-  it('redacts an automatic spill triggered by size', async () => {
+  it('redacts an automatic composite spill triggered by size', async () => {
     process.env.LINEAR_SPILL_BYTES = '10';
-    installServer((request) => issueResponse(request, `key ${TOKEN}`));
-    const result = await execute(tools.get('linear_get_issue')!, { issue: 'AEO-258' });
+    installServer(() => ({ data: { viewer: { id: 'user-1', note: `key ${TOKEN}` } } }));
+    const result = await execute(linearApiTool() as any, { query: 'query { viewer { id note } }' });
 
     expect(result.details.path).toBeTruthy();
     const contents = await spilledFile();
@@ -327,10 +327,10 @@ describe('exact active-secret redaction', () => {
     expect(Buffer.byteLength(contents, 'utf8')).toBe(result.details.bytes);
   });
 
-  it('removes the active key from an automatic spill', async () => {
+  it('removes the active key from an automatic composite spill', async () => {
     process.env.LINEAR_SPILL_BYTES = '10';
-    installServer((request) => issueResponse(request, `leaked ${UNKNOWN_FORMAT_KEY}`));
-    await execute(tools.get('linear_get_issue')!, { issue: 'AEO-258' });
+    installServer(() => ({ data: { viewer: { id: 'user-1', note: `leaked ${UNKNOWN_FORMAT_KEY}` } } }));
+    await execute(linearApiTool() as any, { query: 'query { viewer { id note } }' });
     const contents = await spilledFile();
     expect(contents).not.toContain(UNKNOWN_FORMAT_KEY);
   });

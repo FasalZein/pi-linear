@@ -52,6 +52,7 @@ export const issueStatuses: readonly OperationDefinition[] = ([
 export const workspaceSwitch: readonly OperationDefinition[] = ([
 	{
 		name: "switch_workspace",
+		resultCategory: "local",
 		compatibilityBranches: [
 			{
 				"all": [

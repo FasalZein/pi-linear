@@ -174,6 +174,7 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
       mutation: kind === 'mutation',
     },
     result: {
+      category: operation.resultCategory,
       renderKind: entityKind,
       dataPaths: documents?.map(({ root }) => root)
         ?? [...(operation.localResult?.requiredStringPaths ?? [])],
@@ -214,6 +215,7 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
     .map(({ kind: _kind, ...variant }) => variant);
   const operation: LinearOperation = {
     name: definition.name,
+    resultCategory: definition.result.category,
     canonical: {
       fields: Object.fromEntries(definition.canonical.fields.map(({ name, type }) => [name, type])),
       branches: definition.canonical.branches.map(({ all }) => all),

@@ -1,7 +1,7 @@
 import { StringEnum } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
-import { linearGraphQL } from './client';
+import { linearGraphQL, linearGraphQLErrors } from './client';
 import {
   DOMAINS,
   formatInvocation,
@@ -221,11 +221,14 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
         const apiKey = await apiKeyForWorkspace(ctx, params.workspace);
         secrets.push(apiKey);
         const data = await linearGraphQL<JsonObject>(apiKey, request.query, params.variables ?? {}, signal);
+        const errors = linearGraphQLErrors(data);
         return toolResult(await routeLinearResult(data, {
           label: 'query',
+          category: 'composite',
           sink: params.sink,
           nodeCap: NODE_CAP,
           secrets,
+          errors,
         }), secrets);
       }, secrets);
     },

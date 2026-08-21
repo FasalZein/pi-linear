@@ -49,6 +49,7 @@ export type ExactNamedCheck = {
 	path: string;
 	kind: "project" | "cycle" | "document";
 };
+export type ResultCategory = "singular" | "collection" | "local";
 export type OperationPreparation = {
 	variables: Record<string, unknown>;
 	resolution?: Record<string, unknown>;
@@ -56,6 +57,7 @@ export type OperationPreparation = {
 	exactIssue?: ExactIssueCheck;
 	exactNamed?: ExactNamedCheck;
 	resultView?: ResultView;
+	resultCategory?: ResultCategory;
 };
 export type BatchLookupField = "parent" | "team" | "state" | "assignee";
 export type BatchLookup = {
@@ -85,6 +87,7 @@ export type PaginationMetadata = {
 };
 export type LinearOperation = {
 	name: string;
+	resultCategory: ResultCategory;
 	canonical: CanonicalOperation;
 	aliases: readonly string[];
 	domain: OperationDomain;
@@ -194,6 +197,7 @@ export type OperationDefinition = {
 		mutation: boolean;
 	};
 	result: {
+		category: ResultCategory;
 		renderKind: string;
 		dataPaths: readonly string[];
 		/** Present for local operations; enforced before redaction and routing. */
