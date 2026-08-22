@@ -23,7 +23,7 @@ import type {
   ResultCategory,
 } from './operation-types';
 import type { LinearOperation } from './operations';
-import { resolveOperationPlan, verifyOperationResult } from './operation-plan';
+import { isPlanPreparation, resolveOperationPlan, verifyOperationResult } from './operation-plan';
 import type { ResultView } from './selections';
 import { redactDeep, withRedactedErrors } from './redact';
 import {
@@ -458,9 +458,10 @@ async function executeOperationWithContext(
       return redactDeep(localResult, secrets);
     }
 
+    const usePlan = Boolean(operation.plan && (!operation.prepare || isPlanPreparation(operation.prepare)));
     let plan: OperationPlan | undefined;
     try {
-      plan = operation.plan ? await operation.plan(options.variables) : undefined;
+      plan = usePlan ? await operation.plan!(options.variables) : undefined;
     } catch (error) {
       secrets.push(...activeSecrets());
       throw error;

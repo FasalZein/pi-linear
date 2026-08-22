@@ -257,6 +257,35 @@ describe('model-facing budget warnings', () => {
     expect(rawTransport).toHaveBeenCalledOnce();
   });
 
+  it('keeps ordinary direct lookup telemetry free of batch phase labels', async () => {
+    process.env.LINEAR_API_KEY = 'lin_api_lookup_telemetry';
+    const transport = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as { query: string };
+      if (body.query.includes('ResolveTeamByKey')) {
+        return response(200, { data: { teams: { nodes: [{ id: 'team-1', key: 'AEO' }] } } }, {
+          'X-RateLimit-Endpoint-Name': 'lookup',
+        });
+      }
+      return response(200, { data: { team: { id: 'team-1', key: 'AEO', name: 'AEO' } } }, {
+        'X-RateLimit-Endpoint-Name': 'final',
+      });
+    }) as unknown as typeof fetch;
+    const call = linearCallContext('allowlist', undefined, { hasUI: false } as any, { telemetryMode: 'always' });
+
+    const result = await executeOperationInContext(
+      getOperation('get_team'),
+      { variables: { team: 'AEO' } },
+      call,
+      transport,
+    );
+
+    expect((result as any).meta.rateLimit.responses).toEqual([
+      { attempt: 1, 'X-RateLimit-Endpoint-Name': 'lookup' },
+      { attempt: 1, 'X-RateLimit-Endpoint-Name': 'final' },
+    ]);
+    expect(transport).toHaveBeenCalledTimes(2);
+  });
+
   it('does not change ordinary result size or shape', async () => {
     const normal = await routeLinearResult({ viewer: { id: 'user-1' } }, {
       label: 'query', category: 'singular', telemetry: [{ ...base, headers: { 'X-RateLimit-Requests-Remaining': 2 } }],

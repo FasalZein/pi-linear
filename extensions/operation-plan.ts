@@ -3,6 +3,8 @@ import {
   assertNamedNodeMatches,
   linearGraphQLWithContext,
   requireIssueReference,
+  linearGraphQL,
+  type LinearGraphQLFn,
   type LinearNetworkContext,
   type ResolvedIssue,
   type ResolvedNamedEntity,
@@ -223,9 +225,9 @@ export function namedEntityLookup(key: string, kind: LookupNamedKind, value: str
   };
 }
 
-export async function resolveOperationPlan(
-  context: LinearNetworkContext,
+async function resolvePlanLookups(
   plan: OperationPlan,
+  execute: (lookup: LookupPlan, resolved: Readonly<Record<string, unknown>>) => Promise<JsonObject>,
 ): Promise<OperationPreparation> {
   const pending = [...plan.lookups];
   const resolved: Record<string, unknown> = {};
@@ -238,29 +240,64 @@ export async function resolveOperationPlan(
     const index = pending.findIndex((lookup) => (lookup.dependsOn ?? []).every((key) => key in resolved));
     if (index < 0) throw new Error('Operation lookup dependencies contain a cycle or missing key.');
     const lookup = pending.splice(index, 1)[0]!;
-    const data = await linearGraphQLWithContext<JsonObject>(
-      context,
-      lookup.document(resolved),
-      lookup.variables(resolved),
-      { phase: 'read' },
-    );
+    const data = await execute(lookup, resolved);
     resolved[lookup.key] = lookup.resolve(data, resolved);
   }
   return plan.finish(resolved);
 }
 
-function objectAtPath(value: unknown, path: string): JsonObject {
+export async function resolveOperationPlan(
+  context: LinearNetworkContext,
+  plan: OperationPlan,
+): Promise<OperationPreparation> {
+  return resolvePlanLookups(plan, (lookup, resolved) => linearGraphQLWithContext<JsonObject>(
+    context,
+    lookup.document(resolved),
+    lookup.variables(resolved),
+  ));
+}
+
+export async function resolveOperationPlanWithGraphQL(
+  apiKey: string,
+  plan: OperationPlan,
+  signal?: AbortSignal,
+  graphql: LinearGraphQLFn = linearGraphQL,
+): Promise<OperationPreparation> {
+  return resolvePlanLookups(plan, (lookup, resolved) => graphql<JsonObject>(
+    apiKey,
+    lookup.document(resolved),
+    lookup.variables(resolved),
+    signal,
+  ));
+}
+
+const planPreparations = new WeakSet<NonNullable<import('./operation-types').LinearOperation['prepare']>>();
+
+export function markPlanPreparation<T extends NonNullable<import('./operation-types').LinearOperation['prepare']>>(prepare: T): T {
+  planPreparations.add(prepare);
+  return prepare;
+}
+
+export function isPlanPreparation(prepare: import('./operation-types').LinearOperation['prepare']): boolean {
+  return Boolean(prepare && planPreparations.has(prepare));
+}
+
+export function createPlanPreparation(
+  factory: NonNullable<import('./operation-types').LinearOperation['plan']>,
+): NonNullable<import('./operation-types').LinearOperation['prepare']> {
+  return markPlanPreparation(async (apiKey, variables, signal, graphql) =>
+    resolveOperationPlanWithGraphQL(apiKey, await factory(variables), signal, graphql));
+}
+
+function objectAtPath(value: unknown, path: string): JsonObject | undefined {
   let current: unknown = value;
   for (const part of path.split('.')) {
-    if (!current || typeof current !== 'object' || Array.isArray(current)) {
-      throw new Error(`Linear result path "${path}" was not found.`);
-    }
+    if (!current || typeof current !== 'object' || Array.isArray(current)) return undefined;
     current = (current as JsonObject)[part];
   }
-  if (!current || typeof current !== 'object' || Array.isArray(current)) {
-    throw new Error(`Linear result path "${path}" was not found.`);
-  }
-  return current as JsonObject;
+  return current && typeof current === 'object' && !Array.isArray(current)
+    ? current as JsonObject
+    : undefined;
 }
 
 export function verifyOperationResult(prepared: OperationPreparation, data: JsonObject): void {

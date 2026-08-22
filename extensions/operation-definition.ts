@@ -6,6 +6,7 @@ import type {
   OperationDocumentDefinition,
   RequirementBranch,
 } from './operation-types';
+import { createPlanPreparation, isPlanPreparation, markPlanPreparation } from './operation-plan';
 
 function actionAndEntity(name: string): { action: string; entity: string } {
   const [action, ...parts] = name.split('_');
@@ -132,6 +133,7 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
   const renderTargetFields = operation.renderTargetFields;
   const requiresVariables = !branches.some((branch) => requirementBranchMatches(branch, {}));
   const canonical = operation.canonical;
+  const prepare = operation.prepare ?? (operation.plan ? createPlanPreparation(operation.plan) : undefined);
   const canonicalFields = Object.entries(canonical.fields).map(([name, type]) => ({
     name,
     type,
@@ -162,7 +164,7 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
         semanticValidateVariables: operation.validateVariables,
       } : {}),
       ...(operation.plan ? { plan: operation.plan } : {}),
-      ...(operation.prepare ? { prepare: operation.prepare } : {}),
+      ...(prepare ? { prepare } : {}),
       ...(operation.batchPrepare ? { batchPrepare: operation.batchPrepare } : {}),
       ...(operation.executeLocal ? { executeLocal: operation.executeLocal } : {}),
       ...(operation.localResult ? { localResult: operation.localResult } : {}),
@@ -171,7 +173,7 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
     preparation: {
       resolverPaths: operation.resolverPaths ?? {},
       ...(operation.plan ? { plan: operation.plan } : {}),
-      ...(operation.prepare ? { prepare: operation.prepare } : {}),
+      ...(prepare ? { prepare } : {}),
       ...(operation.batchPrepare ? { batchPrepare: operation.batchPrepare } : {}),
     },
     safety: {
@@ -215,6 +217,14 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
   const existing = projections.get(definition);
   if (existing) return existing;
   const compatibility = definition.compatibility;
+  const projectedPrepare: LinearOperation['prepare'] = compatibility.prepare
+    ? async (apiKey, variables, signal, graphql) => {
+        assertRequirementBranches(compatibility.branches, variables);
+        compatibility.semanticValidateVariables?.(variables);
+        return compatibility.prepare!(apiKey, variables, signal, graphql);
+      }
+    : undefined;
+  if (projectedPrepare && isPlanPreparation(compatibility.prepare)) markPlanPreparation(projectedPrepare);
   const variants = definition.graphql?.documents
     .filter(({ kind }) => kind === 'mutation')
     .map(({ kind: _kind, ...variant }) => variant);
@@ -256,13 +266,7 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
         return compatibility.plan!(variables);
       },
     } : {}),
-    ...(compatibility.prepare ? {
-      prepare: async (apiKey, variables, signal, graphql) => {
-        assertRequirementBranches(compatibility.branches, variables);
-        compatibility.semanticValidateVariables?.(variables);
-        return compatibility.prepare!(apiKey, variables, signal, graphql);
-      },
-    } : {}),
+    ...(projectedPrepare ? { prepare: projectedPrepare } : {}),
     ...(compatibility.batchPrepare ? { batchPrepare: compatibility.batchPrepare } : {}),
     ...(compatibility.localResult ? { localResult: compatibility.localResult } : {}),
     ...(compatibility.executeLocal ? {
