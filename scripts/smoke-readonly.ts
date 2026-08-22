@@ -73,6 +73,15 @@ function data(details: Record<string, unknown> | undefined): JsonObject {
   return value as JsonObject;
 }
 
+async function executionData(details: Record<string, unknown> | undefined): Promise<JsonObject> {
+  if (details?.data && typeof details.data === 'object' && !Array.isArray(details.data)) return data(details);
+  const path = details?.path;
+  const handle = details?.handle;
+  if (typeof path !== 'string' || typeof handle !== 'string') return data(details);
+  const recovered = JSON.parse(await readFile(path, 'utf8')) as Record<string, unknown>;
+  return data(recovered);
+}
+
 function entityId(details: Record<string, unknown> | undefined, root: string): string {
   const entity = data(details)[root];
   if (!entity || typeof entity !== 'object' || Array.isArray(entity)) throw new Error(`smoke.runtime: ${root} entity is missing`);
@@ -186,13 +195,18 @@ async function runAuthenticatedSmoke(apiKey: string): Promise<JsonObject> {
   const listResults = new Map<string, { nodes: unknown[]; root: string }>();
   let followedCursors = 0;
   for (const operation of zeroArgumentReads()) {
-    // zeroArgumentReads() proves the catalog accepts no domain input.
-    // Bound the live probe so explicit inline routing stays below Pi's output limit.
-    const boundedResult = await executeTool(compatibility, { operation: operation.name, variables: { first: 1 }, sink: 'inline' });
-    assertNoCredentialLeak(boundedResult, apiKey);
+    const zeroArgumentResult = await executeTool(compatibility, {
+      operation: operation.name, variables: {}, sink: 'inline',
+    });
+    assertNoCredentialLeak(zeroArgumentResult, apiKey);
     const root = rootName(operation);
-    if (!(root in data(boundedResult.details))) throw new Error(`smoke.runtime: ${operation.name} root is missing`);
-    const result = boundedResult;
+    const zeroArgumentData = await executionData(zeroArgumentResult.details);
+    assertNoCredentialLeak(zeroArgumentData, apiKey);
+    if (!(root in zeroArgumentData)) throw new Error(`smoke.runtime: ${operation.name} root is missing`);
+
+    const result = await executeTool(compatibility, {
+      operation: operation.name, variables: { first: 1 }, sink: 'inline',
+    });
     assertNoCredentialLeak(result, apiKey);
     const page = connection(result.details, root);
     listResults.set(operation.name, { nodes: page.nodes, root });

@@ -11,12 +11,13 @@ import {
 import type { ExtensionContext } from '@earendil-works/pi-coding-agent';
 import {
   assertIssueNodeMatches,
-  isLinearGraphQLResponseFailure,
+  linearGraphQLResponseFailure,
   linearGraphQLWithContext,
   linearGraphQLErrors,
   requireIssueReference,
   withLinearGraphQL,
   withLinearRateLimitTelemetry,
+  type LinearNetworkContext,
   type LinearRateLimitSnapshot,
 } from './client';
 import {
@@ -797,31 +798,80 @@ function attributableFailureMessage(entry: PlannedEntry): string | undefined {
   return entry.prepared?.failureMessage ?? lookupFailureMessage(entry);
 }
 
-function classifyAttributableGraphQLFailure(
-  entry: PlannedEntry,
+type GraphQLFailureOwner = {
+  entry: PlannedEntry;
+  aliases: readonly string[];
+  failureMessage?: string;
+  partial?: JsonObject;
+};
+
+type StructuredGraphQLPhase = {
+  raw: JsonObject;
+  errors: ReturnType<typeof linearGraphQLErrors>;
+};
+
+async function executeStructuredGraphQLPhase(
+  network: LinearNetworkContext,
+  query: string,
+  variables: Record<string, unknown>,
+  phase: 'read' | 'mutation',
+): Promise<StructuredGraphQLPhase> {
+  try {
+    return {
+      raw: await linearGraphQLWithContext<JsonObject>(network, query, variables, {
+        throwResponseErrors: true,
+        phase,
+      }),
+      errors: [],
+    };
+  } catch (error) {
+    const failure = linearGraphQLResponseFailure(error);
+    if (!failure) throw error;
+    return { raw: failure.data, errors: failure.errors };
+  }
+}
+
+function classifyStructuredGraphQLErrors(
+  responseErrors: ReturnType<typeof linearGraphQLErrors>,
+  owners: readonly GraphQLFailureOwner[],
+  fallbackOwners: readonly GraphQLFailureOwner[],
   output: BatchError[],
-  options: {
-    pathErrors?: ReturnType<typeof linearGraphQLErrors>;
-    thrown?: unknown;
-    failureMessage?: string;
-  },
-): boolean {
-  if (output.some((error) => error.key === entry.key)) return true;
-  const pathErrors = options.pathErrors ?? [];
-  const stable = options.failureMessage ?? attributableFailureMessage(entry);
-  if (!pathErrors.length && !stable && !isLinearGraphQLResponseFailure(options.thrown)) return false;
-  const message = stable
-    ?? pathErrors[0]?.message
-    ?? (options.thrown instanceof Error ? options.thrown.message : String(options.thrown));
-  output.push({
-    key: entry.key,
-    path: [entry.key],
-    message,
-    ...(pathErrors.length > 1
-      ? { causes: pathErrors.map((error) => ({ path: error.path, message: error.message })) }
-      : {}),
-  });
-  return true;
+): Set<string> {
+  const grouped = new Map<string, {
+    owner: GraphQLFailureOwner;
+    errors: typeof responseErrors;
+    fallback: boolean;
+  }>();
+  for (const responseError of responseErrors) {
+    const root = responseError.path[0];
+    const matched = root === undefined
+      ? []
+      : owners.filter((owner) => owner.aliases.includes(String(root)));
+    const fallback = matched.length === 0;
+    for (const owner of fallback ? fallbackOwners : matched) {
+      const current = grouped.get(owner.entry.key);
+      grouped.set(owner.entry.key, {
+        owner,
+        errors: [...(current?.errors ?? []), responseError],
+        fallback: Boolean(current?.fallback || fallback),
+      });
+    }
+  }
+  for (const { owner, errors, fallback } of grouped.values()) {
+    if (output.some((error) => error.key === owner.entry.key)) continue;
+    const first = errors[0]!;
+    const stable = owner.failureMessage;
+    output.push({
+      key: owner.entry.key,
+      path: stable || fallback || !first.path.length ? [owner.entry.key] : first.path,
+      message: stable ?? first.message,
+      ...(errors.length > 1
+        ? { causes: errors.map((error) => ({ path: error.path, message: error.message })) }
+        : {}),
+      ...(owner.partial ? { partial: owner.partial } : {}),
+    });
+  }
+  return new Set(grouped.keys());
 }
 
 function consolidateBatchErrors(errors: readonly BatchError[]): BatchError[] {
@@ -1088,54 +1138,31 @@ async function executeBatchWithTelemetry(
       ...reads.map((entry) => entry.variables),
       ...lookups.map((lookup) => lookup.variables),
     );
-    let raw: JsonObject;
     readRequests = 1;
-    try {
-      raw = await linearGraphQLWithContext<JsonObject>(
-        network,
-        query,
-        variables,
-        { preserveUnusableRoot: true, phase: 'read' },
-      );
-    } catch (error) {
-      if (signal?.aborted) throw error;
-      const guarded = reads.length === 0 && mutations.length === 1
-        && Boolean(lookupFailureMessage(mutations[0]!));
-      if (guarded && (isLinearGraphQLResponseFailure(error) || lookupFailureMessage(mutations[0]!))) {
-        classifyAttributableGraphQLFailure(mutations[0]!, errors, {
-          thrown: error,
-          failureMessage: lookupFailureMessage(mutations[0]!),
-        });
-        return envelope(
-          requestedKeys,
-          data,
-          errors,
-          [],
-          { read: readRequests, mutation: 0 },
-          aliasCount,
-          params.sink,
-          secrets,
-          network.telemetry,
-          params.telemetryMode,
-        );
-      }
-      throw error;
+    const phase = await executeStructuredGraphQLPhase(network, query, variables, 'read');
+    const readOwners: GraphQLFailureOwner[] = reads.map((entry) => ({
+      entry,
+      aliases: [entry.key],
+      ...(phase.raw[entry.key] == null ? {} : { partial: { [entry.root]: phase.raw[entry.key] } }),
+    }));
+    const lookupOwners: GraphQLFailureOwner[] = mutations
+      .filter((entry) => entry.lookups?.length)
+      .map((entry) => ({
+        entry,
+        aliases: entry.lookups!.flatMap((lookup) => lookup.aliases),
+        failureMessage: lookupFailureMessage(entry),
+      }));
+    const failed = classifyStructuredGraphQLErrors(
+      phase.errors,
+      [...readOwners, ...lookupOwners],
+      lookupOwners.length ? lookupOwners : readOwners,
+      errors,
+    );
+    readPhaseFailed = phase.errors.length > 0;
+    for (const entry of reads) {
+      if (!failed.has(entry.key)) collectAlias(entry, phase.raw, [], data, errors);
     }
-    const pathErrors = linearGraphQLErrors(raw);
-    readPhaseFailed = pathErrors.length > 0;
-    for (const entry of reads) collectAlias(entry, raw, pathErrors, data, errors);
-    const ownedAliases = new Set([
-      ...reads.map((entry) => entry.key),
-      ...lookups.flatMap((lookup) => lookup.aliases),
-    ]);
-    const unowned = pathErrors.filter((error) => !error.path.length || !ownedAliases.has(String(error.path[0])));
-    if (unowned.length && mutations.length === 1 && lookupFailureMessage(mutations[0]!)) {
-      classifyAttributableGraphQLFailure(mutations[0]!, errors, {
-        pathErrors: unowned,
-        failureMessage: lookupFailureMessage(mutations[0]!),
-      });
-    }
-    applyIndependentLookups(mutations, raw, pathErrors, errors);
+    applyIndependentLookups(mutations, phase.raw, [], errors);
   }
 
   if ((readPhaseFailed || errors.length) && mutations.length) {
@@ -1164,14 +1191,23 @@ async function executeBatchWithTelemetry(
       return { key: entry.key, uuid, input: { ...(input as JsonObject), id: uuid } };
     });
     assertMutationAllowed(ISSUE_BATCH_CREATE_DOCUMENT, mode, ['issueBatchCreate']);
-    const raw = await linearGraphQLWithContext<JsonObject>(
+    mutationRequests = 1;
+    const phase = await executeStructuredGraphQLPhase(
       network,
       ISSUE_BATCH_CREATE_DOCUMENT,
       { input: { issues: stamped.map((entry) => entry.input) } },
-      { preserveUnusableRoot: true, phase: 'mutation' },
+      'mutation',
     );
-    mutationRequests = 1;
-    collectTransactionalCreates(stamped, raw, linearGraphQLErrors(raw), data, errors);
+    const scoped = phase.errors.filter((error) => error.path[0] === 'issueBatchCreate'
+      && error.path[1] === 'issues'
+      && typeof error.path[2] === 'number');
+    const responseWide = phase.errors.filter((error) => !scoped.includes(error));
+    if (responseWide.length) {
+      const owners: GraphQLFailureOwner[] = mutations.map((entry) => ({ entry, aliases: ['issueBatchCreate'] }));
+      classifyStructuredGraphQLErrors(responseWide, owners, owners, errors);
+    } else {
+      collectTransactionalCreates(stamped, phase.raw, scoped, data, errors);
+    }
     return envelope(
       requestedKeys,
       data,
@@ -1190,26 +1226,18 @@ async function executeBatchWithTelemetry(
     const mutation = mutations[0]!;
     const query = mergeDocuments(OperationTypeNode.MUTATION, 'BatchMutation', [parse(mutation.document)]);
     assertMutationAllowed(query, mode, [mutation.root]);
-    let raw: JsonObject | undefined;
     mutationRequests = 1;
-    try {
-      raw = await linearGraphQLWithContext<JsonObject>(
-        network,
-        query,
-        mutation.variables,
-        { preserveUnusableRoot: true, phase: 'mutation' },
-      );
-    } catch (error) {
-      if (signal?.aborted) throw error;
-      if (!classifyAttributableGraphQLFailure(mutation, errors, { thrown: error })) throw error;
-    }
-    if (raw) {
-      const pathErrors = linearGraphQLErrors(raw);
-      if (pathErrors.length) {
-        classifyAttributableGraphQLFailure(mutation, errors, { pathErrors });
-      } else {
-        collectAlias(mutation, raw, pathErrors, data, errors);
-      }
+    const phase = await executeStructuredGraphQLPhase(network, query, mutation.variables, 'mutation');
+    if (phase.errors.length) {
+      const owner = {
+        entry: mutation,
+        aliases: [mutation.key],
+        failureMessage: attributableFailureMessage(mutation),
+        ...(phase.raw[mutation.key] == null ? {} : { partial: { [mutation.root]: phase.raw[mutation.key] } }),
+      } satisfies GraphQLFailureOwner;
+      classifyStructuredGraphQLErrors(phase.errors, [owner], [owner], errors);
+    } else {
+      collectAlias(mutation, phase.raw, [], data, errors);
     }
   }
 

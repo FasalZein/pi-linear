@@ -472,7 +472,7 @@ describe('model-facing budget warnings', () => {
 
     expect(result.details).toMatchObject({
       data: { read: { issue } },
-      errors: [{ key: 'change', path: ['change'], message: 'Linear GraphQL error: mutation failed' }],
+      errors: [{ key: 'change', path: ['change'], message: 'mutation failed' }],
       skipped: [],
       meta: { requests: { read: 1, mutation: 1 } },
     });

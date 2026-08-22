@@ -178,6 +178,7 @@ export type LinearGraphQLPathError = {
 
 const LINEAR_GRAPHQL_ERRORS = Symbol('linearGraphQLErrors');
 const LINEAR_GRAPHQL_RESPONSE_FAILURE = Symbol('linearGraphQLResponseFailure');
+const LINEAR_GRAPHQL_RESPONSE_DATA = Symbol('linearGraphQLResponseData');
 const LINEAR_RATE_LIMIT_TELEMETRY = Symbol('linearRateLimitTelemetry');
 
 export type LinearRateLimitHeaders = Partial<{
@@ -228,9 +229,22 @@ export function linearGraphQLErrors(data: unknown): readonly LinearGraphQLPathEr
   return (data as { [LINEAR_GRAPHQL_ERRORS]?: readonly LinearGraphQLPathError[] })[LINEAR_GRAPHQL_ERRORS] ?? [];
 }
 
-export function isLinearGraphQLResponseFailure(error: unknown): error is Error {
-  return error instanceof Error
-    && Boolean((error as Error & { [LINEAR_GRAPHQL_RESPONSE_FAILURE]?: true })[LINEAR_GRAPHQL_RESPONSE_FAILURE]);
+export function linearGraphQLResponseFailure(error: unknown): {
+  error: Error;
+  data: Record<string, unknown>;
+  errors: readonly LinearGraphQLPathError[];
+} | undefined {
+  if (!(error instanceof Error)) return undefined;
+  const structured = error as Error & {
+    [LINEAR_GRAPHQL_RESPONSE_FAILURE]?: readonly LinearGraphQLPathError[];
+    [LINEAR_GRAPHQL_RESPONSE_DATA]?: Record<string, unknown>;
+  };
+  if (!structured[LINEAR_GRAPHQL_RESPONSE_FAILURE]) return undefined;
+  return {
+    error,
+    data: structured[LINEAR_GRAPHQL_RESPONSE_DATA] ?? {},
+    errors: structured[LINEAR_GRAPHQL_RESPONSE_FAILURE],
+  };
 }
 
 function errorPath(error: GraphQLErrorBody): ReadonlyArray<string | number> | undefined {
@@ -367,6 +381,7 @@ function attachTelemetry(target: object, snapshots: readonly LinearRateLimitSnap
 
 export type LinearGraphQLOptions = {
   preserveUnusableRoot?: boolean;
+  throwResponseErrors?: boolean;
   phase?: 'read' | 'mutation';
 };
 
@@ -481,6 +496,16 @@ export async function linearGraphQLWithContext<TData>(
   }
   if (body.errors?.length) {
     const data = body.data;
+    const normalized = responseGraphQLErrors(body.errors, apiKey);
+    if (options?.throwResponseErrors) {
+      const failure = new Error(`Linear GraphQL error: ${detail}`);
+      Object.defineProperty(failure, LINEAR_GRAPHQL_RESPONSE_FAILURE, { value: normalized });
+      if (data && typeof data === 'object') {
+        Object.defineProperty(failure, LINEAR_GRAPHQL_RESPONSE_DATA, { value: data });
+      }
+      attachTelemetry(failure, snapshots, 'linearTelemetry');
+      throw failure;
+    }
     if (data && typeof data === 'object') {
       const scoped = scopedPathErrors(body.errors, apiKey);
       if ((scoped && hasUsableRoot(data, scoped)) || options?.preserveUnusableRoot) {
@@ -492,7 +517,6 @@ export async function linearGraphQLWithContext<TData>(
       }
     }
     const failure = new Error(`Linear GraphQL error: ${detail}`);
-    Object.defineProperty(failure, LINEAR_GRAPHQL_RESPONSE_FAILURE, { value: true });
     attachTelemetry(failure, snapshots, 'linearTelemetry');
     throw failure;
   }

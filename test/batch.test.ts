@@ -695,6 +695,53 @@ describe('batch mutation phase', () => {
     expect(batched.details.skipped).toEqual([]);
   });
 
+  it.each([
+    ['pathless', [{ message: `lookup denied ${TOKEN}` }]],
+    ['unexpected-path', [{ message: `lookup denied ${TOKEN}`, path: ['unexpected'] }]],
+  ])('attributes an ordinary mutation lookup %s GraphQL response error', async (_case, responseErrors) => {
+    const { requests } = graphqlStub((request) => ({
+      body: { data: lookupData(request.query), errors: responseErrors },
+    }));
+    const result = await execute({
+      operation: 'batch',
+      variables: {
+        reads: [{ key: 'ready', operation: 'get_issue', variables: { issue: 'AEO-1' } }],
+        mutations: [{ key: 'write', operation: 'create_cycle', variables: { team: 'AEO', startsAt: '2026-08-17', endsAt: '2026-08-31' } }],
+      },
+    });
+    expect(requests).toHaveLength(1);
+    expect(result.details).toMatchObject({
+      data: { ready: { issue: issueNode(ISSUE_A, 'AEO-1') } },
+      errors: [{ key: 'write', message: 'lookup denied [REDACTED]' }],
+      skipped: [],
+      meta: { requests: { read: 1, mutation: 0 } },
+    });
+    expect(JSON.stringify(result.details)).not.toContain(TOKEN);
+  });
+
+  it.each(['network', 'http', 'non-json', 'cancel'] as const)(
+    'preserves top-level %s failure behavior during an ordinary mutation lookup',
+    async (failureKind) => {
+      const controller = new AbortController();
+      const { fetch } = graphqlStub(() => {
+        if (failureKind === 'network') return { throw: new Error('lookup socket closed') };
+        if (failureKind === 'http') return { ok: false, status: 503, statusText: 'Unavailable', body: {} };
+        if (failureKind === 'non-json') return { ok: true, status: 200, json: false };
+        controller.abort();
+        return { throw: new Error('lookup cancelled') };
+      });
+      const call = {
+        operation: 'batch',
+        variables: { mutations: [{ key: 'write', operation: 'create_cycle', variables: { team: 'AEO', startsAt: '2026-08-17', endsAt: '2026-08-31' } }] },
+      };
+      const promise = failureKind === 'cancel'
+        ? executeWithSignal(call, controller.signal)
+        : execute(call);
+      await expect(promise).rejects.toThrow(/Linear|lookup|cancelled|data/i);
+      expect(fetch).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it('folds a named mutation lookup into the shared read request', async () => {
     const { requests } = graphqlStub((request) => request.query.includes('cycleCreate')
       ? { body: { data: { write: { success: true, cycle: { id: 'cycle-id', name: 'Cycle' } } } } }
@@ -790,13 +837,12 @@ describe('batch mutation phase', () => {
     expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
   });
 
-  it('attributes a pathless GraphQL response error to the one ordinary mutation', async () => {
+  it.each([
+    ['pathless', [{ message: `denied ${TOKEN}` }]],
+    ['unexpected-path', [{ message: `denied ${TOKEN}`, path: ['unexpected'] }]],
+  ])('attributes a %s GraphQL response error to the one ordinary mutation', async (_case, responseErrors) => {
     const { requests } = graphqlStub((request) => request.query.includes('issueUpdate')
-      ? {
-          body: {
-            errors: [{ message: `denied ${TOKEN}` }],
-          },
-        }
+      ? { body: { errors: responseErrors } }
       : { body: { data: { one: issueNode(ISSUE_A, 'AEO-1') } } });
     const result = await execute({
       operation: 'batch',
@@ -808,41 +854,32 @@ describe('batch mutation phase', () => {
     expect(requests).toHaveLength(2);
     expect(result.details).toMatchObject({
       data: { one: { issue: issueNode(ISSUE_A, 'AEO-1') } },
-      errors: [{ key: 'edit', path: ['edit'], message: 'Linear GraphQL error: denied [REDACTED]' }],
+      errors: [{ key: 'edit', path: ['edit'], message: 'denied [REDACTED]' }],
       skipped: [],
       meta: { requests: { read: 1, mutation: 1 } },
     });
     expect(JSON.stringify(result.details)).not.toContain(TOKEN);
   });
 
-  it('does not classify cancellation as an ordinary mutation failure', async () => {
-    const controller = new AbortController();
-    const fetch = vi.fn(async () => {
-      controller.abort();
-      throw new Error('cancelled transport');
-    });
-    vi.stubGlobal('fetch', fetch);
-    process.env.LINEAR_API_KEY = TOKEN;
-    await expect(executeWithSignal({
-      operation: 'batch',
-      variables: { mutations: [mutationEntry()] },
-    }, controller.signal)).rejects.toThrow(/cancelled|network/i);
-    expect(fetch).toHaveBeenCalledTimes(1);
-  });
-
-  it('preserves mutation transport failures', async () => {
-    graphqlStub((request) => {
-      if (request.query.includes('issueUpdate')) return { throw: new Error('socket closed') };
-      return { body: { data: { one: issueNode(ISSUE_A, 'AEO-1') } } };
-    });
-    await expect(execute({
-      operation: 'batch',
-      variables: {
-        reads: [{ key: 'one', operation: 'get_issue', variables: { issue: 'AEO-1' } }],
-        mutations: [mutationEntry()],
-      },
-    })).rejects.toThrow('Linear network error: socket closed');
-  });
+  it.each(['network', 'http', 'non-json', 'cancel'] as const)(
+    'preserves top-level %s failure behavior for one ordinary final mutation',
+    async (failureKind) => {
+      const controller = new AbortController();
+      const { fetch } = graphqlStub(() => {
+        if (failureKind === 'network') return { throw: new Error('mutation socket closed') };
+        if (failureKind === 'http') return { ok: false, status: 503, statusText: 'Unavailable', body: {} };
+        if (failureKind === 'non-json') return { ok: true, status: 200, json: false };
+        controller.abort();
+        return { throw: new Error('mutation cancelled') };
+      });
+      const call = { operation: 'batch', variables: { mutations: [mutationEntry()] } };
+      const promise = failureKind === 'cancel'
+        ? executeWithSignal(call, controller.signal)
+        : execute(call);
+      await expect(promise).rejects.toThrow(/Linear|mutation|cancelled|data/i);
+      expect(fetch).toHaveBeenCalledTimes(1);
+    },
+  );
 });
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -1173,6 +1210,65 @@ describe('batch transactional create', () => {
     expect(result.details.skipped).toEqual([]);
     expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
   });
+
+  it.each([
+    ['pathless', [{ message: `transaction denied ${TOKEN}` }]],
+    ['unexpected-path', [{ message: `transaction denied ${TOKEN}`, path: ['unexpected'] }]],
+  ])('classifies a response-wide %s transaction failure for every create', async (_case, responseErrors) => {
+    const { requests } = graphqlStub((request) => {
+      if (!request.query.includes('issueBatchCreate')) return { body: { data: lookupData(request.query) } };
+      const issues = batchIssues(request);
+      return {
+        body: {
+          data: {
+            issueBatchCreate: {
+              success: true,
+              issues: issues.map((issue, index) => ({ id: issue.id, identifier: `AEO-${index + 1}`, title: issue.title })),
+            },
+          },
+          errors: responseErrors,
+        },
+      };
+    });
+    const result = await execute({
+      operation: 'batch',
+      variables: { mutations: [createIssue('one', 'A'), createIssue('two', 'B')] },
+    });
+    expect(requests).toHaveLength(2);
+    expect(result.details.data).toEqual({});
+    expect(result.details.errors).toEqual([
+      { key: 'one', path: ['one'], message: 'transaction denied [REDACTED]' },
+      { key: 'two', path: ['two'], message: 'transaction denied [REDACTED]' },
+    ]);
+    expect(result.details.skipped).toEqual([]);
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
+    expect(JSON.stringify(result.details)).not.toContain(TOKEN);
+  });
+
+  it.each(['network', 'http', 'non-json', 'cancel'] as const)(
+    'preserves top-level %s failure behavior for the transactional final mutation',
+    async (failureKind) => {
+      const controller = new AbortController();
+      const { fetch, requests } = graphqlStub((request) => {
+        if (!request.query.includes('issueBatchCreate')) return { body: { data: lookupData(request.query) } };
+        if (failureKind === 'network') return { throw: new Error('transaction socket closed') };
+        if (failureKind === 'http') return { ok: false, status: 503, statusText: 'Unavailable', body: {} };
+        if (failureKind === 'non-json') return { ok: true, status: 200, json: false };
+        controller.abort();
+        return { throw: new Error('transaction cancelled') };
+      });
+      const call = {
+        operation: 'batch',
+        variables: { mutations: [createIssue('one', 'A'), createIssue('two', 'B')] },
+      };
+      const promise = failureKind === 'cancel'
+        ? executeWithSignal(call, controller.signal)
+        : execute(call);
+      await expect(promise).rejects.toThrow(/Linear|transaction|cancelled|data/i);
+      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(requests).toHaveLength(2);
+    },
+  );
 
   it('redacts credentials from transactional create data', async () => {
     graphqlStub((request) => {

@@ -21,6 +21,10 @@ function execute(input: Record<string, unknown>, mode: 'allowlist' | 'readonly' 
   return (linearApiTool(mode) as any).execute('call', input, undefined, undefined, { hasUI: false });
 }
 
+function executeWithSignal(input: Record<string, unknown>, signal: AbortSignal) {
+  return (linearApiTool('allowlist') as any).execute('call', input, signal, undefined, { hasUI: false });
+}
+
 function response(body: unknown, headers: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
     status: 200,
@@ -381,6 +385,35 @@ describe('delete_issue_relation strict guarded delete', () => {
     const text = JSON.stringify(result.details);
     for (const secret of [RELATION, ISSUE, RELATED, SECRET]) expect(text).not.toContain(secret);
   });
+
+  it.each(['network', 'http', 'non-json', 'cancel'] as const)(
+    'preserves top-level %s failure behavior for guarded preflight',
+    async (failureKind) => {
+      const controller = new AbortController();
+      const requests: Array<{ query: string }> = [];
+      const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+        const request = JSON.parse(String(init.body));
+        requests.push(request);
+        if (failureKind === 'network') throw new Error('guard socket closed');
+        if (failureKind === 'http') return new Response('{}', { status: 503, statusText: 'Unavailable' });
+        if (failureKind === 'non-json') return new Response('not json', { status: 200 });
+        controller.abort();
+        throw new Error('guard cancelled');
+      });
+      vi.stubGlobal('fetch', fetch);
+      process.env.LINEAR_API_KEY = SECRET;
+      const input = {
+        operation: 'batch',
+        variables: { mutations: [{ key: 'remove', operation: 'delete_issue_relation', variables }] },
+      };
+      const promise = failureKind === 'cancel'
+        ? executeWithSignal(input, controller.signal)
+        : execute(input);
+      await expect(promise).rejects.toThrow(/Linear|guard|cancelled|data/i);
+      expect(requests).toHaveLength(1);
+      expect(requests[0]!.query).not.toContain('issueRelationDelete');
+    },
+  );
 
   it('preserves a successful caller read when an unowned preflight error belongs to the guard', async () => {
     const requests: Array<{ query: string }> = [];
