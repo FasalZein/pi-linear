@@ -1,11 +1,10 @@
-import { linearGraphQL, linearGraphQLErrors, resolveIssueReference } from "../client";
 import { projection } from "../selections";
+import { issueLookup, issueRelationLookup } from "../operation-plan";
 import {
 	mergedInput,
 	p,
 } from "../operation-types";
 import type {
-	BatchLookupValues,
 	LinearOperation,
 	OperationPreparation,
 	OperationSource,
@@ -26,9 +25,6 @@ const ISSUE_RELATION_TYPES = new Set(["blocks", "duplicate", "related", "similar
 const RELATION_GUARD_ERROR = "Linear issue relation did not match the exact delete guard.";
 const RELATION_PREFLIGHT_ERROR = "Linear issue relation delete preflight failed.";
 const RELATION_DELETE_ERROR = "Linear issue relation delete failed.";
-const VERIFY_ISSUE_RELATION_DOCUMENT = `query VerifyIssueRelationDelete($id: String!) {
-  issueRelation(id: $id) { id type issue { id } relatedIssue { id } }
-}`;
 const DELETE_ISSUE_RELATION_DOCUMENT = `mutation DeleteIssueRelation($id: String!) {
   issueRelationDelete(id: $id) { success }
 }`;
@@ -176,20 +172,16 @@ export const issueRelations: readonly OperationDefinition[] = ([
 			issue: "resolveIssueReference",
 			relatedIssue: "resolveIssueReference",
 		},
-		async prepare(k, v, s) {
+		plan(v) {
 			const a = issueReference(v);
 			const b = String(v.relatedIssue ?? v.relatedIssueId);
-			const [x, y] = await Promise.all([
-				resolveIssueReference(k, a, s),
-				resolveIssueReference(k, b, s),
-			]);
 			return {
-				variables: {
-					input: { issueId: x.id, relatedIssueId: y.id, type: v.type },
-				},
-				resolution: {
-					target: issueTarget(a, x),
-					relatedTarget: issueTarget(b, y),
+				kind: "mutation",
+				lookups: [issueLookup("target", a), issueLookup("relatedTarget", b)],
+				finish(resolved) {
+					const x = resolved.target as import("../client").ResolvedIssue;
+					const y = resolved.relatedTarget as import("../client").ResolvedIssue;
+					return { variables: { input: { issueId: x.id, relatedIssueId: y.id, type: v.type } }, resolution: { target: issueTarget(a, x), relatedTarget: issueTarget(b, y) } };
 				},
 			};
 		},
@@ -244,18 +236,25 @@ export const issueRelations: readonly OperationDefinition[] = ([
 			issueId: "resolveIssueReference",
 			relatedIssueId: "resolveIssueReference",
 		},
-		async prepare(k, v, s) {
-			const x = mergedInput(v, ["id"]);
-			const resolution: Record<string, unknown> = {};
-			for (const key of ["issueId", "relatedIssueId"])
-				if (typeof x[key] === "string") {
-					const issue = await resolveIssueReference(k, String(x[key]), s);
-					resolution[key] = issueTarget(String(x[key]), issue);
-					x[key] = issue.id;
-				}
-			if (!Object.keys(x).length)
-				throw new Error("No update fields were provided.");
-			return { variables: { id: v.id, input: x }, resolution };
+		plan(v) {
+			const input = mergedInput(v, ["id"]);
+			const issueRef = typeof input.issueId === "string" ? input.issueId : undefined;
+			const relatedRef = typeof input.relatedIssueId === "string" ? input.relatedIssueId : undefined;
+			return {
+				kind: "mutation",
+				lookups: [
+					...(issueRef ? [issueLookup("issueId", issueRef)] : []),
+					...(relatedRef ? [issueLookup("relatedIssueId", relatedRef)] : []),
+				],
+				finish(resolved) {
+					const issue = resolved.issueId as import("../client").ResolvedIssue | undefined;
+					const related = resolved.relatedIssueId as import("../client").ResolvedIssue | undefined;
+					if (issue) input.issueId = issue.id;
+					if (related) input.relatedIssueId = related.id;
+					if (!Object.keys(input).length) throw new Error("No update fields were provided.");
+					return { variables: { id: v.id, input }, resolution: { ...(issue && issueRef ? { issueId: issueTarget(issueRef, issue) } : {}), ...(related && relatedRef ? { relatedIssueId: issueTarget(relatedRef, related) } : {}) } };
+				},
+			};
 		},
 	}),
 	{
@@ -302,49 +301,12 @@ export const issueRelations: readonly OperationDefinition[] = ([
 			if (typeof variables.type !== "string" || !ISSUE_RELATION_TYPES.has(variables.type))
 				throw new Error("Invalid type: expected blocks, duplicate, related, or similar.");
 		},
-		async prepare(apiKey, variables, signal) {
-			const relationId = String(variables.relationId);
-			let data: {
-				issueRelation: {
-					id?: unknown;
-					type?: unknown;
-					issue?: { id?: unknown } | null;
-					relatedIssue?: { id?: unknown } | null;
-				} | null;
-			};
-			try {
-				data = await linearGraphQL(apiKey, VERIFY_ISSUE_RELATION_DOCUMENT, { id: relationId }, signal, { phase: "read" });
-				if (linearGraphQLErrors(data).length) throw new Error(RELATION_PREFLIGHT_ERROR);
-			} catch {
-				throw new Error(RELATION_PREFLIGHT_ERROR);
-			}
-			const relation = data.issueRelation;
-			if (
-				!relation
-				|| typeof relation.id !== "string"
-				|| typeof relation.type !== "string"
-				|| typeof relation.issue?.id !== "string"
-				|| typeof relation.relatedIssue?.id !== "string"
-			) throw new Error(RELATION_GUARD_ERROR);
-			return guardedDeletePreparation(variables, {
-				id: relation.id,
-				type: relation.type,
-				issueId: relation.issue.id,
-				relatedIssueId: relation.relatedIssue.id,
-			});
-		},
-		batchPrepare(variables) {
+		plan(variables) {
 			return {
-				kind: "independent" as const,
-				deferDocument: true as const,
-				lookups: [{
-					field: "issueRelation" as const,
-					requested: String(variables.relationId),
-					failureMessage: RELATION_PREFLIGHT_ERROR,
-				}],
-				finish(resolved: BatchLookupValues) {
-					if (!resolved.issueRelation) throw new Error(RELATION_PREFLIGHT_ERROR);
-					return guardedDeletePreparation(variables, resolved.issueRelation);
+				kind: "mutation",
+				lookups: [issueRelationLookup("issueRelation", String(variables.relationId), RELATION_PREFLIGHT_ERROR)],
+				finish(resolved) {
+					return guardedDeletePreparation(variables, resolved.issueRelation as GuardedIssueRelation);
 				},
 			};
 		},

@@ -21,6 +21,10 @@ function execute(input: Record<string, unknown>, mode: 'allowlist' | 'readonly' 
   return (linearApiTool(mode) as any).execute('call', input, undefined, undefined, { hasUI: false });
 }
 
+function executeWithSignal(input: Record<string, unknown>, signal: AbortSignal) {
+  return (linearApiTool('allowlist') as any).execute('call', input, signal, undefined, { hasUI: false });
+}
+
 function response(body: unknown, headers: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
     status: 200,
@@ -284,7 +288,7 @@ describe('delete_issue_relation strict guarded delete', () => {
     ['wrong target', { id: RELATION, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: ISSUE } }],
     ['reversed endpoints', { id: RELATION, type: 'related', issue: { id: RELATED }, relatedIssue: { id: ISSUE } }],
     ['wrong type', { id: RELATION, type: 'blocks', issue: { id: ISSUE }, relatedIssue: { id: RELATED } }],
-  ])('skips the guarded batch delete after %s and never compiles or sends the mutation', async (_case, relation) => {
+  ])('classifies the guarded batch delete after %s and never compiles or sends the mutation', async (_case, relation) => {
     const requests: Array<{ query: string }> = [];
     const fetch = vi.fn(async (_url: string, init: RequestInit) => {
       const request = JSON.parse(String(init.body));
@@ -297,11 +301,14 @@ describe('delete_issue_relation strict guarded delete', () => {
     expect(requests).toHaveLength(1);
     expect(requests[0]!.query).not.toContain('issueRelationDelete');
     expect(result.details).toMatchObject({
-      data: {}, errors: [], skipped: ['remove'], meta: { requests: { read: 1, mutation: 0 } },
+      data: {},
+      errors: [{ key: 'remove', message: 'Linear issue relation did not match the exact delete guard.' }],
+      skipped: [],
+      meta: { requests: { read: 1, mutation: 0 } },
     });
   });
 
-  it('accounts a preflight GraphQL failure as skipped and exposes none of the echoed values', async () => {
+  it('accounts a preflight GraphQL failure as one stable error and exposes none of the echoed values', async () => {
     const requests: Array<{ query: string }> = [];
     const fetch = vi.fn(async (_url: string, init: RequestInit) => {
       const request = JSON.parse(String(init.body));
@@ -315,12 +322,16 @@ describe('delete_issue_relation strict guarded delete', () => {
     process.env.LINEAR_API_KEY = SECRET;
     const result = await batchDelete();
     expect(requests).toHaveLength(1);
-    expect(result.details).toMatchObject({ data: {}, errors: [], skipped: ['remove'] });
+    expect(result.details).toMatchObject({
+      data: {},
+      errors: [{ key: 'remove', message: 'Linear issue relation delete preflight failed.' }],
+      skipped: [],
+    });
     const text = JSON.stringify(result.details);
     for (const secret of [RELATION, ISSUE, RELATED, SECRET]) expect(text).not.toContain(secret);
   });
 
-  it('blocks the guarded mutation after an unexpected-alias read error', async () => {
+  it('attributes an unexpected-path preflight error to the guarded mutation', async () => {
     const upstreamError = { path: ['unexpected'], message: leaked };
     const requests: Array<{ query: string }> = [];
     const fetch = vi.fn(async (_url: string, init: RequestInit) => {
@@ -338,12 +349,17 @@ describe('delete_issue_relation strict guarded delete', () => {
     const result = await batchDelete();
     expect(requests).toHaveLength(1);
     expect(requests[0]!.query).not.toContain('issueRelationDelete');
-    expect(result.details).toMatchObject({ data: {}, errors: [], skipped: ['remove'] });
+    expect(result.details).toMatchObject({
+      data: {},
+      errors: [{ key: 'remove', path: ['remove'], message: 'Linear issue relation delete preflight failed.' }],
+      skipped: [],
+      meta: { requests: { read: 1, mutation: 0 } },
+    });
     const text = JSON.stringify(result.details);
     for (const secret of [RELATION, ISSUE, RELATED, SECRET]) expect(text).not.toContain(secret);
   });
 
-  it('blocks the guarded mutation after a pathless read error', async () => {
+  it('attributes a pathless preflight error to the guarded mutation', async () => {
     const requests: Array<{ query: string }> = [];
     const fetch = vi.fn(async (_url: string, init: RequestInit) => {
       const request = JSON.parse(String(init.body));
@@ -357,11 +373,71 @@ describe('delete_issue_relation strict guarded delete', () => {
     });
     vi.stubGlobal('fetch', fetch);
     process.env.LINEAR_API_KEY = SECRET;
-    const error = await batchDelete().catch((value: Error) => value);
+    const result = await batchDelete();
     expect(requests).toHaveLength(1);
     expect(requests[0]!.query).not.toContain('issueRelationDelete');
-    expect(error.message).toBe('Linear issue relation delete preflight failed.');
-    for (const secret of [RELATION, ISSUE, RELATED, SECRET]) expect(error.message).not.toContain(secret);
+    expect(result.details).toMatchObject({
+      data: {},
+      errors: [{ key: 'remove', path: ['remove'], message: 'Linear issue relation delete preflight failed.' }],
+      skipped: [],
+      meta: { requests: { read: 1, mutation: 0 } },
+    });
+    const text = JSON.stringify(result.details);
+    for (const secret of [RELATION, ISSUE, RELATED, SECRET]) expect(text).not.toContain(secret);
+  });
+
+  it.each(['network', 'http', 'non-json', 'cancel'] as const)(
+    'preserves top-level %s failure behavior for guarded preflight',
+    async (failureKind) => {
+      const controller = new AbortController();
+      const requests: Array<{ query: string }> = [];
+      const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+        const request = JSON.parse(String(init.body));
+        requests.push(request);
+        if (failureKind === 'network') throw new Error('guard socket closed');
+        if (failureKind === 'http') return new Response('{}', { status: 503, statusText: 'Unavailable' });
+        if (failureKind === 'non-json') return new Response('not json', { status: 200 });
+        controller.abort();
+        throw new Error('guard cancelled');
+      });
+      vi.stubGlobal('fetch', fetch);
+      process.env.LINEAR_API_KEY = SECRET;
+      const input = {
+        operation: 'batch',
+        variables: { mutations: [{ key: 'remove', operation: 'delete_issue_relation', variables }] },
+      };
+      const promise = failureKind === 'cancel'
+        ? executeWithSignal(input, controller.signal)
+        : execute(input);
+      await expect(promise).rejects.toThrow(/Linear|guard|cancelled|data/i);
+      expect(requests).toHaveLength(1);
+      expect(requests[0]!.query).not.toContain('issueRelationDelete');
+    },
+  );
+
+  it('preserves a successful caller read when an unowned preflight error belongs to the guard', async () => {
+    const requests: Array<{ query: string }> = [];
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const request = JSON.parse(String(init.body));
+      requests.push(request);
+      return response({
+        data: {
+          keep: { id: ISSUE, identifier: 'AEO-258', team: { id: 'team-id', key: 'AEO' } },
+          _lookup_remove_issueRelation: { id: RELATION, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: RELATED } },
+        },
+        errors: [{ message: leaked }],
+      });
+    });
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = SECRET;
+    const result = await batchDelete([{ key: 'keep', operation: 'get_issue', variables: { issue: 'AEO-258' } }]);
+    expect(requests).toHaveLength(1);
+    expect(result.details).toMatchObject({
+      data: { keep: { issue: { id: ISSUE, identifier: 'AEO-258' } } },
+      errors: [{ key: 'remove', path: ['remove'], message: 'Linear issue relation delete preflight failed.' }],
+      skipped: [],
+      meta: { requests: { read: 1, mutation: 0 } },
+    });
   });
 
   it('uses the existing read-error gate and keeps the guarded mutation unsent', async () => {

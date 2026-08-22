@@ -1,22 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { linearApiTool } from '../extensions/api';
-import {
-  resolveIssueReference,
-  resolveNamedEntityReference,
-  resolveStateReference,
-  resolveTeamReference,
-  resolveUserReference,
-} from '../extensions/client';
 import { operations } from '../extensions/operations';
 import { isolateLinearCredentials } from './helpers/credentials';
+import { prepareOperation } from './helpers/operation-plan';
 
 isolateLinearCredentials();
 
 const ISSUE_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_ID = '22222222-2222-4222-8222-222222222222';
 const TEAM_ID = '33333333-3333-4333-8333-333333333333';
+const FOREIGN_TEAM_ID = '77777777-7777-4777-8777-777777777777';
 const STATE_ID = '44444444-4444-4444-8444-444444444444';
-const USER_ID = '55555555-5555-4555-8555-555555555555';
 const originalKey = process.env.LINEAR_API_KEY;
 
 afterEach(() => {
@@ -131,6 +125,45 @@ describe('direct issue identifier routing', () => {
     expect(requests).toHaveLength(1);
   });
 
+  it('rejects a foreign-team state UUID before any direct mutation request', async () => {
+    const { requests } = graphqlStub((query) => {
+      if (query.includes('ResolveIssueById')) return { issue: issueNode() };
+      if (query.includes('ResolveStateById')) {
+        return { workflowState: { id: STATE_ID, name: 'Foreign', team: { id: FOREIGN_TEAM_ID } } };
+      }
+      throw new Error('Mutation request must not run.');
+    });
+
+    await expect(execute({
+      operation: 'update_issue',
+      variables: { issue: 'AEO-258', stateId: STATE_ID },
+    })).rejects.toThrow(`does not belong to team "${TEAM_ID}"`);
+    expect(requests).toHaveLength(2);
+    expect(requests.every(({ query }) => !query.includes('mutation'))).toBe(true);
+  });
+
+  it('preserves a valid explicit-team move with a state from the destination team', async () => {
+    const { requests } = graphqlStub((query, variables) => {
+      if (query.includes('ResolveTeamById')) {
+        expect(variables).toEqual({ id: FOREIGN_TEAM_ID });
+        return { team: { id: FOREIGN_TEAM_ID, key: 'OTHER' } };
+      }
+      if (query.includes('ResolveStateById')) {
+        return { workflowState: { id: STATE_ID, name: 'Moved', team: { id: FOREIGN_TEAM_ID } } };
+      }
+      expect(query).toContain('mutation UpdateIssue');
+      return { issueUpdate: { success: true, issue: issueNode() } };
+    });
+
+    await execute({
+      operation: 'update_issue',
+      variables: { issue: 'AEO-258', teamId: FOREIGN_TEAM_ID, stateId: STATE_ID },
+    });
+    expect(requests).toHaveLength(3);
+    expect(requests.some(({ query }) => query.includes('ResolveIssueById'))).toBe(false);
+    expect(requests.filter(({ query }) => query.includes('mutation'))).toHaveLength(1);
+  });
+
   it('still resolves state names with the issue team before update_issue', async () => {
     const { requests } = graphqlStub((query, variables) => {
       if (query.includes('ResolveIssueById')) {
@@ -155,64 +188,7 @@ describe('direct issue identifier routing', () => {
   });
 });
 
-describe('issue identifier resolver uses the singular root', () => {
-  it.each(['AEO-258', 'aeo-258'])('loads %s through issue(id:) and not a list filter', async (reference) => {
-    const { fetch } = graphqlStub((query, variables) => {
-      expect(query).toContain('query ResolveIssueById');
-      expect(query).toContain('issue(id: $id)');
-      expect(query).not.toContain('issues(first:');
-      expect(query).not.toContain('searchIssues');
-      expect(variables).toEqual({ id: reference });
-      return { issue: issueNode() };
-    });
-    await expect(resolveIssueReference('key', reference)).resolves.toEqual({
-      id: ISSUE_ID, identifier: 'AEO-258', teamId: TEAM_ID, teamKey: 'AEO',
-    });
-    expect(fetch).toHaveBeenCalledOnce();
-  });
-});
-
-describe('human-form resolvers stay on list filters', () => {
-  it('keeps team, state, user, and milestone name resolvers', async () => {
-    graphqlStub((query) => {
-      if (query.includes('ResolveTeamByKey')) return { teams: { nodes: [{ id: TEAM_ID, key: 'AEO' }] } };
-      if (query.includes('ResolveStateByName')) {
-        return { workflowStates: { nodes: [{ id: STATE_ID, name: 'Backlog', team: { id: TEAM_ID } }] } };
-      }
-      if (query.includes('ResolveUserByIdentity')) {
-        return {
-          byEmail: { nodes: [{ id: USER_ID, name: 'Ada', email: 'ada@example.com' }] },
-          byName: { nodes: [] },
-          byDisplayName: { nodes: [] },
-        };
-      }
-      expect(query).toContain('projectMilestones(first: 2');
-      return { projectMilestones: { nodes: [{ id: OTHER_ID, name: 'Beta' }] } };
-    });
-    await expect(resolveTeamReference('key', 'aeo')).resolves.toEqual({ id: TEAM_ID, key: 'AEO' });
-    await expect(resolveStateReference('key', TEAM_ID, 'backlog')).resolves.toMatchObject({ id: STATE_ID });
-    await expect(resolveUserReference('key', 'ada@example.com')).resolves.toMatchObject({ id: USER_ID });
-    await expect(resolveNamedEntityReference('key', 'projectMilestone', 'Beta')).resolves.toEqual({
-      id: OTHER_ID, name: 'Beta',
-    });
-  });
-
-  it('does not send project, cycle, or document names to singular slug roots', async () => {
-    graphqlStub((query) => {
-      expect(query).not.toMatch(/project\(id: \$id\)/);
-      expect(query).not.toMatch(/cycle\(id: \$id\)/);
-      expect(query).not.toMatch(/document\(id: \$id\)/);
-      if (query.includes('projects(')) return { projects: { nodes: [{ id: OTHER_ID, name: 'Platform' }] } };
-      if (query.includes('cycles(')) return { cycles: { nodes: [{ id: OTHER_ID, name: 'Cycle 1' }] } };
-      return { documents: { nodes: [{ id: OTHER_ID, name: 'Planning notes' }] } };
-    });
-    await expect(resolveNamedEntityReference('key', 'project', 'Platform')).resolves.toMatchObject({ name: 'Platform' });
-    await expect(resolveNamedEntityReference('key', 'cycle', 'Cycle 1')).resolves.toMatchObject({ name: 'Cycle 1' });
-    await expect(resolveNamedEntityReference('key', 'document', 'Planning notes')).resolves.toMatchObject({
-      name: 'Planning notes',
-    });
-  });
-
+describe('shared operation-plan routing', () => {
   it('still converts comment issue identifiers to UUIDs before the list filter', async () => {
     const { requests } = graphqlStub((query, variables) => {
       if (query.includes('ResolveIssueById')) {
@@ -222,7 +198,7 @@ describe('human-form resolvers stay on list filters', () => {
       expect(query).toContain('query ListComments');
       return { comments: { nodes: [], pageInfo: { hasNextPage: false } } };
     });
-    const prepared = await operations.list_comments.prepare!('key', { issue: 'AEO-258' }, undefined);
+    const prepared = await prepareOperation(operations.list_comments!, { issue: 'AEO-258' });
     expect(requests).toHaveLength(1);
     expect(prepared.variables.filter).toEqual({ issue: { id: { eq: ISSUE_ID } } });
   });

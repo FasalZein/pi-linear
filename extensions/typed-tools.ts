@@ -3,7 +3,12 @@ import type { TSchema } from 'typebox';
 import { Compile } from 'typebox/compile';
 import { operationDefinitions, operations, type LinearOperation } from './operations';
 import { canonicalFieldNames, canonicalOperation } from './canonical';
-import { assertOperationAllowed, executeOperation, type JsonObject } from './runtime';
+import {
+  assertOperationAllowed,
+  executeOperationInContext,
+  linearCallContext,
+  type JsonObject,
+} from './runtime';
 import { activeSecrets } from './active-secrets';
 import { redactError } from './redact';
 import { operationRenderers } from './renderers';
@@ -114,13 +119,10 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
       } catch (error) {
         throw redactError(error, activeSecrets());
       }
-      const details = await executeOperation(
-        operation,
-        { variables, workspace: typeof workspace === 'string' ? workspace : undefined },
-        mode,
-        ctx,
-        signal,
-      );
+      const call = linearCallContext(mode, signal, ctx, {
+        workspace: typeof workspace === 'string' ? workspace : undefined,
+      });
+      const details = await executeOperationInContext(operation, { variables }, call);
       return { content: [{ type: 'text' as const, text: JSON.stringify(details) }], details };
     },
   });

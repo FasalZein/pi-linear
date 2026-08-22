@@ -2,7 +2,6 @@ import { StringEnum } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 import { Kind, parse, type FragmentDefinitionNode, type SelectionSetNode } from 'graphql';
-import { linearGraphQL, linearGraphQLErrors, linearRateLimitTelemetry } from './client';
 import {
   DOMAINS,
   formatInvocation,
@@ -16,11 +15,10 @@ import {
   type OperationDomain,
 } from './operations';
 import {
-  apiKeyForWorkspace,
   assertOperationAllowed,
-  executeOperation,
-  routeLinearResult,
-  NODE_CAP,
+  executeOperationInContext,
+  executeRawQuery,
+  linearCallContext,
   type JsonObject,
   type TelemetryMode,
 } from './runtime';
@@ -28,7 +26,7 @@ import { activeSecrets } from './active-secrets';
 import { redactDeep, redactError, withRedactedErrors } from './redact';
 import { renderLinearApiCall, renderLinearApiResult } from './renderers';
 import { typedToolName } from './tool-names';
-import { assertMutationAllowed, type MutationMode } from './safety';
+import type { MutationMode } from './safety';
 import { LINEAR_TOOL_DESCRIPTION } from './generated/operation-catalog';
 import { batchHelp, executeBatch } from './batch';
 import {
@@ -241,6 +239,11 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
       const secrets: string[] = [...activeSecrets()];
       return withRedactedErrors(async () => {
         if (signal?.aborted) throw new Error('Request cancelled.');
+        const call = linearCallContext(mode, signal, ctx, {
+          workspace: params.workspace,
+          sink: params.sink,
+          telemetryMode: explicitTelemetry,
+        });
         if (params.operation === 'help' && !params.query) {
           return toolResult(helpResult(params.variables, activator), secrets);
         }
@@ -265,36 +268,19 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
 
         const request = resolveRequest(params, mode);
         if (request.named) {
-          return toolResult(await executeOperation(
+          return toolResult(await executeOperationInContext(
             request.operation,
-            {
-              variables: params.variables ?? {},
-              workspace: params.workspace,
-              sink: params.sink,
-              telemetryMode: explicitTelemetry,
-            },
-            mode,
-            ctx,
-            signal,
+            { variables: params.variables ?? {} },
+            call,
           ), secrets);
         }
 
         assertRawResultPointersRepresentable(request.query);
-        assertMutationAllowed(request.query, mode);
-        const apiKey = await apiKeyForWorkspace(ctx, params.workspace);
-        secrets.push(apiKey);
-        const data = await linearGraphQL<JsonObject>(apiKey, request.query, params.variables ?? {}, signal);
-        const errors = linearGraphQLErrors(data);
-        return toolResult(await routeLinearResult(data, {
-          label: 'query',
-          category: 'composite',
-          sink: params.sink,
-          nodeCap: NODE_CAP,
-          secrets,
-          errors,
-          telemetry: linearRateLimitTelemetry(data),
-          telemetryMode: explicitTelemetry,
-        }), secrets);
+        return toolResult(await executeRawQuery(
+          request.query,
+          params.variables ?? {},
+          call,
+        ), secrets);
       }, secrets);
     },
   });

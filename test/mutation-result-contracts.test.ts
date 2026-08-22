@@ -160,7 +160,11 @@ describe('mutation document result contracts', () => {
       {
         ...operations.get_issue,
         variants: [queryVariant],
-        prepare: async () => ({ variant: queryVariant, variables: {} }),
+        plan: async () => ({
+          kind: 'query',
+          lookups: [],
+          finish: () => ({ variant: queryVariant, variables: {} }),
+        }),
       },
       { variables: {} },
       'allowlist',

@@ -121,6 +121,9 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
     : documents?.some((variant) => variant.kind === 'mutation')
       ? 'mutation'
       : 'query';
+  if (kind === 'query' && !operation.plan) {
+    throw new Error(`Query operation ${operation.name} is missing its pure operation plan.`);
+  }
   const entityKind = operation.renderKind ?? projectedRenderKind(operation.name);
   const renderEmpty = operation.renderEmpty;
   if ((action === 'list' || action === 'search') && !renderEmpty) {
@@ -158,16 +161,14 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
           ?? (() => { throw new Error(`Unnamed semantic validation exception for "${operation.name}".`); })(),
         semanticValidateVariables: operation.validateVariables,
       } : {}),
-      ...(operation.prepare ? { prepare: operation.prepare } : {}),
-      ...(operation.batchPrepare ? { batchPrepare: operation.batchPrepare } : {}),
+      ...(operation.plan ? { plan: operation.plan } : {}),
       ...(operation.executeLocal ? { executeLocal: operation.executeLocal } : {}),
       ...(operation.localResult ? { localResult: operation.localResult } : {}),
     },
     ...(documents ? { graphql: { documents } } : {}),
     preparation: {
       resolverPaths: operation.resolverPaths ?? {},
-      ...(operation.prepare ? { prepare: operation.prepare } : {}),
-      ...(operation.batchPrepare ? { batchPrepare: operation.batchPrepare } : {}),
+      ...(operation.plan ? { plan: operation.plan } : {}),
     },
     safety: {
       namedInputPolicy: operation.namedInputPolicy ?? 'non-destructive',
@@ -244,14 +245,13 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
       assertRequirementBranches(compatibility.branches, variables);
       compatibility.semanticValidateVariables?.(variables);
     },
-    ...(compatibility.prepare ? {
-      prepare: async (apiKey, variables, signal) => {
+    ...(compatibility.plan ? {
+      plan: async (variables) => {
         assertRequirementBranches(compatibility.branches, variables);
         compatibility.semanticValidateVariables?.(variables);
-        return compatibility.prepare!(apiKey, variables, signal);
+        return compatibility.plan!(variables);
       },
     } : {}),
-    ...(compatibility.batchPrepare ? { batchPrepare: compatibility.batchPrepare } : {}),
     ...(compatibility.localResult ? { localResult: compatibility.localResult } : {}),
     ...(compatibility.executeLocal ? {
       executeLocal: async (variables, ctx) => {

@@ -68,37 +68,29 @@ export type OperationPreparation = {
 	/** Stable external error for an upstream mutation failure. */
 	failureMessage?: string;
 };
-export type BatchLookupField = "parent" | "team" | "state" | "assignee" | "project" | "issueRelation";
-export type BatchLookup = {
-	field: BatchLookupField;
-	requested: string;
-	/** Independently known team key or UUID, required for a state name. */
-	team?: string;
-	/** Stable external error for this dependent read. */
+export type LookupPlan = {
+	key: string;
+	dependsOn?: readonly string[];
+	document: (resolved: Readonly<Record<string, unknown>>) => string;
+	variables: (resolved: Readonly<Record<string, unknown>>) => Record<string, unknown>;
+	resolve: (
+		data: Record<string, unknown>,
+		resolved: Readonly<Record<string, unknown>>,
+	) => unknown;
+	/** Stable external error when the lookup request itself fails. */
 	failureMessage?: string;
+	/** Preserve an explicit phase label for guarded direct calls. */
+	telemetryPhase?: "read";
 };
-export type BatchLookupValues = {
-	parent?: { id: string; identifier: string; teamId: string; teamKey: string };
-	team?: { id: string; key: string };
-	state?: { id: string; name: string; teamId: string };
-	assignee?: { id: string };
-	project?: { id: string; name: string };
-	issueRelation?: {
-		id: string;
-		type: string;
-		issueId: string;
-		relatedIssueId: string;
-	};
+export type OperationPlan = {
+	kind: "query" | "mutation";
+	lookups: readonly LookupPlan[];
+	finish: (resolved: Readonly<Record<string, unknown>>) => OperationPreparation;
 };
-export type BatchPreparation =
-	| { kind: "local" }
-	| {
-			kind: "independent";
-			lookups: readonly BatchLookup[];
-			finish: (resolved: BatchLookupValues) => OperationPreparation;
-			/** Compile the mutation only after all dependent lookups pass. */
-			deferDocument?: true;
-	  };
+export type OperationPlanFactory = (
+	variables: Record<string, unknown>,
+) => OperationPlan | Promise<OperationPlan>;
+
 export type PaginationMetadata = {
 	defaultPageSize: number;
 	filterType?: string;
@@ -125,13 +117,8 @@ export type LinearOperation = {
 	resolverPaths?: Readonly<Record<string, string>>;
 	requiresVariables?: boolean;
 	validateVariables?: (variables: Record<string, unknown>) => void;
-	prepare?: (
-		apiKey: string,
-		variables: Record<string, unknown>,
-		signal: AbortSignal | undefined,
-	) => Promise<OperationPreparation>;
-	/** Variable-dependent batch eligibility. Inspect lookups, not the operation name. */
-	batchPrepare?: (variables: Record<string, unknown>) => BatchPreparation;
+	/** Pure operation planning for direct and batch execution. */
+	plan?: OperationPlanFactory;
 	executeLocal?: (
 		variables: Record<string, unknown>,
 		ctx: ExtensionContext,
@@ -195,8 +182,7 @@ export type OperationCompatibilityDefinition = {
 	/** Named semantic exception for checks branches cannot express, such as non-empty text. */
 	semanticException?: string;
 	semanticValidateVariables?: LinearOperation["validateVariables"];
-	prepare?: LinearOperation["prepare"];
-	batchPrepare?: LinearOperation["batchPrepare"];
+	plan?: LinearOperation["plan"];
 	executeLocal?: LinearOperation["executeLocal"];
 	localResult?: LocalResultExpectation;
 };
@@ -211,8 +197,7 @@ export type OperationDefinition = {
 	graphql?: { documents: readonly OperationDocumentDefinition[] };
 	preparation: {
 		resolverPaths: Readonly<Record<string, string>>;
-		prepare?: LinearOperation["prepare"];
-		batchPrepare?: LinearOperation["batchPrepare"];
+		plan?: LinearOperation["plan"];
 	};
 	safety: {
 		namedInputPolicy: NamedInputPolicy;

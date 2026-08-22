@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { linearApiTool, resolveRequest } from "../extensions/api";
 import { operations } from "../extensions/operations";
 import { isolateLinearCredentials } from "./helpers/credentials";
+import { prepareOperation } from "./helpers/operation-plan";
 
 isolateLinearCredentials();
 
@@ -11,8 +12,8 @@ const MILESTONE_ID = "33333333-3333-4333-8333-333333333333";
 
 async function prepare(name: string, variables: Record<string, unknown>) {
 	const operation = operations[name];
-	if (!operation?.prepare) throw new Error(`${name} has no preparation.`);
-	return operation.prepare("test-key", variables, undefined);
+	if (!operation) throw new Error(`${name} has no operation.`);
+	return prepareOperation(operation, variables);
 }
 
 function graphqlStub(
@@ -395,7 +396,6 @@ describe("update_issue final request", () => {
 		const issueId = INITIATIVE_ID;
 		const teamId = PROJECT_ID;
 		const stateId = MILESTONE_ID;
-		const stateIsName = stateReference === "Backlog";
 		graphqlStub((query, variables) => {
 			if (query.includes("ResolveIssueById")) {
 				expect(variables).toEqual({ id: issueReference });
@@ -418,11 +418,11 @@ describe("update_issue final request", () => {
 			"issueUpdate(id: $id, input: $input)",
 		);
 		expect(prepared.variables).toEqual({ id: issueReference, input: { stateId } });
-		expect(prepared.resolution?.target).toEqual(
-			stateIsName
-				? { requested: issueReference, resolvedId: issueId, identifier: "AEO-266" }
-				: { requested: issueReference },
-		);
+		expect(prepared.resolution?.target).toEqual({
+			requested: issueReference,
+			resolvedId: issueId,
+			identifier: "AEO-266",
+		});
 	});
 });
 

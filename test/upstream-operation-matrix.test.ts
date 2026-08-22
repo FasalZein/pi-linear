@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { linearApiTool, resolveRequest } from "../extensions/api";
 import { operations } from "../extensions/operations";
 import { isolateLinearCredentials } from "./helpers/credentials";
+import { prepareOperation } from "./helpers/operation-plan";
 
 isolateLinearCredentials();
 
@@ -491,13 +492,7 @@ describe("independent upstream operation matrix", () => {
 			expect(fixture.variables).toEqual(fixture.expectedVariables);
 			return;
 		}
-		const prepared = request.operation.prepare
-			? await request.operation.prepare(
-					"test-key",
-					fixture.variables,
-					undefined,
-				)
-			: { variables: fixture.variables };
+		const prepared = await prepareOperation(request.operation, fixture.variables);
 		expect(root(prepared.variant?.document ?? request.query)).toBe(fixture.root);
 		expect(prepared.variables).toEqual(fixture.expectedVariables);
 	});

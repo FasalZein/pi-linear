@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { linearApiTool, resolveRequest } from '../extensions/api';
 import { assertBatchAccounting, batchHelp } from '../extensions/batch';
+import { operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
 import type { MutationMode } from '../extensions/safety';
 import { isolateLinearCredentials } from './helpers/credentials';
 
@@ -12,6 +13,7 @@ isolateLinearCredentials();
 const ISSUE_A = '11111111-1111-4111-8111-111111111111';
 const ISSUE_B = '22222222-2222-4222-8222-222222222222';
 const TEAM_ID = '33333333-3333-4333-8333-333333333333';
+const FOREIGN_TEAM_ID = '88888888-8888-4888-8888-888888888888';
 const TOKEN = 'lin_api_secret123456789abcdef';
 const originalKey = process.env.LINEAR_API_KEY;
 const originalArtifactRoot = process.env.PI_ARTIFACT_PROJECT_ROOT;
@@ -37,6 +39,10 @@ afterEach(async () => {
 
 function execute(params: Record<string, unknown>, mode: MutationMode = 'allowlist') {
   return (linearApiTool(mode) as any).execute('call-1', params, undefined, undefined, { hasUI: false });
+}
+
+function executeWithSignal(params: Record<string, unknown>, signal: AbortSignal, mode: MutationMode = 'allowlist') {
+  return (linearApiTool(mode) as any).execute('call-1', params, signal, undefined, { hasUI: false });
 }
 
 function batch(reads: unknown[], extra: Record<string, unknown> = {}) {
@@ -134,6 +140,52 @@ describe('batch help and catalog', () => {
     const tool = linearApiTool() as any;
     expect(tool.description).toContain('batch: Batch independent reads with read-only operations, or use explicit phases for one ordinary mutation, grouped issue creates, or one guarded relation delete.');
     expect(Object.keys(tool.parameters.properties).sort()).toEqual(['operation', 'query', 'sink', 'telemetry', 'variables', 'workspace']);
+  });
+});
+
+describe('pure read operation plans', () => {
+  it('plans every query deterministically without transport, timers, or random IDs', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const timer = vi.spyOn(globalThis, 'setTimeout');
+    const now = vi.spyOn(Date, 'now');
+    const random = vi.spyOn(Math, 'random');
+    delete process.env.LINEAR_API_KEY;
+    const resolved = {
+      issue: { id: ISSUE_A, identifier: 'AEO-1', teamId: TEAM_ID, teamKey: 'AEO' },
+      team: { id: TEAM_ID, key: 'AEO' },
+      assignee: { id: ISSUE_B, name: 'Ada' },
+      user: { id: ISSUE_B, name: 'Ada' },
+      state: { id: ISSUE_B, teamId: TEAM_ID, name: 'Started' },
+      project: { id: ISSUE_A, name: 'Platform' },
+      cycle: { id: ISSUE_A, name: 'Cycle 1' },
+      document: { id: ISSUE_A, name: 'Planning notes' },
+      milestone: { id: ISSUE_A, name: 'Beta' },
+      initiative: { id: ISSUE_A, name: 'Platform' },
+    };
+    const snapshots: unknown[] = [];
+    for (const definition of operationDefinitions.filter(({ kind }) => kind === 'query')) {
+      const operation = projectCompatibilityOperation(definition);
+      expect(operation.plan, operation.name).toBeTypeOf('function');
+      const first = await operation.plan!(operation.example.variables);
+      const second = await operation.plan!(operation.example.variables);
+      const snapshot = (plan: typeof first) => ({
+        lookups: plan.lookups.map((lookup) => ({
+          key: lookup.key,
+          dependsOn: lookup.dependsOn,
+          document: lookup.document(resolved),
+          variables: lookup.variables(resolved),
+        })),
+        prepared: plan.finish(resolved),
+      });
+      expect(snapshot(second), operation.name).toEqual(snapshot(first));
+      snapshots.push(snapshot(first));
+    }
+    expect(snapshots.length).toBeGreaterThan(0);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(timer).not.toHaveBeenCalled();
+    expect(now).not.toHaveBeenCalled();
+    expect(random).not.toHaveBeenCalled();
   });
 });
 
@@ -372,14 +424,14 @@ describe('batch read phase', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('rejects a read whose prepare would call Linear', async () => {
+  it('rejects a second lookup layer before credential or network access', async () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
-    process.env.LINEAR_API_KEY = 'test-key';
+    delete process.env.LINEAR_API_KEY;
 
     await expect(batch([
       { key: 'issues', operation: 'list_issues', variables: { team: 'AEO' } },
-    ])).rejects.toThrow(/preparation|fold/i);
+    ])).rejects.toThrow(/second lookup layer.*one read request/i);
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -425,6 +477,89 @@ describe('batch read phase', () => {
     expect(result.details.data.issue).toEqual(issueNode(ISSUE_A, 'AEO-1'));
     expect(result.details).not.toHaveProperty('skipped');
     expect(result.details).not.toHaveProperty('errors');
+  });
+
+  it('uses the same exact identity rejection for direct and batch reads', async () => {
+    graphqlStub((request) => ({
+      body: { data: request.query.includes('BatchRead')
+        ? { one: issueNode(ISSUE_A, 'AEO-2') }
+        : { issue: issueNode(ISSUE_A, 'AEO-2') } },
+    }));
+    await expect(execute({ operation: 'get_issue', variables: { issue: 'AEO-1' } }))
+      .rejects.toThrow('Linear issue resolver returned mismatched identifier "AEO-2" for "AEO-1".');
+    const result = await batch([{ key: 'one', operation: 'get_issue', variables: { issue: 'AEO-1' } }]);
+    expect(result.details.errors[0].message)
+      .toBe('Linear issue resolver returned mismatched identifier "AEO-2" for "AEO-1".');
+  });
+
+  it('keeps a concurrent read-only batch and direct call on their own responses', async () => {
+    let releaseBatch!: () => void;
+    const batchBlocked = new Promise<void>((resolve) => { releaseBatch = resolve; });
+    const requests: Array<{ query: string; variables: Record<string, unknown> }> = [];
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const request = JSON.parse(String(init.body)) as { query: string; variables: Record<string, unknown> };
+      requests.push(request);
+      if (request.query.includes('BatchRead')) {
+        await batchBlocked;
+        return { ok: true, status: 200, statusText: 'OK', headers: new Headers(), json: async () => ({ data: { one: issueNode(ISSUE_A, 'AEO-1', 'batch') } }) };
+      }
+      releaseBatch();
+      return { ok: true, status: 200, statusText: 'OK', headers: new Headers(), json: async () => ({ data: { issue: issueNode(ISSUE_B, 'AEO-2', 'direct') } }) };
+    });
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = 'test-key';
+
+    const batchCall = batch([{ key: 'one', operation: 'get_issue', variables: { issue: 'AEO-1' } }]);
+    const directCall = execute({ operation: 'get_issue', variables: { issue: 'AEO-2' } });
+    const [batchResult, directResult] = await Promise.all([batchCall, directCall]);
+    expect(requests).toHaveLength(2);
+    expect(batchResult.details.data.one.issue.title).toBe('batch');
+    expect(directResult.details.data.issue.title).toBe('direct');
+  });
+});
+
+describe('pure mutation operation plans', () => {
+  it('plans every named mutation deterministically without transport, timers, or random ids', async () => {
+    const fetch = vi.fn();
+    const timer = vi.spyOn(globalThis, 'setTimeout');
+    vi.stubGlobal('fetch', fetch);
+
+    const mutations = operationDefinitions.filter((definition) => definition.kind === 'mutation');
+    expect(mutations.length).toBeGreaterThan(0);
+    for (const definition of mutations) {
+      const plan = definition.preparation.plan;
+      expect(plan, definition.name).toBeTypeOf('function');
+      const first = await plan!({ ...definition.canonical.example });
+      const second = await plan!({ ...definition.canonical.example });
+      const shape = (value: typeof first) => ({
+        kind: value.kind,
+        lookups: value.lookups.map((lookup) => ({
+          key: lookup.key,
+          dependsOn: lookup.dependsOn,
+          failureMessage: lookup.failureMessage,
+          telemetryPhase: lookup.telemetryPhase,
+          document: lookup.dependsOn?.length ? lookup.document.toString() : lookup.document({}),
+          variables: lookup.dependsOn?.length ? lookup.variables.toString() : lookup.variables({}),
+        })),
+      });
+      expect(shape(first), definition.name).toEqual(shape(second));
+      expect(first.kind, definition.name).toBe('mutation');
+    }
+    expect(fetch).not.toHaveBeenCalled();
+    expect(timer).not.toHaveBeenCalled();
+  });
+
+  it('keeps the direct create_view result free of resolver metadata', async () => {
+    const { requests } = graphqlStub((request) => request.query.includes('customViewCreate')
+      ? { body: { data: { customViewCreate: { success: true, customView: { id: 'view-id', name: 'Mine' } } } } }
+      : { body: { data: { teams: { nodes: [{ id: TEAM_ID, key: 'AEO' }] } } } });
+    const result = await execute({
+      operation: 'create_view',
+      variables: { name: 'Mine', team: 'AEO', filterData: {} },
+    });
+    expect(requests).toHaveLength(2);
+    expect(result.details.data.customViewCreate.customView).toMatchObject({ id: 'view-id', name: 'Mine' });
+    expect(result.details).not.toHaveProperty('resolution');
   });
 });
 
@@ -540,11 +675,79 @@ describe('batch mutation phase', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('rejects a mutation whose prepare would call Linear', async () => {
-    const fetch = vi.fn();
-    vi.stubGlobal('fetch', fetch);
-    process.env.LINEAR_API_KEY = 'test-key';
-    await expect(execute({
+  it('uses the same exact mutation resolver verification in direct and batch execution', async () => {
+    graphqlStub((request) => {
+      const alias = aliases(request.query, 'teams')[0];
+      return { body: { data: alias
+        ? { [alias]: { nodes: [{ id: TEAM_ID, key: 'WRONG' }] } }
+        : { teams: { nodes: [{ id: TEAM_ID, key: 'WRONG' }] } } } };
+    });
+    const direct = await execute({
+      operation: 'create_cycle',
+      variables: { team: 'AEO', startsAt: '2026-08-17', endsAt: '2026-08-31' },
+    }).catch((error: Error) => error);
+    const batched = await execute({
+      operation: 'batch',
+      variables: { mutations: [{ key: 'write', operation: 'create_cycle', variables: { team: 'AEO', startsAt: '2026-08-17', endsAt: '2026-08-31' } }] },
+    });
+    expect(direct).toBeInstanceOf(Error);
+    expect(batched.details.errors).toHaveLength(1);
+    expect(batched.details.errors[0].message).toBe((direct as Error).message);
+    expect(batched.details.skipped).toEqual([]);
+  });
+
+  it.each([
+    ['pathless', [{ message: `lookup denied ${TOKEN}` }]],
+    ['unexpected-path', [{ message: `lookup denied ${TOKEN}`, path: ['unexpected'] }]],
+  ])('attributes an ordinary mutation lookup %s GraphQL response error', async (_case, responseErrors) => {
+    const { requests } = graphqlStub((request) => ({
+      body: { data: lookupData(request.query), errors: responseErrors },
+    }));
+    const result = await execute({
+      operation: 'batch',
+      variables: {
+        reads: [{ key: 'ready', operation: 'get_issue', variables: { issue: 'AEO-1' } }],
+        mutations: [{ key: 'write', operation: 'create_cycle', variables: { team: 'AEO', startsAt: '2026-08-17', endsAt: '2026-08-31' } }],
+      },
+    });
+    expect(requests).toHaveLength(1);
+    expect(result.details).toMatchObject({
+      data: { ready: { issue: issueNode(ISSUE_A, 'AEO-1') } },
+      errors: [{ key: 'write', message: 'lookup denied [REDACTED]' }],
+      skipped: [],
+      meta: { requests: { read: 1, mutation: 0 } },
+    });
+    expect(JSON.stringify(result.details)).not.toContain(TOKEN);
+  });
+
+  it.each(['network', 'http', 'non-json', 'cancel'] as const)(
+    'preserves top-level %s failure behavior during an ordinary mutation lookup',
+    async (failureKind) => {
+      const controller = new AbortController();
+      const { fetch } = graphqlStub(() => {
+        if (failureKind === 'network') return { throw: new Error('lookup socket closed') };
+        if (failureKind === 'http') return { ok: false, status: 503, statusText: 'Unavailable', body: {} };
+        if (failureKind === 'non-json') return { ok: true, status: 200, json: false };
+        controller.abort();
+        return { throw: new Error('lookup cancelled') };
+      });
+      const call = {
+        operation: 'batch',
+        variables: { mutations: [{ key: 'write', operation: 'create_cycle', variables: { team: 'AEO', startsAt: '2026-08-17', endsAt: '2026-08-31' } }] },
+      };
+      const promise = failureKind === 'cancel'
+        ? executeWithSignal(call, controller.signal)
+        : execute(call);
+      await expect(promise).rejects.toThrow(/Linear|lookup|cancelled|data/i);
+      expect(fetch).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('folds a named mutation lookup into the shared read request', async () => {
+    const { requests } = graphqlStub((request) => request.query.includes('cycleCreate')
+      ? { body: { data: { write: { success: true, cycle: { id: 'cycle-id', name: 'Cycle' } } } } }
+      : { body: { data: lookupData(request.query) } });
+    const result = await execute({
       operation: 'batch',
       variables: {
         mutations: [{
@@ -553,8 +756,63 @@ describe('batch mutation phase', () => {
           variables: { team: 'AEO', startsAt: '2026-08-17', endsAt: '2026-08-31' },
         }],
       },
-    })).rejects.toThrow(/preparation|fold/i);
-    expect(fetch).not.toHaveBeenCalled();
+    });
+    expect(requests).toHaveLength(2);
+    expect(requests[0]!.query).toMatch(/teams|team\(/);
+    expect(requests[1]!.query).toContain('cycleCreate');
+    expect(result.details.errors).toEqual([]);
+  });
+
+  it('proves the destination team and exact state without an unnecessary target lookup', async () => {
+    const { requests } = graphqlStub((request) => request.query.includes('issueUpdate')
+      ? { body: { data: { edit: { success: true, issue: issueNode(ISSUE_A, 'AEO-1') } } } }
+      : { body: { data: lookupData(request.query) } });
+    const result = await execute({
+      operation: 'batch',
+      variables: {
+        mutations: [{
+          key: 'edit',
+          operation: 'update_issue',
+          variables: { issue: 'AEO-1', teamId: TEAM_ID, stateId: STATE_ID },
+        }],
+      },
+    });
+    expect(requests).toHaveLength(2);
+    expect(requests[0]!.query).not.toMatch(/issue\(/);
+    expect(requests[0]!.query).toMatch(/team\(/);
+    expect(requests[0]!.query).toMatch(/workflowState\(/);
+    expect(requests[0]!.query).not.toMatch(/mutation/);
+    expect(result.details.errors).toEqual([]);
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
+  });
+
+  it('rejects a foreign-team state UUID before any batch mutation request', async () => {
+    const { requests } = graphqlStub((request) => {
+      if (request.query.includes('mutation')) throw new Error('Mutation request must not run.');
+      const data = lookupData(request.query);
+      for (const alias of aliases(request.query, 'workflowState')) {
+        data[alias] = { id: STATE_ID, name: 'Foreign', team: { id: FOREIGN_TEAM_ID } };
+      }
+      return { body: { data } };
+    });
+    const result = await execute({
+      operation: 'batch',
+      variables: {
+        mutations: [{
+          key: 'edit',
+          operation: 'update_issue',
+          variables: { issue: 'AEO-1', stateId: STATE_ID },
+        }],
+      },
+    });
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.query).not.toMatch(/mutation/);
+    expect(result.details.errors).toEqual([{
+      key: 'edit',
+      path: ['edit'],
+      message: `Linear state "${STATE_ID}" does not belong to team "${TEAM_ID}".`,
+    }]);
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 0 });
   });
 
   it('rejects two mutations and create-only transaction sets before network access', async () => {
@@ -609,19 +867,49 @@ describe('batch mutation phase', () => {
     expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
   });
 
-  it('preserves mutation transport failures', async () => {
-    graphqlStub((request) => {
-      if (request.query.includes('issueUpdate')) return { throw: new Error('socket closed') };
-      return { body: { data: { one: issueNode(ISSUE_A, 'AEO-1') } } };
-    });
-    await expect(execute({
+  it.each([
+    ['pathless', [{ message: `denied ${TOKEN}` }]],
+    ['unexpected-path', [{ message: `denied ${TOKEN}`, path: ['unexpected'] }]],
+  ])('attributes a %s GraphQL response error to the one ordinary mutation', async (_case, responseErrors) => {
+    const { requests } = graphqlStub((request) => request.query.includes('issueUpdate')
+      ? { body: { errors: responseErrors } }
+      : { body: { data: { one: issueNode(ISSUE_A, 'AEO-1') } } });
+    const result = await execute({
       operation: 'batch',
       variables: {
         reads: [{ key: 'one', operation: 'get_issue', variables: { issue: 'AEO-1' } }],
         mutations: [mutationEntry()],
       },
-    })).rejects.toThrow('Linear network error: socket closed');
+    });
+    expect(requests).toHaveLength(2);
+    expect(result.details).toMatchObject({
+      data: { one: { issue: issueNode(ISSUE_A, 'AEO-1') } },
+      errors: [{ key: 'edit', path: ['edit'], message: 'denied [REDACTED]' }],
+      skipped: [],
+      meta: { requests: { read: 1, mutation: 1 } },
+    });
+    expect(JSON.stringify(result.details)).not.toContain(TOKEN);
   });
+
+  it.each(['network', 'http', 'non-json', 'cancel'] as const)(
+    'preserves top-level %s failure behavior for one ordinary final mutation',
+    async (failureKind) => {
+      const controller = new AbortController();
+      const { fetch } = graphqlStub(() => {
+        if (failureKind === 'network') return { throw: new Error('mutation socket closed') };
+        if (failureKind === 'http') return { ok: false, status: 503, statusText: 'Unavailable', body: {} };
+        if (failureKind === 'non-json') return { ok: true, status: 200, json: false };
+        controller.abort();
+        return { throw: new Error('mutation cancelled') };
+      });
+      const call = { operation: 'batch', variables: { mutations: [mutationEntry()] } };
+      const promise = failureKind === 'cancel'
+        ? executeWithSignal(call, controller.signal)
+        : execute(call);
+      await expect(promise).rejects.toThrow(/Linear|mutation|cancelled|data/i);
+      expect(fetch).toHaveBeenCalledTimes(1);
+    },
+  );
 });
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -807,7 +1095,7 @@ describe('batch transactional create', () => {
           variables: { title: 'Child', parent: 'AEO-1', state: 'Todo' },
         }],
       },
-    })).rejects.toThrow(/state name|explicit team|sequential/i);
+    })).rejects.toThrow(/state name|explicit team|sequential|second lookup layer/i);
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -832,9 +1120,11 @@ describe('batch transactional create', () => {
     expect(requests).toHaveLength(1);
     expect(requests[0]!.query).not.toMatch(/mutation/);
     expect(result.details.data).toEqual({});
-    expect(result.details.errors).toEqual([]);
+    expect(result.details.errors).toEqual([{
+      key: 'one', path: ['_lookup_one_team'], message: expect.stringMatching(/missing team/),
+    }]);
     expect(JSON.stringify(result.details)).not.toContain(TOKEN);
-    expect(result.details.skipped.sort()).toEqual(['one', 'two']);
+    expect(result.details.skipped).toEqual(['two']);
     expect(result.details.meta.requests).toEqual({ read: 1, mutation: 0 });
   });
 
@@ -950,6 +1240,65 @@ describe('batch transactional create', () => {
     expect(result.details.skipped).toEqual([]);
     expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
   });
+
+  it.each([
+    ['pathless', [{ message: `transaction denied ${TOKEN}` }]],
+    ['unexpected-path', [{ message: `transaction denied ${TOKEN}`, path: ['unexpected'] }]],
+  ])('classifies a response-wide %s transaction failure for every create', async (_case, responseErrors) => {
+    const { requests } = graphqlStub((request) => {
+      if (!request.query.includes('issueBatchCreate')) return { body: { data: lookupData(request.query) } };
+      const issues = batchIssues(request);
+      return {
+        body: {
+          data: {
+            issueBatchCreate: {
+              success: true,
+              issues: issues.map((issue, index) => ({ id: issue.id, identifier: `AEO-${index + 1}`, title: issue.title })),
+            },
+          },
+          errors: responseErrors,
+        },
+      };
+    });
+    const result = await execute({
+      operation: 'batch',
+      variables: { mutations: [createIssue('one', 'A'), createIssue('two', 'B')] },
+    });
+    expect(requests).toHaveLength(2);
+    expect(result.details.data).toEqual({});
+    expect(result.details.errors).toEqual([
+      { key: 'one', path: ['one'], message: 'transaction denied [REDACTED]' },
+      { key: 'two', path: ['two'], message: 'transaction denied [REDACTED]' },
+    ]);
+    expect(result.details.skipped).toEqual([]);
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
+    expect(JSON.stringify(result.details)).not.toContain(TOKEN);
+  });
+
+  it.each(['network', 'http', 'non-json', 'cancel'] as const)(
+    'preserves top-level %s failure behavior for the transactional final mutation',
+    async (failureKind) => {
+      const controller = new AbortController();
+      const { fetch, requests } = graphqlStub((request) => {
+        if (!request.query.includes('issueBatchCreate')) return { body: { data: lookupData(request.query) } };
+        if (failureKind === 'network') return { throw: new Error('transaction socket closed') };
+        if (failureKind === 'http') return { ok: false, status: 503, statusText: 'Unavailable', body: {} };
+        if (failureKind === 'non-json') return { ok: true, status: 200, json: false };
+        controller.abort();
+        return { throw: new Error('transaction cancelled') };
+      });
+      const call = {
+        operation: 'batch',
+        variables: { mutations: [createIssue('one', 'A'), createIssue('two', 'B')] },
+      };
+      const promise = failureKind === 'cancel'
+        ? executeWithSignal(call, controller.signal)
+        : execute(call);
+      await expect(promise).rejects.toThrow(/Linear|transaction|cancelled|data/i);
+      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(requests).toHaveLength(2);
+    },
+  );
 
   it('redacts credentials from transactional create data', async () => {
     graphqlStub((request) => {

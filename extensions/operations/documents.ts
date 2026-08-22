@@ -1,11 +1,6 @@
-import {
-	isLinearUrlSlug,
-	resolveDocumentReference,
-	resolveIssueReference,
-	resolveNamedEntityReference,
-	resolveTeamReference,
-} from "../client";
+import { isLinearUrlSlug } from "../client";
 import { projection } from "../selections";
+import { documentLookup, issueLookup, namedEntityLookup, pureQueryPlan, teamLookup } from "../operation-plan";
 import {
 	mergedInput,
 	p,
@@ -100,18 +95,21 @@ export const documents: readonly OperationDefinition[] = ([
 		},
 		document: getDocument("GetDocument", "document", projection("document", "detail")),
 		resolverPaths: { document: "resolveNamedEntityReference" },
-		async prepare(k, v, s) {
+		plan(v) {
 			const requested = String(v.document ?? v.documentId);
 			const reference = requested.trim();
 			if (isUuid(reference) || isLinearUrlSlug(reference)) {
-				return {
+				return pureQueryPlan({
 					variables: { id: reference },
 					exactNamed: { requested: reference, path: "document", kind: "document" },
 					resolution: { target: { requested: reference } },
-				};
+				});
 			}
-			const x = await resolveNamedEntityReference(k, "document", requested, s);
-			return { variables: { id: x.id } };
+			return {
+				kind: "query",
+				lookups: [namedEntityLookup("document", "document", requested)],
+				finish: (resolved) => ({ variables: { id: (resolved.document as { id: string }).id } }),
+			};
 		},
 	}, "document", "document", "GetDocument"),
 	simpleMutation({
@@ -192,38 +190,34 @@ export const documents: readonly OperationDefinition[] = ([
 			teamKey: "resolveTeamReference",
 			teamId: "resolveTeamReference",
 		},
-		async prepare(k, v, s) {
-			const x = mergedInput(v, ["teamKey"]);
-			const resolution: Record<string, unknown> = {};
-			if (typeof x.issueId === "string") {
-				const issue = await resolveIssueReference(k, x.issueId, s);
-				resolution.issue = issueTarget(x.issueId, issue);
-				x.issueId = issue.id;
-			}
-			const related = [
-				"cycleId",
-				"initiativeId",
-				"issueId",
-				"projectId",
-				"releaseId",
-				"resourceFolderId",
-			].some((key) => typeof x[key] === "string" && x[key]);
-			const teamRef = v.teamKey ?? x.teamId;
-			if (related) delete x.teamId;
-			else if (teamRef) {
-				const team = await resolveTeamReference(k, String(teamRef), s);
-				resolution.team = {
-					requested: teamRef,
-					resolvedId: team.id,
-					key: team.key,
-				};
-				x.teamId = team.id;
-			}
-			if (typeof x.title !== "string" || !x.title.trim())
-				throw new Error(
-					"Document title is required for documentCreate (title).",
-				);
-			return { variables: { input: x }, resolution };
+		plan(v) {
+			const input = mergedInput(v, ["teamKey"]);
+			const issueRef = typeof input.issueId === "string" ? input.issueId : undefined;
+			const related = ["cycleId", "initiativeId", "issueId", "projectId", "releaseId", "resourceFolderId"]
+				.some((key) => typeof input[key] === "string" && input[key]);
+			const teamRef = related ? undefined : v.teamKey ?? input.teamId;
+			return {
+				kind: "mutation",
+				lookups: [
+					...(issueRef ? [issueLookup("issue", issueRef)] : []),
+					...(teamRef ? [teamLookup("team", String(teamRef))] : []),
+				],
+				finish(resolved) {
+					const issue = resolved.issue as import("../client").ResolvedIssue | undefined;
+					const team = resolved.team as { id: string; key: string } | undefined;
+					if (issue) input.issueId = issue.id;
+					if (related) delete input.teamId;
+					else if (team) input.teamId = team.id;
+					if (typeof input.title !== "string" || !input.title.trim()) throw new Error("Document title is required for documentCreate (title).");
+					return {
+						variables: { input },
+						resolution: {
+							...(issue && issueRef ? { issue: issueTarget(issueRef, issue) } : {}),
+							...(team ? { team: { requested: teamRef, resolvedId: team.id, key: team.key } } : {}),
+						},
+					};
+				},
+			};
 		},
 	}),
 	simpleMutation({
@@ -358,40 +352,38 @@ export const documents: readonly OperationDefinition[] = ([
 			teamKey: "resolveTeamReference",
 			teamId: "resolveTeamReference",
 		},
-		async prepare(k, v, s) {
+		plan(v) {
 			const requested = String(v.documentId);
-			const document = await resolveDocumentReference(k, requested, s);
-			const x = mergedInput(v, ["documentId", "teamKey"]);
-			const resolution: Record<string, unknown> = {
-				target: { requested, resolvedId: document.id, title: document.title },
+			const input = mergedInput(v, ["documentId", "teamKey"]);
+			const issueRef = typeof input.issueId === "string" ? input.issueId : undefined;
+			const related = ["cycleId", "initiativeId", "issueId", "projectId", "releaseId", "resourceFolderId"]
+				.some((key) => typeof input[key] === "string" && input[key]);
+			const teamRef = related ? undefined : v.teamKey ?? input.teamId;
+			return {
+				kind: "mutation",
+				lookups: [
+					documentLookup("target", requested),
+					...(issueRef ? [issueLookup("issue", issueRef)] : []),
+					...(teamRef ? [teamLookup("team", String(teamRef))] : []),
+				],
+				finish(resolved) {
+					const document = resolved.target as { id: string; name: string };
+					const issue = resolved.issue as import("../client").ResolvedIssue | undefined;
+					const team = resolved.team as { id: string; key: string } | undefined;
+					if (issue) input.issueId = issue.id;
+					if (related) delete input.teamId;
+					else if (team) input.teamId = team.id;
+					if (!Object.keys(input).length) throw new Error("No update fields were provided.");
+					return {
+						variables: { id: document.id, input },
+						resolution: {
+							target: { requested, resolvedId: document.id, title: document.name },
+							...(issue && issueRef ? { issue: issueTarget(issueRef, issue) } : {}),
+							...(team ? { team: { requested: teamRef, resolvedId: team.id, key: team.key } } : {}),
+						},
+					};
+				},
 			};
-			if (typeof x.issueId === "string") {
-				const issue = await resolveIssueReference(k, x.issueId, s);
-				resolution.issue = issueTarget(x.issueId, issue);
-				x.issueId = issue.id;
-			}
-			const related = [
-				"cycleId",
-				"initiativeId",
-				"issueId",
-				"projectId",
-				"releaseId",
-				"resourceFolderId",
-			].some((key) => typeof x[key] === "string" && x[key]);
-			const teamRef = v.teamKey ?? x.teamId;
-			if (related) delete x.teamId;
-			else if (teamRef) {
-				const team = await resolveTeamReference(k, String(teamRef), s);
-				resolution.team = {
-					requested: teamRef,
-					resolvedId: team.id,
-					key: team.key,
-				};
-				x.teamId = team.id;
-			}
-			if (!Object.keys(x).length)
-				throw new Error("No update fields were provided.");
-			return { variables: { id: document.id, input: x }, resolution };
 		},
 	}),
 ] satisfies OperationSource[]).map((operation) =>

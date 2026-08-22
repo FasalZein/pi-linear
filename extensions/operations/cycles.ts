@@ -1,8 +1,5 @@
-import {
-	isLinearUrlSlug,
-	resolveNamedEntityReference,
-	resolveTeamReference,
-} from "../client";
+import { isLinearUrlSlug } from "../client";
+import { namedEntityLookup, pureQueryPlan, teamLookup } from "../operation-plan";
 import { projection } from "../selections";
 import {
 	mergeFilters,
@@ -67,18 +64,15 @@ export const cycles: readonly OperationDefinition[] = ([
 			filter,
 		],
 		resolverPaths: { team: "resolveTeamReference" },
-		prepare: async (apiKey, v, signal) => {
+		plan: (v) => {
 			const ref = String(v.team ?? v.teamKey ?? v.teamId ?? "");
-			const team = ref
-				? await resolveTeamReference(apiKey, ref, signal)
-				: undefined;
+			const lookups = ref ? [teamLookup("team", ref)] : [];
 			return {
-				variables: {
-					...paginationVariables(v, 50),
-					filter: mergeFilters(
-						object(v.filter),
-						team ? { team: { id: { eq: team.id } } } : undefined,
-					),
+				kind: "query",
+				lookups,
+				finish(resolved) {
+					const team = resolved.team as { id: string } | undefined;
+					return { variables: { ...paginationVariables(v, 50), filter: mergeFilters(object(v.filter), team ? { team: { id: { eq: team.id } } } : undefined) } };
 				},
 			};
 		},
@@ -116,21 +110,22 @@ export const cycles: readonly OperationDefinition[] = ([
 		example: { operation: "get_cycle", variables: { cycle: "Cycle 12" } },
 		document: getDocument("GetCycle", "cycle", projection("cycle", "detail")),
 		resolverPaths: { cycle: "resolveNamedEntityReference" },
-		async prepare(k, v, s) {
+		plan(v) {
 			const requested = String(v.cycle ?? v.id);
 			const reference = requested.trim();
 			if (isUuid(reference) || isLinearUrlSlug(reference)) {
-				return {
+				return pureQueryPlan({
 					variables: { id: reference },
 					exactNamed: { requested: reference, path: "cycle", kind: "cycle" },
 					resolution: { target: { requested: reference } },
-				};
+				});
 			}
-			const x = await resolveNamedEntityReference(k, "cycle", requested, s);
 			return {
-				variables: { id: x.id },
-				resolution: {
-					target: { requested: v.cycle, resolvedId: x.id, name: x.name },
+				kind: "query",
+				lookups: [namedEntityLookup("cycle", "cycle", requested)],
+				finish(resolved) {
+					const x = resolved.cycle as { id: string; name: string };
+					return { variables: { id: x.id }, resolution: { target: { requested: v.cycle, resolvedId: x.id, name: x.name } } };
 				},
 			};
 		},
@@ -214,25 +209,16 @@ export const cycles: readonly OperationDefinition[] = ([
 		],
 		example: { team: "AEO", startsAt: "2026-08-17", endsAt: "2026-08-31" },
 		resolverPaths: { team: "resolveTeamReference" },
-		async prepare(k, v, s) {
-			const team = await resolveTeamReference(
-				k,
-				String(v.team ?? v.teamKey ?? v.teamId),
-				s,
-			);
+		plan(v) {
+			const teamRef = v.team ?? v.teamKey ?? v.teamId;
 			return {
-				variables: {
-					input: {
-						...mergedInput(v, ["team", "teamKey", "teamId"]),
-						teamId: team.id,
-					},
-				},
-				resolution: {
-					team: {
-						requested: v.team ?? v.teamKey ?? v.teamId,
-						resolvedId: team.id,
-						key: team.key,
-					},
+				kind: "mutation",
+				lookups: [teamLookup("team", String(teamRef))],
+				finish(resolved) {
+					const team = resolved.team as { id: string; key: string };
+					const input = mergedInput(v, ["team", "teamKey", "teamId"]);
+					input.teamId = team.id;
+					return { variables: { input }, resolution: { team: { requested: teamRef, resolvedId: team.id, key: team.key } } };
 				},
 			};
 		},

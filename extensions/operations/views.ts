@@ -1,5 +1,5 @@
-import { resolveTeamReference } from "../client";
 import { projection } from "../selections";
+import { pureMutationPlan, pureQueryPlan, teamLookup } from "../operation-plan";
 import {
 	mergedInput,
 	p,
@@ -75,8 +75,8 @@ export const views: readonly OperationDefinition[] = ([
 		parameters: [p("id", "String", true)],
 		example: { operation: "get_view", variables: { id: "view-id" } },
 		document: getDocument("GetView", "customView", projection("view", "detail")),
-		async prepare(_k, v) {
-			return { variables: { id: v.id } };
+		plan(v) {
+			return pureQueryPlan({ variables: { id: v.id } });
 		},
 	},
 	simpleMutation({
@@ -142,11 +142,18 @@ export const views: readonly OperationDefinition[] = ([
 			team: "resolveTeamReference",
 			teamKey: "resolveTeamReference",
 		},
-		async prepare(apiKey, v, signal) {
-			const x = mergedInput(v, ["team", "teamKey"]);
-			const ref = String(v.team ?? v.teamKey ?? v.teamId ?? "");
-			if (ref) x.teamId = (await resolveTeamReference(apiKey, ref, signal)).id;
-			return { variables: { input: x } };
+		plan(v) {
+			const input = mergedInput(v, ["team", "teamKey"]);
+			const teamRef = v.team ?? v.teamKey ?? v.teamId;
+			return {
+				kind: "mutation",
+				lookups: teamRef ? [teamLookup("team", String(teamRef))] : [],
+				finish(resolved) {
+					const team = resolved.team as { id: string; key: string } | undefined;
+					if (team) input.teamId = team.id;
+					return { variables: { input } };
+				},
+			};
 		},
 	}),
 	simpleMutation({
@@ -262,17 +269,8 @@ export const views: readonly OperationDefinition[] = ([
 		selection: "viewPreferences { id type viewType }",
 		parameters: [p("viewId", "String", true), p("preferences", "Object", true)],
 		example: { viewId: "view-id", preferences: {} },
-		async prepare(_k, v) {
-			return {
-				variables: {
-					input: {
-						type: "user",
-						viewType: "customView",
-						customViewId: v.viewId,
-						preferences: v.preferences,
-					},
-				},
-			};
+		plan(v) {
+			return pureMutationPlan({ variables: { input: { type: "user", viewType: "customView", customViewId: v.viewId, preferences: v.preferences } } });
 		},
 	}),
 ] satisfies OperationSource[]).map((operation) =>

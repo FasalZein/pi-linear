@@ -1,5 +1,5 @@
-import { resolveTeamReference } from "../client";
 import { projection } from "../selections";
+import { pureMutationPlan, teamLookup } from "../operation-plan";
 import {
 	compactObject,
 	mergeFilters,
@@ -77,22 +77,18 @@ export const issueLabels: readonly OperationDefinition[] = ([
 			filter,
 		],
 		resolverPaths: { team: "resolveTeamReference" },
-		prepare: async (k, v, s) => {
+		plan: (v) => {
 			const ref = v.team ?? v.teamKey ?? v.teamId;
-			const team = ref
-				? await resolveTeamReference(k, String(ref), s)
-				: undefined;
 			return {
-				variables: {
-					...paginationVariables(v, 50),
-					filter: mergeFilters(
-						object(v.filter),
-						team ? { team: { id: { eq: team.id } } } : undefined,
-					),
+				kind: "query",
+				lookups: ref ? [teamLookup("team", String(ref))] : [],
+				finish(resolved) {
+					const team = resolved.team as { id: string; key: string } | undefined;
+					return {
+						variables: { ...paginationVariables(v, 50), filter: mergeFilters(object(v.filter), team ? { team: { id: { eq: team.id } } } : undefined) },
+						resolution: team ? { team: { requested: ref, resolvedId: team.id, key: team.key } } : undefined,
+					};
 				},
-				resolution: team
-					? { team: { requested: ref, resolvedId: team.id, key: team.key } }
-					: undefined,
 			};
 		},
 	}),
@@ -159,29 +155,23 @@ export const issueLabels: readonly OperationDefinition[] = ([
 			}
 		},
 		resolverPaths: { team: "resolveTeamReference" },
-		async prepare(k, v, s) {
+		plan(v) {
 			const rawInput = object(v.input);
-			const replaceTeamLabels =
-				v.replaceTeamLabels ?? rawInput?.replaceTeamLabels;
-			const x = mergedInput(v, [
-				"team",
-				"teamKey",
-				"teamId",
-				"replaceTeamLabels",
-			]);
-			delete x.replaceTeamLabels;
-			const ref = v.team ?? v.teamKey ?? v.teamId ?? x.teamId;
-			if (typeof x.name !== "string" || !x.name.trim())
-				throw new Error("Issue label name is required (name).");
-			if (!ref) {
-				return { variables: compactObject({ input: x, replaceTeamLabels }) };
-			}
-			const team = await resolveTeamReference(k, String(ref), s);
-			x.teamId = team.id;
+			const replaceTeamLabels = v.replaceTeamLabels ?? rawInput?.replaceTeamLabels;
+			const input = mergedInput(v, ["team", "teamKey", "teamId", "replaceTeamLabels"]);
+			delete input.replaceTeamLabels;
+			const ref = v.team ?? v.teamKey ?? v.teamId ?? input.teamId;
+			if (typeof input.name !== "string" || !input.name.trim()) throw new Error("Issue label name is required (name).");
 			return {
-				variables: compactObject({ input: x, replaceTeamLabels }),
-				resolution: {
-					team: { requested: ref, resolvedId: team.id, key: team.key },
+				kind: "mutation",
+				lookups: ref ? [teamLookup("team", String(ref))] : [],
+				finish(resolved) {
+					const team = resolved.team as { id: string; key: string } | undefined;
+					if (team) input.teamId = team.id;
+					return {
+						variables: compactObject({ input, replaceTeamLabels }),
+						resolution: team ? { team: { requested: ref, resolvedId: team.id, key: team.key } } : undefined,
+					};
 				},
 			};
 		},
@@ -258,17 +248,13 @@ export const issueLabels: readonly OperationDefinition[] = ([
 		].map((n) => p(n)),
 		example: { id: "label-id", name: "review" },
 		idKey: "id",
-		async prepare(_k, v) {
+		plan(v) {
 			const rawInput = object(v.input);
-			const replaceTeamLabels =
-				v.replaceTeamLabels ?? rawInput?.replaceTeamLabels;
-			const x = mergedInput(v, ["id", "replaceTeamLabels"]);
-			delete x.replaceTeamLabels;
-			if (!Object.keys(x).length)
-				throw new Error("No update fields were provided.");
-			return {
-				variables: compactObject({ id: v.id, input: x, replaceTeamLabels }),
-			};
+			const replaceTeamLabels = v.replaceTeamLabels ?? rawInput?.replaceTeamLabels;
+			const input = mergedInput(v, ["id", "replaceTeamLabels"]);
+			delete input.replaceTeamLabels;
+			if (!Object.keys(input).length) throw new Error("No update fields were provided.");
+			return pureMutationPlan({ variables: compactObject({ id: v.id, input, replaceTeamLabels }) });
 		},
 	}),
 ] satisfies OperationSource[]).map((operation) =>
