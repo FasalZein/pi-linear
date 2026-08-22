@@ -1,5 +1,6 @@
 import { resolveTeamReference } from "../client";
 import { projection } from "../selections";
+import { pureQueryPlan } from "../operation-plan";
 import {
 	mergedInput,
 	p,
@@ -75,8 +76,8 @@ export const views: readonly OperationDefinition[] = ([
 		parameters: [p("id", "String", true)],
 		example: { operation: "get_view", variables: { id: "view-id" } },
 		document: getDocument("GetView", "customView", projection("view", "detail")),
-		async prepare(_k, v) {
-			return { variables: { id: v.id } };
+		plan(v) {
+			return pureQueryPlan({ variables: { id: v.id } });
 		},
 	},
 	simpleMutation({

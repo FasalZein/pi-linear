@@ -69,6 +69,25 @@ export type OperationPreparation = {
 	/** Stable external error for an upstream mutation failure. */
 	failureMessage?: string;
 };
+export type LookupPlan = {
+	key: string;
+	dependsOn?: readonly string[];
+	document: (resolved: Readonly<Record<string, unknown>>) => string;
+	variables: (resolved: Readonly<Record<string, unknown>>) => Record<string, unknown>;
+	resolve: (
+		data: Record<string, unknown>,
+		resolved: Readonly<Record<string, unknown>>,
+	) => unknown;
+};
+export type OperationPlan = {
+	kind: "query";
+	lookups: readonly LookupPlan[];
+	finish: (resolved: Readonly<Record<string, unknown>>) => OperationPreparation;
+};
+export type OperationPlanFactory = (
+	variables: Record<string, unknown>,
+) => OperationPlan | Promise<OperationPlan>;
+
 export type BatchLookupField = "parent" | "team" | "state" | "assignee" | "project" | "issueRelation";
 export type BatchLookup = {
 	field: BatchLookupField;
@@ -126,6 +145,8 @@ export type LinearOperation = {
 	resolverPaths?: Readonly<Record<string, string>>;
 	requiresVariables?: boolean;
 	validateVariables?: (variables: Record<string, unknown>) => void;
+	/** Pure query planning. Query operations must use this instead of prepare. */
+	plan?: OperationPlanFactory;
 	prepare?: (
 		apiKey: string,
 		variables: Record<string, unknown>,
@@ -197,6 +218,7 @@ export type OperationCompatibilityDefinition = {
 	/** Named semantic exception for checks branches cannot express, such as non-empty text. */
 	semanticException?: string;
 	semanticValidateVariables?: LinearOperation["validateVariables"];
+	plan?: LinearOperation["plan"];
 	prepare?: LinearOperation["prepare"];
 	batchPrepare?: LinearOperation["batchPrepare"];
 	executeLocal?: LinearOperation["executeLocal"];
@@ -213,6 +235,7 @@ export type OperationDefinition = {
 	graphql?: { documents: readonly OperationDocumentDefinition[] };
 	preparation: {
 		resolverPaths: Readonly<Record<string, string>>;
+		plan?: LinearOperation["plan"];
 		prepare?: LinearOperation["prepare"];
 		batchPrepare?: LinearOperation["batchPrepare"];
 	};

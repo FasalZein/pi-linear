@@ -1,4 +1,4 @@
-import { resolveUserReference } from "../client";
+import { userLookup } from "../operation-plan";
 import { projection } from "../selections";
 import { p } from "../operation-types";
 import type {
@@ -53,7 +53,7 @@ export const users: readonly OperationDefinition[] = ([
 		parameters: [p("includeDisabled", "Boolean")],
 		extras: "$includeDisabled: Boolean",
 		extraArgs: "includeDisabled: $includeDisabled",
-		prepare: listPrepare(50, (v) => ({ includeDisabled: v.includeDisabled })),
+		plan: listPrepare(50, (v) => ({ includeDisabled: v.includeDisabled })),
 	}),
 	{
 		name: "get_user",
@@ -88,16 +88,17 @@ export const users: readonly OperationDefinition[] = ([
 		example: { operation: "get_user", variables: { user: "me" } },
 		document: getDocument("GetUser", "user", projection("user", "detail")),
 		resolverPaths: { user: "resolveUserReference" },
-		async prepare(k, v, s, g) {
-			const x = await resolveUserReference(k, String(v.user ?? v.userId), s, g);
+		plan(v) {
+			const requested = String(v.user ?? v.userId);
 			return {
-				variables: { id: x.id },
-				resolution: {
-					target: {
-						requested: v.user ?? v.userId,
-						resolvedId: x.id,
-						name: x.name,
-					},
+				kind: "query",
+				lookups: [userLookup("user", requested)],
+				finish(resolved) {
+					const x = resolved.user as { id: string; name?: string };
+					return {
+						variables: { id: x.id },
+						resolution: { target: { requested: v.user ?? v.userId, resolvedId: x.id, name: x.name } },
+					};
 				},
 			};
 		},

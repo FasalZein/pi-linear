@@ -1,5 +1,6 @@
 import { resolveIssueReference } from "../client";
 import { projection } from "../selections";
+import { issueLookup } from "../operation-plan";
 import {
 	compactObject,
 	mergeFilters,
@@ -148,22 +149,18 @@ export const comments: readonly OperationDefinition[] = ([
 		parameters: [p("issue", "IssueReference")],
 		example: { issue: "AEO-258" },
 		resolverPaths: { issue: "resolveIssueReference" },
-		prepare: async (apiKey, variables, signal, graphql) => {
+		plan: (variables) => {
 			const requested = issueReference(variables);
-			const issue = requested
-				? await resolveIssueReference(apiKey, requested, signal, graphql)
-				: undefined;
 			return {
-				variables: {
-					...paginationVariables(variables, 20),
-					filter: mergeFilters(
-						object(variables.filter),
-						issue ? { issue: { id: { eq: issue.id } } } : undefined,
-					),
+				kind: "query",
+				lookups: requested ? [issueLookup("issue", requested)] : [],
+				finish(resolved) {
+					const issue = resolved.issue as import("../client").ResolvedIssue | undefined;
+					return {
+						variables: { ...paginationVariables(variables, 20), filter: mergeFilters(object(variables.filter), issue ? { issue: { id: { eq: issue.id } } } : undefined) },
+						resolution: issue && requested ? { target: issueTarget(requested, issue) } : undefined,
+					};
 				},
-				resolution: issue
-					? { target: issueTarget(requested, issue) }
-					: undefined,
 			};
 		},
 	}),

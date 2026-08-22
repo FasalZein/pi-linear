@@ -1,8 +1,8 @@
 import {
 	isLinearUrlSlug,
-	resolveNamedEntityReference,
 	resolveTeamReference,
 } from "../client";
+import { namedEntityLookup, pureQueryPlan, teamLookup } from "../operation-plan";
 import { projection } from "../selections";
 import {
 	mergeFilters,
@@ -67,18 +67,15 @@ export const cycles: readonly OperationDefinition[] = ([
 			filter,
 		],
 		resolverPaths: { team: "resolveTeamReference" },
-		prepare: async (apiKey, v, signal, graphql) => {
+		plan: (v) => {
 			const ref = String(v.team ?? v.teamKey ?? v.teamId ?? "");
-			const team = ref
-				? await resolveTeamReference(apiKey, ref, signal, graphql)
-				: undefined;
+			const lookups = ref ? [teamLookup("team", ref)] : [];
 			return {
-				variables: {
-					...paginationVariables(v, 50),
-					filter: mergeFilters(
-						object(v.filter),
-						team ? { team: { id: { eq: team.id } } } : undefined,
-					),
+				kind: "query",
+				lookups,
+				finish(resolved) {
+					const team = resolved.team as { id: string } | undefined;
+					return { variables: { ...paginationVariables(v, 50), filter: mergeFilters(object(v.filter), team ? { team: { id: { eq: team.id } } } : undefined) } };
 				},
 			};
 		},
@@ -116,21 +113,22 @@ export const cycles: readonly OperationDefinition[] = ([
 		example: { operation: "get_cycle", variables: { cycle: "Cycle 12" } },
 		document: getDocument("GetCycle", "cycle", projection("cycle", "detail")),
 		resolverPaths: { cycle: "resolveNamedEntityReference" },
-		async prepare(k, v, s, g) {
+		plan(v) {
 			const requested = String(v.cycle ?? v.id);
 			const reference = requested.trim();
 			if (isUuid(reference) || isLinearUrlSlug(reference)) {
-				return {
+				return pureQueryPlan({
 					variables: { id: reference },
 					exactNamed: { requested: reference, path: "cycle", kind: "cycle" },
 					resolution: { target: { requested: reference } },
-				};
+				});
 			}
-			const x = await resolveNamedEntityReference(k, "cycle", requested, s, g);
 			return {
-				variables: { id: x.id },
-				resolution: {
-					target: { requested: v.cycle, resolvedId: x.id, name: x.name },
+				kind: "query",
+				lookups: [namedEntityLookup("cycle", "cycle", requested)],
+				finish(resolved) {
+					const x = resolved.cycle as { id: string; name: string };
+					return { variables: { id: x.id }, resolution: { target: { requested: v.cycle, resolvedId: x.id, name: x.name } } };
 				},
 			};
 		},

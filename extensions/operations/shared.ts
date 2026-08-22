@@ -25,6 +25,7 @@ import {
 } from "../operation-types";
 import type { CanonicalOperation } from "../canonical-schema";
 import { defineOperation } from "../operation-definition";
+import { pureQueryPlan } from "../operation-plan";
 
 export const pagination = [
 	p("after"),
@@ -188,7 +189,7 @@ export function withGetResultView(
 		summary: getDocument(queryName, root, projection(entity, "list")),
 		full: getDocument(queryName, root, projection(entity, "detail")),
 	};
-	const innerPrepare = source.prepare;
+	const innerPlan = source.plan;
 	return {
 		...source,
 		resultCategory: "singular",
@@ -198,11 +199,18 @@ export function withGetResultView(
 		},
 		parameters: [...source.parameters, resultViewParam],
 		document: documents[defaultView],
-		prepare: async (apiKey, variables, signal, graphql) => {
-			const prepared = innerPrepare
-				? await innerPrepare(apiKey, variables, signal, graphql)
-				: { variables };
-			return applyResultView(variables, defaultView, prepared, documents, root);
+		plan: async (variables) => {
+			const plan = innerPlan ? await innerPlan(variables) : pureQueryPlan({ variables });
+			return {
+				...plan,
+				finish: (resolved) => applyResultView(
+					variables,
+					defaultView,
+					plan.finish(resolved),
+					documents,
+					root,
+				),
+			};
 		},
 	};
 }
@@ -239,8 +247,8 @@ export function listPrepare(
 	extra?: (
 		variables: Record<string, unknown>,
 	) => Promise<Record<string, unknown>> | Record<string, unknown>,
-): NonNullable<LinearOperation["prepare"]> {
-	return async (_apiKey, variables) => ({
+): NonNullable<LinearOperation["plan"]> {
+	return async (variables) => pureQueryPlan({
 		variables: compactObject({
 			...paginationVariables(variables, defaultPageSize),
 			filter: object(variables.filter),
@@ -312,7 +320,7 @@ export function listOperation(config: {
 	extras?: string;
 	extraArgs?: string;
 	totalCount?: boolean;
-	prepare?: LinearOperation["prepare"];
+	plan?: LinearOperation["plan"];
 	aliases?: readonly string[];
 	example?: Record<string, unknown>;
 	resolverPaths?: Record<string, string>;
@@ -341,7 +349,7 @@ export function listOperation(config: {
 	const document = documents
 		? documents[config.resultView!.defaultView]
 		: listQueryDocument(queryName, config.root, config.selection, config);
-	const innerPrepare = config.prepare ?? listPrepare(config.pageSize);
+	const innerPlan = config.plan ?? listPrepare(config.pageSize);
 	const innerValidate = config.validateVariables;
 	const defaultView = config.resultView?.defaultView;
 	return {
@@ -384,19 +392,20 @@ export function listOperation(config: {
 					innerValidate(variables);
 			  }
 			: innerValidate,
-		prepare: documents && defaultView
-			? async (apiKey, variables, signal, graphql) => {
-					const prepared = await innerPrepare(apiKey, variables, signal, graphql);
-					if (prepared.resultView) return prepared;
-					return applyResultView(
-						variables,
-						defaultView,
-						prepared,
-						documents,
-						config.root,
-					);
+		plan: documents && defaultView
+			? async (variables) => {
+					const plan = await innerPlan(variables);
+					return {
+						...plan,
+						finish: (resolved) => {
+							const prepared = plan.finish(resolved);
+							return prepared.resultView
+								? prepared
+								: applyResultView(variables, defaultView, prepared, documents, config.root);
+						},
+					};
 			  }
-			: innerPrepare,
+			: innerPlan,
 	};
 }
 export function simpleMutation(config: {

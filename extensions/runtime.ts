@@ -5,8 +5,6 @@ import { open } from 'node:fs/promises';
 import { join } from 'node:path';
 import { activeSecrets } from './active-secrets';
 import {
-  assertIssueNodeMatches,
-  assertNamedNodeMatches,
   linearGraphQLWithContext,
   linearGraphQLErrors,
   resolveApiKey,
@@ -20,10 +18,12 @@ import {
 import type {
   GraphQLDocumentVariant,
   LocalResultExpectation,
+  OperationPlan,
   OperationPreparation,
   ResultCategory,
 } from './operation-types';
 import type { LinearOperation } from './operations';
+import { resolveOperationPlan, verifyOperationResult } from './operation-plan';
 import type { ResultView } from './selections';
 import { redactDeep, withRedactedErrors } from './redact';
 import {
@@ -437,45 +437,6 @@ export function validateLocalResult(
   }
 }
 
-function applyExactIssueCheck(prepared: OperationPreparation, data: JsonObject): void {
-  const check = prepared.exactIssue;
-  if (!check) return;
-  const issue = objectAtPath(data, check.path);
-  assertIssueNodeMatches(check.requested, issue);
-  const target = {
-    requested: check.requested,
-    resolvedId: issue.id,
-    identifier: issue.identifier,
-  };
-  const resolution = prepared.resolution && typeof prepared.resolution === 'object'
-    ? prepared.resolution
-    : {};
-  prepared.resolution = {
-    ...resolution,
-    target: { ...(typeof resolution.target === 'object' && resolution.target ? resolution.target : {}), ...target },
-  };
-}
-
-function applyExactNamedCheck(prepared: OperationPreparation, data: JsonObject): void {
-  const check = prepared.exactNamed;
-  if (!check) return;
-  const node = objectAtPath(data, check.path);
-  assertNamedNodeMatches(check.kind, check.requested, node);
-  const target: Record<string, unknown> = {
-    requested: check.requested,
-    resolvedId: node.id,
-  };
-  if (typeof node.name === 'string') target.name = node.name;
-  if (typeof node.title === 'string') target.title = node.title;
-  const resolution = prepared.resolution && typeof prepared.resolution === 'object'
-    ? prepared.resolution
-    : {};
-  prepared.resolution = {
-    ...resolution,
-    target: { ...(typeof resolution.target === 'object' && resolution.target ? resolution.target : {}), ...target },
-  };
-}
-
 /**
  * Single execution path for one named operation. Both `linear` and the typed
  * tools route through here, so mutation gating, reference resolution, spill, and
@@ -488,23 +449,34 @@ async function executeOperationWithContext(
   transport: LinearTransport,
 ): Promise<JsonObject> {
   assertOperationAllowed(operation, options.variables, call.mode);
-  const secrets: string[] = [...activeSecrets()];
+  const secrets: string[] = [];
   return withRedactedErrors(async () => {
     if (operation.executeLocal) {
+      secrets.push(...activeSecrets());
       const localResult = await operation.executeLocal(options.variables, call.pi);
       validateLocalResult(operation.name, localResult, operation.localResult);
       return redactDeep(localResult, secrets);
     }
 
+    let plan: OperationPlan | undefined;
+    try {
+      plan = operation.plan ? await operation.plan(options.variables) : undefined;
+    } catch (error) {
+      secrets.push(...activeSecrets());
+      throw error;
+    }
+    secrets.push(...activeSecrets());
     const network = await networkExecutionContext(call, transport);
     const apiKey = network.credential.apiKey;
     secrets.push(apiKey);
     const graphql: LinearGraphQLFn = (_apiKey, query, variables, _signal, graphqlOptions) =>
       linearGraphQLWithContext(network, query, variables, graphqlOptions);
     return withLinearRateLimitTelemetry(network.telemetry, async () => {
-      const prepared = operation.prepare
-        ? await operation.prepare(apiKey, options.variables, call.signal, graphql)
-        : { variables: options.variables };
+      const prepared = plan
+        ? await resolveOperationPlan(network, plan)
+        : operation.prepare
+          ? await operation.prepare(apiKey, options.variables, call.signal, graphql)
+          : { variables: options.variables };
       const variant = prepared.variant ?? operation.variants?.[0];
       const document = variant?.document ?? operation.document;
       assertMutationAllowed(document, call.mode, variant ? [variant.root] : []);
@@ -523,8 +495,7 @@ async function executeOperationWithContext(
           throw new Error(`Linear operation "${operation.name}" returned a GraphQL error.`);
         }
         if (variant) validateMutationResult(operation.name, data, variant);
-        applyExactIssueCheck(prepared, data);
-        applyExactNamedCheck(prepared, data);
+        verifyOperationResult(prepared, data);
       } catch (error) {
         if (prepared.failureMessage) throw new Error(prepared.failureMessage);
         throw error;

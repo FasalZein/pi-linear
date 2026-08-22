@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { linearApiTool, resolveRequest } from '../extensions/api';
 import { assertBatchAccounting, batchHelp } from '../extensions/batch';
+import { operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
 import type { MutationMode } from '../extensions/safety';
 import { isolateLinearCredentials } from './helpers/credentials';
 
@@ -134,6 +135,52 @@ describe('batch help and catalog', () => {
     const tool = linearApiTool() as any;
     expect(tool.description).toContain('batch: Batch independent reads with read-only operations, or use explicit phases for one ordinary mutation, grouped issue creates, or one guarded relation delete.');
     expect(Object.keys(tool.parameters.properties).sort()).toEqual(['operation', 'query', 'sink', 'telemetry', 'variables', 'workspace']);
+  });
+});
+
+describe('pure read operation plans', () => {
+  it('plans every query deterministically without transport, timers, or random IDs', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const timer = vi.spyOn(globalThis, 'setTimeout');
+    const now = vi.spyOn(Date, 'now');
+    const random = vi.spyOn(Math, 'random');
+    delete process.env.LINEAR_API_KEY;
+    const resolved = {
+      issue: { id: ISSUE_A, identifier: 'AEO-1', teamId: TEAM_ID, teamKey: 'AEO' },
+      team: { id: TEAM_ID, key: 'AEO' },
+      assignee: { id: ISSUE_B, name: 'Ada' },
+      user: { id: ISSUE_B, name: 'Ada' },
+      state: { id: ISSUE_B, teamId: TEAM_ID, name: 'Started' },
+      project: { id: ISSUE_A, name: 'Platform' },
+      cycle: { id: ISSUE_A, name: 'Cycle 1' },
+      document: { id: ISSUE_A, name: 'Planning notes' },
+      milestone: { id: ISSUE_A, name: 'Beta' },
+      initiative: { id: ISSUE_A, name: 'Platform' },
+    };
+    const snapshots: unknown[] = [];
+    for (const definition of operationDefinitions.filter(({ kind }) => kind === 'query')) {
+      const operation = projectCompatibilityOperation(definition);
+      expect(operation.plan, operation.name).toBeTypeOf('function');
+      const first = await operation.plan!(operation.example.variables);
+      const second = await operation.plan!(operation.example.variables);
+      const snapshot = (plan: typeof first) => ({
+        lookups: plan.lookups.map((lookup) => ({
+          key: lookup.key,
+          dependsOn: lookup.dependsOn,
+          document: lookup.document(resolved),
+          variables: lookup.variables(resolved),
+        })),
+        prepared: plan.finish(resolved),
+      });
+      expect(snapshot(second), operation.name).toEqual(snapshot(first));
+      snapshots.push(snapshot(first));
+    }
+    expect(snapshots.length).toBeGreaterThan(0);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(timer).not.toHaveBeenCalled();
+    expect(now).not.toHaveBeenCalled();
+    expect(random).not.toHaveBeenCalled();
   });
 });
 
@@ -372,14 +419,14 @@ describe('batch read phase', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('rejects a read whose prepare would call Linear', async () => {
+  it('rejects a second lookup layer before credential or network access', async () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
-    process.env.LINEAR_API_KEY = 'test-key';
+    delete process.env.LINEAR_API_KEY;
 
     await expect(batch([
       { key: 'issues', operation: 'list_issues', variables: { team: 'AEO' } },
-    ])).rejects.toThrow(/preparation|fold/i);
+    ])).rejects.toThrow(/second lookup layer.*one read request/i);
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -425,6 +472,44 @@ describe('batch read phase', () => {
     expect(result.details.data.issue).toEqual(issueNode(ISSUE_A, 'AEO-1'));
     expect(result.details).not.toHaveProperty('skipped');
     expect(result.details).not.toHaveProperty('errors');
+  });
+
+  it('uses the same exact identity rejection for direct and batch reads', async () => {
+    graphqlStub((request) => ({
+      body: { data: request.query.includes('BatchRead')
+        ? { one: issueNode(ISSUE_A, 'AEO-2') }
+        : { issue: issueNode(ISSUE_A, 'AEO-2') } },
+    }));
+    await expect(execute({ operation: 'get_issue', variables: { issue: 'AEO-1' } }))
+      .rejects.toThrow('Linear issue resolver returned mismatched identifier "AEO-2" for "AEO-1".');
+    const result = await batch([{ key: 'one', operation: 'get_issue', variables: { issue: 'AEO-1' } }]);
+    expect(result.details.errors[0].message)
+      .toBe('Linear issue resolver returned mismatched identifier "AEO-2" for "AEO-1".');
+  });
+
+  it('keeps a concurrent read-only batch and direct call on their own responses', async () => {
+    let releaseBatch!: () => void;
+    const batchBlocked = new Promise<void>((resolve) => { releaseBatch = resolve; });
+    const requests: Array<{ query: string; variables: Record<string, unknown> }> = [];
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const request = JSON.parse(String(init.body)) as { query: string; variables: Record<string, unknown> };
+      requests.push(request);
+      if (request.query.includes('BatchRead')) {
+        await batchBlocked;
+        return { ok: true, status: 200, statusText: 'OK', headers: new Headers(), json: async () => ({ data: { one: issueNode(ISSUE_A, 'AEO-1', 'batch') } }) };
+      }
+      releaseBatch();
+      return { ok: true, status: 200, statusText: 'OK', headers: new Headers(), json: async () => ({ data: { issue: issueNode(ISSUE_B, 'AEO-2', 'direct') } }) };
+    });
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = 'test-key';
+
+    const batchCall = batch([{ key: 'one', operation: 'get_issue', variables: { issue: 'AEO-1' } }]);
+    const directCall = execute({ operation: 'get_issue', variables: { issue: 'AEO-2' } });
+    const [batchResult, directResult] = await Promise.all([batchCall, directCall]);
+    expect(requests).toHaveLength(2);
+    expect(batchResult.details.data.one.issue.title).toBe('batch');
+    expect(directResult.details.data.issue.title).toBe('direct');
   });
 });
 

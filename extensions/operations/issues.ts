@@ -10,6 +10,7 @@ import {
 	resolveUserReference,
 } from "../client";
 import { parseResultView, projection } from "../selections";
+import { pureQueryPlan, stateLookup, teamLookup, userLookup } from "../operation-plan";
 import {
 	compactObject,
 	mergeFilters,
@@ -322,59 +323,40 @@ export const issues: readonly OperationDefinition[] = ([
 				);
 			}
 		},
-		prepare: async (k, v, s, g) => {
-			const issueIds =
-				v.issues !== undefined ? parseIssueReferenceSet(v.issues) : undefined;
+		plan: (v) => {
+			const issueIds = v.issues !== undefined ? parseIssueReferenceSet(v.issues) : undefined;
 			const teamRef = v.team ?? v.teamKey ?? v.teamId;
-			const team = teamRef
-				? await resolveTeamReference(k, String(teamRef), s, g)
-				: undefined;
 			const assigneeRef = v.assignee ?? v.assigneeId;
-			const assignee = assigneeRef
-				? await resolveUserReference(k, String(assigneeRef), s, g)
-				: undefined;
 			const stateReference = v.state ?? v.stateName;
-			let stateId: string | undefined;
-			if (stateReference && team) {
-				stateId = (
-					await resolveStateReference(k, team.id, String(stateReference), s, g)
-				).id;
-			} else if (stateReference) {
-				stateId = (await resolveStateIdReference(k, String(stateReference), s, g))
-					.id;
-			}
-			const convenience = compactObject({
-				id: issueIds ? { in: issueIds } : undefined,
-				title: v.query ? { containsIgnoreCase: v.query } : undefined,
-				team: team ? { id: { eq: team.id } } : undefined,
-				state: stateId
-					? { id: { eq: stateId } }
-					: v.stateType
-						? { type: { eq: String(v.stateType) } }
-						: undefined,
-				assignee: assignee ? { id: { eq: assignee.id } } : undefined,
-			});
+			const lookups = [
+				...(teamRef ? [teamLookup("team", String(teamRef))] : []),
+				...(assigneeRef ? [userLookup("assignee", String(assigneeRef))] : []),
+				...(stateReference ? [stateLookup("state", String(stateReference), teamRef ? "team" : undefined)] : []),
+			];
 			return {
-				variables: {
-					...paginationVariables(v, 20),
-					filter: mergeFilters(object(v.filter), convenience),
-					sort: Array.isArray(v.sort) ? v.sort : undefined,
+				kind: "query",
+				lookups,
+				finish(resolved) {
+					const team = resolved.team as { id: string; key: string } | undefined;
+					const assignee = resolved.assignee as { id: string; name?: string } | undefined;
+					const state = resolved.state as { id: string; teamId: string } | undefined;
+					if (team && state && state.teamId !== team.id) throw new Error(`Linear state "${String(stateReference)}" does not belong to team "${team.id}".`);
+					const convenience = compactObject({
+						id: issueIds ? { in: issueIds } : undefined,
+						title: v.query ? { containsIgnoreCase: v.query } : undefined,
+						team: team ? { id: { eq: team.id } } : undefined,
+						state: state ? { id: { eq: state.id } } : v.stateType ? { type: { eq: String(v.stateType) } } : undefined,
+						assignee: assignee ? { id: { eq: assignee.id } } : undefined,
+					});
+					return {
+						variables: { ...paginationVariables(v, 20), filter: mergeFilters(object(v.filter), convenience), sort: Array.isArray(v.sort) ? v.sort : undefined },
+						resolution: compactObject({
+							team: team ? { requested: teamRef, resolvedId: team.id, key: team.key } : undefined,
+							assignee: assignee ? { requested: assigneeRef, resolvedId: assignee.id, name: assignee.name } : undefined,
+							state: state ? { requested: stateReference, resolvedId: state.id } : undefined,
+						}),
+					};
 				},
-				resolution: compactObject({
-					team: team
-						? { requested: teamRef, resolvedId: team.id, key: team.key }
-						: undefined,
-					assignee: assignee
-						? {
-								requested: assigneeRef,
-								resolvedId: assignee.id,
-								name: assignee.name,
-							}
-						: undefined,
-					state: stateId
-						? { requested: stateReference, resolvedId: stateId }
-						: undefined,
-				}),
 			};
 		},
 	}),
@@ -413,13 +395,13 @@ export const issues: readonly OperationDefinition[] = ([
 		example: { operation: "get_issue", variables: { issue: "AEO-258" } },
 		document: getDocument("GetIssue", "issue", projection("issue", "detail")),
 		resolverPaths: { issue: "resolveIssueReference" },
-		async prepare(_k, v) {
+		plan(v) {
 			const ref = requireIssueReference(issueReference(v));
-			return {
+			return pureQueryPlan({
 				variables: { id: ref },
 				exactIssue: { requested: ref, path: "issue" },
 				resolution: { target: { requested: ref } },
-			};
+			});
 		},
 	}, "issue", "issue", "GetIssue"),
 	simpleMutation({
@@ -968,41 +950,30 @@ export const issues: readonly OperationDefinition[] = ([
 		example: { term: "authentication" },
 		extras: "$term: String! $includeComments: Boolean $teamId: String",
 		extraArgs: "term: $term includeComments: $includeComments teamId: $teamId",
-		prepare: async (k, v, s, g) => {
+		plan: (v) => {
 			const term = typeof v.term === "string" ? v.term.trim() : "";
 			if (isIssueIdentifier(term)) {
 				const view = parseResultView(v.view, "summary");
-				return {
+				return pureQueryPlan({
 					variables: { id: term },
-					variant: {
-						document: getDocument(
-							"GetIssue",
-							"issue",
-							projection("issue", view === "summary" ? "list" : "detail"),
-						),
-						root: "issue",
-					},
+					variant: { document: getDocument("GetIssue", "issue", projection("issue", view === "summary" ? "list" : "detail")), root: "issue" },
 					exactIssue: { requested: term, path: "issue" },
 					resolution: { target: { requested: term } },
 					resultView: view,
 					resultCategory: "singular",
-				};
+				});
 			}
 			const teamRef = v.team ?? v.teamId;
-			const team = teamRef
-				? await resolveTeamReference(k, String(teamRef), s, g)
-				: undefined;
 			return {
-				variables: {
-					...paginationVariables(v, 20),
-					term: v.term,
-					includeComments: v.includeComments,
-					teamId: team?.id,
-					filter: object(v.filter),
+				kind: "query",
+				lookups: teamRef ? [teamLookup("team", String(teamRef))] : [],
+				finish(resolved) {
+					const team = resolved.team as { id: string; key: string } | undefined;
+					return {
+						variables: { ...paginationVariables(v, 20), term: v.term, includeComments: v.includeComments, teamId: team?.id, filter: object(v.filter) },
+						resolution: team ? { team: { requested: teamRef, resolvedId: team.id, key: team.key } } : undefined,
+					};
 				},
-				resolution: team
-					? { team: { requested: teamRef, resolvedId: team.id, key: team.key } }
-					: undefined,
 			};
 		},
 	}),

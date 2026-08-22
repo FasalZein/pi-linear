@@ -1,4 +1,4 @@
-import { resolveNamedEntityReference } from "../client";
+import { namedEntityLookup } from "../operation-plan";
 import { projection } from "../selections";
 import { p } from "../operation-types";
 import type {
@@ -87,15 +87,13 @@ export const initiativeReads: readonly OperationDefinition[] = ([
 		},
 		document: getDocument("GetInitiative", "initiative", projection("initiative", "detail")),
 		resolverPaths: { initiative: "resolveNamedEntityReference" },
-		async prepare(k, v, s, g) {
-			const x = await resolveNamedEntityReference(
-				k,
-				"initiative",
-				String(v.initiative ?? v.initiativeId),
-				s,
-				g,
-			);
-			return { variables: { id: x.id } };
+		plan(v) {
+			const requested = String(v.initiative ?? v.initiativeId);
+			return {
+				kind: "query",
+				lookups: [namedEntityLookup("initiative", "initiative", requested)],
+				finish: (resolved) => ({ variables: { id: (resolved.initiative as { id: string }).id } }),
+			};
 		},
 	},
 ] satisfies OperationSource[]).map((operation) =>

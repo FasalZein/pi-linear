@@ -1,8 +1,8 @@
 import {
 	isLinearUrlSlug,
 	resolveIssueReference,
-	resolveNamedEntityReference,
 } from "../client";
+import { namedEntityLookup, pureQueryPlan } from "../operation-plan";
 import { projection } from "../selections";
 import { p } from "../operation-types";
 import type {
@@ -90,25 +90,22 @@ export const projectReads: readonly OperationDefinition[] = ([
 		example: { operation: "get_project", variables: { project: "Platform" } },
 		document: getDocument("GetProject", "project", projection("project", "detail")),
 		resolverPaths: { project: "resolveNamedEntityReference" },
-		async prepare(k, v, s, g) {
+		plan(v) {
 			const requested = String(v.project ?? v.projectId);
 			const reference = requested.trim();
 			if (isUuid(reference) || isLinearUrlSlug(reference)) {
-				return {
+				return pureQueryPlan({
 					variables: { id: reference },
 					exactNamed: { requested: reference, path: "project", kind: "project" },
 					resolution: { target: { requested: reference } },
-				};
+				});
 			}
-			const x = await resolveNamedEntityReference(k, "project", requested, s, g);
 			return {
-				variables: { id: x.id },
-				resolution: {
-					target: {
-						requested: v.project ?? v.projectId,
-						resolvedId: x.id,
-						name: x.name,
-					},
+				kind: "query",
+				lookups: [namedEntityLookup("project", "project", requested)],
+				finish(resolved) {
+					const x = resolved.project as { id: string; name: string };
+					return { variables: { id: x.id }, resolution: { target: { requested: v.project ?? v.projectId, resolvedId: x.id, name: x.name } } };
 				},
 			};
 		},

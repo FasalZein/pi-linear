@@ -121,6 +121,9 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
     : documents?.some((variant) => variant.kind === 'mutation')
       ? 'mutation'
       : 'query';
+  if (kind === 'query' && !operation.plan) {
+    throw new Error(`Query operation ${operation.name} is missing its pure operation plan.`);
+  }
   const entityKind = operation.renderKind ?? projectedRenderKind(operation.name);
   const renderEmpty = operation.renderEmpty;
   if ((action === 'list' || action === 'search') && !renderEmpty) {
@@ -158,6 +161,7 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
           ?? (() => { throw new Error(`Unnamed semantic validation exception for "${operation.name}".`); })(),
         semanticValidateVariables: operation.validateVariables,
       } : {}),
+      ...(operation.plan ? { plan: operation.plan } : {}),
       ...(operation.prepare ? { prepare: operation.prepare } : {}),
       ...(operation.batchPrepare ? { batchPrepare: operation.batchPrepare } : {}),
       ...(operation.executeLocal ? { executeLocal: operation.executeLocal } : {}),
@@ -166,6 +170,7 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
     ...(documents ? { graphql: { documents } } : {}),
     preparation: {
       resolverPaths: operation.resolverPaths ?? {},
+      ...(operation.plan ? { plan: operation.plan } : {}),
       ...(operation.prepare ? { prepare: operation.prepare } : {}),
       ...(operation.batchPrepare ? { batchPrepare: operation.batchPrepare } : {}),
     },
@@ -244,6 +249,13 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
       assertRequirementBranches(compatibility.branches, variables);
       compatibility.semanticValidateVariables?.(variables);
     },
+    ...(compatibility.plan ? {
+      plan: async (variables) => {
+        assertRequirementBranches(compatibility.branches, variables);
+        compatibility.semanticValidateVariables?.(variables);
+        return compatibility.plan!(variables);
+      },
+    } : {}),
     ...(compatibility.prepare ? {
       prepare: async (apiKey, variables, signal, graphql) => {
         assertRequirementBranches(compatibility.branches, variables);

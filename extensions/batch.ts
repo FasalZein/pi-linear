@@ -11,7 +11,6 @@ import {
 import type { ExtensionContext } from '@earendil-works/pi-coding-agent';
 import {
   assertIssueNodeMatches,
-  assertNamedNodeMatches,
   linearGraphQLWithContext,
   linearGraphQLErrors,
   requireIssueReference,
@@ -49,6 +48,7 @@ import {
 } from './runtime';
 import { assertMutationAllowed, type MutationMode } from './safety';
 import { projection } from './selections';
+import { verifyOperationResult } from './operation-plan';
 
 export const BATCH_PURPOSE = 'Batch independent reads with read-only operations, or use explicit phases for one ordinary mutation, grouped issue creates, or one guarded relation delete.';
 
@@ -631,17 +631,6 @@ function prefixVariables(key: string, variables: Record<string, unknown>): Recor
   return Object.fromEntries(Object.entries(variables).map(([name, value]) => [`${key}_${name}`, value]));
 }
 
-function objectAtPath(value: unknown, path: string): JsonObject | undefined {
-  let current: unknown = value;
-  for (const part of path.split('.')) {
-    if (!current || typeof current !== 'object' || Array.isArray(current)) return undefined;
-    current = (current as JsonObject)[part];
-  }
-  return current && typeof current === 'object' && !Array.isArray(current)
-    ? current as JsonObject
-    : undefined;
-}
-
 function assertNamedEntry(entry: RawEntry): LinearOperation {
   if (FORBIDDEN_OPERATIONS.has(entry.operation)) {
     throw new Error('Batch entries must be named GraphQL operations. help, batch, raw GraphQL, and local operations are not allowed.');
@@ -667,6 +656,27 @@ async function planEntry(
   }
   assertOperationAllowed(operation, entry.variables, mode);
   validateVariables(operation, entry.operation, entry.variables);
+  if (expectedKind === 'query') {
+    const factory = definition.preparation.plan;
+    if (!factory) throw new Error(`Batch entry "${entry.key}" is missing its pure operation plan.`);
+    const plan = await factory(entry.variables);
+    if (plan.lookups.length) {
+      throw new Error(`Batch entry "${entry.key}" requires a second lookup layer and cannot run in one read request.`);
+    }
+    const prepared = plan.finish({});
+    const document = prepared.variant?.document ?? operation.document;
+    if (!document) throw new Error(`Batch entry "${entry.key}" is missing a GraphQL document.`);
+    const { ast, root } = aliasDocument(entry.key, document);
+    return {
+      key: entry.key,
+      root,
+      document: print(ast),
+      variables: prefixVariables(entry.key, prepared.variables),
+      prepared,
+      operationName: operation.name,
+      variant: prepared.variant ?? operation.variants?.[0],
+    };
+  }
   let batchPlan: BatchPreparation | undefined;
   try {
     batchPlan = definition.preparation.batchPrepare?.(entry.variables);
@@ -729,19 +739,7 @@ function collectAlias(
   const mapped = { [entry.root]: value };
   try {
     if (value == null) throw new Error(`Batch entry "${entry.key}" returned no data.`);
-    if (entry.prepared?.exactIssue) {
-      assertIssueNodeMatches(
-        entry.prepared.exactIssue.requested,
-        objectAtPath(mapped, entry.prepared.exactIssue.path) as never,
-      );
-    }
-    if (entry.prepared?.exactNamed) {
-      assertNamedNodeMatches(
-        entry.prepared.exactNamed.kind,
-        entry.prepared.exactNamed.requested,
-        objectAtPath(mapped, entry.prepared.exactNamed.path) as never,
-      );
-    }
+    if (entry.prepared) verifyOperationResult(entry.prepared, mapped);
     if (entry.variant?.mutationResult) validateMutationResult(entry.operationName, mapped, entry.variant);
   } catch (error) {
     const message = entry.prepared?.failureMessage

@@ -1,4 +1,4 @@
-import { resolveNamedEntityReference } from "../client";
+import { namedEntityLookup } from "../operation-plan";
 import { projection } from "../selections";
 import { p } from "../operation-types";
 import type {
@@ -83,15 +83,13 @@ export const milestoneReads: readonly OperationDefinition[] = ([
 			projection("milestone", "detail"),
 		),
 		resolverPaths: { milestone: "resolveNamedEntityReference" },
-		async prepare(k, v, s, g) {
-			const x = await resolveNamedEntityReference(
-				k,
-				"projectMilestone",
-				String(v.milestone ?? v.milestoneId),
-				s,
-				g,
-			);
-			return { variables: { id: x.id } };
+		plan(v) {
+			const requested = String(v.milestone ?? v.milestoneId);
+			return {
+				kind: "query",
+				lookups: [namedEntityLookup("milestone", "projectMilestone", requested)],
+				finish: (resolved) => ({ variables: { id: (resolved.milestone as { id: string }).id } }),
+			};
 		},
 	},
 ] satisfies OperationSource[]).map((operation) =>

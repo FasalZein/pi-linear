@@ -1,0 +1,298 @@
+import {
+  assertIssueNodeMatches,
+  assertNamedNodeMatches,
+  linearGraphQLWithContext,
+  requireIssueReference,
+  type LinearNetworkContext,
+  type ResolvedIssue,
+  type ResolvedNamedEntity,
+  type ResolvedState,
+  type ResolvedTeam,
+  type ResolvedUser,
+} from './client';
+import type { LookupPlan, OperationPlan, OperationPreparation } from './operation-types';
+
+type JsonObject = Record<string, unknown>;
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const TEAM_KEY = /^[A-Z][A-Z0-9]*$/i;
+
+function required(value: string, kind: string): string {
+  const reference = value.trim();
+  if (!reference) throw new Error(`Linear ${kind} reference is required.`);
+  return reference;
+}
+
+function one<T>(nodes: readonly T[], description: string): T {
+  if (nodes.length !== 1) {
+    throw new Error(`Linear ${description} resolved to ${nodes.length} matches; expected exactly one.`);
+  }
+  return nodes[0]!;
+}
+
+export function pureQueryPlan(prepared: OperationPreparation): OperationPlan {
+  return { kind: 'query', lookups: [], finish: () => prepared };
+}
+
+export function issueLookup(key: string, value: string): LookupPlan {
+  const reference = requireIssueReference(value);
+  return {
+    key,
+    document: () => `query ResolveIssueById($id: String!) {
+  issue(id: $id) { id identifier team { id key } }
+}`,
+    variables: () => ({ id: reference }),
+    resolve(data) {
+      const issue = data.issue as {
+        id?: unknown; identifier?: unknown; team?: { id?: unknown; key?: unknown } | null;
+      } | null;
+      assertIssueNodeMatches(reference, issue);
+      const team = issue.team;
+      if (!team || typeof team.id !== 'string' || typeof team.key !== 'string') {
+        throw new Error(`Linear issue "${reference}" has no team.`);
+      }
+      const identifier = reference.match(/^([A-Z][A-Z0-9]*)-(\d+)$/i);
+      if (identifier && team.key.toLowerCase() !== identifier[1]!.toLowerCase()) {
+        throw new Error(`Linear issue resolver returned a mismatched team for "${reference}".`);
+      }
+      return { id: issue.id, identifier: issue.identifier, teamId: team.id, teamKey: team.key } satisfies ResolvedIssue;
+    },
+  };
+}
+
+export function teamLookup(key: string, value: string): LookupPlan {
+  const reference = required(value, 'team');
+  if (UUID.test(reference)) {
+    return {
+      key,
+      document: () => `query ResolveTeamById($id: String!) { team(id: $id) { id key } }`,
+      variables: () => ({ id: reference }),
+      resolve(data) {
+        const team = data.team as ResolvedTeam | null;
+        if (!team) throw new Error(`Linear team "${reference}" was not found.`);
+        if (team.id !== reference) throw new Error(`Linear team resolver returned mismatched id for "${reference}".`);
+        return team;
+      },
+    };
+  }
+  if (!TEAM_KEY.test(reference)) {
+    throw new Error(`Invalid Linear team reference "${reference}". Use a team key or UUID.`);
+  }
+  return {
+    key,
+    document: () => `query ResolveTeamByKey($key: String!) {
+  teams(first: 2, filter: { key: { eq: $key } }) { nodes { id key } }
+}`,
+    variables: () => ({ key: reference.toUpperCase() }),
+    resolve(data) {
+      const team = one((data.teams as { nodes?: ResolvedTeam[] } | undefined)?.nodes ?? [], `team "${reference}"`);
+      if (team.key.toLowerCase() !== reference.toLowerCase()) {
+        throw new Error(`Linear team resolver returned mismatched key "${team.key}" for "${reference}".`);
+      }
+      return team;
+    },
+  };
+}
+
+export function stateLookup(key: string, value: string, teamKey?: string): LookupPlan {
+  const reference = required(value, 'state');
+  if (UUID.test(reference)) {
+    return {
+      key,
+      ...(teamKey ? { dependsOn: [teamKey] } : {}),
+      document: () => `query ResolveStateById($id: String!) {
+  workflowState(id: $id) { id name team { id } }
+}`,
+      variables: () => ({ id: reference }),
+      resolve(data) {
+        const state = data.workflowState as { id?: unknown; name?: unknown; team?: { id?: unknown } | null } | null;
+        if (!state || typeof state.id !== 'string' || typeof state.name !== 'string') {
+          throw new Error(`Linear state "${reference}" was not found.`);
+        }
+        if (state.id !== reference) throw new Error(`Linear state resolver returned mismatched id for "${reference}".`);
+        if (typeof state.team?.id !== 'string') throw new Error(`Linear state "${reference}" has no team.`);
+        return { id: state.id, name: state.name, teamId: state.team.id } satisfies ResolvedState;
+      },
+    };
+  }
+  if (!teamKey) {
+    throw new Error(`Invalid Linear state reference "${reference}". Use a state UUID, or provide team with an exact state name.`);
+  }
+  return {
+    key,
+    dependsOn: [teamKey],
+    document: () => `query ResolveStateByName($teamId: ID!, $name: String!) {
+  workflowStates(first: 2, filter: { team: { id: { eq: $teamId } }, name: { eqIgnoreCase: $name } }) {
+    nodes { id name team { id } }
+  }
+}`,
+    variables(resolved) {
+      return { teamId: (resolved[teamKey] as ResolvedTeam).id, name: reference };
+    },
+    resolve(data, resolved) {
+      const teamId = (resolved[teamKey] as ResolvedTeam).id;
+      const nodes = (data.workflowStates as {
+        nodes?: Array<{ id: string; name: string; team: { id: string } | null }>;
+      } | undefined)?.nodes ?? [];
+      const matches = nodes.filter((state) =>
+        state.team?.id === teamId && state.name.toLowerCase() === reference.toLowerCase());
+      const state = one(matches, `state "${reference}" in team "${teamId}"`);
+      return { id: state.id, name: state.name, teamId } satisfies ResolvedState;
+    },
+  };
+}
+
+export function userLookup(key: string, value: string): LookupPlan {
+  const reference = required(value, 'user');
+  const selection = 'id name displayName email';
+  if (reference.toLowerCase() === 'me') {
+    return {
+      key,
+      document: () => `query ResolveViewer { viewer { ${selection} } }`,
+      variables: () => ({}),
+      resolve(data) {
+        const viewer = data.viewer as ResolvedUser | null;
+        if (!viewer?.id) throw new Error('Linear viewer could not be resolved.');
+        return viewer;
+      },
+    };
+  }
+  if (UUID.test(reference)) {
+    return {
+      key,
+      document: () => `query ResolveUserById($id: String!) { user(id: $id) { ${selection} } }`,
+      variables: () => ({ id: reference }),
+      resolve(data) {
+        const user = data.user as ResolvedUser | null;
+        if (!user) throw new Error(`Linear user "${reference}" was not found.`);
+        if (user.id !== reference) throw new Error(`Linear user resolver returned mismatched id for "${reference}".`);
+        return user;
+      },
+    };
+  }
+  return {
+    key,
+    document: () => `query ResolveUserByIdentity($reference: String!) {
+  byEmail: users(first: 2, filter: { email: { eq: $reference } }) { nodes { ${selection} } }
+  byName: users(first: 2, filter: { name: { eq: $reference } }) { nodes { ${selection} } }
+  byDisplayName: users(first: 2, filter: { displayName: { eq: $reference } }) { nodes { ${selection} } }
+}`,
+    variables: () => ({ reference }),
+    resolve(data) {
+      const records = ['byEmail', 'byName', 'byDisplayName'].flatMap((name) =>
+        (data[name] as { nodes?: ResolvedUser[] } | undefined)?.nodes ?? []);
+      const exact = records.filter((user) =>
+        user.email === reference || user.name === reference || user.displayName === reference);
+      return one([...new Map(exact.map((user) => [user.id, user])).values()], `user "${reference}"`);
+    },
+  };
+}
+
+export type LookupNamedKind = 'project' | 'initiative' | 'cycle' | 'document' | 'projectMilestone' | 'customView';
+
+export function namedEntityLookup(key: string, kind: LookupNamedKind, value: string): LookupPlan {
+  const reference = required(value, kind);
+  const plural = kind === 'projectMilestone' ? 'projectMilestones' : kind === 'customView' ? 'customViews' : `${kind}s`;
+  const nameField = kind === 'document' ? 'title' : 'name';
+  const nameSelection = kind === 'document' ? 'name: title' : 'name';
+  if (UUID.test(reference)) {
+    return {
+      key,
+      document: () => `query ResolveNamedEntityById($id: String!) {
+  ${kind}(id: $id) { id ${nameSelection} }
+}`,
+      variables: () => ({ id: reference }),
+      resolve(data) {
+        const entity = data[kind] as ResolvedNamedEntity | null;
+        if (!entity) throw new Error(`Linear ${kind} "${reference}" was not found.`);
+        if (entity.id !== reference) throw new Error(`Linear ${kind} resolver returned mismatched id for "${reference}".`);
+        return entity;
+      },
+    };
+  }
+  return {
+    key,
+    document: () => `query ResolveNamedEntityByName($name: String!) {
+  ${plural}(first: 2, filter: { ${nameField}: { eq: $name } }) { nodes { id ${nameSelection} } }
+}`,
+    variables: () => ({ name: reference }),
+    resolve(data) {
+      const nodes = (data[plural] as { nodes?: ResolvedNamedEntity[] } | undefined)?.nodes ?? [];
+      return one(nodes.filter((entity) => entity.name === reference), `${kind} "${reference}"`);
+    },
+  };
+}
+
+export async function resolveOperationPlan(
+  context: LinearNetworkContext,
+  plan: OperationPlan,
+): Promise<OperationPreparation> {
+  const pending = [...plan.lookups];
+  const resolved: Record<string, unknown> = {};
+  const keys = new Set<string>();
+  for (const lookup of pending) {
+    if (keys.has(lookup.key)) throw new Error(`Duplicate operation lookup key "${lookup.key}".`);
+    keys.add(lookup.key);
+  }
+  while (pending.length) {
+    const index = pending.findIndex((lookup) => (lookup.dependsOn ?? []).every((key) => key in resolved));
+    if (index < 0) throw new Error('Operation lookup dependencies contain a cycle or missing key.');
+    const lookup = pending.splice(index, 1)[0]!;
+    const data = await linearGraphQLWithContext<JsonObject>(
+      context,
+      lookup.document(resolved),
+      lookup.variables(resolved),
+      { phase: 'read' },
+    );
+    resolved[lookup.key] = lookup.resolve(data, resolved);
+  }
+  return plan.finish(resolved);
+}
+
+function objectAtPath(value: unknown, path: string): JsonObject {
+  let current: unknown = value;
+  for (const part of path.split('.')) {
+    if (!current || typeof current !== 'object' || Array.isArray(current)) {
+      throw new Error(`Linear result path "${path}" was not found.`);
+    }
+    current = (current as JsonObject)[part];
+  }
+  if (!current || typeof current !== 'object' || Array.isArray(current)) {
+    throw new Error(`Linear result path "${path}" was not found.`);
+  }
+  return current as JsonObject;
+}
+
+export function verifyOperationResult(prepared: OperationPreparation, data: JsonObject): void {
+  if (prepared.exactIssue) {
+    const check = prepared.exactIssue;
+    const issue = objectAtPath(data, check.path);
+    assertIssueNodeMatches(check.requested, issue);
+    const resolution = prepared.resolution ?? {};
+    prepared.resolution = {
+      ...resolution,
+      target: {
+        ...(typeof resolution.target === 'object' && resolution.target ? resolution.target : {}),
+        requested: check.requested,
+        resolvedId: issue.id,
+        identifier: issue.identifier,
+      },
+    };
+  }
+  if (prepared.exactNamed) {
+    const check = prepared.exactNamed;
+    const node = objectAtPath(data, check.path);
+    assertNamedNodeMatches(check.kind, check.requested, node);
+    const resolution = prepared.resolution ?? {};
+    prepared.resolution = {
+      ...resolution,
+      target: {
+        ...(typeof resolution.target === 'object' && resolution.target ? resolution.target : {}),
+        requested: check.requested,
+        resolvedId: node.id,
+        ...(typeof node.name === 'string' ? { name: node.name } : {}),
+        ...(typeof node.title === 'string' ? { title: node.title } : {}),
+      },
+    };
+  }
+}

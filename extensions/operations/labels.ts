@@ -1,5 +1,6 @@
 import { resolveTeamReference } from "../client";
 import { projection } from "../selections";
+import { teamLookup } from "../operation-plan";
 import {
 	compactObject,
 	mergeFilters,
@@ -77,22 +78,18 @@ export const issueLabels: readonly OperationDefinition[] = ([
 			filter,
 		],
 		resolverPaths: { team: "resolveTeamReference" },
-		prepare: async (k, v, s, g) => {
+		plan: (v) => {
 			const ref = v.team ?? v.teamKey ?? v.teamId;
-			const team = ref
-				? await resolveTeamReference(k, String(ref), s, g)
-				: undefined;
 			return {
-				variables: {
-					...paginationVariables(v, 50),
-					filter: mergeFilters(
-						object(v.filter),
-						team ? { team: { id: { eq: team.id } } } : undefined,
-					),
+				kind: "query",
+				lookups: ref ? [teamLookup("team", String(ref))] : [],
+				finish(resolved) {
+					const team = resolved.team as { id: string; key: string } | undefined;
+					return {
+						variables: { ...paginationVariables(v, 50), filter: mergeFilters(object(v.filter), team ? { team: { id: { eq: team.id } } } : undefined) },
+						resolution: team ? { team: { requested: ref, resolvedId: team.id, key: team.key } } : undefined,
+					};
 				},
-				resolution: team
-					? { team: { requested: ref, resolvedId: team.id, key: team.key } }
-					: undefined,
 			};
 		},
 	}),

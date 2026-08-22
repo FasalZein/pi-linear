@@ -2,10 +2,10 @@ import {
 	isLinearUrlSlug,
 	resolveDocumentReference,
 	resolveIssueReference,
-	resolveNamedEntityReference,
 	resolveTeamReference,
 } from "../client";
 import { projection } from "../selections";
+import { namedEntityLookup, pureQueryPlan } from "../operation-plan";
 import {
 	mergedInput,
 	p,
@@ -100,18 +100,21 @@ export const documents: readonly OperationDefinition[] = ([
 		},
 		document: getDocument("GetDocument", "document", projection("document", "detail")),
 		resolverPaths: { document: "resolveNamedEntityReference" },
-		async prepare(k, v, s, g) {
+		plan(v) {
 			const requested = String(v.document ?? v.documentId);
 			const reference = requested.trim();
 			if (isUuid(reference) || isLinearUrlSlug(reference)) {
-				return {
+				return pureQueryPlan({
 					variables: { id: reference },
 					exactNamed: { requested: reference, path: "document", kind: "document" },
 					resolution: { target: { requested: reference } },
-				};
+				});
 			}
-			const x = await resolveNamedEntityReference(k, "document", requested, s, g);
-			return { variables: { id: x.id } };
+			return {
+				kind: "query",
+				lookups: [namedEntityLookup("document", "document", requested)],
+				finish: (resolved) => ({ variables: { id: (resolved.document as { id: string }).id } }),
+			};
 		},
 	}, "document", "document", "GetDocument"),
 	simpleMutation({
