@@ -199,6 +199,19 @@ describe('model-facing budget warnings', () => {
     expect(JSON.stringify(normal)).not.toContain('rateLimit');
   });
 
+  it('includes healthy response telemetry only for the explicit diagnostic override', async () => {
+    const explicit = await routeLinearResult({ viewer: { id: 'user-1' } }, {
+      label: 'query', category: 'singular', telemetryMode: 'always', telemetry: [{
+        phase: 'read', attempt: 1, headers: parseLinearRateLimitHeaders(new Headers(completeHeaders)),
+      }],
+    });
+    expect((explicit as any).meta.rateLimit).toEqual({
+      scopes: [],
+      retryAttempts: 0,
+      responses: [{ phase: 'read', attempt: 1, ...parseLinearRateLimitHeaders(new Headers(completeHeaders)) }],
+    });
+  });
+
   it.each([
     ['requests at one', { 'X-RateLimit-Requests-Remaining': 1 }, ['requests']],
     ['endpoint at one', { 'X-RateLimit-Endpoint-Requests-Remaining': 1 }, ['endpoint']],
@@ -220,6 +233,16 @@ describe('model-facing budget warnings', () => {
       label: 'query', category: 'singular', telemetry: [{ attempt: 1, headers }],
     });
     expect((result as any).meta).not.toHaveProperty('rateLimit');
+  });
+
+  it('keeps near-exhaustion output unchanged with the diagnostic override', async () => {
+    const options = {
+      label: 'query', category: 'singular' as const,
+      telemetry: [{ attempt: 1, headers: { 'X-RateLimit-Requests-Remaining': 1 } }],
+    };
+    const ordinary = await routeLinearResult({ ok: true }, options);
+    const explicit = await routeLinearResult({ ok: true }, { ...options, telemetryMode: 'always' });
+    expect((explicit as any).meta.rateLimit).toEqual((ordinary as any).meta.rateLimit);
   });
 
   it('reports the retry attempt count and preserves both warned response headers', async () => {
@@ -305,18 +328,133 @@ describe('model-facing budget warnings', () => {
     ]);
   });
 
-  it('stores and retrieves the warned envelope through an artifact handle', async () => {
+  it('supports explicit telemetry on named operations without passing the loader field to variables', async () => {
+    process.env.LINEAR_API_KEY = 'test-key';
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => response(200, {
+      data: { issue: { id: '11111111-1111-4111-8111-111111111111', identifier: 'AEO-427', title: 'Telemetry' } },
+    }, { 'X-RateLimit-Requests-Remaining': '1499' }));
+    vi.stubGlobal('fetch', fetch);
+
+    const result = await (linearApiTool() as any).execute('call-1', {
+      operation: 'get_issue',
+      variables: { issue: '11111111-1111-4111-8111-111111111111' },
+      telemetry: 'always',
+    }, undefined, undefined, { hasUI: false });
+
+    const body = JSON.parse(String(fetch.mock.calls[0]![1]!.body));
+    expect(body.variables).toEqual({ id: '11111111-1111-4111-8111-111111111111' });
+    expect(result.details.meta.rateLimit).toMatchObject({ scopes: [], retryAttempts: 0 });
+  });
+
+  it('supports explicit telemetry on raw queries without passing the loader field to GraphQL', async () => {
+    process.env.LINEAR_API_KEY = 'lin_api_secret1234';
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => response(200, {
+      data: { viewer: { id: 'user-1' } },
+    }, {
+      'X-RateLimit-Requests-Remaining': '1499',
+      'X-RateLimit-Endpoint-Name': 'viewer-lin_api_secret1234',
+    }));
+    vi.stubGlobal('fetch', fetch);
+
+    const result = await (linearApiTool() as any).execute('call-1', {
+      query: 'query Viewer($id: String) { viewer { id } }',
+      variables: { id: 'user-1' },
+      telemetry: 'always',
+    }, undefined, undefined, { hasUI: false });
+
+    const body = JSON.parse(String(fetch.mock.calls[0]![1]!.body));
+    expect(body.variables).toEqual({ id: 'user-1' });
+    expect(body.query).not.toContain('telemetry');
+    expect(result.details.meta.rateLimit).toEqual({
+      scopes: [], retryAttempts: 0, responses: [{
+        attempt: 1,
+        'X-RateLimit-Requests-Remaining': 1499,
+        'X-RateLimit-Endpoint-Name': 'viewer-[REDACTED]',
+      }],
+    });
+    expect(JSON.stringify(result)).not.toContain('secret1234');
+  });
+
+  it('preserves explicit retry attempts and batch phases', async () => {
+    process.env.LINEAR_API_KEY = 'test-key';
+    const issue = {
+      id: '11111111-1111-4111-8111-111111111111', identifier: 'AEO-427', title: 'Measure telemetry',
+    };
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(response(429, {}, { 'Retry-After': '0', 'X-RateLimit-Requests-Remaining': '10' }))
+      .mockResolvedValueOnce(response(200, { data: { read: issue } }, { 'X-RateLimit-Requests-Remaining': '9' }))
+      .mockResolvedValueOnce(response(200, { data: { change: { success: true, issue: { ...issue, title: 'Updated' } } } }, { 'X-Complexity': '5' }));
+    vi.stubGlobal('fetch', fetch);
+
+    const result = await (linearApiTool() as any).execute('call-1', {
+      operation: 'batch', telemetry: 'always', variables: {
+        reads: [{ key: 'read', operation: 'get_issue', variables: { issue: '11111111-1111-4111-8111-111111111111' } }],
+        mutations: [{ key: 'change', operation: 'update_issue', variables: { issue: '11111111-1111-4111-8111-111111111111', title: 'Updated' } }],
+      },
+    }, undefined, undefined, { hasUI: false });
+
+    expect(result.details.meta.rateLimit).toEqual({
+      scopes: [], retryAttempts: 1, responses: [
+        { phase: 'read', attempt: 1, 'X-RateLimit-Requests-Remaining': 10, 'Retry-After': '0' },
+        { phase: 'read', attempt: 2, 'X-RateLimit-Requests-Remaining': 9 },
+        { phase: 'mutation', attempt: 1, 'X-Complexity': 5 },
+      ],
+    });
+  });
+
+  it('preserves read and mutation identity for an explicit guarded delete', async () => {
+    process.env.LINEAR_API_KEY = 'test-key';
+    const variables = {
+      relationId: '33333333-3333-4333-8333-333333333333',
+      issueId: '11111111-1111-4111-8111-111111111111',
+      relatedIssueId: '22222222-2222-4222-8222-222222222222',
+      type: 'related',
+    };
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(response(200, { data: { issueRelation: {
+        id: variables.relationId, type: variables.type,
+        issue: { id: variables.issueId }, relatedIssue: { id: variables.relatedIssueId },
+      } } }, { 'X-RateLimit-Requests-Remaining': '100' }))
+      .mockResolvedValueOnce(response(200, { data: { issueRelationDelete: { success: true } } }, { 'X-Complexity': '4' }));
+    vi.stubGlobal('fetch', fetch);
+
+    const result = await (linearApiTool() as any).execute('call-1', {
+      operation: 'delete_issue_relation', variables, telemetry: 'always',
+    }, undefined, undefined, { hasUI: false });
+
+    expect(result.details.meta.rateLimit.responses).toEqual([
+      { phase: 'read', attempt: 1, 'X-RateLimit-Requests-Remaining': 100 },
+      { phase: 'mutation', attempt: 1, 'X-Complexity': 4 },
+    ]);
+  });
+
+  it('rejects malformed loader telemetry before credentials or network', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    delete process.env.LINEAR_API_KEY;
+
+    await expect((linearApiTool() as any).execute('call-1', {
+      query: 'query { viewer { id } }', telemetry: 'sometimes',
+    }, undefined, undefined, { hasUI: false })).rejects.toThrow('Invalid telemetry override. Use "always" or omit telemetry.');
+    expect(fetch).not.toHaveBeenCalled();
+    expect((linearApiTool() as any).parameters.properties.telemetry).toBeDefined();
+    for (const tool of typedLinearTools()) {
+      expect((tool.parameters as any).properties?.telemetry).toBeUndefined();
+    }
+  });
+
+  it('stores and retrieves an explicit healthy envelope through an artifact handle', async () => {
     const root = await mkdtemp(join(tmpdir(), 'pi-linear-rate-limit-'));
     roots.push(root);
     process.env.PI_ARTIFACT_PROJECT_ROOT = root;
     const stored = await routeLinearResult({ document: { id: 'doc-1' } }, {
-      label: 'get_document', category: 'singular', sink: 'artifact',
-      telemetry: [{ attempt: 1, headers: { 'X-RateLimit-Requests-Remaining': 1 } }],
+      label: 'get_document', category: 'singular', sink: 'artifact', telemetryMode: 'always',
+      telemetry: [{ attempt: 1, headers: { 'X-RateLimit-Requests-Remaining': 100 } }],
     });
     if (!('handle' in stored)) throw new Error('Expected artifact result.');
     const disk = JSON.parse(await readFile(stored.path, 'utf8'));
-    expect(disk.meta.rateLimit.scopes).toEqual(['requests']);
+    expect(disk.meta.rateLimit.scopes).toEqual([]);
     const retrieved = await getResult({ handle: stored.handle, path: '/meta/rateLimit' });
-    expect((retrieved.data as any).value.scopes).toEqual(['requests']);
+    expect((retrieved.data as any).value).toMatchObject({ scopes: [], retryAttempts: 0 });
   });
 });

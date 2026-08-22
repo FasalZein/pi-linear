@@ -1,6 +1,6 @@
 # Linear API reference
 
-Version 0.9 of `pi-linear-lite` registers 50 tool surfaces: one active loader, `linear`, plus 49 inactive typed tools. The loader-only `batch` and `get_result` operations add no typed tools. The `linear` tool description publishes the operation catalog. Choose an operation from that catalog and call it directly. Send exactly one of `operation` or `query` to the loader. Send operation inputs through `variables`. Use operation help only when exact parameter names are needed. That call activates the matching typed tool.
+Version 0.9 of `pi-linear-lite` registers 50 tool surfaces: one active loader, `linear`, plus 49 inactive typed tools. The loader-only `batch` and `get_result` operations add no typed tools. The `linear` tool description publishes the operation catalog. Choose an operation from that catalog and call it directly. Send exactly one of `operation` or `query` to the loader. Send operation inputs through `variables`. The loader also accepts optional top-level `workspace`, `sink`, and `telemetry` fields. Only `"telemetry": "always"` is valid. Typed tools do not accept this diagnostic field. Use operation help only when exact parameter names are needed. That call activates the matching typed tool.
 
 ## Help protocol
 
@@ -170,6 +170,8 @@ Set `LINEAR_SPILL_BYTES` to change the automatic spill threshold for collection,
 The extension captures Linear's request, endpoint-request, complexity, reset, endpoint-name, response-complexity, and `Retry-After` headers from each response. This capture makes no extra request. It stays internal and does not change ordinary result JSON.
 
 A result adds one compact `meta.rateLimit` object only when another similar call may exhaust a budget. The request or endpoint scope warns when its remaining count is at most one. The complexity scope warns when its remaining budget is at most the current response's `X-Complexity`. The object contains only received header values, triggered scopes, response attempt identity, and the retry count. Batch responses also identify the read or mutation phase. Artifact routing and `get_result` preserve this object.
+
+Use top-level `"telemetry": "always"` on the `linear` loader only for an explicit diagnostic measurement. This override includes the same redacted object for healthy responses. Healthy output uses `"scopes": []`; it does not claim exhaustion. The override covers named, raw, and batch calls without entering GraphQL variables or documents. Routine calls must omit it.
 
 HTTP 429 responses keep one automatic retry. For `searchIssues` and `semanticSearch` query reads, a documented GraphQL `RATELIMITED` HTTP 400 response also gets one retry. An explicit `Retry-After` value takes priority. Otherwise, an exhausted endpoint budget uses its endpoint reset time. Other GraphQL validation errors and mutation-body `RATELIMITED` responses do not add retries. Thrown HTTP and GraphQL errors keep redacted telemetry in a non-enumerable internal `linearTelemetry` field without changing the error message.
 
