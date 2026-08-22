@@ -396,7 +396,6 @@ describe("update_issue final request", () => {
 		const issueId = INITIATIVE_ID;
 		const teamId = PROJECT_ID;
 		const stateId = MILESTONE_ID;
-		const stateIsName = stateReference === "Backlog";
 		graphqlStub((query, variables) => {
 			if (query.includes("ResolveIssueById")) {
 				expect(variables).toEqual({ id: issueReference });
@@ -419,11 +418,11 @@ describe("update_issue final request", () => {
 			"issueUpdate(id: $id, input: $input)",
 		);
 		expect(prepared.variables).toEqual({ id: issueReference, input: { stateId } });
-		expect(prepared.resolution?.target).toEqual(
-			stateIsName
-				? { requested: issueReference, resolvedId: issueId, identifier: "AEO-266" }
-				: { requested: issueReference },
-		);
+		expect(prepared.resolution?.target).toEqual({
+			requested: issueReference,
+			resolvedId: issueId,
+			identifier: "AEO-266",
+		});
 	});
 });
 

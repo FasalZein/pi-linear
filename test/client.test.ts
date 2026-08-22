@@ -11,14 +11,18 @@ import {
   setAuthPreference,
   linearGraphQL,
   linearGraphQLErrors,
-  resolveIssueReference,
-  resolveTeamReference,
-  resolveStateReference,
-  resolveUserReference,
-  resolveNamedEntityReference,
-  resolveDocumentReference,
   type WorkspaceCredentials,
 } from '../extensions/client';
+import {
+  issueLookup,
+  namedEntityLookup,
+  resolveOperationPlanWithGraphQL,
+  stateLookup,
+  stateLookupForTeamReference,
+  teamLookup,
+  userLookup,
+} from '../extensions/operation-plan';
+import type { LookupPlan } from '../extensions/operation-types';
 
 function fakeCtx(hasUI = false) {
   return {
@@ -396,7 +400,7 @@ describe('linearGraphQL error surfacing', () => {
   });
 });
 
-describe('strict reference resolvers', () => {
+describe('shared operation-plan resolvers', () => {
   const ISSUE_ID = '11111111-1111-4111-8111-111111111111';
   const OTHER_ID = '22222222-2222-4222-8222-222222222222';
   const TEAM_ID = '33333333-3333-4333-8333-333333333333';
@@ -418,6 +422,15 @@ describe('strict reference resolvers', () => {
     return fetch;
   }
 
+  async function resolveLookup(lookup: LookupPlan) {
+    const prepared = await resolveOperationPlanWithGraphQL('key', {
+      kind: 'query',
+      lookups: [lookup],
+      finish: (resolved) => ({ variables: {}, resolution: { target: resolved[lookup.key] } }),
+    });
+    return prepared.resolution?.target;
+  }
+
   const issue = (id = ISSUE_ID, identifier = 'AEO-258') => ({
     id, identifier, team: { id: TEAM_ID, key: 'AEO' },
   });
@@ -430,7 +443,7 @@ describe('strict reference resolvers', () => {
       expect(variables).toEqual({ id: reference });
       return { issue: issue() };
     });
-    await expect(resolveIssueReference('key', reference)).resolves.toEqual({
+    await expect(resolveLookup(issueLookup('target', reference))).resolves.toEqual({
       id: ISSUE_ID, identifier: 'AEO-258', teamId: TEAM_ID, teamKey: 'AEO',
     });
     expect(fetch).toHaveBeenCalledOnce();
@@ -443,7 +456,7 @@ describe('strict reference resolvers', () => {
       expect(variables).toEqual({ id: ISSUE_ID });
       return { issue: issue() };
     });
-    await expect(resolveIssueReference('key', ISSUE_ID)).resolves.toMatchObject({ id: ISSUE_ID, identifier: 'AEO-258' });
+    await expect(resolveLookup(issueLookup('target', ISSUE_ID))).resolves.toMatchObject({ id: ISSUE_ID, identifier: 'AEO-258' });
   });
 
   it('rejects missing, identifier-mismatched, team-mismatched, and UUID-mismatched issues', async () => {
@@ -454,15 +467,15 @@ describe('strict reference resolvers', () => {
       if (id === 'AEO-4') return { issue: { ...issue(ISSUE_ID, 'AEO-4'), team: { id: TEAM_ID, key: 'OTHER' } } };
       return { issue: issue(OTHER_ID) };
     });
-    await expect(resolveIssueReference('key', 'AEO-1')).rejects.toThrow('was not found');
-    await expect(resolveIssueReference('key', 'AEO-3')).rejects.toThrow('mismatched identifier');
-    await expect(resolveIssueReference('key', 'AEO-4')).rejects.toThrow('mismatched team');
-    await expect(resolveIssueReference('key', ISSUE_ID)).rejects.toThrow('mismatched id');
+    await expect(resolveLookup(issueLookup('target', 'AEO-1'))).rejects.toThrow('was not found');
+    await expect(resolveLookup(issueLookup('target', 'AEO-3'))).rejects.toThrow('mismatched identifier');
+    await expect(resolveLookup(issueLookup('target', 'AEO-4'))).rejects.toThrow('mismatched team');
+    await expect(resolveLookup(issueLookup('target', ISSUE_ID))).rejects.toThrow('mismatched id');
   });
 
-  it('rejects invalid issue input before network access', async () => {
+  it('rejects invalid issue input before network access', () => {
     const fetch = graphqlStub(() => ({}));
-    await expect(resolveIssueReference('key', 'some title')).rejects.toThrow('Use TEAM-123 or a UUID');
+    expect(() => issueLookup('target', 'some title')).toThrow('Use TEAM-123 or a UUID');
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -470,35 +483,36 @@ describe('strict reference resolvers', () => {
     graphqlStub((query) => query.includes('ResolveTeamByKey')
       ? { teams: { nodes: [{ id: TEAM_ID, key: 'AEO' }] } }
       : { team: { id: TEAM_ID, key: 'AEO' } });
-    await expect(resolveTeamReference('key', 'aeo')).resolves.toEqual({ id: TEAM_ID, key: 'AEO' });
-    await expect(resolveTeamReference('key', TEAM_ID)).resolves.toEqual({ id: TEAM_ID, key: 'AEO' });
+    await expect(resolveLookup(teamLookup('target', 'aeo'))).resolves.toEqual({ id: TEAM_ID, key: 'AEO' });
+    await expect(resolveLookup(teamLookup('target', TEAM_ID))).resolves.toEqual({ id: TEAM_ID, key: 'AEO' });
   });
 
   it('rejects mismatched team keys and UUIDs', async () => {
     graphqlStub((query) => query.includes('ResolveTeamByKey')
       ? { teams: { nodes: [{ id: TEAM_ID, key: 'OTHER' }] } }
       : { team: { id: OTHER_ID, key: 'AEO' } });
-    await expect(resolveTeamReference('key', 'AEO')).rejects.toThrow('mismatched key');
-    await expect(resolveTeamReference('key', TEAM_ID)).rejects.toThrow('mismatched id');
+    await expect(resolveLookup(teamLookup('target', 'AEO'))).rejects.toThrow('mismatched key');
+    await expect(resolveLookup(teamLookup('target', TEAM_ID))).rejects.toThrow('mismatched id');
   });
 
-  it('resolves exact state names and UUIDs within the issue team', async () => {
-    graphqlStub((query) => query.includes('ResolveStateByName')
+  it('resolves exact state names and UUIDs through shared lookups', async () => {
+    graphqlStub((query) => query.includes('ResolveStateByTeamId')
       ? { workflowStates: { nodes: [{ id: STATE_ID, name: 'Backlog', team: { id: TEAM_ID } }] } }
       : { workflowState: { id: STATE_ID, name: 'Backlog', team: { id: TEAM_ID } } });
-    await expect(resolveStateReference('key', TEAM_ID, 'backlog')).resolves.toEqual({ id: STATE_ID, name: 'Backlog', teamId: TEAM_ID });
-    await expect(resolveStateReference('key', TEAM_ID, STATE_ID)).resolves.toEqual({ id: STATE_ID, name: 'Backlog', teamId: TEAM_ID });
+    await expect(resolveLookup(stateLookupForTeamReference('target', 'backlog', TEAM_ID))).resolves.toEqual({
+      id: STATE_ID, name: 'Backlog', teamId: TEAM_ID,
+    });
+    await expect(resolveLookup(stateLookup('target', STATE_ID))).resolves.toEqual({
+      id: STATE_ID, name: 'Backlog', teamId: TEAM_ID,
+    });
   });
 
-  it('rejects wrong-team and ambiguous duplicate state names', async () => {
-    graphqlStub((query) => query.includes('ResolveStateByName')
-      ? { workflowStates: { nodes: [
-          { id: STATE_ID, name: 'Backlog', team: { id: TEAM_ID } },
-          { id: OTHER_ID, name: 'BACKLOG', team: { id: TEAM_ID } },
-        ] } }
-      : { workflowState: { id: STATE_ID, name: 'Backlog', team: { id: OTHER_ID } } });
-    await expect(resolveStateReference('key', TEAM_ID, 'Backlog')).rejects.toThrow('2 matches');
-    await expect(resolveStateReference('key', TEAM_ID, STATE_ID)).rejects.toThrow('does not belong');
+  it('rejects ambiguous duplicate state names', async () => {
+    graphqlStub(() => ({ workflowStates: { nodes: [
+      { id: STATE_ID, name: 'Backlog', team: { id: TEAM_ID } },
+      { id: OTHER_ID, name: 'BACKLOG', team: { id: TEAM_ID } },
+    ] } }));
+    await expect(resolveLookup(stateLookupForTeamReference('target', 'Backlog', TEAM_ID))).rejects.toThrow('2 matches');
   });
 
   it('resolves me through viewer and exact supported user identities', async () => {
@@ -508,8 +522,8 @@ describe('strict reference resolvers', () => {
           byEmail: { nodes: [{ id: USER_ID, name: 'Ada', displayName: 'Ada L', email: 'ada@example.com' }] },
           byName: { nodes: [] }, byDisplayName: { nodes: [] },
         });
-    await expect(resolveUserReference('key', 'me')).resolves.toMatchObject({ id: USER_ID });
-    await expect(resolveUserReference('key', 'ada@example.com')).resolves.toMatchObject({ id: USER_ID, name: 'Ada' });
+    await expect(resolveLookup(userLookup('target', 'me'))).resolves.toMatchObject({ id: USER_ID });
+    await expect(resolveLookup(userLookup('target', 'ada@example.com'))).resolves.toMatchObject({ id: USER_ID, name: 'Ada' });
   });
 
   it('rejects ambiguous exact user identities', async () => {
@@ -518,9 +532,8 @@ describe('strict reference resolvers', () => {
       byName: { nodes: [{ id: USER_ID, name: 'Ada' }, { id: OTHER_ID, name: 'Ada' }] },
       byDisplayName: { nodes: [] },
     }));
-    await expect(resolveUserReference('key', 'Ada')).rejects.toThrow('2 matches');
+    await expect(resolveLookup(userLookup('target', 'Ada'))).rejects.toThrow('2 matches');
   });
-
 
   it('resolves supported entity names exactly and uses title for documents', async () => {
     graphqlStub((query) => {
@@ -528,49 +541,49 @@ describe('strict reference resolvers', () => {
       expect(query).toContain('name: title');
       return { documents: { nodes: [{ id: OTHER_ID, name: 'Planning notes' }] } };
     });
-    await expect(resolveNamedEntityReference('key', 'document', 'Planning notes')).resolves.toEqual({
+    await expect(resolveLookup(namedEntityLookup('target', 'document', 'Planning notes'))).resolves.toEqual({
       id: OTHER_ID,
       name: 'Planning notes',
     });
   });
 
-  it('resolves document titles and UUIDs through exact read queries', async () => {
-    graphqlStub((query, variables) => query.includes('ResolveDocumentByTitle')
-      ? { documents: { nodes: [{ id: OTHER_ID, title: 'Planning notes' }] } }
-      : { document: { id: DOCUMENT_ID, title: 'Planning notes' } });
+  it('resolves document titles and UUIDs through shared named-entity lookups', async () => {
+    graphqlStub((query) => query.includes('ResolveNamedEntityByName')
+      ? { documents: { nodes: [{ id: OTHER_ID, name: 'Planning notes' }] } }
+      : { document: { id: DOCUMENT_ID, name: 'Planning notes' } });
 
-    await expect(resolveDocumentReference('key', 'Planning notes')).resolves.toEqual({
+    await expect(resolveLookup(namedEntityLookup('target', 'document', 'Planning notes'))).resolves.toEqual({
       id: OTHER_ID,
-      title: 'Planning notes',
+      name: 'Planning notes',
     });
-    await expect(resolveDocumentReference('key', DOCUMENT_ID)).resolves.toEqual({
+    await expect(resolveLookup(namedEntityLookup('target', 'document', DOCUMENT_ID))).resolves.toEqual({
       id: DOCUMENT_ID,
-      title: 'Planning notes',
+      name: 'Planning notes',
     });
   });
 
   it('fails closed for missing, ambiguous, and mismatched document references', async () => {
     graphqlStub((query, variables) => {
-      if (query.includes('ResolveDocumentById')) return { document: { id: OTHER_ID, title: 'Wrong' } };
-      if (variables.title === 'Missing') return { documents: { nodes: [] } };
-      if (variables.title === 'Duplicate') return { documents: { nodes: [
-        { id: DOCUMENT_ID, title: 'Duplicate' },
-        { id: OTHER_ID, title: 'Duplicate' },
+      if (query.includes('ResolveNamedEntityById')) return { document: { id: OTHER_ID, name: 'Wrong' } };
+      if (variables.name === 'Missing') return { documents: { nodes: [] } };
+      if (variables.name === 'Duplicate') return { documents: { nodes: [
+        { id: DOCUMENT_ID, name: 'Duplicate' },
+        { id: OTHER_ID, name: 'Duplicate' },
       ] } };
-      return { documents: { nodes: [{ id: DOCUMENT_ID, title: 'Fuzzy result' }] } };
+      return { documents: { nodes: [{ id: DOCUMENT_ID, name: 'Fuzzy result' }] } };
     });
 
-    await expect(resolveDocumentReference('key', 'Missing')).rejects.toThrow(
-      'Linear document "Missing" resolved to 0 results; expected exactly one.',
+    await expect(resolveLookup(namedEntityLookup('target', 'document', 'Missing'))).rejects.toThrow(
+      'Linear document "Missing" resolved to 0 matches; expected exactly one.',
     );
-    await expect(resolveDocumentReference('key', 'Duplicate')).rejects.toThrow(
-      'Linear document "Duplicate" resolved to 2 results; expected exactly one.',
+    await expect(resolveLookup(namedEntityLookup('target', 'document', 'Duplicate'))).rejects.toThrow(
+      'Linear document "Duplicate" resolved to 2 matches; expected exactly one.',
     );
-    await expect(resolveDocumentReference('key', 'Exact title')).rejects.toThrow(
-      'Linear document resolver returned mismatched title "Fuzzy result" for "Exact title".',
+    await expect(resolveLookup(namedEntityLookup('target', 'document', 'Exact title'))).rejects.toThrow(
+      'Linear document "Exact title" resolved to 0 matches; expected exactly one.',
     );
-    await expect(resolveDocumentReference('key', DOCUMENT_ID)).rejects.toThrow(
-      `Linear document resolver returned mismatched id "${OTHER_ID}" for "${DOCUMENT_ID}".`,
+    await expect(resolveLookup(namedEntityLookup('target', 'document', DOCUMENT_ID))).rejects.toThrow(
+      `Linear document resolver returned mismatched id for "${DOCUMENT_ID}".`,
     );
   });
 
@@ -578,7 +591,7 @@ describe('strict reference resolvers', () => {
     graphqlStub(() => ({
       projects: { nodes: [{ id: USER_ID, name: 'Platform' }, { id: OTHER_ID, name: 'Platform' }] },
     }));
-    await expect(resolveNamedEntityReference('key', 'project', 'Platform')).rejects.toThrow('2 matches');
+    await expect(resolveLookup(namedEntityLookup('target', 'project', 'Platform'))).rejects.toThrow('2 matches');
   });
 });
 

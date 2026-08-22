@@ -1,8 +1,4 @@
-import {
-	resolveIssueReference,
-	resolveNamedEntityReference,
-	type ResolvedIssue,
-} from "../client";
+import type { ResolvedIssue } from "../client";
 import {
 	parseResultView,
 	projection,

@@ -1,7 +1,4 @@
-import {
-	isLinearUrlSlug,
-	resolveIssueReference,
-} from "../client";
+import { isLinearUrlSlug } from "../client";
 import { namedEntityLookup, pureQueryPlan } from "../operation-plan";
 import { projection } from "../selections";
 import { p } from "../operation-types";

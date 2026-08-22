@@ -239,7 +239,7 @@ function updateIssuePlan(v: Record<string, unknown>): OperationPlan {
 	const parentRef = v.parent ?? input.parentId;
 	const userRef = v.assignee ?? input.assigneeId;
 	const stateNeedsTeam = typeof stateRef === "string" && stateRef.trim() !== "" && !isUuid(stateRef);
-	const needsIssue = stateNeedsTeam || Boolean(parentRef);
+	const needsIssue = Boolean(parentRef) || Boolean(stateRef && !teamRef);
 	return {
 		kind: "mutation",
 		lookups: [

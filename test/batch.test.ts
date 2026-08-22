@@ -13,6 +13,7 @@ isolateLinearCredentials();
 const ISSUE_A = '11111111-1111-4111-8111-111111111111';
 const ISSUE_B = '22222222-2222-4222-8222-222222222222';
 const TEAM_ID = '33333333-3333-4333-8333-333333333333';
+const FOREIGN_TEAM_ID = '88888888-8888-4888-8888-888888888888';
 const TOKEN = 'lin_api_secret123456789abcdef';
 const originalKey = process.env.LINEAR_API_KEY;
 const originalArtifactRoot = process.env.PI_ARTIFACT_PROJECT_ROOT;
@@ -783,6 +784,35 @@ describe('batch mutation phase', () => {
     expect(requests[0]!.query).not.toMatch(/mutation/);
     expect(result.details.errors).toEqual([]);
     expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
+  });
+
+  it('rejects a foreign-team state UUID before any batch mutation request', async () => {
+    const { requests } = graphqlStub((request) => {
+      if (request.query.includes('mutation')) throw new Error('Mutation request must not run.');
+      const data = lookupData(request.query);
+      for (const alias of aliases(request.query, 'workflowState')) {
+        data[alias] = { id: STATE_ID, name: 'Foreign', team: { id: FOREIGN_TEAM_ID } };
+      }
+      return { body: { data } };
+    });
+    const result = await execute({
+      operation: 'batch',
+      variables: {
+        mutations: [{
+          key: 'edit',
+          operation: 'update_issue',
+          variables: { issue: 'AEO-1', stateId: STATE_ID },
+        }],
+      },
+    });
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.query).not.toMatch(/mutation/);
+    expect(result.details.errors).toEqual([{
+      key: 'edit',
+      path: ['edit'],
+      message: `Linear state "${STATE_ID}" does not belong to team "${TEAM_ID}".`,
+    }]);
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 0 });
   });
 
   it('rejects two mutations and create-only transaction sets before network access', async () => {
