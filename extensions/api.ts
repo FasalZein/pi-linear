@@ -22,6 +22,7 @@ import {
   routeLinearResult,
   NODE_CAP,
   type JsonObject,
+  type TelemetryMode,
 } from './runtime';
 import { activeSecrets } from './active-secrets';
 import { redactDeep, redactError, withRedactedErrors } from './redact';
@@ -173,6 +174,12 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
   throw new Error(`Invalid help request. ${HELP_SHAPES}`);
 }
 
+function telemetryMode(value: unknown): TelemetryMode | undefined {
+  if (value === undefined) return undefined;
+  if (value === 'always') return value;
+  throw new Error('Invalid telemetry override. Use "always" or omit telemetry.');
+}
+
 function toolResult(details: JsonObject, secrets: readonly string[] = []) {
   const redacted = redactDeep(details, secrets);
   return { content: [{ type: 'text' as const, text: JSON.stringify(redacted) }], details: redacted };
@@ -220,10 +227,15 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
         ['inline', 'artifact'] as const,
         { description: 'Choose inline output or an artifact file.' },
       )),
+      telemetry: Type.Optional(StringEnum(
+        ['always'] as const,
+        { description: 'Explicitly include rate-limit diagnostics.' },
+      )),
     }),
     renderCall: renderLinearApiCall,
     renderResult: renderLinearApiResult,
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+      const explicitTelemetry = telemetryMode(params.telemetry);
       // Collected before any output path, including the help early return: an active key
       // in an unknown format is only removable as an exact value.
       const secrets: string[] = [...activeSecrets()];
@@ -234,7 +246,12 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
         }
         if (params.operation === 'batch' && !params.query) {
           return toolResult(await executeBatch(
-            { variables: params.variables, workspace: params.workspace, sink: params.sink },
+            {
+              variables: params.variables,
+              workspace: params.workspace,
+              sink: params.sink,
+              telemetryMode: explicitTelemetry,
+            },
             mode,
             ctx,
             signal,
@@ -250,7 +267,12 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
         if (request.named) {
           return toolResult(await executeOperation(
             request.operation,
-            { variables: params.variables ?? {}, workspace: params.workspace, sink: params.sink },
+            {
+              variables: params.variables ?? {},
+              workspace: params.workspace,
+              sink: params.sink,
+              telemetryMode: explicitTelemetry,
+            },
             mode,
             ctx,
             signal,
@@ -271,6 +293,7 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
           secrets,
           errors,
           telemetry: linearRateLimitTelemetry(data),
+          telemetryMode: explicitTelemetry,
         }), secrets);
       }, secrets);
     },

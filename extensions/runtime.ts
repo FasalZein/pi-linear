@@ -118,8 +118,12 @@ type ArtifactResult = {
 type RouteCategory = Exclude<ResultCategory, 'local'> | 'composite' | 'batch';
 
 type RateLimitScope = 'requests' | 'endpoint' | 'complexity';
+export type TelemetryMode = 'always';
 
-function rateLimitWarning(snapshots: readonly LinearRateLimitSnapshot[]): ResultMeta['rateLimit'] | undefined {
+function rateLimitDetails(
+  snapshots: readonly LinearRateLimitSnapshot[],
+  mode?: TelemetryMode,
+): ResultMeta['rateLimit'] | undefined {
   const scopes = new Set<RateLimitScope>();
   for (const { headers } of snapshots) {
     const requests = headers['X-RateLimit-Requests-Remaining'];
@@ -132,7 +136,7 @@ function rateLimitWarning(snapshots: readonly LinearRateLimitSnapshot[]): Result
       scopes.add('complexity');
     }
   }
-  if (!scopes.size) return undefined;
+  if (!scopes.size && mode !== 'always') return undefined;
   return {
     scopes: [...scopes],
     retryAttempts: snapshots.filter(({ attempt }) => attempt > 1).length,
@@ -171,11 +175,16 @@ export async function routeLinearEnvelope<T extends JsonObject>(
     sink?: 'inline' | 'artifact';
     secrets?: readonly string[];
     telemetry?: readonly LinearRateLimitSnapshot[];
+    telemetryMode?: TelemetryMode;
   },
 ): Promise<T | ArtifactResult> {
   // Redact before anything is measured, serialized, indexed, written, or returned.
   const envelope = redactDeep(rawEnvelope, options.secrets ?? []) as T;
-  const warning = rateLimitWarning(options.telemetry ?? currentLinearRateLimitTelemetry());
+  const telemetry = redactDeep(
+    options.telemetry ?? currentLinearRateLimitTelemetry(),
+    options.secrets ?? [],
+  ) as LinearRateLimitSnapshot[];
+  const warning = rateLimitDetails(telemetry, options.telemetryMode);
   const existingMeta = envelope.meta;
   if (!existingMeta || typeof existingMeta !== 'object' || Array.isArray(existingMeta)) {
     throw new Error(`Linear ${options.label} result envelope is missing metadata.`);
@@ -264,6 +273,7 @@ export async function routeLinearResult<T extends JsonObject>(
     view?: ResultView;
     resolution?: JsonObject;
     telemetry?: readonly LinearRateLimitSnapshot[];
+    telemetryMode?: TelemetryMode;
   },
 ): Promise<RoutedEnvelope<T> | ArtifactResult> {
   return routeLinearEnvelope({
@@ -288,6 +298,7 @@ export type OperationRunOptions = {
   variables: Record<string, unknown>;
   workspace?: string;
   sink?: 'inline' | 'artifact';
+  telemetryMode?: TelemetryMode;
 };
 
 export function assertOperationAllowed(
@@ -494,6 +505,7 @@ async function executeOperationWithTelemetry(
       errors,
       view: prepared.resultView,
       resolution: prepared.resolution,
+      telemetryMode: options.telemetryMode,
     });
   }, secrets);
 }

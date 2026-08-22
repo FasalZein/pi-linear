@@ -130,10 +130,10 @@ describe('batch help and catalog', () => {
     }
   });
 
-  it('publishes batch in the linear tool description without changing the TypeBox parameters', () => {
+  it('publishes batch and the loader-only telemetry override', () => {
     const tool = linearApiTool() as any;
     expect(tool.description).toContain('batch: Batch independent reads with read-only operations, or use explicit phases for one ordinary mutation, grouped issue creates, or one guarded relation delete.');
-    expect(Object.keys(tool.parameters.properties).sort()).toEqual(['operation', 'query', 'sink', 'variables', 'workspace']);
+    expect(Object.keys(tool.parameters.properties).sort()).toEqual(['operation', 'query', 'sink', 'telemetry', 'variables', 'workspace']);
   });
 });
 

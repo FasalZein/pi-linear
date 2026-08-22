@@ -43,6 +43,7 @@ import {
   routeLinearEnvelope,
   validateMutationResult,
   type JsonObject,
+  type TelemetryMode,
 } from './runtime';
 import { assertMutationAllowed, type MutationMode } from './safety';
 import { projection } from './selections';
@@ -800,6 +801,7 @@ async function envelope(
   aliases: number,
   sink: 'inline' | 'artifact' | undefined,
   secrets: readonly string[],
+  telemetryMode?: TelemetryMode,
 ): Promise<JsonObject> {
   const errors = consolidateBatchErrors(rawErrors);
   assertBatchAccounting(requestedKeys, data, errors, skipped);
@@ -808,7 +810,7 @@ async function envelope(
     errors,
     skipped,
     meta: { requests, aliases, truncations: [], stringsClipped: 0 },
-  }, { label: 'batch', category: 'batch', sink, secrets });
+  }, { label: 'batch', category: 'batch', sink, secrets, telemetryMode });
 }
 
 function failTransaction(keys: readonly string[], message: string): BatchError[] {
@@ -945,7 +947,7 @@ function applyIndependentLookups(
 }
 
 async function executeBatchWithTelemetry(
-  params: { variables?: Record<string, unknown>; workspace?: string; sink?: 'inline' | 'artifact' },
+  params: { variables?: Record<string, unknown>; workspace?: string; sink?: 'inline' | 'artifact'; telemetryMode?: TelemetryMode },
   mode: MutationMode,
   ctx: ExtensionContext,
   signal: AbortSignal | undefined,
@@ -1048,6 +1050,7 @@ async function executeBatchWithTelemetry(
       aliasCount,
       params.sink,
       secrets,
+      params.telemetryMode,
     );
   }
 
@@ -1079,6 +1082,7 @@ async function executeBatchWithTelemetry(
       aliasCount,
       params.sink,
       secrets,
+      params.telemetryMode,
     );
   }
 
@@ -1120,11 +1124,12 @@ async function executeBatchWithTelemetry(
     aliasCount,
     params.sink,
     secrets,
+    params.telemetryMode,
   );
 }
 
 export async function executeBatch(
-  params: { variables?: Record<string, unknown>; workspace?: string; sink?: 'inline' | 'artifact' },
+  params: { variables?: Record<string, unknown>; workspace?: string; sink?: 'inline' | 'artifact'; telemetryMode?: TelemetryMode },
   mode: MutationMode,
   ctx: ExtensionContext,
   signal: AbortSignal | undefined,
