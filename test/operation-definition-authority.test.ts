@@ -82,6 +82,14 @@ describe('v0.6 operation definition authority', () => {
     }
   });
 
+  it('authors the guarded delete safety class and keeps every other named operation non-destructive', () => {
+    expect(Object.fromEntries(operationDefinitions.map(({ name, safety }) => [name, safety.namedInputPolicy])))
+      .toEqual(Object.fromEntries(CANONICAL_NAMES.map((name) => [
+        name,
+        name === 'delete_issue_relation' ? 'guarded-destructive' : 'non-destructive',
+      ])));
+  });
+
   it('owns all compatibility aliases and projects the exact public catalog shape', () => {
     expect(Object.fromEntries(operationDefinitions.flatMap((definition) =>
       definition.compatibility.operationAliases.map((alias) => [alias, definition.name]),

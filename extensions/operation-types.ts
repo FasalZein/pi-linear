@@ -50,6 +50,7 @@ export type ExactNamedCheck = {
 	kind: "project" | "cycle" | "document";
 };
 export type ResultCategory = "singular" | "collection" | "local";
+export type NamedInputPolicy = "non-destructive" | "guarded-destructive";
 export type OperationPreparation = {
 	variables: Record<string, unknown>;
 	resolution?: Record<string, unknown>;
@@ -107,6 +108,8 @@ export type PaginationMetadata = {
 export type LinearOperation = {
 	name: string;
 	resultCategory: ResultCategory;
+	/** Safety class for named input. Ordinary operations use the default non-destructive class. */
+	namedInputPolicy?: NamedInputPolicy;
 	canonical: CanonicalOperation;
 	aliases: readonly string[];
 	domain: OperationDomain;
@@ -212,7 +215,7 @@ export type OperationDefinition = {
 		batchPrepare?: LinearOperation["batchPrepare"];
 	};
 	safety: {
-		namedInputPolicy: "non-destructive";
+		namedInputPolicy: NamedInputPolicy;
 		mutation: boolean;
 	};
 	result: {

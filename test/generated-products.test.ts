@@ -121,6 +121,12 @@ describe('generated products', () => {
       'toolName: `linear_drift_${operation.name}`',
     ],
     [
+      'authored safety class',
+      'extensions/operations/relations.ts',
+      'namedInputPolicy: "guarded-destructive",',
+      'namedInputPolicy: "non-destructive",',
+    ],
+    [
       'typed tool description',
       'extensions/typed-tool-metadata.ts',
       'Equivalent to linear',
@@ -170,6 +176,14 @@ describe('generated products', () => {
       expect(generated.get(operationName), runtime.name).toEqual(metadata);
     }
     expect(generated).toHaveLength(49);
+  });
+
+  it('projects only the guarded relation delete as destructive', () => {
+    expect(contracts.map(({ name, safety }) => ({ name, policy: safety.namedInputPolicy })))
+      .toEqual(operationDefinitions.map(({ name }) => ({
+        name,
+        policy: name === 'delete_issue_relation' ? 'guarded-destructive' : 'non-destructive',
+      })));
   });
 
   it('keeps every help-labeled generated projection canonical and compatibility explicit', () => {
@@ -308,6 +322,9 @@ describe('generated products', () => {
     expect(readme).toContain('The guarded `linear_delete_issue_relation` tool is the only delete tool.');
     expect(readme).not.toContain('Delete, archive, and unarchive tools do not exist.');
     expect(reference).toContain('49 inactive typed tools');
+    expect(reference).toContain(`does not duplicate ${manifest.lazyTools.length} full schemas`);
+    expect(changelog).toContain('By default, results show compact `meta.rateLimit` details only near exhaustion.');
+    expect(changelog).toContain('Loader calls with top-level `telemetry: "always"` are the explicit diagnostic exception.');
     expect(published).not.toMatch(/\bTTL\b/i);
     expect(published).not.toMatch(/registers? (?:a )?typed `linear_get_result`/i);
     expect(published).not.toContain('linear-auditor.md');

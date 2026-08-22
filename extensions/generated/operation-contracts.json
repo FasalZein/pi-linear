@@ -7172,7 +7172,7 @@
       "resolverPaths": {}
     },
     "safety": {
-      "namedInputPolicy": "non-destructive",
+      "namedInputPolicy": "guarded-destructive",
       "mutation": true
     },
     "canonical": {
