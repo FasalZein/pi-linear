@@ -308,6 +308,7 @@ export function linearCallContext(
 export async function networkExecutionContext(
   call: LinearCallContext,
   transport: LinearTransport = fetch,
+  telemetry: LinearRateLimitSnapshot[] = [],
 ): Promise<LinearNetworkContext> {
   const credential = await resolveApiKey(call.pi, { workspace: call.workspace });
   if (!credential.apiKey || credential.source === 'none') {
@@ -316,7 +317,7 @@ export async function networkExecutionContext(
   return {
     credential: { apiKey: credential.apiKey, source: credential.source },
     transport,
-    telemetry: [],
+    telemetry,
     signal: call.signal,
   };
 }

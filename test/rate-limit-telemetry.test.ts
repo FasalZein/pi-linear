@@ -397,6 +397,55 @@ describe('model-facing budget warnings', () => {
     ]);
   });
 
+  it('preserves successful read telemetry when the batch mutation transport throws', async () => {
+    process.env.LINEAR_API_KEY = 'test-key';
+    const issue = { id: '11111111-1111-4111-8111-111111111111', identifier: 'AEO-370', title: 'Telemetry' };
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(response(200, { data: { read: issue } }, {
+        'X-RateLimit-Endpoint-Name': 'batch-read',
+      }))
+      .mockRejectedValueOnce(new Error('mutation transport failed'));
+    vi.stubGlobal('fetch', fetch);
+
+    const error = await (linearApiTool() as any).execute('call-1', {
+      operation: 'batch',
+      variables: {
+        reads: [{ key: 'read', operation: 'get_issue', variables: { issue: issue.id } }],
+        mutations: [{ key: 'change', operation: 'update_issue', variables: { issue: issue.id, title: 'Updated' } }],
+      },
+    }, undefined, undefined, { hasUI: false }).catch((failure: unknown) => failure);
+
+    expect(linearErrorTelemetry(error)).toEqual([
+      { phase: 'read', attempt: 1, headers: { 'X-RateLimit-Endpoint-Name': 'batch-read' } },
+    ]);
+  });
+
+  it('preserves read and mutation response telemetry when mutation GraphQL checking throws', async () => {
+    process.env.LINEAR_API_KEY = 'test-key';
+    const issue = { id: '11111111-1111-4111-8111-111111111111', identifier: 'AEO-370', title: 'Telemetry' };
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(response(200, { data: { read: issue } }, {
+        'X-RateLimit-Endpoint-Name': 'batch-read',
+      }))
+      .mockResolvedValueOnce(response(200, { errors: [{ message: 'mutation failed' }] }, {
+        'X-RateLimit-Endpoint-Name': 'batch-mutation',
+      }));
+    vi.stubGlobal('fetch', fetch);
+
+    const error = await (linearApiTool() as any).execute('call-1', {
+      operation: 'batch',
+      variables: {
+        reads: [{ key: 'read', operation: 'get_issue', variables: { issue: issue.id } }],
+        mutations: [{ key: 'change', operation: 'update_issue', variables: { issue: issue.id, title: 'Updated' } }],
+      },
+    }, undefined, undefined, { hasUI: false }).catch((failure: unknown) => failure);
+
+    expect(linearErrorTelemetry(error)).toEqual([
+      { phase: 'read', attempt: 1, headers: { 'X-RateLimit-Endpoint-Name': 'batch-read' } },
+      { phase: 'mutation', attempt: 1, headers: { 'X-RateLimit-Endpoint-Name': 'batch-mutation' } },
+    ]);
+  });
+
   it('supports explicit telemetry on named operations without passing the loader field to variables', async () => {
     process.env.LINEAR_API_KEY = 'test-key';
     const fetch = vi.fn(async (_url: string, init: RequestInit) => response(200, {

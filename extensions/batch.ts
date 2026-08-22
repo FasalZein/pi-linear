@@ -16,6 +16,7 @@ import {
   linearGraphQLErrors,
   requireIssueReference,
   withLinearGraphQL,
+  withLinearRateLimitTelemetry,
   type LinearRateLimitSnapshot,
 } from './client';
 import {
@@ -953,6 +954,7 @@ async function executeBatchWithTelemetry(
   mode: MutationMode,
   ctx: ExtensionContext,
   signal: AbortSignal | undefined,
+  telemetry: LinearRateLimitSnapshot[],
 ): Promise<JsonObject> {
   const parsed = parseEntries(params.variables ?? {});
   const createFlags = parsed.mutations.map((entry) => isIssueCreateEntry(entry));
@@ -999,7 +1001,7 @@ async function executeBatchWithTelemetry(
   }
 
   const call = linearCallContext(mode, signal, ctx, params);
-  const network = await networkExecutionContext(call);
+  const network = await networkExecutionContext(call, fetch, telemetry);
   const apiKey = network.credential.apiKey;
   const secrets = [...activeSecrets(), apiKey];
   const requestedKeys = [...reads, ...mutations].map(({ key }) => key);
@@ -1138,5 +1140,7 @@ export async function executeBatch(
   ctx: ExtensionContext,
   signal: AbortSignal | undefined,
 ): Promise<JsonObject> {
-  return executeBatchWithTelemetry(params, mode, ctx, signal);
+  const telemetry: LinearRateLimitSnapshot[] = [];
+  return withLinearRateLimitTelemetry(telemetry, () =>
+    executeBatchWithTelemetry(params, mode, ctx, signal, telemetry));
 }
