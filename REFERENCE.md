@@ -96,7 +96,11 @@ Accepted domains are `issues`, `comments`, `users`, `teams`, `projects`, `cycles
 ```
 
 ```json
-{ "operation": "batch", "variables": { "reads": [{ "key": "one", "operation": "get_issue", "variables": { "issue": "AEO-258" } }], "mutations": [{ "key": "remove", "operation": "delete_issue_relation", "variables": { "relationId": "33333333-3333-4333-8333-333333333333", "issueId": "11111111-1111-4111-8111-111111111111", "relatedIssueId": "22222222-2222-4222-8222-222222222222", "type": "related" } }] } }
+{ "operation": "batch", "variables": { "operations": [{ "operation": "get_issue", "variables": { "issue": "AEO-258" } }] } }
+```
+
+```json
+{ "operation": "batch", "variables": { "reads": [{ "operation": "get_issue", "variables": { "issue": "AEO-258" } }], "mutations": [{ "operation": "delete_issue_relation", "variables": { "relationId": "33333333-3333-4333-8333-333333333333", "issueId": "11111111-1111-4111-8111-111111111111", "relatedIssueId": "22222222-2222-4222-8222-222222222222", "type": "related" } }] } }
 ```
 
 ```json

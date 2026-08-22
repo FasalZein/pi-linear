@@ -235,6 +235,37 @@ describe('delete_issue_relation strict guarded delete', () => {
     expect([...Object.keys(result.details.data), ...result.details.skipped]).toEqual(['read', 'remove']);
   });
 
+  it('assigns a mutation key that avoids a reserved guarded-read name', async () => {
+    const reserved = '_lookup_delete_issue_relation_issueRelation';
+    const requests: Array<{ query: string }> = [];
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const request = JSON.parse(String(init.body));
+      requests.push(request);
+      if (request.query.includes('BatchRead')) return response({ data: {
+        [reserved]: { id: ISSUE, identifier: 'AEO-1', title: 'Read' },
+        _lookup_delete_issue_relation_2_issueRelation: { id: RELATION, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: RELATED } },
+      } }, { 'X-RateLimit-Requests-Remaining': '1' });
+      return response({ data: { delete_issue_relation_2: { success: true } } }, { 'X-RateLimit-Complexity-Remaining': '1' });
+    });
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = SECRET;
+    const result = await execute({
+      operation: 'batch',
+      variables: {
+        reads: [{ key: reserved, operation: 'get_issue', variables: { issue: ISSUE } }],
+        mutations: [{ operation: 'delete_issue_relation', variables }],
+      },
+    });
+    expect(requests).toHaveLength(2);
+    expect(requests[0]!.query).toContain('_lookup_delete_issue_relation_2_issueRelation: issueRelation');
+    expect(requests[1]!.query).toContain('delete_issue_relation_2: issueRelationDelete');
+    expect(Object.keys(result.details.data)).toEqual([reserved, 'delete_issue_relation_2']);
+    expect(result.details.meta.rateLimit.responses).toEqual([
+      { phase: 'read', attempt: 1, 'X-RateLimit-Requests-Remaining': 1 },
+      { phase: 'mutation', attempt: 1, 'X-RateLimit-Complexity-Remaining': 1 },
+    ]);
+  });
+
   it.each([
     ['absent', null],
     ['wrong relation', { id: ISSUE, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: RELATED } }],
