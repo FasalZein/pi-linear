@@ -177,6 +177,7 @@ export type LinearGraphQLPathError = {
 };
 
 const LINEAR_GRAPHQL_ERRORS = Symbol('linearGraphQLErrors');
+const LINEAR_GRAPHQL_RESPONSE_FAILURE = Symbol('linearGraphQLResponseFailure');
 const LINEAR_RATE_LIMIT_TELEMETRY = Symbol('linearRateLimitTelemetry');
 
 export type LinearRateLimitHeaders = Partial<{
@@ -227,6 +228,11 @@ export function linearGraphQLErrors(data: unknown): readonly LinearGraphQLPathEr
   return (data as { [LINEAR_GRAPHQL_ERRORS]?: readonly LinearGraphQLPathError[] })[LINEAR_GRAPHQL_ERRORS] ?? [];
 }
 
+export function isLinearGraphQLResponseFailure(error: unknown): error is Error {
+  return error instanceof Error
+    && Boolean((error as Error & { [LINEAR_GRAPHQL_RESPONSE_FAILURE]?: true })[LINEAR_GRAPHQL_RESPONSE_FAILURE]);
+}
+
 function errorPath(error: GraphQLErrorBody): ReadonlyArray<string | number> | undefined {
   const path = error.path;
   if (!Array.isArray(path) || path.length === 0) return undefined;
@@ -234,14 +240,16 @@ function errorPath(error: GraphQLErrorBody): ReadonlyArray<string | number> | un
   return path;
 }
 
+function responseGraphQLErrors(errors: GraphQLErrorBody[], apiKey: string): LinearGraphQLPathError[] {
+  return errors.map((error) => ({
+    path: errorPath(error) ?? [],
+    message: redactText(errorText(error), [apiKey]),
+  }));
+}
+
 function scopedPathErrors(errors: GraphQLErrorBody[], apiKey: string): LinearGraphQLPathError[] | undefined {
-  const scoped: LinearGraphQLPathError[] = [];
-  for (const error of errors) {
-    const path = errorPath(error);
-    if (!path) return undefined;
-    scoped.push({ path, message: redactText(errorText(error), [apiKey]) });
-  }
-  return scoped;
+  const scoped = responseGraphQLErrors(errors, apiKey);
+  return scoped.every((error) => error.path.length > 0) ? scoped : undefined;
 }
 
 function hasUsableRoot(data: object, errors: readonly LinearGraphQLPathError[]): boolean {
@@ -475,13 +483,16 @@ export async function linearGraphQLWithContext<TData>(
     const data = body.data;
     if (data && typeof data === 'object') {
       const scoped = scopedPathErrors(body.errors, apiKey);
-      if (scoped && (hasUsableRoot(data, scoped) || options?.preserveUnusableRoot)) {
-        Object.defineProperty(data, LINEAR_GRAPHQL_ERRORS, { value: scoped });
+      if ((scoped && hasUsableRoot(data, scoped)) || options?.preserveUnusableRoot) {
+        Object.defineProperty(data, LINEAR_GRAPHQL_ERRORS, {
+          value: scoped ?? responseGraphQLErrors(body.errors, apiKey),
+        });
         attachTelemetry(data, snapshots, LINEAR_RATE_LIMIT_TELEMETRY);
         return data;
       }
     }
     const failure = new Error(`Linear GraphQL error: ${detail}`);
+    Object.defineProperty(failure, LINEAR_GRAPHQL_RESPONSE_FAILURE, { value: true });
     attachTelemetry(failure, snapshots, 'linearTelemetry');
     throw failure;
   }

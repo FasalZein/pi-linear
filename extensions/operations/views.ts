@@ -152,7 +152,7 @@ export const views: readonly OperationDefinition[] = ([
 				finish(resolved) {
 					const team = resolved.team as { id: string; key: string } | undefined;
 					if (team) input.teamId = team.id;
-					return { variables: { input }, resolution: team ? { team: { requested: teamRef, resolvedId: team.id, key: team.key } } : undefined };
+					return { variables: { input } };
 				},
 			};
 		},

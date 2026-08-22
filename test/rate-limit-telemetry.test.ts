@@ -449,7 +449,7 @@ describe('model-facing budget warnings', () => {
     ]);
   });
 
-  it('preserves read and mutation response telemetry when mutation GraphQL checking throws', async () => {
+  it('preserves read and mutation response telemetry when a mutation GraphQL error is classified', async () => {
     process.env.LINEAR_API_KEY = 'test-key';
     const issue = { id: '11111111-1111-4111-8111-111111111111', identifier: 'AEO-370', title: 'Telemetry' };
     const fetch = vi.fn()
@@ -461,17 +461,24 @@ describe('model-facing budget warnings', () => {
       }));
     vi.stubGlobal('fetch', fetch);
 
-    const error = await (linearApiTool() as any).execute('call-1', {
+    const result = await (linearApiTool() as any).execute('call-1', {
       operation: 'batch',
+      telemetry: 'always',
       variables: {
         reads: [{ key: 'read', operation: 'get_issue', variables: { issue: issue.id } }],
         mutations: [{ key: 'change', operation: 'update_issue', variables: { issue: issue.id, title: 'Updated' } }],
       },
-    }, undefined, undefined, { hasUI: false }).catch((failure: unknown) => failure);
+    }, undefined, undefined, { hasUI: false });
 
-    expect(linearErrorTelemetry(error)).toEqual([
-      { phase: 'read', attempt: 1, headers: { 'X-RateLimit-Endpoint-Name': 'batch-read' } },
-      { phase: 'mutation', attempt: 1, headers: { 'X-RateLimit-Endpoint-Name': 'batch-mutation' } },
+    expect(result.details).toMatchObject({
+      data: { read: { issue } },
+      errors: [{ key: 'change', path: ['change'], message: 'Linear GraphQL error: mutation failed' }],
+      skipped: [],
+      meta: { requests: { read: 1, mutation: 1 } },
+    });
+    expect(result.details.meta.rateLimit.responses).toEqual([
+      { phase: 'read', attempt: 1, 'X-RateLimit-Endpoint-Name': 'batch-read' },
+      { phase: 'mutation', attempt: 1, 'X-RateLimit-Endpoint-Name': 'batch-mutation' },
     ]);
   });
 

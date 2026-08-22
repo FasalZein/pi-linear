@@ -186,11 +186,13 @@ async function runAuthenticatedSmoke(apiKey: string): Promise<JsonObject> {
   const listResults = new Map<string, { nodes: unknown[]; root: string }>();
   let followedCursors = 0;
   for (const operation of zeroArgumentReads()) {
-    const zeroArgumentResult = await executeTool(compatibility, { operation: operation.name, variables: {}, sink: 'inline' });
-    assertNoCredentialLeak(zeroArgumentResult, apiKey);
+    // zeroArgumentReads() proves the catalog accepts no domain input.
+    // Bound the live probe so explicit inline routing stays below Pi's output limit.
+    const boundedResult = await executeTool(compatibility, { operation: operation.name, variables: { first: 1 }, sink: 'inline' });
+    assertNoCredentialLeak(boundedResult, apiKey);
     const root = rootName(operation);
-    if (!(root in data(zeroArgumentResult.details))) throw new Error(`smoke.runtime: ${operation.name} root is missing`);
-    const result = await executeTool(compatibility, { operation: operation.name, variables: { first: 1 }, sink: 'inline' });
+    if (!(root in data(boundedResult.details))) throw new Error(`smoke.runtime: ${operation.name} root is missing`);
+    const result = boundedResult;
     assertNoCredentialLeak(result, apiKey);
     const page = connection(result.details, root);
     listResults.set(operation.name, { nodes: page.nodes, root });

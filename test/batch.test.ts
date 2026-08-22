@@ -40,6 +40,10 @@ function execute(params: Record<string, unknown>, mode: MutationMode = 'allowlis
   return (linearApiTool(mode) as any).execute('call-1', params, undefined, undefined, { hasUI: false });
 }
 
+function executeWithSignal(params: Record<string, unknown>, signal: AbortSignal, mode: MutationMode = 'allowlist') {
+  return (linearApiTool(mode) as any).execute('call-1', params, signal, undefined, { hasUI: false });
+}
+
 function batch(reads: unknown[], extra: Record<string, unknown> = {}) {
   return execute({ operation: 'batch', variables: { reads, ...extra } });
 }
@@ -543,6 +547,19 @@ describe('pure mutation operation plans', () => {
     expect(fetch).not.toHaveBeenCalled();
     expect(timer).not.toHaveBeenCalled();
   });
+
+  it('keeps the direct create_view result free of resolver metadata', async () => {
+    const { requests } = graphqlStub((request) => request.query.includes('customViewCreate')
+      ? { body: { data: { customViewCreate: { success: true, customView: { id: 'view-id', name: 'Mine' } } } } }
+      : { body: { data: { teams: { nodes: [{ id: TEAM_ID, key: 'AEO' }] } } } });
+    const result = await execute({
+      operation: 'create_view',
+      variables: { name: 'Mine', team: 'AEO', filterData: {} },
+    });
+    expect(requests).toHaveLength(2);
+    expect(result.details.data.customViewCreate.customView).toMatchObject({ id: 'view-id', name: 'Mine' });
+    expect(result.details).not.toHaveProperty('resolution');
+  });
 });
 
 describe('batch mutation phase', () => {
@@ -771,6 +788,46 @@ describe('batch mutation phase', () => {
     ]);
     expect(result.details.skipped).toEqual([]);
     expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
+  });
+
+  it('attributes a pathless GraphQL response error to the one ordinary mutation', async () => {
+    const { requests } = graphqlStub((request) => request.query.includes('issueUpdate')
+      ? {
+          body: {
+            errors: [{ message: `denied ${TOKEN}` }],
+          },
+        }
+      : { body: { data: { one: issueNode(ISSUE_A, 'AEO-1') } } });
+    const result = await execute({
+      operation: 'batch',
+      variables: {
+        reads: [{ key: 'one', operation: 'get_issue', variables: { issue: 'AEO-1' } }],
+        mutations: [mutationEntry()],
+      },
+    });
+    expect(requests).toHaveLength(2);
+    expect(result.details).toMatchObject({
+      data: { one: { issue: issueNode(ISSUE_A, 'AEO-1') } },
+      errors: [{ key: 'edit', path: ['edit'], message: 'Linear GraphQL error: denied [REDACTED]' }],
+      skipped: [],
+      meta: { requests: { read: 1, mutation: 1 } },
+    });
+    expect(JSON.stringify(result.details)).not.toContain(TOKEN);
+  });
+
+  it('does not classify cancellation as an ordinary mutation failure', async () => {
+    const controller = new AbortController();
+    const fetch = vi.fn(async () => {
+      controller.abort();
+      throw new Error('cancelled transport');
+    });
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = TOKEN;
+    await expect(executeWithSignal({
+      operation: 'batch',
+      variables: { mutations: [mutationEntry()] },
+    }, controller.signal)).rejects.toThrow(/cancelled|network/i);
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it('preserves mutation transport failures', async () => {
