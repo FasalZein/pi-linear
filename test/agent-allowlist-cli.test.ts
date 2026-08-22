@@ -58,7 +58,9 @@ describe('bound Linear agent allowlist package scripts', () => {
     expect(synced).toContain('Help is local and makes no Linear network request.');
     expect(synced).toContain('call that typed tool with only its declared direct parameters');
     expect(synced).toContain('Never send loader fields');
-    expect(synced).toContain('A batch entry is exactly `{ key, operation, variables }`');
+    expect(synced).toContain('For independent reads, prefer');
+    expect(synced).toContain('Use explicit `reads` and `mutations` phases only when mutations exist.');
+    expect(synced).toContain('Do not invent keys; the runtime assigns stable keys when absent.');
     expect(synced).toContain('Do not guess parameter names or nested `input` shapes.');
     expect(synced).toContain('Use `get_result` through the loader for lossless recovery');
     expect(synced).toContain('Continue through pages only until the requested result is complete.');

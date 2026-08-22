@@ -240,7 +240,7 @@ describe('generated products', () => {
     expect(published.filter(({ name }) => name !== 'batch' && name !== 'get_result')).toEqual(expected);
     expect(published).toContainEqual({
       name: 'batch',
-      purpose: 'Carry independent reads and optionally one guarded issue-relation delete in two phases.',
+      purpose: 'Batch independent reads with read-only operations, or use explicit phases for one ordinary mutation, grouped issue creates, or one guarded relation delete.',
     });
     expect(published).toContainEqual({
       name: 'get_result',
@@ -304,6 +304,7 @@ describe('generated products', () => {
     ]) expect(published).toContain(claim);
     expect(readme).toContain('50 tool surfaces');
     expect(readme).toContain('published across all 49 tools');
+    expect(readme).toContain(`generated ${manifest.allowedTools.length} Linear tool names`);
     expect(readme).toContain('The guarded `linear_delete_issue_relation` tool is the only delete tool.');
     expect(readme).not.toContain('Delete, archive, and unarchive tools do not exist.');
     expect(reference).toContain('49 inactive typed tools');
@@ -331,7 +332,7 @@ describe('generated products', () => {
       'collection uses the disclosed `summary` result view',
       'Exact issue identifiers, UUIDs',
       'Mutations follow in a second phase.',
-      'Each requested key appears exactly once',
+      'Each effective key appears exactly once',
       'not GraphQL complexity or response payload size',
     ]) expect(adr).toContain(claim);
     for (const measurement of [

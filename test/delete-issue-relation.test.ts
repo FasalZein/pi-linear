@@ -236,6 +236,48 @@ describe('delete_issue_relation strict guarded delete', () => {
   });
 
   it.each([
+    ['two', ['_lookup_delete_issue_relation_issueRelation', '_lookup_delete_issue_relation_2_issueRelation']],
+    ['three', ['_lookup_delete_issue_relation_issueRelation', '_lookup_delete_issue_relation_2_issueRelation', '_lookup_delete_issue_relation_3_issueRelation']],
+  ])('monotonically allocates past %s consecutive guarded-read aliases', async (_count, reserved) => {
+    const reservedCount = reserved.length;
+    const effectiveMutationKey = `delete_issue_relation_${reservedCount + 1}`;
+    const effectiveLookupKey = `_lookup_${effectiveMutationKey}_issueRelation`;
+    const requests: Array<{ query: string }> = [];
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const request = JSON.parse(String(init.body));
+      requests.push(request);
+      if (request.query.includes('BatchRead')) return response({ data: {
+        ...Object.fromEntries(reserved.map((key, index) => [key, { id: index ? RELATED : ISSUE, identifier: `AEO-${index + 1}`, title: 'Read' }])),
+        [effectiveLookupKey]: { id: RELATION, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: RELATED } },
+      } });
+      return response({ data: { [effectiveMutationKey]: { success: true } } });
+    });
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = SECRET;
+    const result = await execute({
+      operation: 'batch',
+      variables: {
+        reads: reserved.map((key, index) => ({ key, operation: 'get_issue', variables: { issue: index ? RELATED : ISSUE } })),
+        mutations: [{ operation: 'delete_issue_relation', variables }],
+      },
+    });
+    const accounted = [
+      ...Object.keys(result.details.data),
+      ...result.details.errors.map((error: { key: string }) => error.key),
+      ...result.details.skipped,
+    ];
+    expect(requests).toHaveLength(2);
+    expect(requests[0]!.query).toContain(`${effectiveLookupKey}: issueRelation`);
+    expect(requests[1]!.query).toContain(`${effectiveMutationKey}: issueRelationDelete`);
+    expect(Object.keys(result.details.data)).toEqual([...reserved, effectiveMutationKey]);
+    expect(new Set(accounted).size).toBe(reservedCount + 1);
+    expect(accounted).toEqual([...reserved, effectiveMutationKey]);
+    expect(result.details.errors).toEqual([]);
+    expect(result.details.skipped).toEqual([]);
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
+  });
+
+  it.each([
     ['absent', null],
     ['wrong relation', { id: ISSUE, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: RELATED } }],
     ['wrong source', { id: RELATION, type: 'related', issue: { id: RELATED }, relatedIssue: { id: RELATED } }],

@@ -37,12 +37,12 @@ A request for the domain names, for one domain's operation signatures, or for on
 _Avoid_: Catalog search, natural-language query
 
 **Batch request**:
-One operation request that groups independent entries for one workspace. It has a read phase and a mutation phase.
+One operation request that groups independent entries for one workspace. Read-only requests can use one `operations` list. Requests with mutations use explicit read and mutation phases.
 _Avoid_: Tool-call merge, workflow
 
 **Batch entry**:
-One independent operation in a batch request. A unique key identifies its result.
-_Avoid_: Step, dependent operation
+One independent operation in a batch request. Its effective key identifies its result. A caller label is optional because the runtime assigns a stable key when absent.
+_Avoid_: Step, dependent operation, GraphQL alias
 
 **Read phase**:
 The batch entries that read data. The extension completes this phase before the mutation phase.

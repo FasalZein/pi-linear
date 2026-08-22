@@ -8,7 +8,8 @@ export const LINEAR_AGENT_TOOL_SURFACE = `${LINEAR_AGENT_TOOL_SURFACE_START}
 - Before the first use of an unfamiliar named operation, call loader help: \`{ "operation": "help", "variables": { "operation": "<name>" } }\`. Help is local and makes no Linear network request.
 - Help activates the matching typed tool. Then call that typed tool with only its declared direct parameters.
 - Never send loader fields (\`operation\`, \`query\`, \`variables\`, \`workspace\`, or \`sink\`) to a typed tool unless its schema declares a same-named business parameter.
-- Use wrapper envelopes only with the \`linear\` loader. A batch entry is exactly \`{ key, operation, variables }\`. Each key must be a valid unique GraphQL alias.
+- Use wrapper envelopes only with the \`linear\` loader. For independent reads, prefer \`{ "operation": "batch", "variables": { "operations": [{ "operation": "<name>", "variables": { ... } }] } }\`.
+- Use explicit \`reads\` and \`mutations\` phases only when mutations exist. Batch entry keys are optional caller labels. Do not invent keys; the runtime assigns stable keys when absent.
 - Do not guess parameter names or nested \`input\` shapes. Read loader help, then follow the activated typed schema.
 - Use \`get_result\` through the loader for lossless recovery from compact or spilled results. Preserve its result handle exactly. Follow the returned JSON Pointer and \`nextOffset\` until \`complete\` is true.
 - Use raw GraphQL only when no named operation exists. Keep raw reads bounded. Do not send raw mutations unless the job explicitly authorizes them.

@@ -43,6 +43,10 @@ function batch(reads: unknown[], extra: Record<string, unknown> = {}) {
   return execute({ operation: 'batch', variables: { reads, ...extra } });
 }
 
+function operations(entries: unknown[]) {
+  return execute({ operation: 'batch', variables: { operations: entries } });
+}
+
 function issueNode(id: string, identifier: string, title = 'Fix login') {
   return { id, identifier, title, team: { id: TEAM_ID, key: 'AEO' } };
 }
@@ -93,16 +97,20 @@ describe('batch help and catalog', () => {
     expect(result.details.loadedTools).toBeUndefined();
     expect(result.details.parameters).toEqual(
       expect.arrayContaining([
-        { name: 'reads', type: '{ key, operation, variables }[]', required: false },
-        { name: 'mutations', type: '{ key, operation, variables }[]', required: false },
+        { name: 'operations', type: '{ key?, operation, variables }[]', required: false },
+        { name: 'reads', type: '{ key?, operation, variables }[]', required: false },
+        { name: 'mutations', type: '{ key?, operation, variables }[]', required: false },
       ]),
     );
-    expect(result.details.entry).toContain('{ key, operation, variables }');
-    expect(result.details.entry).toMatch(/valid GraphQL alias/i);
-    expect(result.details.entry).toMatch(/unique/i);
-    expect(result.details.example.variables).toMatchObject({
-      reads: [{ key: 'issue', operation: 'get_issue', variables: { issue: 'AEO-258' } }],
-      mutations: [{ key: 'remove', operation: 'delete_issue_relation' }],
+    expect(result.details.entry).toMatch(/keys are optional caller labels/i);
+    expect(result.details.entry).toMatch(/runtime assigns/i);
+    expect(result.details.entry).not.toMatch(/GraphQL alias/i);
+    expect(result.details.example.variables).toEqual({
+      operations: [{ operation: 'get_issue', variables: { issue: 'AEO-258' } }],
+    });
+    expect(result.details.phasedExample.variables).toMatchObject({
+      reads: [{ operation: 'get_issue', variables: { issue: 'AEO-258' } }],
+      mutations: [{ operation: 'delete_issue_relation' }],
     });
   });
 
@@ -110,12 +118,13 @@ describe('batch help and catalog', () => {
     const reference = await readFile('REFERENCE.md', 'utf8');
     const documented = [...reference.matchAll(/```json\n([^`]*?"operation": "batch"[^`]*?)\n```/g)]
       .map((match) => JSON.parse(match[1]!));
-    const examples = [batchHelp().example, ...documented] as Array<{
-      variables: { reads?: Array<{ operation: string; variables: Record<string, unknown> }>; mutations?: Array<{ operation: string; variables: Record<string, unknown> }> };
+    const help = batchHelp();
+    const examples = [help.example, help.phasedExample, ...documented] as Array<{
+      variables: { operations?: Array<{ operation: string; variables: Record<string, unknown> }>; reads?: Array<{ operation: string; variables: Record<string, unknown> }>; mutations?: Array<{ operation: string; variables: Record<string, unknown> }> };
     }>;
-    expect(examples).toHaveLength(2);
+    expect(examples).toHaveLength(4);
     for (const example of examples) {
-      for (const entry of [...(example.variables.reads ?? []), ...(example.variables.mutations ?? [])]) {
+      for (const entry of [...(example.variables.operations ?? []), ...(example.variables.reads ?? []), ...(example.variables.mutations ?? [])]) {
         expect(() => resolveRequest({ operation: entry.operation, variables: entry.variables }), entry.operation).not.toThrow();
       }
     }
@@ -123,7 +132,7 @@ describe('batch help and catalog', () => {
 
   it('publishes batch in the linear tool description without changing the TypeBox parameters', () => {
     const tool = linearApiTool() as any;
-    expect(tool.description).toContain('batch: Carry independent reads and optionally one guarded issue-relation delete in two phases.');
+    expect(tool.description).toContain('batch: Batch independent reads with read-only operations, or use explicit phases for one ordinary mutation, grouped issue creates, or one guarded relation delete.');
     expect(Object.keys(tool.parameters.properties).sort()).toEqual(['operation', 'query', 'sink', 'variables', 'workspace']);
   });
 });
@@ -161,23 +170,60 @@ describe('batch read phase', () => {
     });
   });
 
-  it('repeats the same operation name under unique keys', async () => {
-    const { requests } = graphqlStub((request) => ({
+  it('accepts the observed three-entry read-only operations form and assigns recoverable keys', async () => {
+    const { requests } = graphqlStub(() => ({
+      body: { data: {
+        get_issue: issueNode(ISSUE_A, 'AEO-1'),
+        get_issue_2: issueNode(ISSUE_B, 'AEO-2'),
+        get_issue_3: issueNode(ISSUE_A, 'AEO-3'),
+      } },
+    }));
+
+    const result = await operations([
+      { operation: 'get_issue', variables: { issue: 'AEO-1' } },
+      { operation: 'get_issue', variables: { issue: 'AEO-2' } },
+      { operation: 'get_issue', variables: { issue: 'AEO-3' } },
+    ]);
+
+    expect(requests).toHaveLength(1);
+    expect(Object.keys(result.details.data)).toEqual(['get_issue', 'get_issue_2', 'get_issue_3']);
+  });
+
+  it('accepts the observed three-entry explicit reads retry with omitted keys', async () => {
+    graphqlStub(() => ({
+      body: { data: {
+        get_issue: issueNode(ISSUE_A, 'AEO-1'),
+        get_issue_2: issueNode(ISSUE_B, 'AEO-2'),
+        get_issue_3: issueNode(ISSUE_A, 'AEO-3'),
+      } },
+    }));
+
+    const result = await batch([
+      { operation: 'get_issue', variables: { issue: 'AEO-1' } },
+      { operation: 'get_issue', variables: { issue: 'AEO-2' } },
+      { operation: 'get_issue', variables: { issue: 'AEO-3' } },
+    ]);
+
+    expect(Object.keys(result.details.data)).toEqual(['get_issue', 'get_issue_2', 'get_issue_3']);
+  });
+
+  it('assigns stable keys to repeated operations with omitted keys', async () => {
+    const { requests } = graphqlStub(() => ({
       body: {
         data: {
-          first: issueNode(ISSUE_A, 'AEO-1'),
-          second: issueNode(ISSUE_B, 'AEO-2'),
+          get_issue: issueNode(ISSUE_A, 'AEO-1'),
+          get_issue_2: issueNode(ISSUE_B, 'AEO-2'),
         },
       },
     }));
 
-    const result = await batch([
-      { key: 'first', operation: 'get_issue', variables: { issue: 'AEO-1' } },
-      { key: 'second', operation: 'get_issue', variables: { issue: 'AEO-2' } },
+    const result = await operations([
+      { operation: 'get_issue', variables: { issue: 'AEO-1' } },
+      { operation: 'get_issue', variables: { issue: 'AEO-2' } },
     ]);
 
     expect(requests).toHaveLength(1);
-    expect(Object.keys(result.details.data)).toEqual(['first', 'second']);
+    expect(Object.keys(result.details.data)).toEqual(['get_issue', 'get_issue_2']);
   });
 
   it('keeps a successful alias when a sibling path fails', async () => {
@@ -235,16 +281,33 @@ describe('batch read phase', () => {
     expect(result.details.meta.requests).toEqual({ read: 1, mutation: 0 });
   });
 
-  it('directly corrects the observed name field mistake with the exact entry shape', async () => {
+  it('accepts name as a loader-only compatibility label when key is absent', async () => {
+    graphqlStub(() => ({ body: { data: { issue: issueNode(ISSUE_A, 'AEO-1') } } }));
+    const result = await batch([
+      { name: 'issue', operation: 'get_issue', variables: { issue: 'AEO-1' } },
+    ]);
+    expect(result.details.data).toEqual({ issue: { issue: issueNode(ISSUE_A, 'AEO-1') } });
+  });
+
+  it('rejects key and name conflicts with the corrected shape before network access', async () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
     await expect(batch([
-      { name: 'issue', operation: 'get_issue', variables: { issue: 'AEO-1' } },
-    ])).rejects.toThrow('Batch entries use "key", not "name". Send { key, operation, variables }.');
+      { key: 'issue', name: 'other', operation: 'get_issue', variables: { issue: 'AEO-1' } },
+    ])).rejects.toThrow(/cannot include both "key" and "name".*omit "name"/i);
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('rejects duplicate, invalid, and empty keys before network access', async () => {
+  it('rejects malformed entries with the corrected shape before network access', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    await expect(operations([null])).rejects.toThrow(/send.*"operation".*"variables".*"key"/i);
+    await expect(operations([{ operation: 'get_issue', variables: [] }])).rejects.toThrow(/send.*"operation".*"variables".*"key"/i);
+    await expect(operations([{ operation: 'get_issue', variables: {}, extra: true }])).rejects.toThrow(/send.*"operation".*"variables".*"key"/i);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects duplicate and invalid caller labels before network access', async () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
     process.env.LINEAR_API_KEY = 'test-key';
@@ -259,7 +322,41 @@ describe('batch read phase', () => {
     ])).rejects.toThrow(/alias|key/i);
     await expect(batch([
       { key: 'a-b', operation: 'get_issue', variables: { issue: 'AEO-1' } },
-    ])).rejects.toThrow(/alias|key/i);
+    ])).rejects.toThrow(/valid batch entry key/i);
+    await expect(batch([
+      { name: 'a-b', operation: 'get_issue', variables: { issue: 'AEO-1' } },
+    ])).rejects.toThrow(/valid batch entry key/i);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('avoids explicit key collisions when it assigns keys', async () => {
+    graphqlStub(() => ({
+      body: {
+        data: {
+          get_issue: issueNode(ISSUE_A, 'AEO-1'),
+          get_issue_2: issueNode(ISSUE_B, 'AEO-2'),
+        },
+      },
+    }));
+    const result = await operations([
+      { key: 'get_issue', operation: 'get_issue', variables: { issue: 'AEO-1' } },
+      { operation: 'get_issue', variables: { issue: 'AEO-2' } },
+    ]);
+    expect(Object.keys(result.details.data)).toEqual(['get_issue', 'get_issue_2']);
+  });
+
+  it('rejects flat mutations and mixed flat work with the phased shape before network access', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    process.env.LINEAR_API_KEY = 'test-key';
+    const corrected = /use.*"reads".*"mutations"/i;
+    await expect(operations([
+      { operation: 'create_issue', variables: { title: 'X', team: 'AEO' } },
+    ])).rejects.toThrow(corrected);
+    await expect(operations([
+      { operation: 'get_issue', variables: { issue: 'AEO-1' } },
+      { operation: 'create_issue', variables: { title: 'X', team: 'AEO' } },
+    ])).rejects.toThrow(corrected);
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -594,7 +691,12 @@ describe('batch transactional create', () => {
 
     const result = await execute({
       operation: 'batch',
-      variables: { mutations: [createIssue('first', 'A'), createIssue('second', 'B')] },
+      variables: {
+        mutations: [
+          { operation: 'create_issue', variables: { title: 'A', team: 'AEO' } },
+          { operation: 'create_issue', variables: { title: 'B', team: 'AEO' } },
+        ],
+      },
     });
 
     expect(requests).toHaveLength(2);
@@ -602,10 +704,10 @@ describe('batch transactional create', () => {
     expect(requests[0]!.query).not.toMatch(/mutation/);
     expect(requests[1]!.query).toContain('issueBatchCreate');
     expect(requests[1]!.query).not.toContain('issueCreate');
-    expect(result.details.data.first.issueCreate.issue.title).toBe('A');
-    expect(result.details.data.second.issueCreate.issue.title).toBe('B');
-    expect(result.details.data.first.issueCreate.issue.id).toBe(batchIssues(requests[1]!).find((issue) => issue.title === 'A')!.id);
-    expect(result.details.data.second.issueCreate.issue.id).toBe(batchIssues(requests[1]!).find((issue) => issue.title === 'B')!.id);
+    expect(result.details.data.create_issue.issueCreate.issue.title).toBe('A');
+    expect(result.details.data.create_issue_2.issueCreate.issue.title).toBe('B');
+    expect(result.details.data.create_issue.issueCreate.issue.id).toBe(batchIssues(requests[1]!).find((issue) => issue.title === 'A')!.id);
+    expect(result.details.data.create_issue_2.issueCreate.issue.id).toBe(batchIssues(requests[1]!).find((issue) => issue.title === 'B')!.id);
     expect(result.details.errors).toEqual([]);
     expect(result.details.skipped).toEqual([]);
     expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
@@ -804,14 +906,19 @@ describe('batch transactional create', () => {
 
     const result = await execute({
       operation: 'batch',
-      variables: { mutations: [createIssue('first', 'A'), createIssue('second', 'B')] },
+      variables: {
+        mutations: [
+          { operation: 'create_issue', variables: { title: 'A', team: 'AEO' } },
+          { operation: 'create_issue', variables: { title: 'B', team: 'AEO' } },
+        ],
+      },
     });
 
     expect(result.details.data).toEqual({
-      second: { issueCreate: { success: true, issue: expect.objectContaining({ identifier: 'AEO-2', title: 'B' }) } },
+      create_issue_2: { issueCreate: { success: true, issue: expect.objectContaining({ identifier: 'AEO-2', title: 'B' }) } },
     });
     expect(result.details.errors).toEqual([{
-      key: 'first',
+      key: 'create_issue',
       path: ['issueBatchCreate', 'issues', 1, 'description'],
       message: 'Description unavailable',
       partial: { issueCreate: { success: true, issue: expect.objectContaining({ identifier: 'AEO-1', title: 'A' }) } },
@@ -1101,12 +1208,12 @@ describe('exact batch accounting and routing', () => {
     expect(() => assertBatchAccounting(['one'], { extra: {} }, [], ['one'])).toThrow(/accounting/i);
   });
 
-  it('passes top-level sink through batch execution', async () => {
+  it('passes top-level sink through batch execution with a generated key', async () => {
     await useArtifactRoot();
-    graphqlStub(() => ({ body: { data: { one: issueNode(ISSUE_A, 'AEO-1') } } }));
+    graphqlStub(() => ({ body: { data: { get_issue: issueNode(ISSUE_A, 'AEO-1') } } }));
     const result = await execute({
       operation: 'batch',
-      variables: { reads: [{ key: 'one', operation: 'get_issue', variables: { issue: 'AEO-1' } }] },
+      variables: { operations: [{ operation: 'get_issue', variables: { issue: 'AEO-1' } }] },
       sink: 'artifact',
     });
     expect(result.details).toMatchObject({
@@ -1115,7 +1222,7 @@ describe('exact batch accounting and routing', () => {
     });
     const recovered = await execute({ operation: 'get_result', variables: { handle: result.details.handle } });
     expect(recovered.details.data.value).toMatchObject({
-      data: { one: { issue: issueNode(ISSUE_A, 'AEO-1') } },
+      data: { get_issue: { issue: issueNode(ISSUE_A, 'AEO-1') } },
       errors: [],
       skipped: [],
       meta: { requests: { read: 1, mutation: 0 }, aliases: 1 },

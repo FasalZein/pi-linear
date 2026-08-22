@@ -20,6 +20,7 @@ import {
 } from './client';
 import {
   BATCH_HELP_EXAMPLE,
+  BATCH_PHASED_HELP_EXAMPLE,
   formatInvocation,
   getOperation,
   getOperationDefinition,
@@ -46,7 +47,7 @@ import {
 import { assertMutationAllowed, type MutationMode } from './safety';
 import { projection } from './selections';
 
-export const BATCH_PURPOSE = 'Carry independent reads and optionally one guarded issue-relation delete in two phases.';
+export const BATCH_PURPOSE = 'Batch independent reads with read-only operations, or use explicit phases for one ordinary mutation, grouped issue creates, or one guarded relation delete.';
 
 const ALIAS = /^[_A-Za-z][_0-9A-Za-z]*$/;
 const FORBIDDEN_OPERATIONS = new Set(['help', 'batch']);
@@ -58,11 +59,13 @@ export function batchHelp(): JsonObject {
     name: 'batch',
     purpose: BATCH_PURPOSE,
     parameters: [
-      { name: 'reads', type: '{ key, operation, variables }[]', required: false },
-      { name: 'mutations', type: '{ key, operation, variables }[]', required: false },
+      { name: 'operations', type: '{ key?, operation, variables }[]', required: false },
+      { name: 'reads', type: '{ key?, operation, variables }[]', required: false },
+      { name: 'mutations', type: '{ key?, operation, variables }[]', required: false },
     ],
-    entry: 'Each entry is { key, operation, variables }. key must be a valid GraphQL alias and unique across both phases.',
+    entry: 'Each entry is { key?, operation, variables }. Keys are optional caller labels. The runtime assigns stable keys when absent.',
     example: BATCH_HELP_EXAMPLE,
+    phasedExample: BATCH_PHASED_HELP_EXAMPLE,
   };
 }
 
@@ -219,41 +222,97 @@ function mergeDocuments(
   });
 }
 
-type RawEntry = { key: string; operation: string; variables: Record<string, unknown> };
+type RawEntry = {
+  key: string;
+  operation: string;
+  variables: Record<string, unknown>;
+  generated: boolean;
+  keyBase: string;
+  nextSuffix: number;
+};
 
-function parsePhase(value: unknown, label: string, seen: Set<string>): RawEntry[] {
+function parsePhase(value: unknown, label: string): RawEntry[] {
   if (value === undefined) return [];
-  if (!Array.isArray(value)) throw new Error(`Batch ${label} must be an array.`);
+  if (!Array.isArray(value)) {
+    throw new Error(`Batch ${label} must be an array. Send { "operations": [...] } for reads or { "reads": [...], "mutations": [...] } for mixed work.`);
+  }
   return value.map((entry, index) => {
-    const record = asObject(entry, `Batch ${label} entry ${index}`);
-    const extra = Object.keys(record).filter((name) => name !== 'key' && name !== 'operation' && name !== 'variables');
-    if (extra.includes('name')) throw new Error('Batch entries use "key", not "name". Send { key, operation, variables }.');
-    if (extra.length) throw new Error(`Unknown batch entry field "${extra[0]}".`);
-    if (typeof record.key !== 'string' || !isAlias(record.key)) {
-      throw new Error(`Batch key "${String(record.key)}" is not a valid unique GraphQL alias.`);
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new Error(`Malformed batch ${label} entry ${index}. Send { "operation": "<name>", "variables": { ... }, "key"?: "<label>" }.`);
     }
-    if (seen.has(record.key)) throw new Error(`Duplicate batch key "${record.key}".`);
-    seen.add(record.key);
+    const record = entry as Record<string, unknown>;
+    const extra = Object.keys(record).filter((field) => !['key', 'name', 'operation', 'variables'].includes(field));
+    if (extra.length) {
+      throw new Error(`Unknown batch entry field "${extra[0]}". Send { "operation": "<name>", "variables": { ... }, "key"?: "<label>" }.`);
+    }
+    if ('key' in record && 'name' in record) {
+      throw new Error('Batch entries cannot include both "key" and "name". Omit "name" and send { key?, operation, variables }.');
+    }
+    const callerKey = record.key ?? record.name;
+    if (callerKey !== undefined && (typeof callerKey !== 'string' || !isAlias(callerKey))) {
+      throw new Error(`"${String(callerKey)}" is not a valid batch entry key. Send { key?: "valid_label", operation, variables }; keys are optional.`);
+    }
     if (typeof record.operation !== 'string' || !record.operation.trim()) {
-      throw new Error(`Batch entry "${record.key}" must name a GraphQL operation.`);
+      throw new Error('Malformed batch entry. Send { "operation": "<name>", "variables": { ... }, "key"?: "<label>" }.');
     }
-    const entryVariables = record.variables === undefined
-      ? {}
-      : asObject(record.variables, `Batch entry "${record.key}" variables`);
-    return { key: record.key, operation: record.operation, variables: entryVariables };
+    if (record.variables !== undefined && (!record.variables || typeof record.variables !== 'object' || Array.isArray(record.variables))) {
+      throw new Error('Malformed batch entry variables. Send { "operation": "<name>", "variables": { ... }, "key"?: "<label>" }.');
+    }
+    const entryVariables = (record.variables as Record<string, unknown> | undefined) ?? {};
+    return {
+      key: (callerKey as string | undefined) ?? '',
+      operation: record.operation,
+      variables: entryVariables,
+      generated: callerKey === undefined,
+      keyBase: '',
+      nextSuffix: 2,
+    };
   });
 }
 
-function parseEntries(variables: Record<string, unknown>): { reads: RawEntry[]; mutations: RawEntry[] } {
-  const unknown = Object.keys(variables).filter((name) => name !== 'reads' && name !== 'mutations');
-  if (unknown.length) {
-    throw new Error(`Unknown batch field "${unknown[0]}". Send { "reads"?: BatchEntry[], "mutations"?: BatchEntry[] }.`);
+function assignKeys(entries: RawEntry[]): void {
+  const used = new Set<string>();
+  for (const entry of entries) {
+    if (entry.generated) continue;
+    if (used.has(entry.key)) {
+      throw new Error(`Duplicate batch key "${entry.key}". Use unique optional keys in { "operations": [...] } or { "reads": [...], "mutations": [...] }.`);
+    }
+    used.add(entry.key);
   }
-  const seen = new Set<string>();
-  const reads = parsePhase(variables.reads, 'reads', seen);
-  const mutations = parsePhase(variables.mutations, 'mutations', seen);
+  for (const entry of entries) {
+    if (!entry.generated) continue;
+    const base = getOperationDefinition(entry.operation).name;
+    let key = base;
+    let suffix = 2;
+    while (used.has(key)) key = `${base}_${suffix++}`;
+    entry.key = key;
+    entry.keyBase = base;
+    entry.nextSuffix = suffix;
+    used.add(key);
+  }
+}
+
+function parseEntries(variables: Record<string, unknown>): { reads: RawEntry[]; mutations: RawEntry[] } {
+  const allowed = new Set(['operations', 'reads', 'mutations']);
+  const unknown = Object.keys(variables).filter((name) => !allowed.has(name));
+  if (unknown.length) {
+    throw new Error(`Unknown batch field "${unknown[0]}". Send { "operations": [...] } for reads or { "reads": [...], "mutations": [...] } for mixed work.`);
+  }
+  const flat = 'operations' in variables;
+  if (flat && ('reads' in variables || 'mutations' in variables)) {
+    throw new Error('Batch cannot combine "operations" with "reads" or "mutations". Use { "operations": [...] } for reads or { "reads": [...], "mutations": [...] } for mixed work.');
+  }
+  const reads = parsePhase(flat ? variables.operations : variables.reads, flat ? 'operations' : 'reads');
+  const mutations = flat ? [] : parsePhase(variables.mutations, 'mutations');
   if (!reads.length && !mutations.length) {
-    throw new Error('Batch requires a non-empty reads or mutations array.');
+    throw new Error('Batch requires a non-empty "operations", "reads", or "mutations" array.');
+  }
+  assignKeys([...reads, ...mutations]);
+  if (flat) {
+    const mutation = reads.find((entry) => getOperationDefinition(entry.operation).kind === 'mutation');
+    if (mutation) {
+      throw new Error(`Read-only batch "operations" cannot include mutation "${mutation.operation}". Use { "reads": [...], "mutations": [...] }.`);
+    }
   }
   return { reads, mutations };
 }
@@ -901,19 +960,38 @@ async function executeBatchWithTelemetry(
     throw new Error('Batch permits one ordinary named mutation.');
   }
 
-  const reads: PlannedEntry[] = [];
-  for (const entry of parsed.reads) reads.push(await planEntry(entry, 'query', mode, signal));
-  const mutations: PlannedEntry[] = [];
-  for (const entry of parsed.mutations) mutations.push(await planEntry(entry, 'mutation', mode, signal));
-
-  const lookups = mutations.flatMap((entry) => entry.lookups ?? []);
-  const callerKeys = new Set([...reads, ...mutations].map((entry) => entry.key));
-  for (const lookup of lookups) {
-    for (const alias of lookup.aliases) {
-      if (callerKeys.has(alias)) {
-        throw new Error(`Batch lookup alias "${alias}" collides with a caller key.`);
+  let reads: PlannedEntry[];
+  let mutations: PlannedEntry[];
+  let lookups: CompiledLookup[];
+  while (true) {
+    reads = [];
+    for (const entry of parsed.reads) reads.push(await planEntry(entry, 'query', mode, signal));
+    mutations = [];
+    for (const entry of parsed.mutations) mutations.push(await planEntry(entry, 'mutation', mode, signal));
+    lookups = mutations.flatMap((entry) => entry.lookups ?? []);
+    const rawEntries = [...parsed.reads, ...parsed.mutations];
+    const callerByKey = new Map(rawEntries.map((entry) => [entry.key, entry]));
+    let retry = false;
+    for (const mutation of mutations) {
+      for (const alias of mutation.lookups?.flatMap((lookup) => lookup.aliases) ?? []) {
+        const caller = callerByKey.get(alias);
+        if (!caller) continue;
+        const owner = parsed.mutations.find((entry) => entry.key === mutation.key)!;
+        const generated = caller.generated ? caller : owner.generated ? owner : undefined;
+        if (!generated) {
+          throw new Error(`Batch key "${alias}" is reserved by guarded mutation "${owner.key}". Choose another optional key in { "reads": [...], "mutations": [...] }.`);
+        }
+        const blocked = new Set([...callerByKey.keys(), ...lookups.flatMap((lookup) => lookup.aliases)]);
+        blocked.delete(generated.key);
+        let key = `${generated.keyBase}_${generated.nextSuffix++}`;
+        while (blocked.has(key)) key = `${generated.keyBase}_${generated.nextSuffix++}`;
+        generated.key = key;
+        retry = true;
+        break;
       }
+      if (retry) break;
     }
+    if (!retry) break;
   }
 
   const apiKey = await apiKeyForWorkspace(ctx, params.workspace);
