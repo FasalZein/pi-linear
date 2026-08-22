@@ -170,7 +170,7 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
       ...(operation.batchPrepare ? { batchPrepare: operation.batchPrepare } : {}),
     },
     safety: {
-      namedInputPolicy: 'non-destructive',
+      namedInputPolicy: operation.namedInputPolicy ?? 'non-destructive',
       mutation: kind === 'mutation',
     },
     result: {

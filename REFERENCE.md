@@ -20,7 +20,7 @@ Domain help returns only the canonical names and compact signatures for that dom
 { "operation": "help", "variables": { "operation": "update_issue" } }
 ```
 
-Operation help returns one parameter card and one valid invocation. That response is the authoritative parameter reference. This file does not duplicate 48 full schemas that can change or consume context unnecessarily.
+Operation help returns one parameter card and one valid invocation. That response is the authoritative parameter reference. This file does not duplicate 49 full schemas that can change or consume context unnecessarily.
 
 Every typed schema has a provider-safe object root. Save operations enforce exclusive create and update modes inside that root. All save target dates are nullable. The packaged dated schema contract includes initiative and project lead teams, initiative priority and labels, document owners, and create/update label retirement dates. `trashed` remains excluded from typed tools.
 

@@ -274,6 +274,7 @@ export const issueRelations: readonly OperationDefinition[] = ([
 		domain: "relations",
 		purpose: "Delete one issue relation after exact relation and endpoint verification.",
 		resultCategory: "singular",
+		namedInputPolicy: "guarded-destructive",
 		parameters: [
 			p("relationId", "UUID", true),
 			p("issueId", "UUID", true),
