@@ -88,8 +88,8 @@ export const users: readonly OperationDefinition[] = ([
 		example: { operation: "get_user", variables: { user: "me" } },
 		document: getDocument("GetUser", "user", projection("user", "detail")),
 		resolverPaths: { user: "resolveUserReference" },
-		async prepare(k, v, s) {
-			const x = await resolveUserReference(k, String(v.user ?? v.userId), s);
+		async prepare(k, v, s, g) {
+			const x = await resolveUserReference(k, String(v.user ?? v.userId), s, g);
 			return {
 				variables: { id: x.id },
 				resolution: {

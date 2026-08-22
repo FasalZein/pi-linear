@@ -5,12 +5,20 @@ import { join } from 'node:path';
 import {
   linearErrorTelemetry,
   linearGraphQL,
+  linearGraphQLWithContext,
   linearRateLimitTelemetry,
   parseLinearRateLimitHeaders,
 } from '../extensions/client';
 import { linearApiTool } from '../extensions/api';
 import { getResult } from '../extensions/result-handles';
-import { routeLinearEnvelope, routeLinearResult } from '../extensions/runtime';
+import {
+  executeOperationInContext,
+  executeRawQuery,
+  linearCallContext,
+  routeLinearEnvelope,
+  routeLinearResult,
+} from '../extensions/runtime';
+import { getOperation } from '../extensions/operations';
 import { typedLinearTools } from '../extensions/typed-tools';
 
 const roots: string[] = [];
@@ -108,6 +116,24 @@ describe('Linear rate-limit header telemetry', () => {
     expect(linearErrorTelemetry(graphql)).toEqual([{ attempt: 1, headers: { 'X-Complexity': 9 } }]);
   });
 
+  it('rejects promptly when cancellation happens during the retry delay', async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    const transport = vi.fn(async () => response(429, {}, { 'Retry-After': '60' }));
+    const request = linearGraphQLWithContext({
+      credential: { apiKey: 'key', source: 'env' },
+      transport: transport as unknown as typeof fetch,
+      telemetry: [],
+      signal: controller.signal,
+    }, 'query { viewer { id } }');
+
+    await vi.waitFor(() => expect(transport).toHaveBeenCalledOnce());
+    controller.abort();
+
+    await expect(request).rejects.toThrow('Request cancelled.');
+    expect(transport).toHaveBeenCalledOnce();
+  });
+
   it('preserves initial and final snapshots across the existing one HTTP 429 retry', async () => {
     const fetch = vi.fn()
       .mockResolvedValueOnce(response(429, {}, {
@@ -187,6 +213,49 @@ describe('Linear rate-limit header telemetry', () => {
 
 describe('model-facing budget warnings', () => {
   const base = { attempt: 1, headers: {} } as const;
+
+  it('keeps concurrent direct and raw transports and telemetry isolated per call', async () => {
+    process.env.LINEAR_API_KEY = 'lin_api_context_test';
+    let arrivals = 0;
+    let release!: () => void;
+    const barrier = new Promise<void>((resolve) => { release = resolve; });
+    const awaitBoth = async () => {
+      arrivals += 1;
+      if (arrivals === 2) release();
+      await barrier;
+    };
+    const directTransport = vi.fn(async () => {
+      await awaitBoth();
+      return response(200, { data: { customView: { id: 'view-1', name: 'Direct' } } }, {
+        'X-RateLimit-Endpoint-Name': 'direct-only',
+      });
+    }) as unknown as typeof fetch;
+    const rawTransport = vi.fn(async () => {
+      await awaitBoth();
+      return response(200, { data: { viewer: { id: 'raw-user' } } }, {
+        'X-RateLimit-Endpoint-Name': 'raw-only',
+      });
+    }) as unknown as typeof fetch;
+    const ctx = { hasUI: false } as any;
+    const directCall = linearCallContext('allowlist', undefined, ctx, { telemetryMode: 'always' });
+    const rawCall = linearCallContext('allowlist', undefined, ctx, { telemetryMode: 'always' });
+
+    const [direct, raw] = await Promise.all([
+      executeOperationInContext(getOperation('get_view'), { variables: { id: 'view-1' } }, directCall, directTransport),
+      executeRawQuery('query { viewer { id } }', {}, rawCall, rawTransport),
+    ]);
+
+    expect((direct as any).data.customView.name).toBe('Direct');
+    expect((raw as any).data.viewer.id).toBe('raw-user');
+    expect((direct as any).meta.rateLimit.responses).toEqual([
+      { attempt: 1, 'X-RateLimit-Endpoint-Name': 'direct-only' },
+    ]);
+    expect((raw as any).meta.rateLimit.responses).toEqual([
+      { attempt: 1, 'X-RateLimit-Endpoint-Name': 'raw-only' },
+    ]);
+    expect(directTransport).toHaveBeenCalledOnce();
+    expect(rawTransport).toHaveBeenCalledOnce();
+  });
 
   it('does not change ordinary result size or shape', async () => {
     const normal = await routeLinearResult({ viewer: { id: 'user-1' } }, {

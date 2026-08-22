@@ -90,7 +90,7 @@ export const projectReads: readonly OperationDefinition[] = ([
 		example: { operation: "get_project", variables: { project: "Platform" } },
 		document: getDocument("GetProject", "project", projection("project", "detail")),
 		resolverPaths: { project: "resolveNamedEntityReference" },
-		async prepare(k, v, s) {
+		async prepare(k, v, s, g) {
 			const requested = String(v.project ?? v.projectId);
 			const reference = requested.trim();
 			if (isUuid(reference) || isLinearUrlSlug(reference)) {
@@ -100,7 +100,7 @@ export const projectReads: readonly OperationDefinition[] = ([
 					resolution: { target: { requested: reference } },
 				};
 			}
-			const x = await resolveNamedEntityReference(k, "project", requested, s);
+			const x = await resolveNamedEntityReference(k, "project", requested, s, g);
 			return {
 				variables: { id: x.id },
 				resolution: {

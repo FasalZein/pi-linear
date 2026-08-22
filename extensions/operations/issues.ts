@@ -322,25 +322,25 @@ export const issues: readonly OperationDefinition[] = ([
 				);
 			}
 		},
-		prepare: async (k, v, s) => {
+		prepare: async (k, v, s, g) => {
 			const issueIds =
 				v.issues !== undefined ? parseIssueReferenceSet(v.issues) : undefined;
 			const teamRef = v.team ?? v.teamKey ?? v.teamId;
 			const team = teamRef
-				? await resolveTeamReference(k, String(teamRef), s)
+				? await resolveTeamReference(k, String(teamRef), s, g)
 				: undefined;
 			const assigneeRef = v.assignee ?? v.assigneeId;
 			const assignee = assigneeRef
-				? await resolveUserReference(k, String(assigneeRef), s)
+				? await resolveUserReference(k, String(assigneeRef), s, g)
 				: undefined;
 			const stateReference = v.state ?? v.stateName;
 			let stateId: string | undefined;
 			if (stateReference && team) {
 				stateId = (
-					await resolveStateReference(k, team.id, String(stateReference), s)
+					await resolveStateReference(k, team.id, String(stateReference), s, g)
 				).id;
 			} else if (stateReference) {
-				stateId = (await resolveStateIdReference(k, String(stateReference), s))
+				stateId = (await resolveStateIdReference(k, String(stateReference), s, g))
 					.id;
 			}
 			const convenience = compactObject({
@@ -574,7 +574,7 @@ export const issues: readonly OperationDefinition[] = ([
 			assignee: "resolveUserReference",
 			assigneeId: "resolveUserReference",
 		},
-		async prepare(k, v, s) {
+		async prepare(k, v, s, g) {
 			const x = mergedInput(v, [
 				"parent",
 				"team",
@@ -587,17 +587,17 @@ export const issues: readonly OperationDefinition[] = ([
 			const projectRef = v.project;
 			if (isUuid(projectRef)) x.projectId = projectRef;
 			else if (typeof projectRef === "string") {
-				x.projectId = (await resolveNamedEntityReference(k, "project", projectRef, s)).id;
+				x.projectId = (await resolveNamedEntityReference(k, "project", projectRef, s, g)).id;
 			}
 			if (Array.isArray(v.labels)) x.labelIds = v.labels;
 			const parentRef = v.parent ?? x.parentId;
 			const parent = parentRef
-				? await resolveIssueReference(k, String(parentRef), s)
+				? await resolveIssueReference(k, String(parentRef), s, g)
 				: undefined;
 			if (parent) x.parentId = parent.id;
 			const teamRef = v.team ?? v.teamKey ?? x.teamId;
 			const team = teamRef
-				? await resolveTeamReference(k, String(teamRef), s)
+				? await resolveTeamReference(k, String(teamRef), s, g)
 				: undefined;
 			if (team && parent && team.id !== parent.teamId) {
 				throw new Error(
@@ -613,11 +613,11 @@ export const issues: readonly OperationDefinition[] = ([
 			const stateRef = v.state ?? x.stateId;
 			if (stateRef)
 				x.stateId = (
-					await resolveStateReference(k, teamId, String(stateRef), s)
+					await resolveStateReference(k, teamId, String(stateRef), s, g)
 				).id;
 			const userRef = v.assignee ?? x.assigneeId;
 			if (userRef)
-				x.assigneeId = (await resolveUserReference(k, String(userRef), s)).id;
+				x.assigneeId = (await resolveUserReference(k, String(userRef), s, g)).id;
 			if (typeof x.title !== "string" || !x.title.trim())
 				throw new Error("Issue title is required for issueCreate (title).");
 			return {
@@ -846,7 +846,7 @@ export const issues: readonly OperationDefinition[] = ([
 			parentId: "resolveIssueReference",
 			teamId: "resolveTeamReference",
 		},
-		async prepare(k, v, s) {
+		async prepare(k, v, s, g) {
 			const ref = requireIssueReference(issueReference(v));
 			const x = mergedInput(v, [
 				"issue",
@@ -857,7 +857,7 @@ export const issues: readonly OperationDefinition[] = ([
 			]);
 			const teamRef = x.teamId;
 			const targetTeam = teamRef
-				? await resolveTeamReference(k, String(teamRef), s)
+				? await resolveTeamReference(k, String(teamRef), s, g)
 				: undefined;
 			if (targetTeam) x.teamId = targetTeam.id;
 			const stateRef = v.state ?? x.stateId;
@@ -868,19 +868,19 @@ export const issues: readonly OperationDefinition[] = ([
 				!isUuid(stateRef);
 			const issue =
 				stateNeedsTeam || parentRef
-					? await resolveIssueReference(k, ref, s)
+					? await resolveIssueReference(k, ref, s, g)
 					: undefined;
 			if (stateRef) {
 				const teamId = targetTeam?.id ?? issue?.teamId;
 				x.stateId = teamId
-					? (await resolveStateReference(k, teamId, String(stateRef), s)).id
-					: (await resolveStateIdReference(k, String(stateRef), s)).id;
+					? (await resolveStateReference(k, teamId, String(stateRef), s, g)).id
+					: (await resolveStateIdReference(k, String(stateRef), s, g)).id;
 			}
 			const userRef = v.assignee ?? x.assigneeId;
 			if (userRef)
-				x.assigneeId = (await resolveUserReference(k, String(userRef), s)).id;
+				x.assigneeId = (await resolveUserReference(k, String(userRef), s, g)).id;
 			if (parentRef) {
-				const parent = await resolveIssueReference(k, String(parentRef), s);
+				const parent = await resolveIssueReference(k, String(parentRef), s, g);
 				if (parent.teamId !== (targetTeam?.id ?? issue?.teamId)) {
 					throw new Error(
 						`Linear parent "${parent.identifier}" does not belong to the issue team.`,
@@ -968,7 +968,7 @@ export const issues: readonly OperationDefinition[] = ([
 		example: { term: "authentication" },
 		extras: "$term: String! $includeComments: Boolean $teamId: String",
 		extraArgs: "term: $term includeComments: $includeComments teamId: $teamId",
-		prepare: async (k, v, s) => {
+		prepare: async (k, v, s, g) => {
 			const term = typeof v.term === "string" ? v.term.trim() : "";
 			if (isIssueIdentifier(term)) {
 				const view = parseResultView(v.view, "summary");
@@ -990,7 +990,7 @@ export const issues: readonly OperationDefinition[] = ([
 			}
 			const teamRef = v.team ?? v.teamId;
 			const team = teamRef
-				? await resolveTeamReference(k, String(teamRef), s)
+				? await resolveTeamReference(k, String(teamRef), s, g)
 				: undefined;
 			return {
 				variables: {

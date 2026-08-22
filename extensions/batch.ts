@@ -12,11 +12,11 @@ import type { ExtensionContext } from '@earendil-works/pi-coding-agent';
 import {
   assertIssueNodeMatches,
   assertNamedNodeMatches,
-  linearGraphQL,
+  linearGraphQLWithContext,
   linearGraphQLErrors,
   requireIssueReference,
   withLinearGraphQL,
-  withLinearRateLimitTelemetry,
+  type LinearRateLimitSnapshot,
 } from './client';
 import {
   BATCH_HELP_EXAMPLE,
@@ -38,8 +38,9 @@ import type {
 } from './operation-types';
 import { activeSecrets } from './active-secrets';
 import {
-  apiKeyForWorkspace,
   assertOperationAllowed,
+  linearCallContext,
+  networkExecutionContext,
   routeLinearEnvelope,
   validateMutationResult,
   type JsonObject,
@@ -801,6 +802,7 @@ async function envelope(
   aliases: number,
   sink: 'inline' | 'artifact' | undefined,
   secrets: readonly string[],
+  telemetry: readonly LinearRateLimitSnapshot[],
   telemetryMode?: TelemetryMode,
 ): Promise<JsonObject> {
   const errors = consolidateBatchErrors(rawErrors);
@@ -810,7 +812,7 @@ async function envelope(
     errors,
     skipped,
     meta: { requests, aliases, truncations: [], stringsClipped: 0 },
-  }, { label: 'batch', category: 'batch', sink, secrets, telemetryMode });
+  }, { label: 'batch', category: 'batch', sink, secrets, telemetry, telemetryMode });
 }
 
 function failTransaction(keys: readonly string[], message: string): BatchError[] {
@@ -996,7 +998,9 @@ async function executeBatchWithTelemetry(
     if (!retry) break;
   }
 
-  const apiKey = await apiKeyForWorkspace(ctx, params.workspace);
+  const call = linearCallContext(mode, signal, ctx, params);
+  const network = await networkExecutionContext(call);
+  const apiKey = network.credential.apiKey;
   const secrets = [...activeSecrets(), apiKey];
   const requestedKeys = [...reads, ...mutations].map(({ key }) => key);
   const data: JsonObject = {};
@@ -1019,11 +1023,10 @@ async function executeBatchWithTelemetry(
     );
     let raw: JsonObject;
     try {
-      raw = await linearGraphQL<JsonObject>(
-        apiKey,
+      raw = await linearGraphQLWithContext<JsonObject>(
+        network,
         query,
         variables,
-        signal,
         { preserveUnusableRoot: true, phase: 'read' },
       );
     } catch (error) {
@@ -1050,6 +1053,7 @@ async function executeBatchWithTelemetry(
       aliasCount,
       params.sink,
       secrets,
+      network.telemetry,
       params.telemetryMode,
     );
   }
@@ -1064,11 +1068,10 @@ async function executeBatchWithTelemetry(
       return { key: entry.key, uuid, input: { ...(input as JsonObject), id: uuid } };
     });
     assertMutationAllowed(ISSUE_BATCH_CREATE_DOCUMENT, mode, ['issueBatchCreate']);
-    const raw = await linearGraphQL<JsonObject>(
-      apiKey,
+    const raw = await linearGraphQLWithContext<JsonObject>(
+      network,
       ISSUE_BATCH_CREATE_DOCUMENT,
       { input: { issues: stamped.map((entry) => entry.input) } },
-      signal,
       { preserveUnusableRoot: true, phase: 'mutation' },
     );
     mutationRequests = 1;
@@ -1082,6 +1085,7 @@ async function executeBatchWithTelemetry(
       aliasCount,
       params.sink,
       secrets,
+      network.telemetry,
       params.telemetryMode,
     );
   }
@@ -1092,11 +1096,10 @@ async function executeBatchWithTelemetry(
     assertMutationAllowed(query, mode, [mutation.root]);
     let raw: JsonObject | undefined;
     try {
-      raw = await linearGraphQL<JsonObject>(
-        apiKey,
+      raw = await linearGraphQLWithContext<JsonObject>(
+        network,
         query,
         mutation.variables,
-        signal,
         { preserveUnusableRoot: true, phase: 'mutation' },
       );
       mutationRequests = 1;
@@ -1124,6 +1127,7 @@ async function executeBatchWithTelemetry(
     aliasCount,
     params.sink,
     secrets,
+    network.telemetry,
     params.telemetryMode,
   );
 }
@@ -1134,5 +1138,5 @@ export async function executeBatch(
   ctx: ExtensionContext,
   signal: AbortSignal | undefined,
 ): Promise<JsonObject> {
-  return withLinearRateLimitTelemetry(() => executeBatchWithTelemetry(params, mode, ctx, signal));
+  return executeBatchWithTelemetry(params, mode, ctx, signal);
 }

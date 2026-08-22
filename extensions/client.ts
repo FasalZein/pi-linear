@@ -2,7 +2,6 @@ import type { ExtensionContext } from '@earendil-works/pi-coding-agent';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { AsyncLocalStorage } from 'node:async_hooks';
 import { Kind, parse, type FragmentDefinitionNode, type SelectionSetNode } from 'graphql';
 import { redactDeep, redactText } from './redact';
 
@@ -201,23 +200,16 @@ export type LinearRateLimitSnapshot = {
   headers: LinearRateLimitHeaders;
 };
 
-const telemetryStorage = new AsyncLocalStorage<LinearRateLimitSnapshot[]>();
-
-export function withLinearRateLimitTelemetry<T>(work: () => Promise<T>): Promise<T> {
-  if (telemetryStorage.getStore()) return work();
-  const snapshots: LinearRateLimitSnapshot[] = [];
-  return telemetryStorage.run(snapshots, async () => {
-    try {
-      return await work();
-    } catch (error) {
-      if (error instanceof Error) attachTelemetry(error, snapshots, 'linearTelemetry');
-      throw error;
-    }
-  });
-}
-
-export function currentLinearRateLimitTelemetry(): readonly LinearRateLimitSnapshot[] {
-  return telemetryStorage.getStore() ?? [];
+export async function withLinearRateLimitTelemetry<T>(
+  snapshots: LinearRateLimitSnapshot[],
+  work: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (error instanceof Error) attachTelemetry(error, snapshots, 'linearTelemetry');
+    throw error;
+  }
 }
 
 export function linearRateLimitTelemetry(value: unknown): readonly LinearRateLimitSnapshot[] {
@@ -370,7 +362,16 @@ export type LinearGraphQLOptions = {
   phase?: 'read' | 'mutation';
 };
 
-type LinearGraphQLFn = <TData>(
+export type LinearTransport = typeof fetch;
+
+export type LinearNetworkContext = {
+  credential: { apiKey: string; source: 'env' | 'workspace' };
+  transport: LinearTransport;
+  telemetry: LinearRateLimitSnapshot[];
+  signal?: AbortSignal;
+};
+
+export type LinearGraphQLFn = <TData>(
   apiKey: string,
   query: string,
   variables?: Record<string, unknown>,
@@ -390,27 +391,43 @@ export async function withLinearGraphQL<T>(override: LinearGraphQLFn, work: () =
   }
 }
 
-export async function linearGraphQL<TData>(
-  apiKey: string,
+function abortableDelay(delay: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) return Promise.reject(new Error('Request cancelled.'));
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(done, delay);
+    function done(): void {
+      signal?.removeEventListener('abort', aborted);
+      resolve();
+    }
+    function aborted(): void {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', aborted);
+      reject(new Error('Request cancelled.'));
+    }
+    signal?.addEventListener('abort', aborted, { once: true });
+    if (signal?.aborted) aborted();
+  });
+}
+
+export async function linearGraphQLWithContext<TData>(
+  context: LinearNetworkContext,
   query: string,
   variables: Record<string, unknown> = {},
-  signal?: AbortSignal,
   options?: LinearGraphQLOptions,
 ): Promise<TData> {
-  if (graphqlOverride) return graphqlOverride(apiKey, query, variables, signal, options);
+  const { apiKey } = context.credential;
   const snapshots: LinearRateLimitSnapshot[] = [];
-  const collected = telemetryStorage.getStore();
   const isSearchRead = searchRead(query);
   let response!: Response;
   let body: { data?: TData; errors?: GraphQLErrorBody[] } = {};
 
   for (let attempt = 0; ; attempt++) {
     try {
-      response = await fetch(linearGraphQLEndpoint(), {
+      response = await context.transport(linearGraphQLEndpoint(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: apiKey },
         body: JSON.stringify({ query, variables }),
-        signal,
+        signal: context.signal,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -425,7 +442,7 @@ export async function linearGraphQL<TData>(
       headers: redactDeep(parseLinearRateLimitHeaders(response.headers ?? new Headers()), [apiKey]),
     };
     snapshots.push(snapshot);
-    collected?.push(snapshot);
+    context.telemetry.push(snapshot);
     body = {};
     try {
       body = (await response.json()) as typeof body;
@@ -436,7 +453,12 @@ export async function linearGraphQL<TData>(
     const retryHttp = response.status === 429;
     const retryGraphQL = response.status === 400 && isSearchRead && rateLimited(body.errors ?? []);
     if (attempt === 0 && (retryHttp || retryGraphQL)) {
-      await new Promise((resolve) => setTimeout(resolve, retryDelay(snapshot)));
+      try {
+        await abortableDelay(retryDelay(snapshot), context.signal);
+      } catch (error) {
+        if (error instanceof Error) attachTelemetry(error, snapshots, 'linearTelemetry');
+        throw error;
+      }
       continue;
     }
     break;
@@ -472,6 +494,22 @@ export async function linearGraphQL<TData>(
     attachTelemetry(body.data, snapshots, LINEAR_RATE_LIMIT_TELEMETRY);
   }
   return body.data;
+}
+
+export async function linearGraphQL<TData>(
+  apiKey: string,
+  query: string,
+  variables: Record<string, unknown> = {},
+  signal?: AbortSignal,
+  options?: LinearGraphQLOptions,
+): Promise<TData> {
+  if (graphqlOverride) return graphqlOverride(apiKey, query, variables, signal, options);
+  return linearGraphQLWithContext({
+    credential: { apiKey, source: 'env' },
+    transport: fetch,
+    telemetry: [],
+    signal,
+  }, query, variables, options);
 }
 
 function requireReference(value: string, kind: string): string {
@@ -576,9 +614,10 @@ export async function resolveIssueReference(
   apiKey: string,
   value: string,
   signal?: AbortSignal,
+  graphql: LinearGraphQLFn = linearGraphQL,
 ): Promise<ResolvedIssue> {
   const reference = requireIssueReference(value);
-  const data = await linearGraphQL<{ issue: {
+  const data = await graphql<{ issue: {
     id: string; identifier: string; team: { id: string; key: string } | null;
   } | null }>(apiKey, `query ResolveIssueById($id: String!) {
   issue(id: $id) { id identifier team { id key } }
@@ -604,10 +643,11 @@ export async function resolveTeamReference(
   apiKey: string,
   value: string,
   signal?: AbortSignal,
+  graphql: LinearGraphQLFn = linearGraphQL,
 ): Promise<ResolvedTeam> {
   const reference = requireReference(value, 'team');
   if (UUID_PATTERN.test(reference)) {
-    const data = await linearGraphQL<{ team: { id: string; key: string } | null }>(apiKey, `query ResolveTeamById($id: String!) {
+    const data = await graphql<{ team: { id: string; key: string } | null }>(apiKey, `query ResolveTeamById($id: String!) {
   team(id: $id) { id key }
 }`, { id: reference }, signal);
     if (!data.team) throw new Error(`Linear team "${reference}" was not found.`);
@@ -617,7 +657,7 @@ export async function resolveTeamReference(
   if (!/^[A-Z][A-Z0-9]*$/i.test(reference)) {
     throw new Error(`Invalid Linear team reference "${reference}". Use a team key or UUID.`);
   }
-  const data = await linearGraphQL<{ teams: { nodes: ResolvedTeam[] } }>(apiKey, `query ResolveTeamByKey($key: String!) {
+  const data = await graphql<{ teams: { nodes: ResolvedTeam[] } }>(apiKey, `query ResolveTeamByKey($key: String!) {
   teams(first: 2, filter: { key: { eq: $key } }) { nodes { id key } }
 }`, { key: reference.toUpperCase() }, signal);
   const team = requireSingle(data.teams.nodes, `team "${reference}"`);
@@ -631,6 +671,7 @@ export async function resolveStateIdReference(
   apiKey: string,
   value: string,
   signal?: AbortSignal,
+  graphql: LinearGraphQLFn = linearGraphQL,
 ): Promise<ResolvedState> {
   const reference = requireReference(value, 'state');
   if (!UUID_PATTERN.test(reference)) {
@@ -638,7 +679,7 @@ export async function resolveStateIdReference(
       `Invalid Linear state reference "${reference}". Use a state UUID, or provide team with an exact state name.`,
     );
   }
-  const data = await linearGraphQL<{
+  const data = await graphql<{
     workflowState: {
       id: string;
       name: string;
@@ -664,10 +705,11 @@ export async function resolveStateReference(
   teamId: string,
   value: string,
   signal?: AbortSignal,
+  graphql: LinearGraphQLFn = linearGraphQL,
 ): Promise<ResolvedState> {
   const reference = requireReference(value, 'state');
   if (UUID_PATTERN.test(reference)) {
-    const data = await linearGraphQL<{ workflowState: {
+    const data = await graphql<{ workflowState: {
       id: string; name: string; team: { id: string } | null;
     } | null }>(apiKey, `query ResolveStateById($id: String!) {
   workflowState(id: $id) { id name team { id } }
@@ -677,7 +719,7 @@ export async function resolveStateReference(
     if (data.workflowState.team?.id !== teamId) throw new Error(`Linear state "${reference}" does not belong to team "${teamId}".`);
     return { id: data.workflowState.id, name: data.workflowState.name, teamId };
   }
-  const data = await linearGraphQL<{ workflowStates: { nodes: Array<{
+  const data = await graphql<{ workflowStates: { nodes: Array<{
     id: string; name: string; team: { id: string } | null;
   }> } }>(apiKey, `query ResolveStateByName($teamId: ID!, $name: String!) {
   workflowStates(first: 2, filter: { team: { id: { eq: $teamId } }, name: { eqIgnoreCase: $name } }) {
@@ -695,10 +737,11 @@ export async function resolveDocumentReference(
   apiKey: string,
   value: string,
   signal?: AbortSignal,
+  graphql: LinearGraphQLFn = linearGraphQL,
 ): Promise<ResolvedDocument> {
   const reference = requireReference(value, 'document');
   if (UUID_PATTERN.test(reference)) {
-    const data = await linearGraphQL<{ document: ResolvedDocument | null }>(apiKey, `query ResolveDocumentById($id: String!) {
+    const data = await graphql<{ document: ResolvedDocument | null }>(apiKey, `query ResolveDocumentById($id: String!) {
   document(id: $id) { id title }
 }`, { id: reference }, signal);
     if (!data.document) throw new Error(`Linear document "${reference}" was not found.`);
@@ -708,7 +751,7 @@ export async function resolveDocumentReference(
     return data.document;
   }
 
-  const data = await linearGraphQL<{ documents: { nodes: ResolvedDocument[] } }>(apiKey, `query ResolveDocumentByTitle($title: String!) {
+  const data = await graphql<{ documents: { nodes: ResolvedDocument[] } }>(apiKey, `query ResolveDocumentByTitle($title: String!) {
   documents(first: 2, filter: { title: { eq: $title } }) { nodes { id title } }
 }`, { title: reference }, signal);
   const nodes = data.documents?.nodes ?? [];
@@ -732,6 +775,7 @@ export async function resolveNamedEntityReference(
 		| "customView",
 	value: string,
 	signal?: AbortSignal,
+	graphql: LinearGraphQLFn = linearGraphQL,
 ): Promise<ResolvedNamedEntity> {
 	const reference = requireReference(value, kind);
 	const singular = kind;
@@ -744,7 +788,7 @@ export async function resolveNamedEntityReference(
 	const nameField = kind === "document" ? "title" : "name";
 	const nameSelection = kind === "document" ? "name: title" : "name";
 	if (UUID_PATTERN.test(reference)) {
-		const data = await linearGraphQL<
+		const data = await graphql<
 			Record<string, ResolvedNamedEntity | null>
 		>(
 			apiKey,
@@ -763,7 +807,7 @@ export async function resolveNamedEntityReference(
 			);
 		return entity;
 	}
-	const data = await linearGraphQL<
+	const data = await graphql<
 		Record<string, { nodes: ResolvedNamedEntity[] }>
 	>(
 		apiKey,
@@ -783,23 +827,24 @@ export async function resolveUserReference(
   apiKey: string,
   value: string,
   signal?: AbortSignal,
+  graphql: LinearGraphQLFn = linearGraphQL,
 ): Promise<ResolvedUser> {
   const reference = requireReference(value, 'user');
   const selection = 'id name displayName email';
   if (reference.toLowerCase() === 'me') {
-    const data = await linearGraphQL<{ viewer: ResolvedUser | null }>(apiKey, `query ResolveViewer { viewer { ${selection} } }`, {}, signal);
+    const data = await graphql<{ viewer: ResolvedUser | null }>(apiKey, `query ResolveViewer { viewer { ${selection} } }`, {}, signal);
     if (!data.viewer?.id) throw new Error('Linear viewer could not be resolved.');
     return data.viewer;
   }
   if (UUID_PATTERN.test(reference)) {
-    const data = await linearGraphQL<{ user: ResolvedUser | null }>(apiKey, `query ResolveUserById($id: String!) {
+    const data = await graphql<{ user: ResolvedUser | null }>(apiKey, `query ResolveUserById($id: String!) {
   user(id: $id) { ${selection} }
 }`, { id: reference }, signal);
     if (!data.user) throw new Error(`Linear user "${reference}" was not found.`);
     if (data.user.id !== reference) throw new Error(`Linear user resolver returned mismatched id for "${reference}".`);
     return data.user;
   }
-  const data = await linearGraphQL<{
+  const data = await graphql<{
     byEmail: { nodes: ResolvedUser[] };
     byName: { nodes: ResolvedUser[] };
     byDisplayName: { nodes: ResolvedUser[] };

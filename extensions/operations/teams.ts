@@ -77,8 +77,8 @@ export const teams: readonly OperationDefinition[] = ([
 		example: { operation: "get_team", variables: { team: "AEO" } },
 		document: getDocument("GetTeam", "team", projection("team", "detail")),
 		resolverPaths: { team: "resolveTeamReference" },
-		async prepare(k, v, s) {
-			const x = await resolveTeamReference(k, String(v.team ?? v.teamId), s);
+		async prepare(k, v, s, g) {
+			const x = await resolveTeamReference(k, String(v.team ?? v.teamId), s, g);
 			return {
 				variables: { id: x.id },
 				resolution: {

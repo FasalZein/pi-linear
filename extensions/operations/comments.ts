@@ -148,10 +148,10 @@ export const comments: readonly OperationDefinition[] = ([
 		parameters: [p("issue", "IssueReference")],
 		example: { issue: "AEO-258" },
 		resolverPaths: { issue: "resolveIssueReference" },
-		prepare: async (apiKey, variables, signal) => {
+		prepare: async (apiKey, variables, signal, graphql) => {
 			const requested = issueReference(variables);
 			const issue = requested
-				? await resolveIssueReference(apiKey, requested, signal)
+				? await resolveIssueReference(apiKey, requested, signal, graphql)
 				: undefined;
 			return {
 				variables: {
@@ -323,13 +323,13 @@ export const comments: readonly OperationDefinition[] = ([
 			issueId: "resolveIssueReference",
 		},
 		validateVariables: validateCommentCreateSemantics,
-		async prepare(apiKey, variables, signal) {
+		async prepare(apiKey, variables, signal, graphql) {
 			validateCommentCreateSemantics(variables);
 			const requested =
 				issueReference(variables) ||
 				String(object(variables.input)?.issueId ?? "");
 			const issue = requested
-				? await resolveIssueReference(apiKey, requested, signal)
+				? await resolveIssueReference(apiKey, requested, signal, graphql)
 				: undefined;
 			const prepared = mergedInput(variables, ["issue"]);
 			if (issue) prepared.issueId = issue.id;

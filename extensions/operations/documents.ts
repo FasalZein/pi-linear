@@ -100,7 +100,7 @@ export const documents: readonly OperationDefinition[] = ([
 		},
 		document: getDocument("GetDocument", "document", projection("document", "detail")),
 		resolverPaths: { document: "resolveNamedEntityReference" },
-		async prepare(k, v, s) {
+		async prepare(k, v, s, g) {
 			const requested = String(v.document ?? v.documentId);
 			const reference = requested.trim();
 			if (isUuid(reference) || isLinearUrlSlug(reference)) {
@@ -110,7 +110,7 @@ export const documents: readonly OperationDefinition[] = ([
 					resolution: { target: { requested: reference } },
 				};
 			}
-			const x = await resolveNamedEntityReference(k, "document", requested, s);
+			const x = await resolveNamedEntityReference(k, "document", requested, s, g);
 			return { variables: { id: x.id } };
 		},
 	}, "document", "document", "GetDocument"),
@@ -192,11 +192,11 @@ export const documents: readonly OperationDefinition[] = ([
 			teamKey: "resolveTeamReference",
 			teamId: "resolveTeamReference",
 		},
-		async prepare(k, v, s) {
+		async prepare(k, v, s, g) {
 			const x = mergedInput(v, ["teamKey"]);
 			const resolution: Record<string, unknown> = {};
 			if (typeof x.issueId === "string") {
-				const issue = await resolveIssueReference(k, x.issueId, s);
+				const issue = await resolveIssueReference(k, x.issueId, s, g);
 				resolution.issue = issueTarget(x.issueId, issue);
 				x.issueId = issue.id;
 			}
@@ -211,7 +211,7 @@ export const documents: readonly OperationDefinition[] = ([
 			const teamRef = v.teamKey ?? x.teamId;
 			if (related) delete x.teamId;
 			else if (teamRef) {
-				const team = await resolveTeamReference(k, String(teamRef), s);
+				const team = await resolveTeamReference(k, String(teamRef), s, g);
 				resolution.team = {
 					requested: teamRef,
 					resolvedId: team.id,
@@ -358,15 +358,15 @@ export const documents: readonly OperationDefinition[] = ([
 			teamKey: "resolveTeamReference",
 			teamId: "resolveTeamReference",
 		},
-		async prepare(k, v, s) {
+		async prepare(k, v, s, g) {
 			const requested = String(v.documentId);
-			const document = await resolveDocumentReference(k, requested, s);
+			const document = await resolveDocumentReference(k, requested, s, g);
 			const x = mergedInput(v, ["documentId", "teamKey"]);
 			const resolution: Record<string, unknown> = {
 				target: { requested, resolvedId: document.id, title: document.title },
 			};
 			if (typeof x.issueId === "string") {
-				const issue = await resolveIssueReference(k, x.issueId, s);
+				const issue = await resolveIssueReference(k, x.issueId, s, g);
 				resolution.issue = issueTarget(x.issueId, issue);
 				x.issueId = issue.id;
 			}
@@ -381,7 +381,7 @@ export const documents: readonly OperationDefinition[] = ([
 			const teamRef = v.teamKey ?? x.teamId;
 			if (related) delete x.teamId;
 			else if (teamRef) {
-				const team = await resolveTeamReference(k, String(teamRef), s);
+				const team = await resolveTeamReference(k, String(teamRef), s, g);
 				resolution.team = {
 					requested: teamRef,
 					resolvedId: team.id,

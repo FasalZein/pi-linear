@@ -83,12 +83,13 @@ export const milestoneReads: readonly OperationDefinition[] = ([
 			projection("milestone", "detail"),
 		),
 		resolverPaths: { milestone: "resolveNamedEntityReference" },
-		async prepare(k, v, s) {
+		async prepare(k, v, s, g) {
 			const x = await resolveNamedEntityReference(
 				k,
 				"projectMilestone",
 				String(v.milestone ?? v.milestoneId),
 				s,
+				g,
 			);
 			return { variables: { id: x.id } };
 		},

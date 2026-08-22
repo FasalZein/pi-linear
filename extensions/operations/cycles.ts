@@ -67,10 +67,10 @@ export const cycles: readonly OperationDefinition[] = ([
 			filter,
 		],
 		resolverPaths: { team: "resolveTeamReference" },
-		prepare: async (apiKey, v, signal) => {
+		prepare: async (apiKey, v, signal, graphql) => {
 			const ref = String(v.team ?? v.teamKey ?? v.teamId ?? "");
 			const team = ref
-				? await resolveTeamReference(apiKey, ref, signal)
+				? await resolveTeamReference(apiKey, ref, signal, graphql)
 				: undefined;
 			return {
 				variables: {
@@ -116,7 +116,7 @@ export const cycles: readonly OperationDefinition[] = ([
 		example: { operation: "get_cycle", variables: { cycle: "Cycle 12" } },
 		document: getDocument("GetCycle", "cycle", projection("cycle", "detail")),
 		resolverPaths: { cycle: "resolveNamedEntityReference" },
-		async prepare(k, v, s) {
+		async prepare(k, v, s, g) {
 			const requested = String(v.cycle ?? v.id);
 			const reference = requested.trim();
 			if (isUuid(reference) || isLinearUrlSlug(reference)) {
@@ -126,7 +126,7 @@ export const cycles: readonly OperationDefinition[] = ([
 					resolution: { target: { requested: reference } },
 				};
 			}
-			const x = await resolveNamedEntityReference(k, "cycle", requested, s);
+			const x = await resolveNamedEntityReference(k, "cycle", requested, s, g);
 			return {
 				variables: { id: x.id },
 				resolution: {
@@ -214,11 +214,12 @@ export const cycles: readonly OperationDefinition[] = ([
 		],
 		example: { team: "AEO", startsAt: "2026-08-17", endsAt: "2026-08-31" },
 		resolverPaths: { team: "resolveTeamReference" },
-		async prepare(k, v, s) {
+		async prepare(k, v, s, g) {
 			const team = await resolveTeamReference(
 				k,
 				String(v.team ?? v.teamKey ?? v.teamId),
 				s,
+				g,
 			);
 			return {
 				variables: {

@@ -7,13 +7,15 @@ import { activeSecrets } from './active-secrets';
 import {
   assertIssueNodeMatches,
   assertNamedNodeMatches,
-  currentLinearRateLimitTelemetry,
-  linearGraphQL,
+  linearGraphQLWithContext,
   linearGraphQLErrors,
   resolveApiKey,
   withLinearRateLimitTelemetry,
+  type LinearGraphQLFn,
   type LinearGraphQLPathError,
+  type LinearNetworkContext,
   type LinearRateLimitSnapshot,
+  type LinearTransport,
 } from './client';
 import type {
   GraphQLDocumentVariant,
@@ -180,10 +182,7 @@ export async function routeLinearEnvelope<T extends JsonObject>(
 ): Promise<T | ArtifactResult> {
   // Redact before anything is measured, serialized, indexed, written, or returned.
   const envelope = redactDeep(rawEnvelope, options.secrets ?? []) as T;
-  const telemetry = redactDeep(
-    options.telemetry ?? currentLinearRateLimitTelemetry(),
-    options.secrets ?? [],
-  ) as LinearRateLimitSnapshot[];
+  const telemetry = redactDeep(options.telemetry ?? [], options.secrets ?? []) as LinearRateLimitSnapshot[];
   const warning = rateLimitDetails(telemetry, options.telemetryMode);
   const existingMeta = envelope.meta;
   if (!existingMeta || typeof existingMeta !== 'object' || Array.isArray(existingMeta)) {
@@ -286,6 +285,40 @@ export async function routeLinearResult<T extends JsonObject>(
     },
     ...(options.resolution ? { resolution: options.resolution } : {}),
   } as RoutedEnvelope<T>, options);
+}
+
+export type LinearCallContext = {
+  mode: MutationMode;
+  signal?: AbortSignal;
+  pi: ExtensionContext;
+  workspace?: string;
+  sink?: 'inline' | 'artifact';
+  telemetryMode?: TelemetryMode;
+};
+
+export function linearCallContext(
+  mode: MutationMode,
+  signal: AbortSignal | undefined,
+  pi: ExtensionContext,
+  options: { workspace?: string; sink?: 'inline' | 'artifact'; telemetryMode?: TelemetryMode } = {},
+): LinearCallContext {
+  return { mode, signal, pi, ...options };
+}
+
+export async function networkExecutionContext(
+  call: LinearCallContext,
+  transport: LinearTransport = fetch,
+): Promise<LinearNetworkContext> {
+  const credential = await resolveApiKey(call.pi, { workspace: call.workspace });
+  if (!credential.apiKey || credential.source === 'none') {
+    throw new Error('Missing Linear API key. Set LINEAR_API_KEY or run /linear-auth.');
+  }
+  return {
+    credential: { apiKey: credential.apiKey, source: credential.source },
+    transport,
+    telemetry: [],
+    signal: call.signal,
+  };
 }
 
 export async function apiKeyForWorkspace(ctx: ExtensionContext, workspace?: string): Promise<string> {
@@ -447,67 +480,78 @@ function applyExactNamedCheck(prepared: OperationPreparation, data: JsonObject):
  * tools route through here, so mutation gating, reference resolution, spill, and
  * result routing exist exactly once.
  */
-async function executeOperationWithTelemetry(
+async function executeOperationWithContext(
   operation: LinearOperation,
   options: OperationRunOptions,
-  mode: MutationMode,
-  ctx: ExtensionContext,
-  signal: AbortSignal | undefined,
+  call: LinearCallContext,
+  transport: LinearTransport,
 ): Promise<JsonObject> {
-  assertOperationAllowed(operation, options.variables, mode);
-  // Seeded with every active credential, so local results, help, and early failures are
-  // covered too; the selected key is appended as soon as it is known.
+  assertOperationAllowed(operation, options.variables, call.mode);
   const secrets: string[] = [...activeSecrets()];
   return withRedactedErrors(async () => {
     if (operation.executeLocal) {
-      const localResult = await operation.executeLocal(options.variables, ctx);
+      const localResult = await operation.executeLocal(options.variables, call.pi);
       validateLocalResult(operation.name, localResult, operation.localResult);
       return redactDeep(localResult, secrets);
     }
 
-    const apiKey = await apiKeyForWorkspace(ctx, options.workspace);
+    const network = await networkExecutionContext(call, transport);
+    const apiKey = network.credential.apiKey;
     secrets.push(apiKey);
-    const prepared = operation.prepare
-      ? await operation.prepare(apiKey, options.variables, signal)
-      : { variables: options.variables };
-    const variant = prepared.variant ?? operation.variants?.[0];
-    const document = variant?.document ?? operation.document;
-    assertMutationAllowed(document, mode, variant ? [variant.root] : []);
-    if (variant) mutationExpectation(operation.name, variant);
-    let data: JsonObject;
-    let errors: readonly LinearGraphQLPathError[];
-    try {
-      data = await linearGraphQL<JsonObject>(
-        apiKey,
-        document,
-        prepared.variables,
-        signal,
-        prepared.telemetryPhase ? { phase: prepared.telemetryPhase } : undefined,
-      );
-      errors = linearGraphQLErrors(data);
-      if (prepared.requireNoGraphQLErrors && errors.length) {
-        throw new Error(`Linear operation "${operation.name}" returned a GraphQL error.`);
+    const graphql: LinearGraphQLFn = (_apiKey, query, variables, _signal, graphqlOptions) =>
+      linearGraphQLWithContext(network, query, variables, graphqlOptions);
+    return withLinearRateLimitTelemetry(network.telemetry, async () => {
+      const prepared = operation.prepare
+        ? await operation.prepare(apiKey, options.variables, call.signal, graphql)
+        : { variables: options.variables };
+      const variant = prepared.variant ?? operation.variants?.[0];
+      const document = variant?.document ?? operation.document;
+      assertMutationAllowed(document, call.mode, variant ? [variant.root] : []);
+      if (variant) mutationExpectation(operation.name, variant);
+      let data: JsonObject;
+      let errors: readonly LinearGraphQLPathError[];
+      try {
+        data = await linearGraphQLWithContext<JsonObject>(
+          network,
+          document,
+          prepared.variables,
+          prepared.telemetryPhase ? { phase: prepared.telemetryPhase } : undefined,
+        );
+        errors = linearGraphQLErrors(data);
+        if (prepared.requireNoGraphQLErrors && errors.length) {
+          throw new Error(`Linear operation "${operation.name}" returned a GraphQL error.`);
+        }
+        if (variant) validateMutationResult(operation.name, data, variant);
+        applyExactIssueCheck(prepared, data);
+        applyExactNamedCheck(prepared, data);
+      } catch (error) {
+        if (prepared.failureMessage) throw new Error(prepared.failureMessage);
+        throw error;
       }
-      if (variant) validateMutationResult(operation.name, data, variant);
-      applyExactIssueCheck(prepared, data);
-      applyExactNamedCheck(prepared, data);
-    } catch (error) {
-      if (prepared.failureMessage) throw new Error(prepared.failureMessage);
-      throw error;
-    }
-    const category = prepared.resultCategory ?? operation.resultCategory;
-    if (category === 'local') throw new Error(`Network operation "${operation.name}" cannot use local result routing.`);
-    return routeLinearResult(prepared.acknowledgement ?? data, {
-      label: operation.name,
-      category,
-      sink: options.sink,
-      secrets,
-      errors,
-      view: prepared.resultView,
-      resolution: prepared.resolution,
-      telemetryMode: options.telemetryMode,
+      const category = prepared.resultCategory ?? operation.resultCategory;
+      if (category === 'local') throw new Error(`Network operation "${operation.name}" cannot use local result routing.`);
+      return routeLinearResult(prepared.acknowledgement ?? data, {
+        label: operation.name,
+        category,
+        sink: call.sink,
+        secrets,
+        errors,
+        view: prepared.resultView,
+        resolution: prepared.resolution,
+        telemetry: network.telemetry,
+        telemetryMode: call.telemetryMode,
+      });
     });
   }, secrets);
+}
+
+export async function executeOperationInContext(
+  operation: LinearOperation,
+  options: Pick<OperationRunOptions, 'variables'>,
+  call: LinearCallContext,
+  transport: LinearTransport = fetch,
+): Promise<JsonObject> {
+  return executeOperationWithContext(operation, options, call, transport);
 }
 
 export async function executeOperation(
@@ -516,7 +560,39 @@ export async function executeOperation(
   mode: MutationMode,
   ctx: ExtensionContext,
   signal: AbortSignal | undefined,
+  transport: LinearTransport = fetch,
 ): Promise<JsonObject> {
-  return withLinearRateLimitTelemetry(() =>
-    executeOperationWithTelemetry(operation, options, mode, ctx, signal));
+  return executeOperationWithContext(
+    operation,
+    options,
+    linearCallContext(mode, signal, ctx, options),
+    transport,
+  );
+}
+
+export async function executeRawQuery(
+  query: string,
+  variables: Record<string, unknown>,
+  call: LinearCallContext,
+  transport: LinearTransport = fetch,
+): Promise<JsonObject> {
+  assertMutationAllowed(query, call.mode);
+  const secrets = [...activeSecrets()];
+  return withRedactedErrors(async () => {
+    const network = await networkExecutionContext(call, transport);
+    secrets.push(network.credential.apiKey);
+    return withLinearRateLimitTelemetry(network.telemetry, async () => {
+      const data = await linearGraphQLWithContext<JsonObject>(network, query, variables);
+      return routeLinearResult(data, {
+        label: 'query',
+        category: 'composite',
+        sink: call.sink,
+        nodeCap: NODE_CAP,
+        secrets,
+        errors: linearGraphQLErrors(data),
+        telemetry: network.telemetry,
+        telemetryMode: call.telemetryMode,
+      });
+    });
+  }, secrets);
 }

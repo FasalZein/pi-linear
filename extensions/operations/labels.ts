@@ -77,10 +77,10 @@ export const issueLabels: readonly OperationDefinition[] = ([
 			filter,
 		],
 		resolverPaths: { team: "resolveTeamReference" },
-		prepare: async (k, v, s) => {
+		prepare: async (k, v, s, g) => {
 			const ref = v.team ?? v.teamKey ?? v.teamId;
 			const team = ref
-				? await resolveTeamReference(k, String(ref), s)
+				? await resolveTeamReference(k, String(ref), s, g)
 				: undefined;
 			return {
 				variables: {
@@ -159,7 +159,7 @@ export const issueLabels: readonly OperationDefinition[] = ([
 			}
 		},
 		resolverPaths: { team: "resolveTeamReference" },
-		async prepare(k, v, s) {
+		async prepare(k, v, s, g) {
 			const rawInput = object(v.input);
 			const replaceTeamLabels =
 				v.replaceTeamLabels ?? rawInput?.replaceTeamLabels;
@@ -176,7 +176,7 @@ export const issueLabels: readonly OperationDefinition[] = ([
 			if (!ref) {
 				return { variables: compactObject({ input: x, replaceTeamLabels }) };
 			}
-			const team = await resolveTeamReference(k, String(ref), s);
+			const team = await resolveTeamReference(k, String(ref), s, g);
 			x.teamId = team.id;
 			return {
 				variables: compactObject({ input: x, replaceTeamLabels }),

@@ -198,9 +198,9 @@ export function withGetResultView(
 		},
 		parameters: [...source.parameters, resultViewParam],
 		document: documents[defaultView],
-		prepare: async (apiKey, variables, signal) => {
+		prepare: async (apiKey, variables, signal, graphql) => {
 			const prepared = innerPrepare
-				? await innerPrepare(apiKey, variables, signal)
+				? await innerPrepare(apiKey, variables, signal, graphql)
 				: { variables };
 			return applyResultView(variables, defaultView, prepared, documents, root);
 		},
@@ -385,8 +385,8 @@ export function listOperation(config: {
 			  }
 			: innerValidate,
 		prepare: documents && defaultView
-			? async (apiKey, variables, signal) => {
-					const prepared = await innerPrepare(apiKey, variables, signal);
+			? async (apiKey, variables, signal, graphql) => {
+					const prepared = await innerPrepare(apiKey, variables, signal, graphql);
 					if (prepared.resultView) return prepared;
 					return applyResultView(
 						variables,
@@ -553,7 +553,7 @@ export function addSaveOperation(config: {
 		resolverPaths: config.resolverPaths,
 		requiresVariables: true,
 		validateVariables: validateSaveSemantics,
-		async prepare(k, v, s) {
+		async prepare(k, v, s, g) {
 			validateSaveSemantics(v);
 			const reference = v[config.idKey];
 			const update = typeof reference === "string" && reference.length > 0;
@@ -566,6 +566,7 @@ export function addSaveOperation(config: {
 					config.entityKind,
 					String(reference),
 					s,
+					g,
 				);
 				id = entity.id;
 				resolution.target = {
@@ -583,6 +584,7 @@ export function addSaveOperation(config: {
 					"project",
 					prepared.projectId,
 					s,
+					g,
 				);
 				resolution.project = {
 					requested: prepared.projectId,
@@ -599,6 +601,7 @@ export function addSaveOperation(config: {
 					k,
 					prepared.convertedFromIssueId,
 					s,
+					g,
 				);
 				resolution.convertedFromIssue = issueTarget(
 					prepared.convertedFromIssueId,

@@ -1,6 +1,7 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { CanonicalOperation } from "./canonical-schema";
 import type { ResultView } from "./selections";
+import type { LinearGraphQLFn } from "./client";
 
 export type OperationDomain =
 	| "issues"
@@ -129,6 +130,7 @@ export type LinearOperation = {
 		apiKey: string,
 		variables: Record<string, unknown>,
 		signal: AbortSignal | undefined,
+		graphql?: LinearGraphQLFn,
 	) => Promise<OperationPreparation>;
 	/** Variable-dependent batch eligibility. Inspect lookups, not the operation name. */
 	batchPrepare?: (variables: Record<string, unknown>) => BatchPreparation;

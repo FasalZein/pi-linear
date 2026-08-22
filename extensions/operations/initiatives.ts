@@ -87,12 +87,13 @@ export const initiativeReads: readonly OperationDefinition[] = ([
 		},
 		document: getDocument("GetInitiative", "initiative", projection("initiative", "detail")),
 		resolverPaths: { initiative: "resolveNamedEntityReference" },
-		async prepare(k, v, s) {
+		async prepare(k, v, s, g) {
 			const x = await resolveNamedEntityReference(
 				k,
 				"initiative",
 				String(v.initiative ?? v.initiativeId),
 				s,
+				g,
 			);
 			return { variables: { id: x.id } };
 		},

@@ -245,10 +245,10 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
       compatibility.semanticValidateVariables?.(variables);
     },
     ...(compatibility.prepare ? {
-      prepare: async (apiKey, variables, signal) => {
+      prepare: async (apiKey, variables, signal, graphql) => {
         assertRequirementBranches(compatibility.branches, variables);
         compatibility.semanticValidateVariables?.(variables);
-        return compatibility.prepare!(apiKey, variables, signal);
+        return compatibility.prepare!(apiKey, variables, signal, graphql);
       },
     } : {}),
     ...(compatibility.batchPrepare ? { batchPrepare: compatibility.batchPrepare } : {}),

@@ -142,10 +142,10 @@ export const views: readonly OperationDefinition[] = ([
 			team: "resolveTeamReference",
 			teamKey: "resolveTeamReference",
 		},
-		async prepare(apiKey, v, signal) {
+		async prepare(apiKey, v, signal, graphql) {
 			const x = mergedInput(v, ["team", "teamKey"]);
 			const ref = String(v.team ?? v.teamKey ?? v.teamId ?? "");
-			if (ref) x.teamId = (await resolveTeamReference(apiKey, ref, signal)).id;
+			if (ref) x.teamId = (await resolveTeamReference(apiKey, ref, signal, graphql)).id;
 			return { variables: { input: x } };
 		},
 	}),

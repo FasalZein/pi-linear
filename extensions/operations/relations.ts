@@ -176,12 +176,12 @@ export const issueRelations: readonly OperationDefinition[] = ([
 			issue: "resolveIssueReference",
 			relatedIssue: "resolveIssueReference",
 		},
-		async prepare(k, v, s) {
+		async prepare(k, v, s, g) {
 			const a = issueReference(v);
 			const b = String(v.relatedIssue ?? v.relatedIssueId);
 			const [x, y] = await Promise.all([
-				resolveIssueReference(k, a, s),
-				resolveIssueReference(k, b, s),
+				resolveIssueReference(k, a, s, g),
+				resolveIssueReference(k, b, s, g),
 			]);
 			return {
 				variables: {
@@ -244,12 +244,12 @@ export const issueRelations: readonly OperationDefinition[] = ([
 			issueId: "resolveIssueReference",
 			relatedIssueId: "resolveIssueReference",
 		},
-		async prepare(k, v, s) {
+		async prepare(k, v, s, g) {
 			const x = mergedInput(v, ["id"]);
 			const resolution: Record<string, unknown> = {};
 			for (const key of ["issueId", "relatedIssueId"])
 				if (typeof x[key] === "string") {
-					const issue = await resolveIssueReference(k, String(x[key]), s);
+					const issue = await resolveIssueReference(k, String(x[key]), s, g);
 					resolution[key] = issueTarget(String(x[key]), issue);
 					x[key] = issue.id;
 				}
@@ -302,7 +302,7 @@ export const issueRelations: readonly OperationDefinition[] = ([
 			if (typeof variables.type !== "string" || !ISSUE_RELATION_TYPES.has(variables.type))
 				throw new Error("Invalid type: expected blocks, duplicate, related, or similar.");
 		},
-		async prepare(apiKey, variables, signal) {
+		async prepare(apiKey, variables, signal, graphql = linearGraphQL) {
 			const relationId = String(variables.relationId);
 			let data: {
 				issueRelation: {
@@ -313,7 +313,7 @@ export const issueRelations: readonly OperationDefinition[] = ([
 				} | null;
 			};
 			try {
-				data = await linearGraphQL(apiKey, VERIFY_ISSUE_RELATION_DOCUMENT, { id: relationId }, signal, { phase: "read" });
+				data = await graphql(apiKey, VERIFY_ISSUE_RELATION_DOCUMENT, { id: relationId }, signal, { phase: "read" });
 				if (linearGraphQLErrors(data).length) throw new Error(RELATION_PREFLIGHT_ERROR);
 			} catch {
 				throw new Error(RELATION_PREFLIGHT_ERROR);
