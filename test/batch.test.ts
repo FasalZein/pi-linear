@@ -762,7 +762,7 @@ describe('batch mutation phase', () => {
     expect(result.details.errors).toEqual([]);
   });
 
-  it('proves the target issue, destination team, and state in one read request before an issue state update', async () => {
+  it('proves the destination team and exact state without an unnecessary target lookup', async () => {
     const { requests } = graphqlStub((request) => request.query.includes('issueUpdate')
       ? { body: { data: { edit: { success: true, issue: issueNode(ISSUE_A, 'AEO-1') } } } }
       : { body: { data: lookupData(request.query) } });
@@ -777,7 +777,7 @@ describe('batch mutation phase', () => {
       },
     });
     expect(requests).toHaveLength(2);
-    expect(requests[0]!.query).toMatch(/issue\(/);
+    expect(requests[0]!.query).not.toMatch(/issue\(/);
     expect(requests[0]!.query).toMatch(/team\(/);
     expect(requests[0]!.query).toMatch(/workflowState\(/);
     expect(requests[0]!.query).not.toMatch(/mutation/);

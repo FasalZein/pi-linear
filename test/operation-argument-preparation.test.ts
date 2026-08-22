@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { linearApiTool, resolveRequest } from "../extensions/api";
 import { operations } from "../extensions/operations";
 import { isolateLinearCredentials } from "./helpers/credentials";
+import { prepareOperation } from "./helpers/operation-plan";
 
 isolateLinearCredentials();
 
@@ -11,8 +12,8 @@ const MILESTONE_ID = "33333333-3333-4333-8333-333333333333";
 
 async function prepare(name: string, variables: Record<string, unknown>) {
 	const operation = operations[name];
-	if (!operation?.prepare) throw new Error(`${name} has no preparation.`);
-	return operation.prepare("test-key", variables, undefined);
+	if (!operation) throw new Error(`${name} has no operation.`);
+	return prepareOperation(operation, variables);
 }
 
 function graphqlStub(

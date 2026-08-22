@@ -1,4 +1,3 @@
-import { resolveTeamReference } from "../client";
 import { projection } from "../selections";
 import { pureMutationPlan, teamLookup } from "../operation-plan";
 import {
@@ -176,32 +175,6 @@ export const issueLabels: readonly OperationDefinition[] = ([
 				},
 			};
 		},
-		async prepare(k, v, s, g) {
-			const rawInput = object(v.input);
-			const replaceTeamLabels =
-				v.replaceTeamLabels ?? rawInput?.replaceTeamLabels;
-			const x = mergedInput(v, [
-				"team",
-				"teamKey",
-				"teamId",
-				"replaceTeamLabels",
-			]);
-			delete x.replaceTeamLabels;
-			const ref = v.team ?? v.teamKey ?? v.teamId ?? x.teamId;
-			if (typeof x.name !== "string" || !x.name.trim())
-				throw new Error("Issue label name is required (name).");
-			if (!ref) {
-				return { variables: compactObject({ input: x, replaceTeamLabels }) };
-			}
-			const team = await resolveTeamReference(k, String(ref), s, g);
-			x.teamId = team.id;
-			return {
-				variables: compactObject({ input: x, replaceTeamLabels }),
-				resolution: {
-					team: { requested: ref, resolvedId: team.id, key: team.key },
-				},
-			};
-		},
 	}),
 	simpleMutation({
 		name: "update_issue_label",
@@ -282,18 +255,6 @@ export const issueLabels: readonly OperationDefinition[] = ([
 			delete input.replaceTeamLabels;
 			if (!Object.keys(input).length) throw new Error("No update fields were provided.");
 			return pureMutationPlan({ variables: compactObject({ id: v.id, input, replaceTeamLabels }) });
-		},
-		async prepare(_k, v) {
-			const rawInput = object(v.input);
-			const replaceTeamLabels =
-				v.replaceTeamLabels ?? rawInput?.replaceTeamLabels;
-			const x = mergedInput(v, ["id", "replaceTeamLabels"]);
-			delete x.replaceTeamLabels;
-			if (!Object.keys(x).length)
-				throw new Error("No update fields were provided.");
-			return {
-				variables: compactObject({ id: v.id, input: x, replaceTeamLabels }),
-			};
 		},
 	}),
 ] satisfies OperationSource[]).map((operation) =>

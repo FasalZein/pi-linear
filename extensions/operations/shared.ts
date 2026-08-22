@@ -421,8 +421,6 @@ export function simpleMutation(config: {
 	example: Record<string, unknown>;
 	idKey?: string;
 	plan?: LinearOperation["plan"];
-	prepare?: LinearOperation["prepare"];
-	batchPrepare?: LinearOperation["batchPrepare"];
 	aliases?: readonly string[];
 	legacyParameters?: LinearOperation["legacyParameters"];
 	aliasParameters?: LinearOperation["aliasParameters"];
@@ -459,8 +457,6 @@ export function simpleMutation(config: {
 		resolverPaths: config.resolverPaths,
 		validateVariables: config.validateVariables,
 		plan: config.plan ?? (config.idKey ? updateInputPlan(config.idKey) : plainInputPlan()),
-		...(config.prepare ? { prepare: config.prepare } : {}),
-		...(config.batchPrepare ? { batchPrepare: config.batchPrepare } : {}),
 	};
 }
 

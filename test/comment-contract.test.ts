@@ -8,6 +8,7 @@ import { operations } from '../extensions/operations';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { LIVE_COMMENT_SCHEMA_2026_08_19 } from './fixtures/comment-schema';
 import { isolateLinearCredentials } from './helpers/credentials';
+import { prepareOperation } from './helpers/operation-plan';
 
 isolateLinearCredentials();
 
@@ -48,7 +49,7 @@ function rawAccepts(tool: typeof create, args: Record<string, unknown>): boolean
 }
 
 async function prepare(name: 'create_comment' | 'update_comment', variables: Record<string, unknown>) {
-  return operations[name]!.prepare!('test-key', variables, undefined);
+  return prepareOperation(operations[name]!, variables);
 }
 
 afterEach(() => {

@@ -2,12 +2,11 @@ import {
 	isIssueIdentifier,
 	parseIssueReferenceSet,
 	requireIssueReference,
-	resolveIssueReference,
-	resolveNamedEntityReference,
-	resolveStateIdReference,
-	resolveStateReference,
-	resolveTeamReference,
-	resolveUserReference,
+	type ResolvedIssue,
+	type ResolvedNamedEntity,
+	type ResolvedState,
+	type ResolvedTeam,
+	type ResolvedUser,
 } from "../client";
 import { parseResultView, projection } from "../selections";
 import { issueLookup, namedEntityLookup, pureQueryPlan, stateLookup, stateLookupForTeamReference, teamLookup, userLookup } from "../operation-plan";
@@ -19,8 +18,6 @@ import {
 	paginationVariables,
 } from "../operation-types";
 import type {
-	BatchLookup,
-	BatchLookupValues,
 	LinearOperation,
 	OperationPlan,
 	OperationPreparation,
@@ -138,9 +135,17 @@ function createIssueRefs(v: Record<string, unknown>) {
 	};
 }
 
+type CreateIssueLookups = {
+	parent?: ResolvedIssue;
+	team?: ResolvedTeam;
+	state?: ResolvedState;
+	assignee?: ResolvedUser;
+	project?: ResolvedNamedEntity;
+};
+
 function applyCreateIssueLookups(
 	v: Record<string, unknown>,
-	resolved: BatchLookupValues,
+	resolved: CreateIssueLookups,
 ): OperationPreparation {
 	const { input, parentRef, teamRef, stateRef, userRef, projectRef } = createIssueRefs(v);
 	const parent = resolved.parent;
@@ -222,7 +227,7 @@ function createIssuePlan(v: Record<string, unknown>): OperationPlan {
 			...(userRef ? [userLookup("assignee", String(userRef))] : []),
 			...(projectRef ? [namedEntityLookup("project", "project", projectRef)] : []),
 		],
-		finish: (resolved) => applyCreateIssueLookups(v, resolved as BatchLookupValues),
+		finish: (resolved) => applyCreateIssueLookups(v, resolved as CreateIssueLookups),
 	};
 }
 
@@ -234,7 +239,7 @@ function updateIssuePlan(v: Record<string, unknown>): OperationPlan {
 	const parentRef = v.parent ?? input.parentId;
 	const userRef = v.assignee ?? input.assigneeId;
 	const stateNeedsTeam = typeof stateRef === "string" && stateRef.trim() !== "" && !isUuid(stateRef);
-	const needsIssue = Boolean(stateRef) || Boolean(parentRef);
+	const needsIssue = stateNeedsTeam || Boolean(parentRef);
 	return {
 		kind: "mutation",
 		lookups: [
@@ -277,35 +282,6 @@ function updateIssuePlan(v: Record<string, unknown>): OperationPlan {
 				}),
 			};
 		},
-	};
-}
-
-function createIssueBatchPrepare(
-	v: Record<string, unknown>,
-): { kind: "independent"; lookups: BatchLookup[]; finish: (resolved: BatchLookupValues) => OperationPreparation } {
-	const { parentRef, teamRef, stateRef, userRef, projectRef } = createIssueRefs(v);
-	const stateIsName = typeof stateRef === "string" && stateRef.trim() && !isUuid(stateRef);
-	if (stateIsName && parentRef && !teamRef) {
-		throw new Error(
-			"Batch cannot fold sequential preparation lookups into one GraphQL request. A state name requires an explicit team when only parent is provided.",
-		);
-	}
-	const lookups: BatchLookup[] = [];
-	if (parentRef) lookups.push({ field: "parent", requested: String(parentRef) });
-	if (teamRef) lookups.push({ field: "team", requested: String(teamRef) });
-	if (stateRef) {
-		lookups.push(
-			isUuid(stateRef) || !teamRef
-				? { field: "state", requested: String(stateRef) }
-				: { field: "state", requested: String(stateRef), team: String(teamRef) },
-		);
-	}
-	if (userRef) lookups.push({ field: "assignee", requested: String(userRef) });
-	if (projectRef) lookups.push({ field: "project", requested: projectRef });
-	return {
-		kind: "independent",
-		lookups,
-		finish: (resolved) => applyCreateIssueLookups(v, resolved),
 	};
 }
 
@@ -631,74 +607,6 @@ export const issues: readonly OperationDefinition[] = ([
 			assigneeId: "resolveUserReference",
 		},
 		plan: createIssuePlan,
-		async prepare(k, v, s, g) {
-			const x = mergedInput(v, [
-				"parent",
-				"team",
-				"teamKey",
-				"state",
-				"assignee",
-				"project",
-				"labels",
-			]);
-			const projectRef = v.project;
-			if (isUuid(projectRef)) x.projectId = projectRef;
-			else if (typeof projectRef === "string") {
-				x.projectId = (await resolveNamedEntityReference(k, "project", projectRef, s, g)).id;
-			}
-			if (Array.isArray(v.labels)) x.labelIds = v.labels;
-			const parentRef = v.parent ?? x.parentId;
-			const parent = parentRef
-				? await resolveIssueReference(k, String(parentRef), s, g)
-				: undefined;
-			if (parent) x.parentId = parent.id;
-			const teamRef = v.team ?? v.teamKey ?? x.teamId;
-			const team = teamRef
-				? await resolveTeamReference(k, String(teamRef), s, g)
-				: undefined;
-			if (team && parent && team.id !== parent.teamId) {
-				throw new Error(
-					`Linear parent "${parent.identifier}" does not belong to team "${team.key}".`,
-				);
-			}
-			const teamId = team?.id ?? parent?.teamId;
-			if (!teamId)
-				throw new Error(
-					"Issue team is required. Send team, teamKey, teamId, or parent.",
-				);
-			x.teamId = teamId;
-			const stateRef = v.state ?? x.stateId;
-			if (stateRef)
-				x.stateId = (
-					await resolveStateReference(k, teamId, String(stateRef), s, g)
-				).id;
-			const userRef = v.assignee ?? x.assigneeId;
-			if (userRef)
-				x.assigneeId = (await resolveUserReference(k, String(userRef), s, g)).id;
-			if (typeof x.title !== "string" || !x.title.trim())
-				throw new Error("Issue title is required for issueCreate (title).");
-			return {
-				variables: { input: x },
-				resolution: compactObject({
-					parent: parent ? issueTarget(String(parentRef), parent) : undefined,
-					team: {
-						requested: teamRef ?? parentRef,
-						resolvedId: teamId,
-						key: team?.key ?? parent?.teamKey,
-					},
-					state: stateRef
-						? { requested: stateRef, resolvedId: x.stateId }
-						: undefined,
-					assignee: userRef
-						? { requested: userRef, resolvedId: x.assigneeId }
-						: undefined,
-					project: typeof projectRef === "string"
-						? { requested: projectRef, resolvedId: x.projectId }
-						: undefined,
-				}),
-			};
-		},
-		batchPrepare: createIssueBatchPrepare,
 	}),
 	simpleMutation({
 		name: "update_issue",
@@ -904,67 +812,6 @@ export const issues: readonly OperationDefinition[] = ([
 			teamId: "resolveTeamReference",
 		},
 		plan: updateIssuePlan,
-		async prepare(k, v, s, g) {
-			const ref = requireIssueReference(issueReference(v));
-			const x = mergedInput(v, [
-				"issue",
-				"issueId",
-				"state",
-				"assignee",
-				"parent",
-			]);
-			const teamRef = x.teamId;
-			const targetTeam = teamRef
-				? await resolveTeamReference(k, String(teamRef), s, g)
-				: undefined;
-			if (targetTeam) x.teamId = targetTeam.id;
-			const stateRef = v.state ?? x.stateId;
-			const parentRef = v.parent ?? x.parentId;
-			const stateNeedsTeam =
-				typeof stateRef === "string" &&
-				stateRef.trim() !== "" &&
-				!isUuid(stateRef);
-			const issue =
-				stateNeedsTeam || parentRef
-					? await resolveIssueReference(k, ref, s, g)
-					: undefined;
-			if (stateRef) {
-				const teamId = targetTeam?.id ?? issue?.teamId;
-				x.stateId = teamId
-					? (await resolveStateReference(k, teamId, String(stateRef), s, g)).id
-					: (await resolveStateIdReference(k, String(stateRef), s, g)).id;
-			}
-			const userRef = v.assignee ?? x.assigneeId;
-			if (userRef)
-				x.assigneeId = (await resolveUserReference(k, String(userRef), s, g)).id;
-			if (parentRef) {
-				const parent = await resolveIssueReference(k, String(parentRef), s, g);
-				if (parent.teamId !== (targetTeam?.id ?? issue?.teamId)) {
-					throw new Error(
-						`Linear parent "${parent.identifier}" does not belong to the issue team.`,
-					);
-				}
-				x.parentId = parent.id;
-			}
-			if (!Object.keys(x).length)
-				throw new Error("No update fields were provided.");
-			return {
-				variables: { id: ref, input: x },
-				exactIssue: { requested: ref, path: "issueUpdate.issue" },
-				resolution: compactObject({
-					target: issue ? issueTarget(ref, issue) : { requested: ref },
-					state: stateRef
-						? { requested: stateRef, resolvedId: x.stateId }
-						: undefined,
-					assignee: userRef
-						? { requested: userRef, resolvedId: x.assigneeId }
-						: undefined,
-					parent: parentRef
-						? { requested: parentRef, resolvedId: x.parentId }
-						: undefined,
-				}),
-			};
-		},
 	}),
 	listOperation({
 		name: "search_issues",

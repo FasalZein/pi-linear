@@ -1,7 +1,4 @@
-import {
-	isLinearUrlSlug,
-	resolveTeamReference,
-} from "../client";
+import { isLinearUrlSlug } from "../client";
 import { namedEntityLookup, pureQueryPlan, teamLookup } from "../operation-plan";
 import { projection } from "../selections";
 import {
@@ -222,29 +219,6 @@ export const cycles: readonly OperationDefinition[] = ([
 					const input = mergedInput(v, ["team", "teamKey", "teamId"]);
 					input.teamId = team.id;
 					return { variables: { input }, resolution: { team: { requested: teamRef, resolvedId: team.id, key: team.key } } };
-				},
-			};
-		},
-		async prepare(k, v, s, g) {
-			const team = await resolveTeamReference(
-				k,
-				String(v.team ?? v.teamKey ?? v.teamId),
-				s,
-				g,
-			);
-			return {
-				variables: {
-					input: {
-						...mergedInput(v, ["team", "teamKey", "teamId"]),
-						teamId: team.id,
-					},
-				},
-				resolution: {
-					team: {
-						requested: v.team ?? v.teamKey ?? v.teamId,
-						resolvedId: team.id,
-						key: team.key,
-					},
 				},
 			};
 		},

@@ -9,7 +9,6 @@ import {
   linearGraphQLErrors,
   resolveApiKey,
   withLinearRateLimitTelemetry,
-  type LinearGraphQLFn,
   type LinearGraphQLPathError,
   type LinearNetworkContext,
   type LinearRateLimitSnapshot,
@@ -23,7 +22,7 @@ import type {
   ResultCategory,
 } from './operation-types';
 import type { LinearOperation } from './operations';
-import { isPlanPreparation, resolveOperationPlan, verifyOperationResult } from './operation-plan';
+import { resolveOperationPlan, verifyOperationResult } from './operation-plan';
 import type { ResultView } from './selections';
 import { redactDeep, withRedactedErrors } from './redact';
 import {
@@ -458,10 +457,9 @@ async function executeOperationWithContext(
       return redactDeep(localResult, secrets);
     }
 
-    const usePlan = Boolean(operation.plan && (!operation.prepare || isPlanPreparation(operation.prepare)));
     let plan: OperationPlan | undefined;
     try {
-      plan = usePlan ? await operation.plan!(options.variables) : undefined;
+      plan = operation.plan ? await operation.plan(options.variables) : undefined;
     } catch (error) {
       secrets.push(...activeSecrets());
       throw error;
@@ -470,14 +468,10 @@ async function executeOperationWithContext(
     const network = await networkExecutionContext(call, transport);
     const apiKey = network.credential.apiKey;
     secrets.push(apiKey);
-    const graphql: LinearGraphQLFn = (_apiKey, query, variables, _signal, graphqlOptions) =>
-      linearGraphQLWithContext(network, query, variables, graphqlOptions);
     return withLinearRateLimitTelemetry(network.telemetry, async () => {
       const prepared = plan
         ? await resolveOperationPlan(network, plan)
-        : operation.prepare
-          ? await operation.prepare(apiKey, options.variables, call.signal, graphql)
-          : { variables: options.variables };
+        : { variables: options.variables };
       const variant = prepared.variant ?? operation.variants?.[0];
       const document = variant?.document ?? operation.document;
       assertMutationAllowed(document, call.mode, variant ? [variant.root] : []);

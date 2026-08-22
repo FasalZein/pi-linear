@@ -1,7 +1,6 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { CanonicalOperation } from "./canonical-schema";
 import type { ResultView } from "./selections";
-import type { LinearGraphQLFn } from "./client";
 
 export type OperationDomain =
 	| "issues"
@@ -92,37 +91,6 @@ export type OperationPlanFactory = (
 	variables: Record<string, unknown>,
 ) => OperationPlan | Promise<OperationPlan>;
 
-export type BatchLookupField = "parent" | "team" | "state" | "assignee" | "project" | "issueRelation";
-export type BatchLookup = {
-	field: BatchLookupField;
-	requested: string;
-	/** Independently known team key or UUID, required for a state name. */
-	team?: string;
-	/** Stable external error for this dependent read. */
-	failureMessage?: string;
-};
-export type BatchLookupValues = {
-	parent?: { id: string; identifier: string; teamId: string; teamKey: string };
-	team?: { id: string; key: string };
-	state?: { id: string; name: string; teamId: string };
-	assignee?: { id: string };
-	project?: { id: string; name: string };
-	issueRelation?: {
-		id: string;
-		type: string;
-		issueId: string;
-		relatedIssueId: string;
-	};
-};
-export type BatchPreparation =
-	| { kind: "local" }
-	| {
-			kind: "independent";
-			lookups: readonly BatchLookup[];
-			finish: (resolved: BatchLookupValues) => OperationPreparation;
-			/** Compile the mutation only after all dependent lookups pass. */
-			deferDocument?: true;
-	  };
 export type PaginationMetadata = {
 	defaultPageSize: number;
 	filterType?: string;
@@ -149,16 +117,8 @@ export type LinearOperation = {
 	resolverPaths?: Readonly<Record<string, string>>;
 	requiresVariables?: boolean;
 	validateVariables?: (variables: Record<string, unknown>) => void;
-	/** Pure query planning. Query operations must use this instead of prepare. */
+	/** Pure operation planning for direct and batch execution. */
 	plan?: OperationPlanFactory;
-	prepare?: (
-		apiKey: string,
-		variables: Record<string, unknown>,
-		signal: AbortSignal | undefined,
-		graphql?: LinearGraphQLFn,
-	) => Promise<OperationPreparation>;
-	/** Variable-dependent batch eligibility. Inspect lookups, not the operation name. */
-	batchPrepare?: (variables: Record<string, unknown>) => BatchPreparation;
 	executeLocal?: (
 		variables: Record<string, unknown>,
 		ctx: ExtensionContext,
@@ -223,8 +183,6 @@ export type OperationCompatibilityDefinition = {
 	semanticException?: string;
 	semanticValidateVariables?: LinearOperation["validateVariables"];
 	plan?: LinearOperation["plan"];
-	prepare?: LinearOperation["prepare"];
-	batchPrepare?: LinearOperation["batchPrepare"];
 	executeLocal?: LinearOperation["executeLocal"];
 	localResult?: LocalResultExpectation;
 };
@@ -240,8 +198,6 @@ export type OperationDefinition = {
 	preparation: {
 		resolverPaths: Readonly<Record<string, string>>;
 		plan?: LinearOperation["plan"];
-		prepare?: LinearOperation["prepare"];
-		batchPrepare?: LinearOperation["batchPrepare"];
 	};
 	safety: {
 		namedInputPolicy: NamedInputPolicy;

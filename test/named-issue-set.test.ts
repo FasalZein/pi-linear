@@ -3,6 +3,7 @@ import { linearApiTool } from '../extensions/api';
 import { operations } from '../extensions/operations';
 import { projection } from '../extensions/selections';
 import { isolateLinearCredentials } from './helpers/credentials';
+import { prepareOperation } from './helpers/operation-plan';
 
 isolateLinearCredentials();
 
@@ -46,9 +47,7 @@ function issueNode(id: string, identifier: string) {
 }
 
 async function prepare(variables: Record<string, unknown>) {
-  const operation = operations.list_issues;
-  if (!operation?.prepare) throw new Error('list_issues has no preparation.');
-  return operation.prepare('test-key', variables, undefined);
+  return prepareOperation(operations.list_issues!, variables);
 }
 
 describe('list_issues named issue set', () => {

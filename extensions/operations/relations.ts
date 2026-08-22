@@ -1,4 +1,3 @@
-import { linearGraphQL, linearGraphQLErrors, resolveIssueReference } from "../client";
 import { projection } from "../selections";
 import { issueLookup, issueRelationLookup } from "../operation-plan";
 import {
@@ -6,7 +5,6 @@ import {
 	p,
 } from "../operation-types";
 import type {
-	BatchLookupValues,
 	LinearOperation,
 	OperationPreparation,
 	OperationSource,
@@ -27,9 +25,6 @@ const ISSUE_RELATION_TYPES = new Set(["blocks", "duplicate", "related", "similar
 const RELATION_GUARD_ERROR = "Linear issue relation did not match the exact delete guard.";
 const RELATION_PREFLIGHT_ERROR = "Linear issue relation delete preflight failed.";
 const RELATION_DELETE_ERROR = "Linear issue relation delete failed.";
-const VERIFY_ISSUE_RELATION_DOCUMENT = `query VerifyIssueRelationDelete($id: String!) {
-  issueRelation(id: $id) { id type issue { id } relatedIssue { id } }
-}`;
 const DELETE_ISSUE_RELATION_DOCUMENT = `mutation DeleteIssueRelation($id: String!) {
   issueRelationDelete(id: $id) { success }
 }`;
@@ -190,23 +185,6 @@ export const issueRelations: readonly OperationDefinition[] = ([
 				},
 			};
 		},
-		async prepare(k, v, s, g) {
-			const a = issueReference(v);
-			const b = String(v.relatedIssue ?? v.relatedIssueId);
-			const [x, y] = await Promise.all([
-				resolveIssueReference(k, a, s, g),
-				resolveIssueReference(k, b, s, g),
-			]);
-			return {
-				variables: {
-					input: { issueId: x.id, relatedIssueId: y.id, type: v.type },
-				},
-				resolution: {
-					target: issueTarget(a, x),
-					relatedTarget: issueTarget(b, y),
-				},
-			};
-		},
 	}),
 	simpleMutation({
 		name: "update_issue_relation",
@@ -278,19 +256,6 @@ export const issueRelations: readonly OperationDefinition[] = ([
 				},
 			};
 		},
-		async prepare(k, v, s, g) {
-			const x = mergedInput(v, ["id"]);
-			const resolution: Record<string, unknown> = {};
-			for (const key of ["issueId", "relatedIssueId"])
-				if (typeof x[key] === "string") {
-					const issue = await resolveIssueReference(k, String(x[key]), s, g);
-					resolution[key] = issueTarget(String(x[key]), issue);
-					x[key] = issue.id;
-				}
-			if (!Object.keys(x).length)
-				throw new Error("No update fields were provided.");
-			return { variables: { id: v.id, input: x }, resolution };
-		},
 	}),
 	{
 		name: "delete_issue_relation",
@@ -342,52 +307,6 @@ export const issueRelations: readonly OperationDefinition[] = ([
 				lookups: [issueRelationLookup("issueRelation", String(variables.relationId), RELATION_PREFLIGHT_ERROR)],
 				finish(resolved) {
 					return guardedDeletePreparation(variables, resolved.issueRelation as GuardedIssueRelation);
-				},
-			};
-		},
-		async prepare(apiKey, variables, signal, graphql = linearGraphQL) {
-			const relationId = String(variables.relationId);
-			let data: {
-				issueRelation: {
-					id?: unknown;
-					type?: unknown;
-					issue?: { id?: unknown } | null;
-					relatedIssue?: { id?: unknown } | null;
-				} | null;
-			};
-			try {
-				data = await graphql(apiKey, VERIFY_ISSUE_RELATION_DOCUMENT, { id: relationId }, signal, { phase: "read" });
-				if (linearGraphQLErrors(data).length) throw new Error(RELATION_PREFLIGHT_ERROR);
-			} catch {
-				throw new Error(RELATION_PREFLIGHT_ERROR);
-			}
-			const relation = data.issueRelation;
-			if (
-				!relation
-				|| typeof relation.id !== "string"
-				|| typeof relation.type !== "string"
-				|| typeof relation.issue?.id !== "string"
-				|| typeof relation.relatedIssue?.id !== "string"
-			) throw new Error(RELATION_GUARD_ERROR);
-			return guardedDeletePreparation(variables, {
-				id: relation.id,
-				type: relation.type,
-				issueId: relation.issue.id,
-				relatedIssueId: relation.relatedIssue.id,
-			});
-		},
-		batchPrepare(variables) {
-			return {
-				kind: "independent" as const,
-				deferDocument: true as const,
-				lookups: [{
-					field: "issueRelation" as const,
-					requested: String(variables.relationId),
-					failureMessage: RELATION_PREFLIGHT_ERROR,
-				}],
-				finish(resolved: BatchLookupValues) {
-					if (!resolved.issueRelation) throw new Error(RELATION_PREFLIGHT_ERROR);
-					return guardedDeletePreparation(variables, resolved.issueRelation);
 				},
 			};
 		},

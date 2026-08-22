@@ -6,6 +6,7 @@ import { linearApiTool } from '../extensions/api';
 import { operations } from '../extensions/operations';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
+import { prepareOperation } from './helpers/operation-plan';
 
 isolateLinearCredentials();
 
@@ -245,7 +246,7 @@ describe('mode-specific field ownership', () => {
     });
     vi.stubGlobal('fetch', fetch);
     const prepare = (operation: string, variables: Record<string, unknown>) =>
-      operations[operation]!.prepare!('test-key', variables, undefined);
+      prepareOperation(operations[operation]!, variables);
 
     expect((await prepare('save_initiative', { name: 'I', leadTeamId: UUID, prioritySortOrder: 1.5, priority: 2, labelIds: [UUID], targetDate: null })).variables).toEqual({ input: { name: 'I', leadTeamId: UUID, prioritySortOrder: 1.5, priority: 2, labelIds: [UUID], targetDate: null } });
     expect((await prepare('save_project', { name: 'P', teamIds: [UUID], leadTeamId: UUID, targetDate: null })).variables).toEqual({ input: { name: 'P', teamIds: [UUID], leadTeamId: UUID, targetDate: null } });

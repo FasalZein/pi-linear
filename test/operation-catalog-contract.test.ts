@@ -177,7 +177,7 @@ describe("v0.4 operation inventory", () => {
 			expect(operation.pagination?.defaultPageSize).toBeGreaterThan(0);
 			expect(operation.document).toContain("$first: Int");
 			expect(operation.document).toContain("pageInfo");
-			expect(operation.prepare).toBeTypeOf("function");
+			expect(operation.plan).toBeTypeOf("function");
 		}
 	});
 

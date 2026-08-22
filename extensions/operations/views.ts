@@ -1,4 +1,3 @@
-import { resolveTeamReference } from "../client";
 import { projection } from "../selections";
 import { pureMutationPlan, pureQueryPlan, teamLookup } from "../operation-plan";
 import {
@@ -156,12 +155,6 @@ export const views: readonly OperationDefinition[] = ([
 				},
 			};
 		},
-		async prepare(apiKey, v, signal, graphql) {
-			const x = mergedInput(v, ["team", "teamKey"]);
-			const ref = String(v.team ?? v.teamKey ?? v.teamId ?? "");
-			if (ref) x.teamId = (await resolveTeamReference(apiKey, ref, signal, graphql)).id;
-			return { variables: { input: x } };
-		},
 	}),
 	simpleMutation({
 		name: "update_view",
@@ -278,18 +271,6 @@ export const views: readonly OperationDefinition[] = ([
 		example: { viewId: "view-id", preferences: {} },
 		plan(v) {
 			return pureMutationPlan({ variables: { input: { type: "user", viewType: "customView", customViewId: v.viewId, preferences: v.preferences } } });
-		},
-		async prepare(_k, v) {
-			return {
-				variables: {
-					input: {
-						type: "user",
-						viewType: "customView",
-						customViewId: v.viewId,
-						preferences: v.preferences,
-					},
-				},
-			};
 		},
 	}),
 ] satisfies OperationSource[]).map((operation) =>

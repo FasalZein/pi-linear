@@ -10,12 +10,9 @@ import {
 } from 'graphql';
 import type { ExtensionContext } from '@earendil-works/pi-coding-agent';
 import {
-  assertIssueNodeMatches,
   linearGraphQLResponseFailure,
   linearGraphQLWithContext,
   linearGraphQLErrors,
-  requireIssueReference,
-  withLinearGraphQL,
   withLinearRateLimitTelemetry,
   type LinearNetworkContext,
   type LinearRateLimitSnapshot,
@@ -29,12 +26,7 @@ import {
   parameterShapes,
   type LinearOperation,
 } from './operations';
-import { isUuid } from './operations/shared';
 import type {
-  BatchLookup,
-  BatchLookupField,
-  BatchLookupValues,
-  BatchPreparation,
   GraphQLDocumentVariant,
   LookupPlan,
   OperationPlan,
@@ -58,8 +50,6 @@ export const BATCH_PURPOSE = 'Batch independent reads with read-only operations,
 
 const ALIAS = /^[_A-Za-z][_0-9A-Za-z]*$/;
 const FORBIDDEN_OPERATIONS = new Set(['help', 'batch']);
-
-class PreparationLookup extends Error {}
 
 export function batchHelp(): JsonObject {
   return {
@@ -128,11 +118,8 @@ function validateVariables(
   );
 }
 
-type IndependentPlan = Extract<BatchPreparation, { kind: 'independent' }>;
-
 type CompiledLookup = {
-  field?: BatchLookupField;
-  key?: string;
+  key: string;
   aliases: string[];
   ast: DocumentNode;
   variables: Record<string, unknown>;
@@ -325,313 +312,6 @@ function parseEntries(variables: Record<string, unknown>): { reads: RawEntry[]; 
   return { reads, mutations };
 }
 
-async function localPrepare(
-  key: string,
-  operation: LinearOperation,
-  variables: Record<string, unknown>,
-  signal: AbortSignal | undefined,
-): Promise<OperationPreparation> {
-  if (!operation.prepare) return { variables };
-  return withLinearGraphQL(async () => {
-    throw new PreparationLookup();
-  }, async () => {
-    try {
-      return await operation.prepare!('batch-local', variables, signal);
-    } catch (error) {
-      if (error instanceof PreparationLookup) {
-        throw new Error(`Batch entry "${key}" cannot fold its preparation lookups into one GraphQL request.`);
-      }
-      throw error;
-    }
-  });
-}
-
-function requireOne<T>(nodes: T[], description: string): T {
-  if (nodes.length !== 1) {
-    throw new Error(`Linear ${description} resolved to ${nodes.length} matches; expected exactly one.`);
-  }
-  return nodes[0]!;
-}
-
-function throwIfLookupPath(
-  aliases: readonly string[],
-  pathErrors: ReturnType<typeof linearGraphQLErrors>,
-): void {
-  const scoped = pathErrors.filter((error) => aliases.includes(String(error.path[0])));
-  if (scoped.length) throw new Error(scoped[0]!.message);
-}
-
-function aliasLookup(
-  prefix: string,
-  document: string,
-  variables: Record<string, unknown>,
-): { ast: DocumentNode; variables: Record<string, unknown>; aliases: string[] } {
-  const aliases: string[] = [];
-  const ast = visit(parse(document), {
-    Variable(node) {
-      return { kind: Kind.VARIABLE, name: { kind: Kind.NAME, value: `${prefix}_${node.name.value}` } };
-    },
-    OperationDefinition(node) {
-      const roots = node.selectionSet.selections.filter((selection) => selection.kind === Kind.FIELD);
-      return {
-        ...node,
-        name: undefined,
-        selectionSet: {
-          ...node.selectionSet,
-          selections: node.selectionSet.selections.map((selection) => {
-            if (selection.kind !== Kind.FIELD) return selection;
-            const aliasName = roots.length === 1
-              ? prefix
-              : `${prefix}_${selection.alias?.value ?? selection.name.value}`;
-            aliases.push(aliasName);
-            return { ...selection, alias: { kind: Kind.NAME, value: aliasName } };
-          }),
-        },
-      };
-    },
-  });
-  return {
-    ast,
-    aliases,
-    variables: Object.fromEntries(
-      Object.entries(variables).map(([name, value]) => [`${prefix}_${name}`, value]),
-    ),
-  };
-}
-
-function compileLookup(entryKey: string, lookup: BatchLookup): CompiledLookup {
-  const prefix = `_lookup_${entryKey}_${lookup.field}`;
-  if (lookup.field === 'parent') {
-    requireIssueReference(lookup.requested);
-    const compiled = aliasLookup(prefix, `query ($id: String!) {
-  issue(id: $id) { id identifier team { id key } }
-}`, { id: lookup.requested });
-    return {
-      field: lookup.field,
-      ...compiled,
-      resolve(raw, pathErrors) {
-        throwIfLookupPath(compiled.aliases, pathErrors);
-        const issue = raw[compiled.aliases[0]!] as {
-          id?: unknown;
-          identifier?: unknown;
-          team?: { id?: unknown; key?: unknown } | null;
-        } | null;
-        assertIssueNodeMatches(lookup.requested, issue);
-        const team = issue.team;
-        if (!team || typeof team.id !== 'string' || typeof team.key !== 'string') {
-          throw new Error(`Linear issue "${lookup.requested}" has no team.`);
-        }
-        const identifier = lookup.requested.match(/^([A-Z][A-Z0-9]*)-(\d+)$/i);
-        if (identifier && team.key.toLowerCase() !== identifier[1]!.toLowerCase()) {
-          throw new Error(`Linear issue resolver returned a mismatched team for "${lookup.requested}".`);
-        }
-        return { id: issue.id, identifier: issue.identifier, teamId: team.id, teamKey: team.key };
-      },
-    };
-  }
-  if (lookup.field === 'team') {
-    if (isUuid(lookup.requested)) {
-      const compiled = aliasLookup(prefix, `query ($id: String!) {
-  team(id: $id) { id key }
-}`, { id: lookup.requested });
-      return {
-        field: lookup.field,
-        ...compiled,
-        resolve(raw, pathErrors) {
-          throwIfLookupPath(compiled.aliases, pathErrors);
-          const team = raw[compiled.aliases[0]!] as { id?: unknown; key?: unknown } | null;
-          if (!team || typeof team.id !== 'string' || typeof team.key !== 'string') {
-            throw new Error(`Linear team "${lookup.requested}" was not found.`);
-          }
-          if (team.id !== lookup.requested) {
-            throw new Error(`Linear team resolver returned mismatched id for "${lookup.requested}".`);
-          }
-          return { id: team.id, key: team.key };
-        },
-      };
-    }
-    if (!/^[A-Z][A-Z0-9]*$/i.test(lookup.requested)) {
-      throw new Error(`Invalid Linear team reference "${lookup.requested}". Use a team key or UUID.`);
-    }
-    const compiled = aliasLookup(prefix, `query ($key: String!) {
-  teams(first: 2, filter: { key: { eq: $key } }) { nodes { id key } }
-}`, { key: String(lookup.requested).toUpperCase() });
-    return {
-      field: lookup.field,
-      ...compiled,
-      resolve(raw, pathErrors) {
-        throwIfLookupPath(compiled.aliases, pathErrors);
-        const connection = raw[compiled.aliases[0]!] as { nodes?: Array<{ id: string; key: string }> } | null;
-        const team = requireOne(connection?.nodes ?? [], `team "${lookup.requested}"`);
-        if (team.key.toLowerCase() !== lookup.requested.toLowerCase()) {
-          throw new Error(`Linear team resolver returned mismatched key "${team.key}" for "${lookup.requested}".`);
-        }
-        return team;
-      },
-    };
-  }
-  if (lookup.field === 'state') {
-    if (isUuid(lookup.requested)) {
-      const compiled = aliasLookup(prefix, `query ($id: String!) {
-  workflowState(id: $id) { id name team { id } }
-}`, { id: lookup.requested });
-      return {
-        field: lookup.field,
-        ...compiled,
-        resolve(raw, pathErrors) {
-          throwIfLookupPath(compiled.aliases, pathErrors);
-          const state = raw[compiled.aliases[0]!] as {
-            id?: unknown;
-            name?: unknown;
-            team?: { id?: unknown } | null;
-          } | null;
-          if (!state || typeof state.id !== 'string' || typeof state.name !== 'string') {
-            throw new Error(`Linear state "${lookup.requested}" was not found.`);
-          }
-          if (state.id !== lookup.requested) {
-            throw new Error(`Linear state resolver returned mismatched id for "${lookup.requested}".`);
-          }
-          if (typeof state.team?.id !== 'string') throw new Error(`Linear state "${lookup.requested}" has no team.`);
-          return { id: state.id, name: state.name, teamId: state.team.id };
-        },
-      };
-    }
-    const team = lookup.team;
-    if (!team) {
-      throw new Error(`Invalid Linear state reference "${lookup.requested}". Use a state UUID, or provide team with an exact state name.`);
-    }
-    const byId = isUuid(team);
-    const compiled = byId
-      ? aliasLookup(prefix, `query ($teamId: ID!, $name: String!) {
-  workflowStates(first: 2, filter: { team: { id: { eq: $teamId } }, name: { eqIgnoreCase: $name } }) {
-    nodes { id name team { id } }
-  }
-}`, { teamId: team, name: lookup.requested })
-      : aliasLookup(prefix, `query ($teamKey: String!, $name: String!) {
-  workflowStates(first: 2, filter: { team: { key: { eq: $teamKey } }, name: { eqIgnoreCase: $name } }) {
-    nodes { id name team { id key } }
-  }
-}`, { teamKey: String(team).toUpperCase(), name: lookup.requested });
-    return {
-      field: lookup.field,
-      ...compiled,
-      resolve(raw, pathErrors) {
-        throwIfLookupPath(compiled.aliases, pathErrors);
-        const connection = raw[compiled.aliases[0]!] as {
-          nodes?: Array<{ id: string; name: string; team?: { id?: string } | null }>;
-        } | null;
-        const matches = (connection?.nodes ?? []).filter((state) =>
-          state.name.toLowerCase() === lookup.requested.toLowerCase(),
-        );
-        const state = requireOne(matches, `state "${lookup.requested}" in team "${team}"`);
-        if (typeof state.team?.id !== 'string') throw new Error(`Linear state "${lookup.requested}" has no team.`);
-        return { id: state.id, name: state.name, teamId: state.team.id };
-      },
-    };
-  }
-  if (lookup.field === 'project') {
-    const compiled = aliasLookup(prefix, `query ($name: String!) {
-  projects(first: 2, filter: { name: { eq: $name } }) { nodes { id name } }
-}`, { name: lookup.requested });
-    return {
-      field: lookup.field,
-      ...compiled,
-      resolve(raw, pathErrors) {
-        throwIfLookupPath(compiled.aliases, pathErrors);
-        const connection = raw[compiled.aliases[0]!] as { nodes?: Array<{ id: string; name: string }> } | null;
-        const matches = (connection?.nodes ?? []).filter((project) => project.name === lookup.requested);
-        return requireOne(matches, `project "${lookup.requested}"`);
-      },
-    };
-  }
-  if (lookup.field === 'issueRelation') {
-    const compiled = aliasLookup(prefix, `query ($id: String!) {
-  issueRelation(id: $id) { id type issue { id } relatedIssue { id } }
-}`, { id: lookup.requested });
-    return {
-      field: lookup.field,
-      failureMessage: lookup.failureMessage,
-      ...compiled,
-      resolve(raw, pathErrors) {
-        const scoped = pathErrors.filter((error) => compiled.aliases.includes(String(error.path[0])));
-        if (scoped.length) throw new Error(lookup.failureMessage ?? 'Linear dependent lookup failed.');
-        const relation = raw[compiled.aliases[0]!] as {
-          id?: unknown;
-          type?: unknown;
-          issue?: { id?: unknown } | null;
-          relatedIssue?: { id?: unknown } | null;
-        } | null;
-        if (
-          !relation
-          || typeof relation.id !== 'string'
-          || typeof relation.type !== 'string'
-          || typeof relation.issue?.id !== 'string'
-          || typeof relation.relatedIssue?.id !== 'string'
-        ) throw new Error(lookup.failureMessage ?? 'Linear dependent lookup failed.');
-        return {
-          id: relation.id,
-          type: relation.type,
-          issueId: relation.issue.id,
-          relatedIssueId: relation.relatedIssue.id,
-        };
-      },
-    };
-  }
-  const selection = 'id name displayName email';
-  if (lookup.requested.toLowerCase() === 'me') {
-    const compiled = aliasLookup(prefix, `query { viewer { ${selection} } }`, {});
-    return {
-      field: lookup.field,
-      ...compiled,
-      resolve(raw, pathErrors) {
-        throwIfLookupPath(compiled.aliases, pathErrors);
-        const viewer = raw[compiled.aliases[0]!] as { id?: unknown } | null;
-        if (typeof viewer?.id !== 'string') throw new Error('Linear viewer could not be resolved.');
-        return { id: viewer.id };
-      },
-    };
-  }
-  if (isUuid(lookup.requested)) {
-    const compiled = aliasLookup(prefix, `query ($id: String!) {
-  user(id: $id) { ${selection} }
-}`, { id: lookup.requested });
-    return {
-      field: lookup.field,
-      ...compiled,
-      resolve(raw, pathErrors) {
-        throwIfLookupPath(compiled.aliases, pathErrors);
-        const user = raw[compiled.aliases[0]!] as { id?: unknown } | null;
-        if (typeof user?.id !== 'string') throw new Error(`Linear user "${lookup.requested}" was not found.`);
-        if (user.id !== lookup.requested) {
-          throw new Error(`Linear user resolver returned mismatched id for "${lookup.requested}".`);
-        }
-        return { id: user.id };
-      },
-    };
-  }
-  const compiled = aliasLookup(prefix, `query ($reference: String!) {
-  byEmail: users(first: 2, filter: { email: { eq: $reference } }) { nodes { ${selection} } }
-  byName: users(first: 2, filter: { name: { eq: $reference } }) { nodes { ${selection} } }
-  byDisplayName: users(first: 2, filter: { displayName: { eq: $reference } }) { nodes { ${selection} } }
-}`, { reference: lookup.requested });
-  return {
-    field: lookup.field,
-    ...compiled,
-    resolve(raw, pathErrors) {
-      throwIfLookupPath(compiled.aliases, pathErrors);
-      const lists = compiled.aliases.map((alias) => {
-        const connection = raw[alias] as { nodes?: Array<{ id: string; email?: string; name?: string; displayName?: string }> } | null;
-        return connection?.nodes ?? [];
-      }).flat();
-      const exact = lists.filter((user) =>
-        user.email === lookup.requested || user.name === lookup.requested || user.displayName === lookup.requested,
-      );
-      const users = [...new Map(exact.map((user) => [user.id, user])).values()];
-      return { id: requireOne(users, `user "${lookup.requested}"`).id };
-    },
-  };
-}
-
 function compilePlanLookup(entryKey: string, lookup: LookupPlan): CompiledLookup {
   const prefix = `_lookup_${entryKey}_${lookup.key}`;
   const roots = new Map<string, string>();
@@ -696,7 +376,6 @@ async function planEntry(
   entry: RawEntry,
   expectedKind: 'query' | 'mutation',
   mode: MutationMode,
-  signal: AbortSignal | undefined,
 ): Promise<PlannedEntry> {
   const operation = assertNamedEntry(entry);
   const definition = getOperationDefinition(entry.operation);
@@ -1038,7 +717,7 @@ function applyIndependentLookups(
     let failed = false;
     for (const lookup of entry.lookups) {
       try {
-        resolved[lookup.key ?? lookup.field!] = lookup.resolve(raw, pathErrors);
+        resolved[lookup.key] = lookup.resolve(raw, pathErrors);
       } catch (error) {
         failed = true;
         const message = error instanceof Error ? error.message : String(error);
@@ -1086,9 +765,9 @@ async function executeBatchWithTelemetry(
   let lookups: CompiledLookup[];
   while (true) {
     reads = [];
-    for (const entry of parsed.reads) reads.push(await planEntry(entry, 'query', mode, signal));
+    for (const entry of parsed.reads) reads.push(await planEntry(entry, 'query', mode));
     mutations = [];
-    for (const entry of parsed.mutations) mutations.push(await planEntry(entry, 'mutation', mode, signal));
+    for (const entry of parsed.mutations) mutations.push(await planEntry(entry, 'mutation', mode));
     lookups = mutations.flatMap((entry) => entry.lookups ?? []);
     const rawEntries = [...parsed.reads, ...parsed.mutations];
     const callerByKey = new Map(rawEntries.map((entry) => [entry.key, entry]));

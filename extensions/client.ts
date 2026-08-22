@@ -402,18 +402,6 @@ export type LinearGraphQLFn = <TData>(
   options?: LinearGraphQLOptions,
 ) => Promise<TData>;
 
-let graphqlOverride: LinearGraphQLFn | undefined;
-
-export async function withLinearGraphQL<T>(override: LinearGraphQLFn, work: () => Promise<T>): Promise<T> {
-  const previous = graphqlOverride;
-  graphqlOverride = override;
-  try {
-    return await work();
-  } finally {
-    graphqlOverride = previous;
-  }
-}
-
 function abortableDelay(delay: number, signal?: AbortSignal): Promise<void> {
   if (signal?.aborted) return Promise.reject(new Error('Request cancelled.'));
   return new Promise((resolve, reject) => {
@@ -538,7 +526,6 @@ export async function linearGraphQL<TData>(
   signal?: AbortSignal,
   options?: LinearGraphQLOptions,
 ): Promise<TData> {
-  if (graphqlOverride) return graphqlOverride(apiKey, query, variables, signal, options);
   return linearGraphQLWithContext({
     credential: { apiKey, source: 'env' },
     transport: fetch,

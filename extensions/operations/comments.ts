@@ -1,4 +1,3 @@
-import { resolveIssueReference } from "../client";
 import { projection } from "../selections";
 import { issueLookup, pureMutationPlan } from "../operation-plan";
 import {
@@ -334,23 +333,6 @@ export const comments: readonly OperationDefinition[] = ([
 				},
 			};
 		},
-		async prepare(apiKey, variables, signal, graphql) {
-			validateCommentCreateSemantics(variables);
-			const requested =
-				issueReference(variables) ||
-				String(object(variables.input)?.issueId ?? "");
-			const issue = requested
-				? await resolveIssueReference(apiKey, requested, signal, graphql)
-				: undefined;
-			const prepared = mergedInput(variables, ["issue"]);
-			if (issue) prepared.issueId = issue.id;
-			return {
-				variables: { input: prepared },
-				resolution: issue
-					? { target: issueTarget(requested, issue) }
-					: undefined,
-			};
-		},
 	}),
 	simpleMutation({
 		name: "update_comment",
@@ -421,16 +403,6 @@ export const comments: readonly OperationDefinition[] = ([
 					skipEditedAt: variables.skipEditedAt,
 				}),
 			});
-		},
-		async prepare(_apiKey, variables) {
-			validateCommentUpdateSemantics(variables);
-			return {
-				variables: compactObject({
-					id: variables.id,
-					input: mergedInput(variables, ["id", "skipEditedAt"]),
-					skipEditedAt: variables.skipEditedAt,
-				}),
-			};
 		},
 	}),
 ] satisfies OperationSource[]).map((operation) =>

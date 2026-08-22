@@ -9,6 +9,7 @@ import {
 } from '../extensions/client';
 import { operations } from '../extensions/operations';
 import { isolateLinearCredentials } from './helpers/credentials';
+import { prepareOperation } from './helpers/operation-plan';
 
 isolateLinearCredentials();
 
@@ -222,7 +223,7 @@ describe('human-form resolvers stay on list filters', () => {
       expect(query).toContain('query ListComments');
       return { comments: { nodes: [], pageInfo: { hasNextPage: false } } };
     });
-    const prepared = await operations.list_comments.prepare!('key', { issue: 'AEO-258' }, undefined);
+    const prepared = await prepareOperation(operations.list_comments!, { issue: 'AEO-258' });
     expect(requests).toHaveLength(1);
     expect(prepared.variables.filter).toEqual({ issue: { id: { eq: ISSUE_ID } } });
   });

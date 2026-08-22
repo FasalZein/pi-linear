@@ -396,24 +396,6 @@ export async function resolveOperationPlanWithGraphQL(
   });
 }
 
-const planPreparations = new WeakSet<NonNullable<import('./operation-types').LinearOperation['prepare']>>();
-
-export function markPlanPreparation<T extends NonNullable<import('./operation-types').LinearOperation['prepare']>>(prepare: T): T {
-  planPreparations.add(prepare);
-  return prepare;
-}
-
-export function isPlanPreparation(prepare: import('./operation-types').LinearOperation['prepare']): boolean {
-  return Boolean(prepare && planPreparations.has(prepare));
-}
-
-export function createPlanPreparation(
-  factory: NonNullable<import('./operation-types').LinearOperation['plan']>,
-): NonNullable<import('./operation-types').LinearOperation['prepare']> {
-  return markPlanPreparation(async (apiKey, variables, signal, graphql) =>
-    resolveOperationPlanWithGraphQL(apiKey, await factory(variables), signal, graphql));
-}
-
 function objectAtPath(value: unknown, path: string): JsonObject | undefined {
   let current: unknown = value;
   for (const part of path.split('.')) {
