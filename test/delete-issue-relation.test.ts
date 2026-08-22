@@ -235,35 +235,46 @@ describe('delete_issue_relation strict guarded delete', () => {
     expect([...Object.keys(result.details.data), ...result.details.skipped]).toEqual(['read', 'remove']);
   });
 
-  it('assigns a mutation key that avoids a reserved guarded-read name', async () => {
-    const reserved = '_lookup_delete_issue_relation_issueRelation';
+  it.each([
+    ['two', ['_lookup_delete_issue_relation_issueRelation', '_lookup_delete_issue_relation_2_issueRelation']],
+    ['three', ['_lookup_delete_issue_relation_issueRelation', '_lookup_delete_issue_relation_2_issueRelation', '_lookup_delete_issue_relation_3_issueRelation']],
+  ])('monotonically allocates past %s consecutive guarded-read aliases', async (_count, reserved) => {
+    const reservedCount = reserved.length;
+    const effectiveMutationKey = `delete_issue_relation_${reservedCount + 1}`;
+    const effectiveLookupKey = `_lookup_${effectiveMutationKey}_issueRelation`;
     const requests: Array<{ query: string }> = [];
     const fetch = vi.fn(async (_url: string, init: RequestInit) => {
       const request = JSON.parse(String(init.body));
       requests.push(request);
       if (request.query.includes('BatchRead')) return response({ data: {
-        [reserved]: { id: ISSUE, identifier: 'AEO-1', title: 'Read' },
-        _lookup_delete_issue_relation_2_issueRelation: { id: RELATION, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: RELATED } },
-      } }, { 'X-RateLimit-Requests-Remaining': '1' });
-      return response({ data: { delete_issue_relation_2: { success: true } } }, { 'X-RateLimit-Complexity-Remaining': '1' });
+        ...Object.fromEntries(reserved.map((key, index) => [key, { id: index ? RELATED : ISSUE, identifier: `AEO-${index + 1}`, title: 'Read' }])),
+        [effectiveLookupKey]: { id: RELATION, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: RELATED } },
+      } });
+      return response({ data: { [effectiveMutationKey]: { success: true } } });
     });
     vi.stubGlobal('fetch', fetch);
     process.env.LINEAR_API_KEY = SECRET;
     const result = await execute({
       operation: 'batch',
       variables: {
-        reads: [{ key: reserved, operation: 'get_issue', variables: { issue: ISSUE } }],
+        reads: reserved.map((key, index) => ({ key, operation: 'get_issue', variables: { issue: index ? RELATED : ISSUE } })),
         mutations: [{ operation: 'delete_issue_relation', variables }],
       },
     });
+    const accounted = [
+      ...Object.keys(result.details.data),
+      ...result.details.errors.map((error: { key: string }) => error.key),
+      ...result.details.skipped,
+    ];
     expect(requests).toHaveLength(2);
-    expect(requests[0]!.query).toContain('_lookup_delete_issue_relation_2_issueRelation: issueRelation');
-    expect(requests[1]!.query).toContain('delete_issue_relation_2: issueRelationDelete');
-    expect(Object.keys(result.details.data)).toEqual([reserved, 'delete_issue_relation_2']);
-    expect(result.details.meta.rateLimit.responses).toEqual([
-      { phase: 'read', attempt: 1, 'X-RateLimit-Requests-Remaining': 1 },
-      { phase: 'mutation', attempt: 1, 'X-RateLimit-Complexity-Remaining': 1 },
-    ]);
+    expect(requests[0]!.query).toContain(`${effectiveLookupKey}: issueRelation`);
+    expect(requests[1]!.query).toContain(`${effectiveMutationKey}: issueRelationDelete`);
+    expect(Object.keys(result.details.data)).toEqual([...reserved, effectiveMutationKey]);
+    expect(new Set(accounted).size).toBe(reservedCount + 1);
+    expect(accounted).toEqual([...reserved, effectiveMutationKey]);
+    expect(result.details.errors).toEqual([]);
+    expect(result.details.skipped).toEqual([]);
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
   });
 
   it.each([

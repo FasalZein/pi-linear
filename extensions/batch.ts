@@ -47,7 +47,7 @@ import {
 import { assertMutationAllowed, type MutationMode } from './safety';
 import { projection } from './selections';
 
-export const BATCH_PURPOSE = 'Carry independent reads and optionally one guarded issue-relation delete in two phases.';
+export const BATCH_PURPOSE = 'Batch independent reads with read-only operations, or use explicit phases for one ordinary mutation, grouped issue creates, or one guarded relation delete.';
 
 const ALIAS = /^[_A-Za-z][_0-9A-Za-z]*$/;
 const FORBIDDEN_OPERATIONS = new Set(['help', 'batch']);
@@ -228,6 +228,7 @@ type RawEntry = {
   variables: Record<string, unknown>;
   generated: boolean;
   keyBase: string;
+  nextSuffix: number;
 };
 
 function parsePhase(value: unknown, label: string): RawEntry[] {
@@ -264,6 +265,7 @@ function parsePhase(value: unknown, label: string): RawEntry[] {
       variables: entryVariables,
       generated: callerKey === undefined,
       keyBase: '',
+      nextSuffix: 2,
     };
   });
 }
@@ -285,6 +287,7 @@ function assignKeys(entries: RawEntry[]): void {
     while (used.has(key)) key = `${base}_${suffix++}`;
     entry.key = key;
     entry.keyBase = base;
+    entry.nextSuffix = suffix;
     used.add(key);
   }
 }
@@ -980,9 +983,8 @@ async function executeBatchWithTelemetry(
         }
         const blocked = new Set([...callerByKey.keys(), ...lookups.flatMap((lookup) => lookup.aliases)]);
         blocked.delete(generated.key);
-        let key = generated.keyBase;
-        let suffix = 2;
-        while (key === generated.key || blocked.has(key)) key = `${generated.keyBase}_${suffix++}`;
+        let key = `${generated.keyBase}_${generated.nextSuffix++}`;
+        while (blocked.has(key)) key = `${generated.keyBase}_${generated.nextSuffix++}`;
         generated.key = key;
         retry = true;
         break;

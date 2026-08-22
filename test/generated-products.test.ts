@@ -240,7 +240,7 @@ describe('generated products', () => {
     expect(published.filter(({ name }) => name !== 'batch' && name !== 'get_result')).toEqual(expected);
     expect(published).toContainEqual({
       name: 'batch',
-      purpose: 'Carry independent reads and optionally one guarded issue-relation delete in two phases.',
+      purpose: 'Batch independent reads with read-only operations, or use explicit phases for one ordinary mutation, grouped issue creates, or one guarded relation delete.',
     });
     expect(published).toContainEqual({
       name: 'get_result',
