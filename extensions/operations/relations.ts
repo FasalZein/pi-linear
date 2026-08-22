@@ -1,5 +1,6 @@
 import { linearGraphQL, linearGraphQLErrors, resolveIssueReference } from "../client";
 import { projection } from "../selections";
+import { issueLookup, issueRelationLookup } from "../operation-plan";
 import {
 	mergedInput,
 	p,
@@ -176,6 +177,19 @@ export const issueRelations: readonly OperationDefinition[] = ([
 			issue: "resolveIssueReference",
 			relatedIssue: "resolveIssueReference",
 		},
+		plan(v) {
+			const a = issueReference(v);
+			const b = String(v.relatedIssue ?? v.relatedIssueId);
+			return {
+				kind: "mutation",
+				lookups: [issueLookup("target", a), issueLookup("relatedTarget", b)],
+				finish(resolved) {
+					const x = resolved.target as import("../client").ResolvedIssue;
+					const y = resolved.relatedTarget as import("../client").ResolvedIssue;
+					return { variables: { input: { issueId: x.id, relatedIssueId: y.id, type: v.type } }, resolution: { target: issueTarget(a, x), relatedTarget: issueTarget(b, y) } };
+				},
+			};
+		},
 		async prepare(k, v, s, g) {
 			const a = issueReference(v);
 			const b = String(v.relatedIssue ?? v.relatedIssueId);
@@ -244,6 +258,26 @@ export const issueRelations: readonly OperationDefinition[] = ([
 			issueId: "resolveIssueReference",
 			relatedIssueId: "resolveIssueReference",
 		},
+		plan(v) {
+			const input = mergedInput(v, ["id"]);
+			const issueRef = typeof input.issueId === "string" ? input.issueId : undefined;
+			const relatedRef = typeof input.relatedIssueId === "string" ? input.relatedIssueId : undefined;
+			return {
+				kind: "mutation",
+				lookups: [
+					...(issueRef ? [issueLookup("issueId", issueRef)] : []),
+					...(relatedRef ? [issueLookup("relatedIssueId", relatedRef)] : []),
+				],
+				finish(resolved) {
+					const issue = resolved.issueId as import("../client").ResolvedIssue | undefined;
+					const related = resolved.relatedIssueId as import("../client").ResolvedIssue | undefined;
+					if (issue) input.issueId = issue.id;
+					if (related) input.relatedIssueId = related.id;
+					if (!Object.keys(input).length) throw new Error("No update fields were provided.");
+					return { variables: { id: v.id, input }, resolution: { ...(issue && issueRef ? { issueId: issueTarget(issueRef, issue) } : {}), ...(related && relatedRef ? { relatedIssueId: issueTarget(relatedRef, related) } : {}) } };
+				},
+			};
+		},
 		async prepare(k, v, s, g) {
 			const x = mergedInput(v, ["id"]);
 			const resolution: Record<string, unknown> = {};
@@ -301,6 +335,15 @@ export const issueRelations: readonly OperationDefinition[] = ([
 					throw new Error(`Invalid ${name}: expected a UUID.`);
 			if (typeof variables.type !== "string" || !ISSUE_RELATION_TYPES.has(variables.type))
 				throw new Error("Invalid type: expected blocks, duplicate, related, or similar.");
+		},
+		plan(variables) {
+			return {
+				kind: "mutation",
+				lookups: [issueRelationLookup("issueRelation", String(variables.relationId), RELATION_PREFLIGHT_ERROR)],
+				finish(resolved) {
+					return guardedDeletePreparation(variables, resolved.issueRelation as GuardedIssueRelation);
+				},
+			};
 		},
 		async prepare(apiKey, variables, signal, graphql = linearGraphQL) {
 			const relationId = String(variables.relationId);

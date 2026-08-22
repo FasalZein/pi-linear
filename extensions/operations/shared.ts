@@ -25,7 +25,7 @@ import {
 } from "../operation-types";
 import type { CanonicalOperation } from "../canonical-schema";
 import { defineOperation } from "../operation-definition";
-import { pureQueryPlan } from "../operation-plan";
+import { issueLookup, namedEntityLookup, pureMutationPlan, pureQueryPlan } from "../operation-plan";
 
 export const pagination = [
 	p("after"),
@@ -257,17 +257,17 @@ export function listPrepare(
 		}),
 	});
 }
-function plainInputPrepare(omitted: readonly string[] = []) {
-	return async (_apiKey: string, variables: Record<string, unknown>) => ({
+function plainInputPlan(omitted: readonly string[] = []): NonNullable<LinearOperation["plan"]> {
+	return (variables) => pureMutationPlan({
 		variables: { input: mergedInput(variables, omitted) },
 	});
 }
-function updateInputPrepare(idKey = "id", omitted: readonly string[] = []) {
-	return async (_apiKey: string, variables: Record<string, unknown>) => {
+function updateInputPlan(idKey = "id", omitted: readonly string[] = []): NonNullable<LinearOperation["plan"]> {
+	return (variables) => {
 		const update = mergedInput(variables, [idKey, ...omitted]);
 		if (!Object.keys(update).length)
 			throw new Error("No update fields were provided.");
-		return { variables: { id: variables[idKey], input: update } };
+		return pureMutationPlan({ variables: { id: variables[idKey], input: update } });
 	};
 }
 /** Shared wording for list operations that return nothing in the selected workspace. */
@@ -420,6 +420,7 @@ export function simpleMutation(config: {
 	acceptedParameters?: readonly OperationParameter[];
 	example: Record<string, unknown>;
 	idKey?: string;
+	plan?: LinearOperation["plan"];
 	prepare?: LinearOperation["prepare"];
 	batchPrepare?: LinearOperation["batchPrepare"];
 	aliases?: readonly string[];
@@ -457,9 +458,8 @@ export function simpleMutation(config: {
 		variants: [mutationVariant(document, config.root, entityPath)],
 		resolverPaths: config.resolverPaths,
 		validateVariables: config.validateVariables,
-		prepare:
-			config.prepare ??
-			(config.idKey ? updateInputPrepare(config.idKey) : plainInputPrepare()),
+		plan: config.plan ?? (config.idKey ? updateInputPlan(config.idKey) : plainInputPlan()),
+		...(config.prepare ? { prepare: config.prepare } : {}),
 		...(config.batchPrepare ? { batchPrepare: config.batchPrepare } : {}),
 	};
 }
@@ -562,74 +562,44 @@ export function addSaveOperation(config: {
 		resolverPaths: config.resolverPaths,
 		requiresVariables: true,
 		validateVariables: validateSaveSemantics,
-		async prepare(k, v, s, g) {
+		plan(v) {
 			validateSaveSemantics(v);
 			const reference = v[config.idKey];
 			const update = typeof reference === "string" && reference.length > 0;
 			const prepared = mergedInput(v, [config.idKey]);
-			const resolution: Record<string, unknown> = {};
-			let id: string | undefined;
-			if (update) {
-				const entity = await resolveNamedEntityReference(
-					k,
-					config.entityKind,
-					String(reference),
-					s,
-					g,
-				);
-				id = entity.id;
-				resolution.target = {
-					requested: reference,
-					resolvedId: id,
-					name: entity.name,
-				};
-			}
-			if (
-				config.name === "save_milestone" &&
-				typeof prepared.projectId === "string"
-			) {
-				const project = await resolveNamedEntityReference(
-					k,
-					"project",
-					prepared.projectId,
-					s,
-					g,
-				);
-				resolution.project = {
-					requested: prepared.projectId,
-					resolvedId: project.id,
-					name: project.name,
-				};
-				prepared.projectId = project.id;
-			}
-			if (
-				config.name === "save_project" &&
-				typeof prepared.convertedFromIssueId === "string"
-			) {
-				const issue = await resolveIssueReference(
-					k,
-					prepared.convertedFromIssueId,
-					s,
-					g,
-				);
-				resolution.convertedFromIssue = issueTarget(
-					prepared.convertedFromIssueId,
-					issue,
-				);
-				prepared.convertedFromIssueId = issue.id;
-			}
-			const slackChannelName =
-				config.name === "save_project" ? prepared.slackChannelName : undefined;
-			if (config.name === "save_project") delete prepared.slackChannelName;
+			const projectReference = config.name === "save_milestone" && typeof prepared.projectId === "string"
+				? prepared.projectId
+				: undefined;
+			const issueReferenceValue = config.name === "save_project" && typeof prepared.convertedFromIssueId === "string"
+				? prepared.convertedFromIssueId
+				: undefined;
 			return {
-				variant: update ? updateVariant : createVariant,
-				variables: update
-					? { id, input: prepared }
-					: {
-							input: prepared,
-							...(slackChannelName === undefined ? {} : { slackChannelName }),
-						},
-				resolution,
+				kind: "mutation",
+				lookups: [
+					...(update ? [namedEntityLookup("target", config.entityKind, String(reference))] : []),
+					...(projectReference ? [namedEntityLookup("project", "project", projectReference)] : []),
+					...(issueReferenceValue ? [issueLookup("convertedFromIssue", issueReferenceValue)] : []),
+				],
+				finish(resolved) {
+					const target = resolved.target as { id: string; name: string } | undefined;
+					const project = resolved.project as { id: string; name: string } | undefined;
+					const issue = resolved.convertedFromIssue as ResolvedIssue | undefined;
+					if (project) prepared.projectId = project.id;
+					if (issue) prepared.convertedFromIssueId = issue.id;
+					const slackChannelName = config.name === "save_project" ? prepared.slackChannelName : undefined;
+					if (config.name === "save_project") delete prepared.slackChannelName;
+					return {
+						variant: update ? updateVariant : createVariant,
+						variables: update
+							? { id: target?.id, input: prepared }
+							: { input: prepared, ...(slackChannelName === undefined ? {} : { slackChannelName }) },
+						resolution: compactObject({
+							target: target ? { requested: reference, resolvedId: target.id, name: target.name } : undefined,
+							project: project ? { requested: projectReference, resolvedId: project.id, name: project.name } : undefined,
+							convertedFromIssue: issue && issueReferenceValue ? issueTarget(issueReferenceValue, issue) : undefined,
+						}),
+					};
+				},
 			};
 		},
 	});

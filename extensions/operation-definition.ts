@@ -224,7 +224,7 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
         return compatibility.prepare!(apiKey, variables, signal, graphql);
       }
     : undefined;
-  if (projectedPrepare && isPlanPreparation(compatibility.prepare)) markPlanPreparation(projectedPrepare);
+  if (projectedPrepare && (compatibility.plan || isPlanPreparation(compatibility.prepare))) markPlanPreparation(projectedPrepare);
   const variants = definition.graphql?.documents
     .filter(({ kind }) => kind === 'mutation')
     .map(({ kind: _kind, ...variant }) => variant);

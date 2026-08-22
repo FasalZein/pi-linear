@@ -212,6 +212,19 @@ export const cycles: readonly OperationDefinition[] = ([
 		],
 		example: { team: "AEO", startsAt: "2026-08-17", endsAt: "2026-08-31" },
 		resolverPaths: { team: "resolveTeamReference" },
+		plan(v) {
+			const teamRef = v.team ?? v.teamKey ?? v.teamId;
+			return {
+				kind: "mutation",
+				lookups: [teamLookup("team", String(teamRef))],
+				finish(resolved) {
+					const team = resolved.team as { id: string; key: string };
+					const input = mergedInput(v, ["team", "teamKey", "teamId"]);
+					input.teamId = team.id;
+					return { variables: { input }, resolution: { team: { requested: teamRef, resolvedId: team.id, key: team.key } } };
+				},
+			};
+		},
 		async prepare(k, v, s, g) {
 			const team = await resolveTeamReference(
 				k,

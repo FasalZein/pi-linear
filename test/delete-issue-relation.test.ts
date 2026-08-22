@@ -284,7 +284,7 @@ describe('delete_issue_relation strict guarded delete', () => {
     ['wrong target', { id: RELATION, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: ISSUE } }],
     ['reversed endpoints', { id: RELATION, type: 'related', issue: { id: RELATED }, relatedIssue: { id: ISSUE } }],
     ['wrong type', { id: RELATION, type: 'blocks', issue: { id: ISSUE }, relatedIssue: { id: RELATED } }],
-  ])('skips the guarded batch delete after %s and never compiles or sends the mutation', async (_case, relation) => {
+  ])('classifies the guarded batch delete after %s and never compiles or sends the mutation', async (_case, relation) => {
     const requests: Array<{ query: string }> = [];
     const fetch = vi.fn(async (_url: string, init: RequestInit) => {
       const request = JSON.parse(String(init.body));
@@ -297,11 +297,14 @@ describe('delete_issue_relation strict guarded delete', () => {
     expect(requests).toHaveLength(1);
     expect(requests[0]!.query).not.toContain('issueRelationDelete');
     expect(result.details).toMatchObject({
-      data: {}, errors: [], skipped: ['remove'], meta: { requests: { read: 1, mutation: 0 } },
+      data: {},
+      errors: [{ key: 'remove', message: 'Linear issue relation did not match the exact delete guard.' }],
+      skipped: [],
+      meta: { requests: { read: 1, mutation: 0 } },
     });
   });
 
-  it('accounts a preflight GraphQL failure as skipped and exposes none of the echoed values', async () => {
+  it('accounts a preflight GraphQL failure as one stable error and exposes none of the echoed values', async () => {
     const requests: Array<{ query: string }> = [];
     const fetch = vi.fn(async (_url: string, init: RequestInit) => {
       const request = JSON.parse(String(init.body));
@@ -315,7 +318,11 @@ describe('delete_issue_relation strict guarded delete', () => {
     process.env.LINEAR_API_KEY = SECRET;
     const result = await batchDelete();
     expect(requests).toHaveLength(1);
-    expect(result.details).toMatchObject({ data: {}, errors: [], skipped: ['remove'] });
+    expect(result.details).toMatchObject({
+      data: {},
+      errors: [{ key: 'remove', message: 'Linear issue relation delete preflight failed.' }],
+      skipped: [],
+    });
     const text = JSON.stringify(result.details);
     for (const secret of [RELATION, ISSUE, RELATED, SECRET]) expect(text).not.toContain(secret);
   });

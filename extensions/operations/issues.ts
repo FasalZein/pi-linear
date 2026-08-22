@@ -10,7 +10,7 @@ import {
 	resolveUserReference,
 } from "../client";
 import { parseResultView, projection } from "../selections";
-import { pureQueryPlan, stateLookup, teamLookup, userLookup } from "../operation-plan";
+import { issueLookup, namedEntityLookup, pureQueryPlan, stateLookup, stateLookupForTeamReference, teamLookup, userLookup } from "../operation-plan";
 import {
 	compactObject,
 	mergeFilters,
@@ -22,6 +22,7 @@ import type {
 	BatchLookup,
 	BatchLookupValues,
 	LinearOperation,
+	OperationPlan,
 	OperationPreparation,
 	OperationSource,
 	OperationDefinition,
@@ -203,6 +204,79 @@ function applyCreateIssueLookups(
 				? { requested: projectRef, resolvedId: input.projectId }
 				: undefined,
 		}),
+	};
+}
+
+function createIssuePlan(v: Record<string, unknown>): OperationPlan {
+	const { parentRef, teamRef, stateRef, userRef, projectRef } = createIssueRefs(v);
+	return {
+		kind: "mutation",
+		lookups: [
+			...(parentRef ? [issueLookup("parent", String(parentRef))] : []),
+			...(teamRef ? [teamLookup("team", String(teamRef))] : []),
+			...(stateRef
+				? [typeof stateRef === "string" && !isUuid(stateRef) && teamRef
+					? stateLookupForTeamReference("state", stateRef, String(teamRef))
+					: stateLookup("state", String(stateRef), typeof stateRef === "string" && !isUuid(stateRef) && parentRef ? "parent" : undefined, (value) => (value as { teamId: string }).teamId)]
+				: []),
+			...(userRef ? [userLookup("assignee", String(userRef))] : []),
+			...(projectRef ? [namedEntityLookup("project", "project", projectRef)] : []),
+		],
+		finish: (resolved) => applyCreateIssueLookups(v, resolved as BatchLookupValues),
+	};
+}
+
+function updateIssuePlan(v: Record<string, unknown>): OperationPlan {
+	const ref = requireIssueReference(issueReference(v));
+	const input = mergedInput(v, ["issue", "issueId", "state", "assignee", "parent"]);
+	const teamRef = input.teamId;
+	const stateRef = v.state ?? input.stateId;
+	const parentRef = v.parent ?? input.parentId;
+	const userRef = v.assignee ?? input.assigneeId;
+	const stateNeedsTeam = typeof stateRef === "string" && stateRef.trim() !== "" && !isUuid(stateRef);
+	const needsIssue = Boolean(stateRef) || Boolean(parentRef);
+	return {
+		kind: "mutation",
+		lookups: [
+			...(teamRef ? [teamLookup("team", String(teamRef))] : []),
+			...(needsIssue ? [issueLookup("target", ref)] : []),
+			...(stateRef ? [stateNeedsTeam && teamRef
+				? stateLookupForTeamReference("state", String(stateRef), String(teamRef))
+				: stateLookup("state", String(stateRef), stateNeedsTeam ? "target" : undefined, (value) => (value as { teamId: string }).teamId)] : []),
+			...(userRef ? [userLookup("assignee", String(userRef))] : []),
+			...(parentRef ? [issueLookup("parent", String(parentRef))] : []),
+		],
+		finish(resolved) {
+			const team = resolved.team as { id: string; key: string } | undefined;
+			const issue = resolved.target as { id: string; identifier: string; teamId: string; teamKey: string } | undefined;
+			const state = resolved.state as { id: string; teamId: string } | undefined;
+			const assignee = resolved.assignee as { id: string } | undefined;
+			const parent = resolved.parent as { id: string; identifier: string; teamId: string } | undefined;
+			if (team) input.teamId = team.id;
+			if (state) {
+				const expectedTeamId = team?.id ?? issue?.teamId;
+				if (expectedTeamId && state.teamId !== expectedTeamId) {
+					throw new Error(`Linear state "${String(stateRef)}" does not belong to team "${expectedTeamId}".`);
+				}
+				input.stateId = state.id;
+			}
+			if (assignee) input.assigneeId = assignee.id;
+			if (parent) {
+				if (parent.teamId !== (team?.id ?? issue?.teamId)) throw new Error(`Linear parent "${parent.identifier}" does not belong to the issue team.`);
+				input.parentId = parent.id;
+			}
+			if (!Object.keys(input).length) throw new Error("No update fields were provided.");
+			return {
+				variables: { id: ref, input },
+				exactIssue: { requested: ref, path: "issueUpdate.issue" },
+				resolution: compactObject({
+					target: issue ? issueTarget(ref, issue) : { requested: ref },
+					state: stateRef ? { requested: stateRef, resolvedId: input.stateId } : undefined,
+					assignee: userRef ? { requested: userRef, resolvedId: input.assigneeId } : undefined,
+					parent: parentRef ? { requested: parentRef, resolvedId: input.parentId } : undefined,
+				}),
+			};
+		},
 	};
 }
 
@@ -556,6 +630,7 @@ export const issues: readonly OperationDefinition[] = ([
 			assignee: "resolveUserReference",
 			assigneeId: "resolveUserReference",
 		},
+		plan: createIssuePlan,
 		async prepare(k, v, s, g) {
 			const x = mergedInput(v, [
 				"parent",
@@ -828,6 +903,7 @@ export const issues: readonly OperationDefinition[] = ([
 			parentId: "resolveIssueReference",
 			teamId: "resolveTeamReference",
 		},
+		plan: updateIssuePlan,
 		async prepare(k, v, s, g) {
 			const ref = requireIssueReference(issueReference(v));
 			const x = mergedInput(v, [

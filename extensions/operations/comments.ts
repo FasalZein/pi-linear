@@ -1,6 +1,6 @@
 import { resolveIssueReference } from "../client";
 import { projection } from "../selections";
-import { issueLookup } from "../operation-plan";
+import { issueLookup, pureMutationPlan } from "../operation-plan";
 import {
 	compactObject,
 	mergeFilters,
@@ -320,6 +320,20 @@ export const comments: readonly OperationDefinition[] = ([
 			issueId: "resolveIssueReference",
 		},
 		validateVariables: validateCommentCreateSemantics,
+		plan(variables) {
+			validateCommentCreateSemantics(variables);
+			const requested = issueReference(variables) || String(object(variables.input)?.issueId ?? "");
+			return {
+				kind: "mutation",
+				lookups: requested ? [issueLookup("issue", requested)] : [],
+				finish(resolved) {
+					const issue = resolved.issue as import("../client").ResolvedIssue | undefined;
+					const prepared = mergedInput(variables, ["issue"]);
+					if (issue) prepared.issueId = issue.id;
+					return { variables: { input: prepared }, resolution: issue ? { target: issueTarget(requested, issue) } : undefined };
+				},
+			};
+		},
 		async prepare(apiKey, variables, signal, graphql) {
 			validateCommentCreateSemantics(variables);
 			const requested =
@@ -398,6 +412,16 @@ export const comments: readonly OperationDefinition[] = ([
 		example: { id: "comment-id", body: "Updated text" },
 		idKey: "id",
 		validateVariables: validateCommentUpdateSemantics,
+		plan(variables) {
+			validateCommentUpdateSemantics(variables);
+			return pureMutationPlan({
+				variables: compactObject({
+					id: variables.id,
+					input: mergedInput(variables, ["id", "skipEditedAt"]),
+					skipEditedAt: variables.skipEditedAt,
+				}),
+			});
+		},
 		async prepare(_apiKey, variables) {
 			validateCommentUpdateSemantics(variables);
 			return {

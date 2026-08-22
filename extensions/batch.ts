@@ -34,6 +34,8 @@ import type {
   BatchLookupValues,
   BatchPreparation,
   GraphQLDocumentVariant,
+  LookupPlan,
+  OperationPlan,
   OperationPreparation,
 } from './operation-types';
 import { activeSecrets } from './active-secrets';
@@ -127,7 +129,8 @@ function validateVariables(
 type IndependentPlan = Extract<BatchPreparation, { kind: 'independent' }>;
 
 type CompiledLookup = {
-  field: BatchLookupField;
+  field?: BatchLookupField;
+  key?: string;
   aliases: string[];
   ast: DocumentNode;
   variables: Record<string, unknown>;
@@ -147,7 +150,7 @@ type PlannedEntry = {
   operationName: string;
   variant?: GraphQLDocumentVariant;
   lookups?: CompiledLookup[];
-  batchFinish?: IndependentPlan['finish'];
+  batchFinish?: (resolved: Readonly<Record<string, unknown>>) => OperationPreparation;
   deferredDocument?: string;
 };
 
@@ -627,6 +630,50 @@ function compileLookup(entryKey: string, lookup: BatchLookup): CompiledLookup {
   };
 }
 
+function compilePlanLookup(entryKey: string, lookup: LookupPlan): CompiledLookup {
+  const prefix = `_lookup_${entryKey}_${lookup.key}`;
+  const roots = new Map<string, string>();
+  const aliases: string[] = [];
+  const ast = visit(parse(lookup.document({})), {
+    Variable(node) {
+      return { kind: Kind.VARIABLE, name: { kind: Kind.NAME, value: `${prefix}_${node.name.value}` } };
+    },
+    OperationDefinition(node) {
+      return {
+        ...node,
+        name: undefined,
+        selectionSet: {
+          ...node.selectionSet,
+          selections: node.selectionSet.selections.map((selection, index) => {
+            if (selection.kind !== Kind.FIELD) return selection;
+            const original = selection.alias?.value ?? selection.name.value;
+            const alias = index === 0 && node.selectionSet.selections.length === 1
+              ? prefix
+              : `${prefix}_${original}`;
+            aliases.push(alias);
+            roots.set(alias, original);
+            return { ...selection, alias: { kind: Kind.NAME, value: alias } };
+          }),
+        },
+      };
+    },
+  });
+  return {
+    key: lookup.key,
+    aliases,
+    ast,
+    variables: Object.fromEntries(
+      Object.entries(lookup.variables({})).map(([name, value]) => [`${prefix}_${name}`, value]),
+    ),
+    failureMessage: lookup.failureMessage,
+    resolve(raw, pathErrors) {
+      const scoped = pathErrors.filter((error) => aliases.includes(String(error.path[0])));
+      if (scoped.length) throw new Error(lookup.failureMessage ?? scoped[0]!.message);
+      return lookup.resolve(Object.fromEntries(aliases.map((alias) => [roots.get(alias)!, raw[alias]])), {});
+    },
+  };
+}
+
 function prefixVariables(key: string, variables: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(variables).map(([name, value]) => [`${key}_${name}`, value]));
 }
@@ -656,52 +703,35 @@ async function planEntry(
   }
   assertOperationAllowed(operation, entry.variables, mode);
   validateVariables(operation, entry.operation, entry.variables);
-  if (expectedKind === 'query') {
-    const factory = definition.preparation.plan;
-    if (!factory) throw new Error(`Batch entry "${entry.key}" is missing its pure operation plan.`);
-    const plan = await factory(entry.variables);
-    if (plan.lookups.length) {
-      throw new Error(`Batch entry "${entry.key}" requires a second lookup layer and cannot run in one read request.`);
-    }
-    const prepared = plan.finish({});
-    const document = prepared.variant?.document ?? operation.document;
-    if (!document) throw new Error(`Batch entry "${entry.key}" is missing a GraphQL document.`);
-    const { ast, root } = aliasDocument(entry.key, document);
-    return {
-      key: entry.key,
-      root,
-      document: print(ast),
-      variables: prefixVariables(entry.key, prepared.variables),
-      prepared,
-      operationName: operation.name,
-      variant: prepared.variant ?? operation.variants?.[0],
-    };
-  }
-  let batchPlan: BatchPreparation | undefined;
+  const factory = definition.preparation.plan;
+  if (!factory) throw new Error(`Batch entry "${entry.key}" is missing its pure operation plan.`);
+  let plan: OperationPlan;
   try {
-    batchPlan = definition.preparation.batchPrepare?.(entry.variables);
+    plan = await factory(entry.variables);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Batch entry "${entry.key}": ${message}`);
   }
-  if (batchPlan?.kind === 'independent') {
-    const document = operation.document;
-    if (!document) throw new Error(`Batch entry "${entry.key}" is missing a GraphQL document.`);
+  if (plan.kind !== expectedKind) throw new Error(`Batch entry "${entry.key}" produced the wrong operation plan kind.`);
+  if ((expectedKind === 'query' && plan.lookups.length)
+    || plan.lookups.some((lookup) => lookup.dependsOn?.length)) {
+    throw new Error(`Batch entry "${entry.key}" requires a second lookup layer and cannot run in one read request.`);
+  }
+  if (plan.lookups.length) {
     const variant = operation.variants?.[0];
-    const compiled = batchPlan.deferDocument ? undefined : aliasDocument(entry.key, document);
     return {
       key: entry.key,
-      root: compiled?.root ?? variant?.root ?? '',
-      document: compiled ? print(compiled.ast) : '',
+      root: variant?.root ?? '',
+      document: '',
       variables: {},
       operationName: operation.name,
       variant,
-      lookups: batchPlan.lookups.map((lookup) => compileLookup(entry.key, lookup)),
-      batchFinish: batchPlan.finish,
-      ...(batchPlan.deferDocument ? { deferredDocument: document } : {}),
+      lookups: plan.lookups.map((lookup) => compilePlanLookup(entry.key, lookup)),
+      batchFinish: plan.finish,
+      ...(expectedKind === 'mutation' ? { deferredDocument: operation.document } : {}),
     };
   }
-  const prepared = await localPrepare(entry.key, operation, entry.variables, signal);
+  const prepared = plan.finish({});
   const document = prepared.variant?.document ?? operation.document;
   if (!document) throw new Error(`Batch entry "${entry.key}" is missing a GraphQL document.`);
   const { ast, root } = aliasDocument(entry.key, document);
@@ -917,11 +947,11 @@ function applyIndependentLookups(
 ): void {
   for (const entry of mutations) {
     if (!entry.lookups?.length || !entry.batchFinish) continue;
-    const resolved: BatchLookupValues = {};
+    const resolved: Record<string, unknown> = {};
     let failed = false;
     for (const lookup of entry.lookups) {
       try {
-        resolved[lookup.field] = lookup.resolve(raw, pathErrors) as never;
+        resolved[lookup.key ?? lookup.field!] = lookup.resolve(raw, pathErrors);
       } catch (error) {
         failed = true;
         const message = error instanceof Error ? error.message : String(error);
@@ -1042,13 +1072,12 @@ async function executeBatchWithTelemetry(
   }
 
   if ((readPhaseFailed || errors.length) && mutations.length) {
-    const mutationKeys = new Set(mutations.map(({ key }) => key));
-    const attemptedErrors = errors.filter(({ key }) => !mutationKeys.has(key));
+    const failedMutationKeys = new Set(errors.map(({ key }) => key));
     return envelope(
       requestedKeys,
       data,
-      attemptedErrors,
-      mutations.map((entry) => entry.key),
+      errors,
+      mutations.filter((entry) => !failedMutationKeys.has(entry.key)).map((entry) => entry.key),
       { read: readRequests, mutation: 0 },
       aliasCount,
       params.sink,

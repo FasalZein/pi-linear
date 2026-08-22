@@ -5,7 +5,7 @@ import {
 	resolveTeamReference,
 } from "../client";
 import { projection } from "../selections";
-import { namedEntityLookup, pureQueryPlan } from "../operation-plan";
+import { documentLookup, issueLookup, namedEntityLookup, pureQueryPlan, teamLookup } from "../operation-plan";
 import {
 	mergedInput,
 	p,
@@ -195,6 +195,35 @@ export const documents: readonly OperationDefinition[] = ([
 			teamKey: "resolveTeamReference",
 			teamId: "resolveTeamReference",
 		},
+		plan(v) {
+			const input = mergedInput(v, ["teamKey"]);
+			const issueRef = typeof input.issueId === "string" ? input.issueId : undefined;
+			const related = ["cycleId", "initiativeId", "issueId", "projectId", "releaseId", "resourceFolderId"]
+				.some((key) => typeof input[key] === "string" && input[key]);
+			const teamRef = related ? undefined : v.teamKey ?? input.teamId;
+			return {
+				kind: "mutation",
+				lookups: [
+					...(issueRef ? [issueLookup("issue", issueRef)] : []),
+					...(teamRef ? [teamLookup("team", String(teamRef))] : []),
+				],
+				finish(resolved) {
+					const issue = resolved.issue as import("../client").ResolvedIssue | undefined;
+					const team = resolved.team as { id: string; key: string } | undefined;
+					if (issue) input.issueId = issue.id;
+					if (related) delete input.teamId;
+					else if (team) input.teamId = team.id;
+					if (typeof input.title !== "string" || !input.title.trim()) throw new Error("Document title is required for documentCreate (title).");
+					return {
+						variables: { input },
+						resolution: {
+							...(issue && issueRef ? { issue: issueTarget(issueRef, issue) } : {}),
+							...(team ? { team: { requested: teamRef, resolvedId: team.id, key: team.key } } : {}),
+						},
+					};
+				},
+			};
+		},
 		async prepare(k, v, s, g) {
 			const x = mergedInput(v, ["teamKey"]);
 			const resolution: Record<string, unknown> = {};
@@ -360,6 +389,39 @@ export const documents: readonly OperationDefinition[] = ([
 			issueId: "resolveIssueReference",
 			teamKey: "resolveTeamReference",
 			teamId: "resolveTeamReference",
+		},
+		plan(v) {
+			const requested = String(v.documentId);
+			const input = mergedInput(v, ["documentId", "teamKey"]);
+			const issueRef = typeof input.issueId === "string" ? input.issueId : undefined;
+			const related = ["cycleId", "initiativeId", "issueId", "projectId", "releaseId", "resourceFolderId"]
+				.some((key) => typeof input[key] === "string" && input[key]);
+			const teamRef = related ? undefined : v.teamKey ?? input.teamId;
+			return {
+				kind: "mutation",
+				lookups: [
+					documentLookup("target", requested),
+					...(issueRef ? [issueLookup("issue", issueRef)] : []),
+					...(teamRef ? [teamLookup("team", String(teamRef))] : []),
+				],
+				finish(resolved) {
+					const document = resolved.target as { id: string; name: string };
+					const issue = resolved.issue as import("../client").ResolvedIssue | undefined;
+					const team = resolved.team as { id: string; key: string } | undefined;
+					if (issue) input.issueId = issue.id;
+					if (related) delete input.teamId;
+					else if (team) input.teamId = team.id;
+					if (!Object.keys(input).length) throw new Error("No update fields were provided.");
+					return {
+						variables: { id: document.id, input },
+						resolution: {
+							target: { requested, resolvedId: document.id, title: document.name },
+							...(issue && issueRef ? { issue: issueTarget(issueRef, issue) } : {}),
+							...(team ? { team: { requested: teamRef, resolvedId: team.id, key: team.key } } : {}),
+						},
+					};
+				},
+			};
 		},
 		async prepare(k, v, s, g) {
 			const requested = String(v.documentId);

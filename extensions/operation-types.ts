@@ -78,9 +78,13 @@ export type LookupPlan = {
 		data: Record<string, unknown>,
 		resolved: Readonly<Record<string, unknown>>,
 	) => unknown;
+	/** Stable external error when the lookup request itself fails. */
+	failureMessage?: string;
+	/** Preserve an explicit phase label for guarded direct calls. */
+	telemetryPhase?: "read";
 };
 export type OperationPlan = {
-	kind: "query";
+	kind: "query" | "mutation";
 	lookups: readonly LookupPlan[];
 	finish: (resolved: Readonly<Record<string, unknown>>) => OperationPreparation;
 };

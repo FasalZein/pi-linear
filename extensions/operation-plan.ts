@@ -1,6 +1,7 @@
 import {
   assertIssueNodeMatches,
   assertNamedNodeMatches,
+  linearGraphQLErrors,
   linearGraphQLWithContext,
   requireIssueReference,
   linearGraphQL,
@@ -34,6 +35,10 @@ function one<T>(nodes: readonly T[], description: string): T {
 
 export function pureQueryPlan(prepared: OperationPreparation): OperationPlan {
   return { kind: 'query', lookups: [], finish: () => prepared };
+}
+
+export function pureMutationPlan(prepared: OperationPreparation): OperationPlan {
+  return { kind: 'mutation', lookups: [], finish: () => prepared };
 }
 
 export function issueLookup(key: string, value: string): LookupPlan {
@@ -96,7 +101,12 @@ export function teamLookup(key: string, value: string): LookupPlan {
   };
 }
 
-export function stateLookup(key: string, value: string, teamKey?: string): LookupPlan {
+export function stateLookup(
+  key: string,
+  value: string,
+  teamKey?: string,
+  teamIdFrom: (value: unknown) => string = (value) => (value as ResolvedTeam).id,
+): LookupPlan {
   const reference = required(value, 'state');
   if (UUID.test(reference)) {
     return {
@@ -129,10 +139,10 @@ export function stateLookup(key: string, value: string, teamKey?: string): Looku
   }
 }`,
     variables(resolved) {
-      return { teamId: (resolved[teamKey] as ResolvedTeam).id, name: reference };
+      return { teamId: teamIdFrom(resolved[teamKey]), name: reference };
     },
     resolve(data, resolved) {
-      const teamId = (resolved[teamKey] as ResolvedTeam).id;
+      const teamId = teamIdFrom(resolved[teamKey]);
       const nodes = (data.workflowStates as {
         nodes?: Array<{ id: string; name: string; team: { id: string } | null }>;
       } | undefined)?.nodes ?? [];
@@ -140,6 +150,40 @@ export function stateLookup(key: string, value: string, teamKey?: string): Looku
         state.team?.id === teamId && state.name.toLowerCase() === reference.toLowerCase());
       const state = one(matches, `state "${reference}" in team "${teamId}"`);
       return { id: state.id, name: state.name, teamId } satisfies ResolvedState;
+    },
+  };
+}
+
+export function stateLookupForTeamReference(key: string, value: string, teamValue: string): LookupPlan {
+  const reference = required(value, 'state');
+  const team = required(teamValue, 'team');
+  if (UUID.test(reference)) return stateLookup(key, reference);
+  const byId = UUID.test(team);
+  return {
+    key,
+    document: () => byId
+      ? `query ResolveStateByTeamId($teamId: ID!, $name: String!) {
+  workflowStates(first: 2, filter: { team: { id: { eq: $teamId } }, name: { eqIgnoreCase: $name } }) {
+    nodes { id name team { id key } }
+  }
+}`
+      : `query ResolveStateByTeamKey($teamKey: String!, $name: String!) {
+  workflowStates(first: 2, filter: { team: { key: { eq: $teamKey } }, name: { eqIgnoreCase: $name } }) {
+    nodes { id name team { id key } }
+  }
+}`,
+    variables: () => byId
+      ? { teamId: team, name: reference }
+      : { teamKey: team.toUpperCase(), name: reference },
+    resolve(data) {
+      const nodes = (data.workflowStates as {
+        nodes?: Array<{ id: string; name: string; team: { id: string; key?: string } | null }>;
+      } | undefined)?.nodes ?? [];
+      const matches = nodes.filter((state) => state.name.toLowerCase() === reference.toLowerCase()
+        && state.team && (byId ? state.team.id === team : state.team.key?.toLowerCase() === team.toLowerCase()));
+      const state = one(matches, `state "${reference}" in team "${team}"`);
+      if (!state.team) throw new Error(`Linear state "${reference}" has no team.`);
+      return { id: state.id, name: state.name, teamId: state.team.id } satisfies ResolvedState;
     },
   };
 }
@@ -186,6 +230,67 @@ export function userLookup(key: string, value: string): LookupPlan {
       const exact = records.filter((user) =>
         user.email === reference || user.name === reference || user.displayName === reference);
       return one([...new Map(exact.map((user) => [user.id, user])).values()], `user "${reference}"`);
+    },
+  };
+}
+
+export function documentLookup(key: string, value: string): LookupPlan {
+  const reference = required(value, 'document');
+  if (UUID.test(reference)) {
+    return {
+      key,
+      document: () => `query ResolveDocumentById($id: String!) { document(id: $id) { id title } }`,
+      variables: () => ({ id: reference }),
+      resolve(data) {
+        const document = data.document as { id?: unknown; title?: unknown } | null;
+        if (!document) throw new Error(`Linear document "${reference}" was not found.`);
+        if (document.id !== reference) throw new Error(`Linear document resolver returned mismatched id "${String(document.id)}" for "${reference}".`);
+        return { id: document.id, name: document.title };
+      },
+    };
+  }
+  return {
+    key,
+    document: () => `query ResolveDocumentByTitle($title: String!) {
+  documents(first: 2, filter: { title: { eq: $title } }) { nodes { id title } }
+}`,
+    variables: () => ({ title: reference }),
+    resolve(data) {
+      const nodes = (data.documents as { nodes?: Array<{ id: string; title: string }> } | undefined)?.nodes ?? [];
+      if (nodes.length !== 1) throw new Error(`Linear document "${reference}" resolved to ${nodes.length} results; expected exactly one.`);
+      if (nodes[0]!.title !== reference) throw new Error(`Linear document resolver returned mismatched title "${nodes[0]!.title}" for "${reference}".`);
+      return { id: nodes[0]!.id, name: nodes[0]!.title };
+    },
+  };
+}
+
+export function issueRelationLookup(key: string, value: string, failureMessage: string): LookupPlan {
+  const reference = required(value, 'issue relation');
+  return {
+    key,
+    failureMessage,
+    telemetryPhase: 'read',
+    document: () => `query VerifyIssueRelationDelete($id: String!) {
+  issueRelation(id: $id) { id type issue { id } relatedIssue { id } }
+}`,
+    variables: () => ({ id: reference }),
+    resolve(data) {
+      const relation = data.issueRelation as {
+        id?: unknown;
+        type?: unknown;
+        issue?: { id?: unknown } | null;
+        relatedIssue?: { id?: unknown } | null;
+      } | null;
+      if (!relation || typeof relation.id !== 'string' || typeof relation.type !== 'string'
+        || typeof relation.issue?.id !== 'string' || typeof relation.relatedIssue?.id !== 'string') {
+        throw new Error('Linear issue relation did not match the exact delete guard.');
+      }
+      return {
+        id: relation.id,
+        type: relation.type,
+        issueId: relation.issue.id,
+        relatedIssueId: relation.relatedIssue.id,
+      };
     },
   };
 }
@@ -250,11 +355,21 @@ export async function resolveOperationPlan(
   context: LinearNetworkContext,
   plan: OperationPlan,
 ): Promise<OperationPreparation> {
-  return resolvePlanLookups(plan, (lookup, resolved) => linearGraphQLWithContext<JsonObject>(
-    context,
-    lookup.document(resolved),
-    lookup.variables(resolved),
-  ));
+  return resolvePlanLookups(plan, async (lookup, resolved) => {
+    try {
+      const data = await linearGraphQLWithContext<JsonObject>(
+        context,
+        lookup.document(resolved),
+        lookup.variables(resolved),
+        lookup.telemetryPhase ? { phase: lookup.telemetryPhase } : undefined,
+      );
+      if (linearGraphQLErrors(data).length) throw new Error(lookup.failureMessage ?? linearGraphQLErrors(data)[0]!.message);
+      return data;
+    } catch (error) {
+      if (lookup.failureMessage) throw new Error(lookup.failureMessage);
+      throw error;
+    }
+  });
 }
 
 export async function resolveOperationPlanWithGraphQL(
@@ -263,12 +378,22 @@ export async function resolveOperationPlanWithGraphQL(
   signal?: AbortSignal,
   graphql: LinearGraphQLFn = linearGraphQL,
 ): Promise<OperationPreparation> {
-  return resolvePlanLookups(plan, (lookup, resolved) => graphql<JsonObject>(
-    apiKey,
-    lookup.document(resolved),
-    lookup.variables(resolved),
-    signal,
-  ));
+  return resolvePlanLookups(plan, async (lookup, resolved) => {
+    try {
+      const data = await graphql<JsonObject>(
+        apiKey,
+        lookup.document(resolved),
+        lookup.variables(resolved),
+        signal,
+        lookup.telemetryPhase ? { phase: lookup.telemetryPhase } : undefined,
+      );
+      if (linearGraphQLErrors(data).length) throw new Error(lookup.failureMessage ?? linearGraphQLErrors(data)[0]!.message);
+      return data;
+    } catch (error) {
+      if (lookup.failureMessage) throw new Error(lookup.failureMessage);
+      throw error;
+    }
+  });
 }
 
 const planPreparations = new WeakSet<NonNullable<import('./operation-types').LinearOperation['prepare']>>();

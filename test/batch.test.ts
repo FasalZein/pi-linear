@@ -513,6 +513,38 @@ describe('batch read phase', () => {
   });
 });
 
+describe('pure mutation operation plans', () => {
+  it('plans every named mutation deterministically without transport, timers, or random ids', async () => {
+    const fetch = vi.fn();
+    const timer = vi.spyOn(globalThis, 'setTimeout');
+    vi.stubGlobal('fetch', fetch);
+
+    const mutations = operationDefinitions.filter((definition) => definition.kind === 'mutation');
+    expect(mutations.length).toBeGreaterThan(0);
+    for (const definition of mutations) {
+      const plan = definition.preparation.plan;
+      expect(plan, definition.name).toBeTypeOf('function');
+      const first = await plan!({ ...definition.canonical.example });
+      const second = await plan!({ ...definition.canonical.example });
+      const shape = (value: typeof first) => ({
+        kind: value.kind,
+        lookups: value.lookups.map((lookup) => ({
+          key: lookup.key,
+          dependsOn: lookup.dependsOn,
+          failureMessage: lookup.failureMessage,
+          telemetryPhase: lookup.telemetryPhase,
+          document: lookup.dependsOn?.length ? lookup.document.toString() : lookup.document({}),
+          variables: lookup.dependsOn?.length ? lookup.variables.toString() : lookup.variables({}),
+        })),
+      });
+      expect(shape(first), definition.name).toEqual(shape(second));
+      expect(first.kind, definition.name).toBe('mutation');
+    }
+    expect(fetch).not.toHaveBeenCalled();
+    expect(timer).not.toHaveBeenCalled();
+  });
+});
+
 describe('batch mutation phase', () => {
   const updated = issueNode(ISSUE_A, 'AEO-1', 'New title');
 
@@ -625,11 +657,32 @@ describe('batch mutation phase', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('rejects a mutation whose prepare would call Linear', async () => {
-    const fetch = vi.fn();
-    vi.stubGlobal('fetch', fetch);
-    process.env.LINEAR_API_KEY = 'test-key';
-    await expect(execute({
+  it('uses the same exact mutation resolver verification in direct and batch execution', async () => {
+    graphqlStub((request) => {
+      const alias = aliases(request.query, 'teams')[0];
+      return { body: { data: alias
+        ? { [alias]: { nodes: [{ id: TEAM_ID, key: 'WRONG' }] } }
+        : { teams: { nodes: [{ id: TEAM_ID, key: 'WRONG' }] } } } };
+    });
+    const direct = await execute({
+      operation: 'create_cycle',
+      variables: { team: 'AEO', startsAt: '2026-08-17', endsAt: '2026-08-31' },
+    }).catch((error: Error) => error);
+    const batched = await execute({
+      operation: 'batch',
+      variables: { mutations: [{ key: 'write', operation: 'create_cycle', variables: { team: 'AEO', startsAt: '2026-08-17', endsAt: '2026-08-31' } }] },
+    });
+    expect(direct).toBeInstanceOf(Error);
+    expect(batched.details.errors).toHaveLength(1);
+    expect(batched.details.errors[0].message).toBe((direct as Error).message);
+    expect(batched.details.skipped).toEqual([]);
+  });
+
+  it('folds a named mutation lookup into the shared read request', async () => {
+    const { requests } = graphqlStub((request) => request.query.includes('cycleCreate')
+      ? { body: { data: { write: { success: true, cycle: { id: 'cycle-id', name: 'Cycle' } } } } }
+      : { body: { data: lookupData(request.query) } });
+    const result = await execute({
       operation: 'batch',
       variables: {
         mutations: [{
@@ -638,8 +691,34 @@ describe('batch mutation phase', () => {
           variables: { team: 'AEO', startsAt: '2026-08-17', endsAt: '2026-08-31' },
         }],
       },
-    })).rejects.toThrow(/preparation|fold/i);
-    expect(fetch).not.toHaveBeenCalled();
+    });
+    expect(requests).toHaveLength(2);
+    expect(requests[0]!.query).toMatch(/teams|team\(/);
+    expect(requests[1]!.query).toContain('cycleCreate');
+    expect(result.details.errors).toEqual([]);
+  });
+
+  it('proves the target issue, destination team, and state in one read request before an issue state update', async () => {
+    const { requests } = graphqlStub((request) => request.query.includes('issueUpdate')
+      ? { body: { data: { edit: { success: true, issue: issueNode(ISSUE_A, 'AEO-1') } } } }
+      : { body: { data: lookupData(request.query) } });
+    const result = await execute({
+      operation: 'batch',
+      variables: {
+        mutations: [{
+          key: 'edit',
+          operation: 'update_issue',
+          variables: { issue: 'AEO-1', teamId: TEAM_ID, stateId: STATE_ID },
+        }],
+      },
+    });
+    expect(requests).toHaveLength(2);
+    expect(requests[0]!.query).toMatch(/issue\(/);
+    expect(requests[0]!.query).toMatch(/team\(/);
+    expect(requests[0]!.query).toMatch(/workflowState\(/);
+    expect(requests[0]!.query).not.toMatch(/mutation/);
+    expect(result.details.errors).toEqual([]);
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
   });
 
   it('rejects two mutations and create-only transaction sets before network access', async () => {
@@ -892,7 +971,7 @@ describe('batch transactional create', () => {
           variables: { title: 'Child', parent: 'AEO-1', state: 'Todo' },
         }],
       },
-    })).rejects.toThrow(/state name|explicit team|sequential/i);
+    })).rejects.toThrow(/state name|explicit team|sequential|second lookup layer/i);
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -917,9 +996,11 @@ describe('batch transactional create', () => {
     expect(requests).toHaveLength(1);
     expect(requests[0]!.query).not.toMatch(/mutation/);
     expect(result.details.data).toEqual({});
-    expect(result.details.errors).toEqual([]);
+    expect(result.details.errors).toEqual([{
+      key: 'one', path: ['_lookup_one_team'], message: expect.stringMatching(/missing team/),
+    }]);
     expect(JSON.stringify(result.details)).not.toContain(TOKEN);
-    expect(result.details.skipped.sort()).toEqual(['one', 'two']);
+    expect(result.details.skipped).toEqual(['two']);
     expect(result.details.meta.requests).toEqual({ read: 1, mutation: 0 });
   });
 
