@@ -8,7 +8,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import contracts from '../extensions/generated/operation-contracts.json';
-import { linearApiTool } from '../extensions/api';
 import { getOperationDefinition, operationDefinitions, operations } from '../extensions/operations';
 import { executeOperation, validateLocalResult } from '../extensions/runtime';
 import { typedLinearTools } from '../extensions/typed-tools';
@@ -103,15 +102,14 @@ describe('runtime local result validation', () => {
 });
 
 describe('public surfaces', () => {
-  const tool = linearApiTool('allowlist');
   const typed = new Map(typedLinearTools().map((entry) => [entry.name, entry]));
 
   function execute(entry: any, params: Record<string, unknown>) {
     return entry.execute('call-1', params, undefined, undefined, { hasUI: false });
   }
 
-  it('switches a workspace through linear', async () => {
-    const result = await execute(tool, { operation: 'switch_workspace', variables: { name: 'second' } });
+  it('switches a workspace through the activated typed tool', async () => {
+    const result = await execute(typed.get('linear_switch_workspace')!, { name: 'second' });
     expect(result.details).toEqual({ active: 'second' });
     const stored = JSON.parse(await readFile(join(agentDirectory, 'extensions/linear/credentials.json'), 'utf8'));
     expect(stored.activeWorkspace).toBe('second');
@@ -123,7 +121,7 @@ describe('public surfaces', () => {
   });
 
   it('rejects an unknown workspace with the stored-workspace error', async () => {
-    await expect(execute(tool, { operation: 'switch_workspace', variables: { name: 'missing' } }))
+    await expect(execute(typed.get('linear_switch_workspace')!, { name: 'missing' }))
       .rejects.toThrow('Workspace "missing" does not exist.');
   });
 

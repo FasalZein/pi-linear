@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { linearApiTool } from '../extensions/api';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
+import { executeTyped } from './helpers/typed-execution';
 
 isolateLinearCredentials();
 
@@ -20,8 +21,11 @@ async function useArtifactRoot() {
   process.env.PI_ARTIFACT_PROJECT_ROOT = root;
 }
 
-function execute(params: Record<string, unknown>) {
-  return (linearApiTool() as any).execute('call-1', params, undefined, undefined, { hasUI: false });
+function execute(params: Record<string, any>) {
+  if (params.query || params.operation === 'get_result') {
+    return (linearApiTool() as any).execute('call-1', params, undefined, undefined, { hasUI: false });
+  }
+  return executeTyped(params.operation, params.variables, { workspace: params.workspace });
 }
 
 function installServer(respond: (query: string, variables: Record<string, unknown>) => {
@@ -108,14 +112,14 @@ describe('lossless singular routing', () => {
     const large = 'x'.repeat(DEFAULT_MAX_BYTES);
     installServer(() => ({ data: { document: { id: 'doc-1', title: 'Notes', content: large } } }));
 
-    const fallback = await execute({ operation: 'get_document', variables: { document: 'doc-1' }, sink: 'inline' });
+    const fallback = await execute({ query: 'query { document(id: "doc-1") { id title content } }', sink: 'inline' });
     expect(fallback.details.meta.routing).toMatchObject({
       requestedSink: 'inline', actualSink: 'artifact', reason: 'tool-output-boundary', inlineComplete: false,
     });
     expect(await recoverString(fallback.details.handle, '/data/document/content')).toBe(large);
 
     installServer(() => ({ data: { document: { id: 'doc-2', title: 'Small', content: 'complete' } } }));
-    const forced = await execute({ operation: 'get_document', variables: { document: 'doc-2' }, sink: 'artifact' });
+    const forced = await execute({ query: 'query { document(id: "doc-2") { id title content } }', sink: 'artifact' });
     expect(forced.details.meta.routing).toMatchObject({
       requestedSink: 'artifact', actualSink: 'artifact', reason: 'requested', inlineComplete: false,
     });
@@ -153,15 +157,15 @@ describe('lossless singular routing', () => {
     expect(ordinary.details.meta.routing).toMatchObject({ actualSink: 'artifact', reason: 'spill-threshold' });
   });
 
-  it('keeps typed and loader singular reads lossless', async () => {
+  it('keeps typed and raw singular reads lossless', async () => {
     const content = 't'.repeat(6_500);
     installServer(() => ({ data: { document: { id: 'doc-1', title: 'Notes', content } } }));
     const typed = typedLinearTools().find((tool: any) => tool.name === 'linear_get_document') as any;
 
     const typedResult = await typed.execute('call-1', { document: 'doc-1' }, undefined, undefined, { hasUI: false });
-    const loaderResult = await execute({ operation: 'get_document', variables: { document: 'doc-1' } });
+    const rawResult = await execute({ query: 'query { document(id: "doc-1") { id title content } }' });
 
-    expect(typedResult.details.data).toEqual(loaderResult.details.data);
+    expect(typedResult.details.data).toEqual(rawResult.details.data);
     expect(typedResult.details.data.document.content).toBe(content);
   });
 });

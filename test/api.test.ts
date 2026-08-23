@@ -14,6 +14,7 @@ import {
   resolveRequest,
 } from '../extensions/api';
 import { DOMAINS, getOperation, operationDocuments, operations } from '../extensions/operations';
+import { executeOperation } from '../extensions/runtime';
 import { isolateLinearCredentials } from './helpers/credentials';
 
 isolateLinearCredentials();
@@ -120,35 +121,28 @@ describe('named operations', () => {
   it.each([
     ['canonical', 'update_document', { documentId: 'document-id', trashed: true }],
     ['compatibility alias', 'add_comment', { input: { issueId: 'issue-id', body: 'text', trashed: true } }],
-  ])('rejects destructive input on the %s named surface before credentials or fetch', async (_surface, operation, variables) => {
+  ])('rejects destructive input on the %s named operation pipeline before fetch', (_surface, operation, variables) => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
-    const tool = linearApiTool() as any;
 
-    await expect(tool.execute(
-      'call-1',
-      { operation, variables },
-      undefined,
-      undefined,
-      { hasUI: false },
-    )).rejects.toThrow(/Destructive named input is unavailable at variables(?:\.input)?\.trashed/);
+    expect(() => resolveRequest({ operation, variables }))
+      .toThrow(/Destructive named input is unavailable at variables(?:\.input)?\.trashed/);
     expect(fetch).not.toHaveBeenCalled();
   });
 
   it.each([
     ['policy', { issue: 'AEO-258', lin_api_secret123456789: { trashed: true } }],
     ['validation', { issue: 'AEO-258', lin_api_secret123456789: true }],
-  ])('redacts credential-shaped keys from pre-auth named %s errors', async (_kind, variables) => {
+  ])('redacts credential-shaped keys from named pipeline %s errors', (_kind, variables) => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
 
-    const failure = await (linearApiTool() as any).execute(
-      'call-1',
-      { operation: 'get_issue', variables },
-      undefined,
-      undefined,
-      { hasUI: false },
-    ).catch((error: Error) => error);
+    let failure: unknown;
+    try {
+      resolveRequest({ operation: 'get_issue', variables });
+    } catch (error) {
+      failure = error;
+    }
 
     expect(failure).toBeInstanceOf(Error);
     expect((failure as Error).message).toContain('[REDACTED]');
@@ -185,13 +179,9 @@ describe('named operations', () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
     try {
-      await expect((linearApiTool() as any).execute(
-        'call-1',
-        { operation: 'update_document', variables: { documentId: 'document-id', trashed: true } },
-        undefined,
-        undefined,
-        { hasUI: false },
-      )).rejects.toThrow('Destructive named input is unavailable at variables.trashed');
+      expect(() => resolveRequest({
+        operation: 'update_document', variables: { documentId: 'document-id', trashed: true },
+      })).toThrow('Destructive named input is unavailable at variables.trashed');
       expect(fetch).not.toHaveBeenCalled();
     } finally {
       delete process.env.LINEAR_MUTATIONS;
@@ -202,13 +192,9 @@ describe('named operations', () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
 
-    await expect((linearApiTool('readonly') as any).execute(
-      'call-1',
-      { operation: 'update_document', variables: { documentId: 'document-id', trashed: true } },
-      undefined,
-      undefined,
-      { hasUI: false },
-    )).rejects.toThrow('read-only mode');
+    expect(() => resolveRequest({
+      operation: 'update_document', variables: { documentId: 'document-id', trashed: true },
+    }, 'readonly')).toThrow('read-only mode');
     expect(fetch).not.toHaveBeenCalled();
   });
 });
@@ -300,7 +286,7 @@ describe('runtime discovery', () => {
     vi.stubGlobal('fetch', fetch);
     const tool = linearApiTool() as any;
     const alternatives = 'Send exactly one of: { "operation": "help" }, { "operation": "help", "variables": { "domain": "issues" } }, or { "operation": "help", "variables": { "operation": "get_issue" } }.';
-    const naturalSearch = 'Natural search was removed. The operation catalog is in the `linear` tool description. Send `{ "operation": "help", "variables": { "operation": "get_issue" } }` for exact parameters, or call the operation directly.';
+    const naturalSearch = 'Natural search was removed. The operation catalog is in the `linear` tool description. Send `{ "operation": "help", "variables": { "operation": "get_issue" } }` for exact parameters and to load `linear_get_issue`.';
 
     await expect(execute(tool, { operation: 'help', variables: { domain: 'issues', operation: 'get_issue' } }))
       .rejects.toThrow(alternatives);
@@ -323,19 +309,18 @@ describe('runtime discovery', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('rejects unknown operations and wrong parameters before network access', async () => {
+  it('rejects unknown operations and guides known operations before network access', async () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
     const tool = linearApiTool() as any;
 
     await expect(execute(tool, { operation: 'missing' })).rejects.toThrow(
-      'Unknown Linear operation "missing". Send { "operation": "help" }.',
+      'Unknown Linear operation. Send { "operation": "help" }.',
     );
-    await expect(execute(tool, { operation: 'get_issue', variables: { teamKey: 'AEO' } })).rejects.toThrow(
-      'Valid parameters: canonical fields issue, view. Example: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }.',
-    );
+    await expect(execute(tool, { operation: 'get_issue', variables: { teamKey: 'AEO' } }))
+      .rejects.toThrow('load linear_get_issue, then call linear_get_issue');
     await expect(execute(tool, { operation: 'create_issue', variables: { title: 'T', project: 'Roadmap', labels: ['bad'] } }))
-      .rejects.toThrow(/Valid parameters: canonical fields .*projectId.*labelIds/);
+      .rejects.toThrow('load linear_create_issue, then call linear_create_issue');
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -416,7 +401,6 @@ describe('reference preparation pipeline', () => {
 
   it('normalizes canonical and legacy variable shapes to final GraphQL variables', async () => {
     const requests = installGraphqlServer();
-    const tool = linearApiTool() as any;
     const calls = [
       { operation: 'get_issue', variables: { issue: 'AEO-258' } },
       { operation: 'get_issue', variables: { teamKey: 'AEO', number: 258 } },
@@ -428,7 +412,15 @@ describe('reference preparation pipeline', () => {
       { operation: 'update_issue_state', variables: { issueId: ISSUE_ID, stateId: STATE_ID } },
     ];
     const results = [];
-    for (const call of calls) results.push(await execute(tool, call));
+    for (const call of calls) {
+      results.push(await executeOperation(
+        getOperation(call.operation),
+        { variables: call.variables },
+        'allowlist',
+        { hasUI: false } as any,
+        undefined,
+      ));
+    }
 
     const final = requests.filter(({ query }) => !query.includes('Resolve'));
     expect(final.map(({ variables }) => variables)).toEqual([
@@ -441,10 +433,10 @@ describe('reference preparation pipeline', () => {
       { id: 'AEO-258', input: { stateId: STATE_ID } },
       { id: ISSUE_ID, input: { stateId: STATE_ID } },
     ]);
-    expect(results[2].details.resolution.target).toEqual({
+    expect((results[2] as any).resolution.target).toEqual({
       requested: 'AEO-258', resolvedId: ISSUE_ID, identifier: 'AEO-258',
     });
-    expect(results[4].details.resolution.relatedTarget).toMatchObject({
+    expect((results[4] as any).resolution.relatedTarget).toMatchObject({
       requested: 'AEO-259', resolvedId: RELATED_ID, identifier: 'AEO-259',
     });
   });
@@ -464,7 +456,13 @@ describe('reference preparation pipeline', () => {
         json: async () => ({ data: { issue: null } }),
       };
     }));
-    await expect(execute(linearApiTool() as any, { operation, variables })).rejects.toThrow('was not found');
+    await expect(executeOperation(
+      getOperation(operation),
+      { variables },
+      'allowlist',
+      { hasUI: false } as any,
+      undefined,
+    )).rejects.toThrow('was not found');
     expect(queries.some((query) => query.trimStart().startsWith('mutation'))).toBe(false);
   });
 });

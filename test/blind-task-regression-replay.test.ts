@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { linearApiTool } from "../extensions/api";
 import { writeCredentials } from "../extensions/client";
+import { executeTyped } from "./helpers/typed-execution";
 
 const ISSUE_ID = "11111111-1111-4111-8111-111111111111";
 const TEAM_ID = "22222222-2222-4222-8222-222222222222";
@@ -13,14 +14,11 @@ const originalMutations = process.env.LINEAR_MUTATIONS;
 const originalPiDir = process.env.PI_CODING_AGENT_DIR;
 const temporaryDirectories: string[] = [];
 
-function execute(params: Record<string, unknown>) {
-	return (linearApiTool() as any).execute(
-		"call",
-		params,
-		undefined,
-		undefined,
-		{ hasUI: false },
-	);
+function execute(params: Record<string, any>) {
+	if (params.query) {
+		return (linearApiTool() as any).execute("call", params, undefined, undefined, { hasUI: false });
+	}
+	return executeTyped(params.operation, params.variables, { workspace: params.workspace });
 }
 
 afterEach(async () => {

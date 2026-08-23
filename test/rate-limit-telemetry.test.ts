@@ -376,7 +376,7 @@ describe('model-facing budget warnings', () => {
     ]);
   });
 
-  it('wires raw, named singular, named collection, and typed result paths', async () => {
+  it('wires raw and typed singular and collection result paths', async () => {
     process.env.LINEAR_API_KEY = 'test-key';
     const issue = { id: '11111111-1111-4111-8111-111111111111', identifier: 'AEO-370', title: 'Telemetry' };
     vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
@@ -391,13 +391,14 @@ describe('model-facing budget warnings', () => {
       tool.execute('call-1', params, undefined, undefined, { hasUI: false });
 
     const raw = await execute(linearApiTool(), { query: 'query { viewer { id } }' });
-    const singular = await execute(linearApiTool(), { operation: 'get_issue', variables: { issue: issue.id } });
-    const collection = await execute(linearApiTool(), { operation: 'list_teams', variables: {} });
-    const typed = typedLinearTools().find(({ name }) => name === 'linear_get_issue');
-    if (!typed) throw new Error('Missing typed get_issue tool.');
-    const typedResult = await execute(typed, { issue: issue.id });
+    const tools = typedLinearTools();
+    const singular = tools.find(({ name }) => name === 'linear_get_issue');
+    const collection = tools.find(({ name }) => name === 'linear_list_teams');
+    if (!singular || !collection) throw new Error('Missing typed telemetry test tools.');
+    const singularResult = await execute(singular, { issue: issue.id });
+    const collectionResult = await execute(collection, {});
 
-    for (const result of [raw, singular, collection, typedResult]) {
+    for (const result of [raw, singularResult, collectionResult]) {
       expect(result.details.meta.rateLimit.scopes).toEqual(['requests']);
     }
   });
@@ -482,22 +483,18 @@ describe('model-facing budget warnings', () => {
     ]);
   });
 
-  it('supports explicit telemetry on named operations without passing the loader field to variables', async () => {
-    process.env.LINEAR_API_KEY = 'test-key';
-    const fetch = vi.fn(async (_url: string, init: RequestInit) => response(200, {
-      data: { issue: { id: '11111111-1111-4111-8111-111111111111', identifier: 'AEO-427', title: 'Telemetry' } },
-    }, { 'X-RateLimit-Requests-Remaining': '1499' }));
+  it('rejects loader named execution before applying its telemetry override', async () => {
+    const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
 
-    const result = await (linearApiTool() as any).execute('call-1', {
+    await expect((linearApiTool() as any).execute('call-1', {
       operation: 'get_issue',
       variables: { issue: '11111111-1111-4111-8111-111111111111' },
       telemetry: 'always',
-    }, undefined, undefined, { hasUI: false });
+    }, undefined, undefined, { hasUI: false }))
+      .rejects.toThrow('load linear_get_issue, then call linear_get_issue');
 
-    const body = JSON.parse(String(fetch.mock.calls[0]![1]!.body));
-    expect(body.variables).toEqual({ id: '11111111-1111-4111-8111-111111111111' });
-    expect(result.details.meta.rateLimit).toMatchObject({ scopes: [], retryAttempts: 0 });
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('supports explicit telemetry on raw queries without passing the loader field to GraphQL', async () => {
@@ -564,16 +561,23 @@ describe('model-facing budget warnings', () => {
       relatedIssueId: '22222222-2222-4222-8222-222222222222',
       type: 'related',
     };
-    const fetch = vi.fn()
-      .mockResolvedValueOnce(response(200, { data: { issueRelation: {
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const { query } = JSON.parse(String(init.body)) as { query: string };
+      if (query.trimStart().startsWith('mutation')) {
+        return response(200, { data: { issueRelationDelete: { success: true } } }, { 'X-Complexity': '4' });
+      }
+      const alias = query.match(/(\w+):\s*issueRelation/)?.[1] ?? 'issueRelation';
+      return response(200, { data: { [alias]: {
         id: variables.relationId, type: variables.type,
         issue: { id: variables.issueId }, relatedIssue: { id: variables.relatedIssueId },
-      } } }, { 'X-RateLimit-Requests-Remaining': '100' }))
-      .mockResolvedValueOnce(response(200, { data: { issueRelationDelete: { success: true } } }, { 'X-Complexity': '4' }));
+      } } }, { 'X-RateLimit-Requests-Remaining': '100' });
+    });
     vi.stubGlobal('fetch', fetch);
 
     const result = await (linearApiTool() as any).execute('call-1', {
-      operation: 'delete_issue_relation', variables, telemetry: 'always',
+      operation: 'batch', telemetry: 'always', variables: {
+        mutations: [{ operation: 'delete_issue_relation', variables }],
+      },
     }, undefined, undefined, { hasUI: false });
 
     expect(result.details.meta.rateLimit.responses).toEqual([

@@ -1,6 +1,5 @@
 import { Kind, parse, type SelectionSetNode } from 'graphql';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { linearApiTool } from '../extensions/api';
 import { operationDocuments, operations } from '../extensions/operations';
 import { executeOperation, validateMutationResult } from '../extensions/runtime';
 import { typedLinearTools } from '../extensions/typed-tools';
@@ -259,9 +258,10 @@ describe('shared mutation response validation', () => {
   }
 
   it.each([
-    ['linear', () => (linearApiTool() as any).execute(
-      'call-1', { operation: 'create_project_relation', variables }, undefined, undefined, { hasUI: false },
-    )],
+    ['typed tool with workspace routing', () => {
+      const tool = typedLinearTools().find(({ name }) => name === 'linear_create_project_relation')! as any;
+      return tool.execute('call-1', { ...variables, workspace: 'default' }, undefined, undefined, { hasUI: false });
+    }],
     ['typed tool', () => {
       const tool = typedLinearTools().find(({ name }) => name === 'linear_create_project_relation')! as any;
       return tool.execute('call-1', variables, undefined, undefined, { hasUI: false });

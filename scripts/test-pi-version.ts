@@ -136,11 +136,10 @@ if (typeof typed.renderCall !== 'function' || typeof typed.renderResult !== 'fun
 const readonlyHarness = createPi();
 register(readonlyHarness.pi, 'readonly');
 for (const handler of readonlyHarness.sessionHandlers) await handler();
-const readonlyApi = readonlyHarness.registered.find((tool) => tool.name === 'linear');
+const readonlyTyped = readonlyHarness.registered.find((tool) => tool.name === 'linear_create_issue');
 try {
-  await readonlyApi.execute('call-4', {
-    operation: 'create_issue',
-    variables: { title: 'blocked', team: 'AEO' },
+  await readonlyTyped.execute('call-4', {
+    title: 'blocked', team: 'AEO',
   }, undefined, undefined, { hasUI: false });
   throw new Error('Read-only mutation was not rejected.');
 } catch (error) {

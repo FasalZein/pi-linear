@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { linearApiTool } from "../extensions/api";
+import { executeTyped } from "./helpers/typed-execution";
 
 const ISSUE_ID = "11111111-1111-4111-8111-111111111111";
 const CHILD_ID = "22222222-2222-4222-8222-222222222222";
@@ -27,14 +27,8 @@ afterEach(async () => {
 	await rm(testAgentDir, { recursive: true, force: true });
 });
 
-function execute(params: Record<string, unknown>) {
-	return (linearApiTool() as any).execute(
-		"call",
-		params,
-		undefined,
-		undefined,
-		{ hasUI: false },
-	);
+function execute(params: { operation: string; variables?: Record<string, unknown> }) {
+	return executeTyped(params.operation, params.variables);
 }
 
 describe("v0.4 blind-task first calls", () => {

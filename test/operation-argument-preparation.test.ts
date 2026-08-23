@@ -72,17 +72,23 @@ describe("loader create_issue compatibility", () => {
 	it("executes nested canonical projectId and labelIds through normal mutation preparation", async () => {
 		const original = process.env.LINEAR_API_KEY;
 		process.env.LINEAR_API_KEY = "test-key";
-		const { requests } = graphqlStub((query) => query.includes("issueCreate")
-			? { issueCreate: { success: true, issue: { id: INITIATIVE_ID, identifier: "AEO-9", title: "T" } } }
-			: { teams: { nodes: [{ id: INITIATIVE_ID, key: "AEO" }] } });
+		const { requests } = graphqlStub((query) => {
+			if (query.includes("issueCreate")) {
+				const alias = query.match(/(\w+):\s*issueCreate/)?.[1] ?? "issueCreate";
+				return { [alias]: { success: true, issue: { id: INITIATIVE_ID, identifier: "AEO-9", title: "T" } } };
+			}
+			const alias = query.match(/(\w+):\s*teams/)?.[1] ?? "teams";
+			return { [alias]: { nodes: [{ id: INITIATIVE_ID, key: "AEO" }] } };
+		});
 		try {
 			const result = await (linearApiTool() as any).execute(
-				"call", { operation: "create_issue", variables: {
-					title: "T", team: "AEO", input: { projectId: PROJECT_ID, labelIds: [MILESTONE_ID] },
-				} }, undefined, undefined, { hasUI: false },
+				"call", { operation: "batch", variables: { mutations: [{
+					operation: "create_issue",
+					variables: { title: "T", team: "AEO", input: { projectId: PROJECT_ID, labelIds: [MILESTONE_ID] } },
+				}] } }, undefined, undefined, { hasUI: false },
 			);
 			expect(requests).toHaveLength(2);
-			expect(result.details.data.issueCreate.issue.identifier).toBe("AEO-9");
+			expect(result.details.data.create_issue.issueCreate.issue.identifier).toBe("AEO-9");
 			expect(JSON.stringify(result)).not.toContain("Operation aborted");
 		} finally {
 			if (original === undefined) delete process.env.LINEAR_API_KEY;
@@ -107,10 +113,9 @@ describe("loader create_issue compatibility", () => {
 	])("rejects malformed create aliases before any network request", async (extra, message) => {
 		const fetch = vi.fn();
 		vi.stubGlobal("fetch", fetch);
-		await expect((linearApiTool() as any).execute(
-			"call", { operation: "create_issue", variables: { title: "T", team: "AEO", ...extra } },
-			undefined, undefined, { hasUI: false },
-		)).rejects.toThrow(message);
+		expect(() => resolveRequest({
+			operation: "create_issue", variables: { title: "T", team: "AEO", ...extra },
+		})).toThrow(message);
 		expect(fetch).not.toHaveBeenCalled();
 	});
 });
@@ -277,16 +282,9 @@ describe("exact upstream pagination and create-view discovery", () => {
 	it("rejects create_view without a name before any network call", async () => {
 		const fetch = vi.fn();
 		vi.stubGlobal("fetch", fetch);
-		const tool = linearApiTool() as any;
-		await expect(
-			tool.execute(
-				"call",
-				{ operation: "create_view", variables: { filterData: {} } },
-				undefined,
-				undefined,
-				{ hasUI: false },
-			),
-		).rejects.toThrow('Invalid parameters for "create_view": missing name');
+		expect(() => resolveRequest({
+			operation: "create_view", variables: { filterData: {} },
+		})).toThrow('Invalid parameters for "create_view": missing name');
 		expect(fetch).not.toHaveBeenCalled();
 	});
 });
@@ -295,27 +293,14 @@ describe("fail-closed list_issues state preparation", () => {
 	it("rejects a state name without team before credential or network access", async () => {
 		const fetch = vi.fn();
 		vi.stubGlobal("fetch", fetch);
-		const tool = linearApiTool() as any;
-		await expect(
-			tool.execute(
-				"call",
-				{ operation: "list_issues", variables: { state: "In Progress" } },
-				undefined,
-				undefined,
-				{ hasUI: false },
-			),
-		).rejects.toThrow(
+		expect(() => resolveRequest({
+			operation: "list_issues", variables: { state: "In Progress" },
+		})).toThrow(
 			'team is required when state is a name. For cross-team calls, use { "assignee": "me", "stateType": "started" }',
 		);
-		await expect(
-			tool.execute(
-				"call",
-				{ operation: "list_issues", variables: { state: 42 } },
-				undefined,
-				undefined,
-				{ hasUI: false },
-			),
-		).rejects.toThrow("state must be a non-empty UUID");
+		expect(() => resolveRequest({
+			operation: "list_issues", variables: { state: 42 },
+		})).toThrow("state must be a non-empty UUID");
 		expect(fetch).not.toHaveBeenCalled();
 	});
 
