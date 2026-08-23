@@ -138,6 +138,7 @@ export const views: readonly OperationDefinition[] = ([
 			].map((n) => p(n)),
 		],
 		example: { name: "My issues", filterData: {} },
+		canonicalExample: { name: "My issues", filterData: { assignee: "me" } },
 		resolverPaths: {
 			team: "resolveTeamReference",
 			teamKey: "resolveTeamReference",
@@ -269,6 +270,7 @@ export const views: readonly OperationDefinition[] = ([
 		selection: "viewPreferences { id type viewType }",
 		parameters: [p("viewId", "String", true), p("preferences", "Object", true)],
 		example: { viewId: "view-id", preferences: {} },
+		canonicalExample: { viewId: "view-id", preferences: { showEmptyGroups: true } },
 		plan(v) {
 			return pureMutationPlan({ variables: { input: { type: "user", viewType: "customView", customViewId: v.viewId, preferences: v.preferences } } });
 		},

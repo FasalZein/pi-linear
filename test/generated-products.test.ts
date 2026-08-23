@@ -129,8 +129,8 @@ describe('generated products', () => {
     [
       'typed tool description',
       'extensions/typed-tool-metadata.ts',
-      'Equivalent to linear',
-      'Same as linear',
+      'Call with direct arguments',
+      'Invoke with direct arguments',
     ],
     [
       'typed tool schema field',
@@ -244,7 +244,7 @@ describe('generated products', () => {
     expect(description).not.toContain('{ "operation": "<name>", "variables": { … } }');
     expect(description).toContain('{ "operation": "help", "variables": { "operation": "<name>" } }');
     expect(description).toContain('ordinary named operations do not execute through linear');
-    expect(description).toContain('linear_<name> typed tool');
+    expect(description).toContain('Call linear_<name> with those direct arguments');
 
     const published = new Map([...description.matchAll(/^([a-z]+): ([a-z0-9_, ]+)$/gm)]
       .map((match) => [match[1]!, match[2]!.split(', ')]));
@@ -282,7 +282,7 @@ describe('generated products', () => {
           required: alwaysRequired.includes(name),
         })),
         requirements: operation.canonical.branches,
-        example: operation.example,
+        example: definition.canonical.example,
       });
       expect(loaded, definition.name).toEqual([definition.toolName]);
     }
@@ -311,6 +311,19 @@ describe('generated products', () => {
     expect(synced).toContain('Old query custom.');
     expect(synced).toContain('<!-- pi-linear:tool-surface:start -->');
     expect(synced).toContain('<!-- pi-linear:query-discipline:start -->');
+  });
+
+  it('publishes direct typed calls instead of rejected ordinary loader envelopes', async () => {
+    const readme = await readFile('README.md', 'utf8');
+    const reference = await readFile('REFERENCE.md', 'utf8');
+    expect(readme).toContain('Then call `linear_get_issue` with direct arguments');
+    expect(readme).not.toContain('Call an operation directly');
+    expect(reference).toContain('then call the activated `linear_<operation>` tool with direct arguments');
+    expect(reference).not.toContain('| First call |');
+    for (const definition of operationDefinitions) {
+      expect(reference, definition.name).toContain(`| \`${definition.name}\` | \`${definition.toolName}\``);
+      expect(reference, definition.name).toContain(`\`${JSON.stringify(definition.canonical.example)}\``);
+    }
   });
 
   it('keeps get_result loader-only and the public surface at 50 tools', () => {

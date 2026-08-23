@@ -1,6 +1,6 @@
 # Linear API reference
 
-Version 0.9 of `pi-linear-lite` registers 50 tool surfaces: one active loader, `linear`, plus 49 inactive typed tools. The loader-only `batch` and `get_result` operations add no typed tools. The `linear` tool description publishes the operation catalog. Choose an operation from that catalog and call it directly. Send exactly one of `operation` or `query` to the loader. Send operation inputs through `variables`. The loader also accepts optional top-level `workspace`, `sink`, and `telemetry` fields. Only `"telemetry": "always"` is valid. Typed tools do not accept this diagnostic field. Use operation help only when exact parameter names are needed. That call activates the matching typed tool.
+Version 0.9 of `pi-linear-lite` registers 50 tool surfaces: one active loader, `linear`, plus 49 inactive typed tools. The loader-only `batch` and `get_result` operations add no typed tools. The `linear` tool description publishes compact domain and operation-name discovery. For an ordinary operation, send exact help to the loader, then call the activated `linear_<operation>` tool with direct arguments. The loader also accepts raw GraphQL through `query`, plus optional top-level `workspace`, `sink`, and `telemetry` fields. Only `"telemetry": "always"` is valid. Typed tools do not accept this diagnostic field.
 
 ## Help protocol
 
@@ -20,7 +20,7 @@ Domain help returns only the canonical names for that domain. Exact operation he
 { "operation": "help", "variables": { "operation": "update_issue" } }
 ```
 
-Operation help returns one parameter card and one valid invocation. That response is the authoritative parameter reference. This file does not duplicate 49 full schemas that can change or consume context unnecessarily.
+Operation help returns one parameter card and direct arguments for the activated typed tool. For example, call `linear_update_issue` with the returned arguments. This response is the authoritative parameter reference. This file does not duplicate 49 full schemas that can change or consume context unnecessarily.
 
 Every typed schema has a provider-safe object root. Save operations enforce exclusive create and update modes inside that root. All save target dates are nullable. The packaged dated schema contract includes initiative and project lead teams, initiative priority and labels, document owners, and create/update label retirement dates. `trashed` remains excluded from typed tools.
 
@@ -29,59 +29,73 @@ Accepted domains are `issues`, `comments`, `users`, `teams`, `projects`, `cycles
 <!-- BEGIN GENERATED LINEAR OPERATIONS -->
 ## Generated operation catalog
 
-| Operation | Typed tool | Domain | Always required | Purpose | First call |
-| --- | --- | --- | --- | --- | --- |
-| `list_comments` | `linear_list_comments` | comments | none | List comments, optionally for one exact issue. | `{"operation":"list_comments","variables":{"issue":"AEO-258"}}` |
-| `create_comment` | `linear_create_comment` | comments | none | Create a comment on an issue or another supported target. | `{"operation":"create_comment","variables":{"issue":"AEO-258","body":"Comment text"}}` |
-| `update_comment` | `linear_update_comment` | comments | id | Update a comment by id. | `{"operation":"update_comment","variables":{"id":"comment-id","body":"Updated text"}}` |
-| `list_views` | `linear_list_views` | views | none | List custom views. | `{"operation":"list_views","variables":{}}` |
-| `get_view` | `linear_get_view` | views | id | Get a custom view. | `{"operation":"get_view","variables":{"id":"view-id"}}` |
-| `create_view` | `linear_create_view` | views | name | Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData. | `{"operation":"create_view","variables":{"name":"My issues","filterData":{}}}` |
-| `update_view` | `linear_update_view` | views | id | Update a custom view. | `{"operation":"update_view","variables":{"id":"view-id","name":"New name"}}` |
-| `set_view_preferences` | `linear_set_view_preferences` | views | viewId, preferences | Set preferences for a custom view. | `{"operation":"set_view_preferences","variables":{"viewId":"view-id","preferences":{}}}` |
-| `list_cycles` | `linear_list_cycles` | cycles | none | List cycles. | `{"operation":"list_cycles","variables":{}}` |
-| `get_cycle` | `linear_get_cycle` | cycles | cycle | Get a cycle by exact name or UUID. | `{"operation":"get_cycle","variables":{"cycle":"Cycle 12"}}` |
-| `create_cycle` | `linear_create_cycle` | cycles | team, startsAt, endsAt | Create a cycle. | `{"operation":"create_cycle","variables":{"team":"AEO","startsAt":"2026-08-17","endsAt":"2026-08-31"}}` |
-| `update_cycle` | `linear_update_cycle` | cycles | id | Update a cycle. | `{"operation":"update_cycle","variables":{"id":"cycle-id","name":"Cycle 12"}}` |
-| `list_documents` | `linear_list_documents` | documents | none | List documents. | `{"operation":"list_documents","variables":{}}` |
-| `get_document` | `linear_get_document` | documents | document | Get a document by exact title or UUID. | `{"operation":"get_document","variables":{"document":"Planning notes"}}` |
-| `create_document` | `linear_create_document` | documents | title | Create a document. | `{"operation":"create_document","variables":{"title":"Planning notes","content":"Notes"}}` |
-| `update_document` | `linear_update_document` | documents | documentId | Update a document. | `{"operation":"update_document","variables":{"documentId":"document-id","title":"Updated notes"}}` |
-| `list_initiatives` | `linear_list_initiatives` | initiatives | none | List initiatives. | `{"operation":"list_initiatives","variables":{}}` |
-| `get_initiative` | `linear_get_initiative` | initiatives | initiative | Get an initiative by exact name or UUID. | `{"operation":"get_initiative","variables":{"initiative":"Platform"}}` |
-| `list_issue_labels` | `linear_list_issue_labels` | labels | none | List issue labels. | `{"operation":"list_issue_labels","variables":{}}` |
-| `create_issue_label` | `linear_create_issue_label` | labels | name | Create an issue label. | `{"operation":"create_issue_label","variables":{"name":"needs-review","color":"#ff0000"}}` |
-| `update_issue_label` | `linear_update_issue_label` | labels | id | Update an issue label. | `{"operation":"update_issue_label","variables":{"id":"label-id","name":"review"}}` |
-| `list_issue_relations` | `linear_list_issue_relations` | relations | none | List issue relations. | `{"operation":"list_issue_relations","variables":{}}` |
-| `create_issue_relation` | `linear_create_issue_relation` | relations | issue, relatedIssue, type | Create a relation between two issues. | `{"operation":"create_issue_relation","variables":{"issue":"AEO-258","relatedIssue":"AEO-259","type":"related"}}` |
-| `update_issue_relation` | `linear_update_issue_relation` | relations | id | Update an issue relation. | `{"operation":"update_issue_relation","variables":{"id":"relation-id","type":"blocks"}}` |
-| `delete_issue_relation` | `linear_delete_issue_relation` | relations | relationId, issueId, relatedIssueId, type | Delete one issue relation after exact relation and endpoint verification. | `{"operation":"delete_issue_relation","variables":{"relationId":"33333333-3333-4333-8333-333333333333","issueId":"11111111-1111-4111-8111-111111111111","relatedIssueId":"22222222-2222-4222-8222-222222222222","type":"related"}}` |
-| `list_issue_statuses` | `linear_list_issue_statuses` | workspace | none | List issue workflow states. | `{"operation":"list_issue_statuses","variables":{}}` |
-| `list_issues` | `linear_list_issues` | issues | none | List issues with exact convenience filters. | `{"operation":"list_issues","variables":{"assignee":"me","stateType":"started"}}` |
-| `get_issue` | `linear_get_issue` | issues | issue | Get one issue by exact identifier or UUID. | `{"operation":"get_issue","variables":{"issue":"AEO-258"}}` |
-| `create_issue` | `linear_create_issue` | issues | title | Create an issue. A parent reference supplies the team when team is omitted. | `{"operation":"create_issue","variables":{"title":"v0.4 trial child","parent":"AEO-258"}}` |
-| `update_issue` | `linear_update_issue` | issues | issue | Update an issue by exact identifier or UUID. | `{"operation":"update_issue","variables":{"issue":"AEO-258","state":"Backlog"}}` |
-| `search_issues` | `linear_search_issues` | issues | term | Search issues by text. | `{"operation":"search_issues","variables":{"term":"authentication"}}` |
-| `list_milestones` | `linear_list_milestones` | milestones | none | List project milestones. | `{"operation":"list_milestones","variables":{}}` |
-| `get_milestone` | `linear_get_milestone` | milestones | milestone | Get a milestone by exact name or UUID. | `{"operation":"get_milestone","variables":{"milestone":"Beta"}}` |
-| `list_project_labels` | `linear_list_project_labels` | labels | none | List project labels. | `{"operation":"list_project_labels","variables":{}}` |
-| `create_project_label` | `linear_create_project_label` | labels | name | Create a project label. | `{"operation":"create_project_label","variables":{"name":"Strategic"}}` |
-| `update_project_label` | `linear_update_project_label` | labels | id | Update a project label. | `{"operation":"update_project_label","variables":{"id":"label-id","name":"Strategy"}}` |
-| `list_project_relations` | `linear_list_project_relations` | relations | none | List project relations. | `{"operation":"list_project_relations","variables":{}}` |
-| `create_project_relation` | `linear_create_project_relation` | relations | projectId, relatedProjectId, type, anchorType, relatedAnchorType | Create a relation between two projects. | `{"operation":"create_project_relation","variables":{"projectId":"project-id","relatedProjectId":"other-project-id","type":"related","anchorType":"project","relatedAnchorType":"project"}}` |
-| `update_project_relation` | `linear_update_project_relation` | relations | id | Update a project relation. | `{"operation":"update_project_relation","variables":{"id":"relation-id","type":"related"}}` |
-| `list_projects` | `linear_list_projects` | projects | none | List projects. | `{"operation":"list_projects","variables":{}}` |
-| `get_project` | `linear_get_project` | projects | project | Get a project by exact name or UUID. | `{"operation":"get_project","variables":{"project":"Platform"}}` |
-| `list_teams` | `linear_list_teams` | teams | none | List teams and workflow states. | `{"operation":"list_teams","variables":{}}` |
-| `get_team` | `linear_get_team` | teams | team | Get a team by exact key or UUID. | `{"operation":"get_team","variables":{"team":"AEO"}}` |
-| `list_users` | `linear_list_users` | users | none | List users. | `{"operation":"list_users","variables":{}}` |
-| `get_user` | `linear_get_user` | users | user | Get a user by me, UUID, email, name, or display name. | `{"operation":"get_user","variables":{"user":"me"}}` |
-| `switch_workspace` | `linear_switch_workspace` | workspace | name | Switch the active stored workspace without exposing credentials. | `{"operation":"switch_workspace","variables":{"name":"work"}}` |
-| `save_initiative` | `linear_save_initiative` | initiatives | none | Create or update an initiative. | `{"operation":"save_initiative","variables":{"name":"Platform"}}` |
-| `save_milestone` | `linear_save_milestone` | milestones | none | Create or update a milestone. | `{"operation":"save_milestone","variables":{"name":"Beta","projectId":"project-id"}}` |
-| `save_project` | `linear_save_project` | projects | none | Create or update a project. | `{"operation":"save_project","variables":{"name":"Platform","teamIds":["team-id"]}}` |
+Use exact loader help to activate an ordinary operation. Then call its typed tool with the direct arguments in the table.
 
-### Loader envelopes
+| Operation | Typed tool | Domain | Always required | Purpose | Typed arguments |
+| --- | --- | --- | --- | --- | --- |
+| `list_comments` | `linear_list_comments` | comments | none | List comments, optionally for one exact issue. | `{"issue":"AEO-258"}` |
+| `create_comment` | `linear_create_comment` | comments | none | Create a comment on an issue or another supported target. | `{"issue":"AEO-258","body":"Comment text"}` |
+| `update_comment` | `linear_update_comment` | comments | id | Update a comment by id. | `{"id":"comment-id","body":"Updated text"}` |
+| `list_views` | `linear_list_views` | views | none | List custom views. | `{}` |
+| `get_view` | `linear_get_view` | views | id | Get a custom view. | `{"id":"view-id"}` |
+| `create_view` | `linear_create_view` | views | name | Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData. | `{"name":"My issues","filterData":{"assignee":"me"}}` |
+| `update_view` | `linear_update_view` | views | id | Update a custom view. | `{"id":"view-id","name":"New name"}` |
+| `set_view_preferences` | `linear_set_view_preferences` | views | viewId, preferences | Set preferences for a custom view. | `{"viewId":"view-id","preferences":{"showEmptyGroups":true}}` |
+| `list_cycles` | `linear_list_cycles` | cycles | none | List cycles. | `{}` |
+| `get_cycle` | `linear_get_cycle` | cycles | cycle | Get a cycle by exact name or UUID. | `{"cycle":"Cycle 12"}` |
+| `create_cycle` | `linear_create_cycle` | cycles | team, startsAt, endsAt | Create a cycle. | `{"team":"AEO","startsAt":"2026-08-17","endsAt":"2026-08-31"}` |
+| `update_cycle` | `linear_update_cycle` | cycles | id | Update a cycle. | `{"id":"cycle-id","name":"Cycle 12"}` |
+| `list_documents` | `linear_list_documents` | documents | none | List documents. | `{}` |
+| `get_document` | `linear_get_document` | documents | document | Get a document by exact title or UUID. | `{"document":"Planning notes"}` |
+| `create_document` | `linear_create_document` | documents | title | Create a document. | `{"title":"Planning notes","content":"Notes"}` |
+| `update_document` | `linear_update_document` | documents | documentId | Update a document. | `{"documentId":"document-id","title":"Updated notes"}` |
+| `list_initiatives` | `linear_list_initiatives` | initiatives | none | List initiatives. | `{}` |
+| `get_initiative` | `linear_get_initiative` | initiatives | initiative | Get an initiative by exact name or UUID. | `{"initiative":"Platform"}` |
+| `list_issue_labels` | `linear_list_issue_labels` | labels | none | List issue labels. | `{}` |
+| `create_issue_label` | `linear_create_issue_label` | labels | name | Create an issue label. | `{"name":"needs-review","color":"#ff0000"}` |
+| `update_issue_label` | `linear_update_issue_label` | labels | id | Update an issue label. | `{"id":"label-id","name":"review"}` |
+| `list_issue_relations` | `linear_list_issue_relations` | relations | none | List issue relations. | `{}` |
+| `create_issue_relation` | `linear_create_issue_relation` | relations | issue, relatedIssue, type | Create a relation between two issues. | `{"issue":"AEO-258","relatedIssue":"AEO-259","type":"related"}` |
+| `update_issue_relation` | `linear_update_issue_relation` | relations | id | Update an issue relation. | `{"id":"relation-id","type":"blocks"}` |
+| `delete_issue_relation` | `linear_delete_issue_relation` | relations | relationId, issueId, relatedIssueId, type | Delete one issue relation after exact relation and endpoint verification. | `{"relationId":"33333333-3333-4333-8333-333333333333","issueId":"11111111-1111-4111-8111-111111111111","relatedIssueId":"22222222-2222-4222-8222-222222222222","type":"related"}` |
+| `list_issue_statuses` | `linear_list_issue_statuses` | workspace | none | List issue workflow states. | `{}` |
+| `list_issues` | `linear_list_issues` | issues | none | List issues with exact convenience filters. | `{"assignee":"me","stateType":"started"}` |
+| `get_issue` | `linear_get_issue` | issues | issue | Get one issue by exact identifier or UUID. | `{"issue":"AEO-258"}` |
+| `create_issue` | `linear_create_issue` | issues | title | Create an issue. A parent reference supplies the team when team is omitted. | `{"title":"v0.4 trial child","parent":"AEO-258"}` |
+| `update_issue` | `linear_update_issue` | issues | issue | Update an issue by exact identifier or UUID. | `{"issue":"AEO-258","state":"Backlog"}` |
+| `search_issues` | `linear_search_issues` | issues | term | Search issues by text. | `{"term":"authentication"}` |
+| `list_milestones` | `linear_list_milestones` | milestones | none | List project milestones. | `{}` |
+| `get_milestone` | `linear_get_milestone` | milestones | milestone | Get a milestone by exact name or UUID. | `{"milestone":"Beta"}` |
+| `list_project_labels` | `linear_list_project_labels` | labels | none | List project labels. | `{}` |
+| `create_project_label` | `linear_create_project_label` | labels | name | Create a project label. | `{"name":"Strategic"}` |
+| `update_project_label` | `linear_update_project_label` | labels | id | Update a project label. | `{"id":"label-id","name":"Strategy"}` |
+| `list_project_relations` | `linear_list_project_relations` | relations | none | List project relations. | `{}` |
+| `create_project_relation` | `linear_create_project_relation` | relations | projectId, relatedProjectId, type, anchorType, relatedAnchorType | Create a relation between two projects. | `{"projectId":"project-id","relatedProjectId":"other-project-id","type":"related","anchorType":"project","relatedAnchorType":"project"}` |
+| `update_project_relation` | `linear_update_project_relation` | relations | id | Update a project relation. | `{"id":"relation-id","type":"related"}` |
+| `list_projects` | `linear_list_projects` | projects | none | List projects. | `{}` |
+| `get_project` | `linear_get_project` | projects | project | Get a project by exact name or UUID. | `{"project":"Platform"}` |
+| `list_teams` | `linear_list_teams` | teams | none | List teams and workflow states. | `{}` |
+| `get_team` | `linear_get_team` | teams | team | Get a team by exact key or UUID. | `{"team":"AEO"}` |
+| `list_users` | `linear_list_users` | users | none | List users. | `{}` |
+| `get_user` | `linear_get_user` | users | user | Get a user by me, UUID, email, name, or display name. | `{"user":"me"}` |
+| `switch_workspace` | `linear_switch_workspace` | workspace | name | Switch the active stored workspace without exposing credentials. | `{"name":"work"}` |
+| `save_initiative` | `linear_save_initiative` | initiatives | none | Create or update an initiative. | `{"name":"Platform"}` |
+| `save_milestone` | `linear_save_milestone` | milestones | none | Create or update a milestone. | `{"name":"Beta","projectId":"project-id"}` |
+| `save_project` | `linear_save_project` | projects | none | Create or update a project. | `{"name":"Platform","teamIds":["team-id"]}` |
+
+### Exact help and typed call
+
+```json
+{ "operation": "help", "variables": { "operation": "get_issue" } }
+```
+
+Then call `linear_get_issue`:
+
+```json
+{ "issue": "AEO-258" }
+```
+
+### Loader discovery and retained exceptional envelopes
 
 ```json
 { "operation": "help" }
@@ -89,10 +103,6 @@ Accepted domains are `issues`, `comments`, `users`, `teams`, `projects`, `cycles
 
 ```json
 { "operation": "help", "variables": { "domain": "issues" } }
-```
-
-```json
-{ "operation": "help", "variables": { "operation": "get_issue" } }
 ```
 
 ```json
@@ -133,7 +143,7 @@ Canonical names appear in help. These v0.3 names remain accepted but hidden:
 | `list_workflow_states` | `list_issue_statuses` |
 | `update_issue_state` | `update_issue` |
 
-The v0.3 `get_issue` shape `{ "teamKey": "AEO", "number": 258 }` remains accepted. Legacy nested `input` mutation shapes also remain accepted where v0.3 exposed them. New calls should use canonical names and the current operation help example.
+The v0.3 `get_issue` shape `{ "teamKey": "AEO", "number": 258 }` and legacy nested `input` mutation shapes remain internal compatibility inputs for retained batch entries. New ordinary calls must use exact help, then the canonical typed tool and its direct example.
 
 ## Pagination
 
@@ -144,11 +154,10 @@ List operations and `search_issues` return `pageInfo` and accept supported curso
 3. Repeat the same operation and variables with `after` set to that cursor.
 4. Stop when `hasNextPage` is false, or when the returned count equals `totalCount`.
 
+Call `linear_search_issues` with direct arguments:
+
 ```json
-{
-  "operation": "search_issues",
-  "variables": { "term": "authentication", "after": "CURSOR_FROM_PAGE_INFO" }
-}
+{ "term": "authentication", "after": "CURSOR_FROM_PAGE_INFO" }
 ```
 
 ## Result routing
@@ -177,10 +186,10 @@ HTTP 429 responses keep one automatic retry. For `searchIssues` and `semanticSea
 
 ## Workspaces and authentication
 
-The optional top-level `workspace` argument selects one stored workspace for one request without changing the active workspace:
+The optional `workspace` argument selects one stored workspace for one typed call without changing the active workspace. For example, call `linear_get_issue` with:
 
 ```json
-{ "operation": "get_issue", "variables": { "issue": "AEO-258" }, "workspace": "work" }
+{ "issue": "AEO-258", "workspace": "work" }
 ```
 
 The named operation `switch_workspace` changes the active stored workspace. `/linear-auth switch <name>` performs the same persistent selection. `/linear-settings` sets the default Human readable or Full JSON result view. That preference lives under the Pi agent state directory and is never stored with credentials. Credential precedence and commands are documented in [`README.md`](./README.md).

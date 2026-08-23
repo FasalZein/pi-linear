@@ -6,6 +6,7 @@ import {
   DOMAINS,
   formatInvocation,
   getOperation,
+  getOperationDefinition,
   operationDefinitions,
   operationsForDomain,
   parameterShapes,
@@ -162,7 +163,7 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
       purpose: operation.purpose,
       parameters: Object.entries(canonical.fields).map(([name, type]) => ({ name, type, required: alwaysRequired.has(name) })),
       requirements: canonical.branches,
-      example: operation.example,
+      example: getOperationDefinition(operation.name).canonical.example,
     };
   }
   throw new Error(`Invalid help request. ${HELP_SHAPES}`);

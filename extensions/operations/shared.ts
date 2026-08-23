@@ -288,12 +288,13 @@ type OperationSourceExtras = Pick<
 	"compatibilityBranches"
 > & Pick<
 	LinearOperation,
-	"semanticException" | "renderKind" | "renderTargetFields" | "renderEmpty"
+	"canonicalExample" | "semanticException" | "renderKind" | "renderTargetFields" | "renderEmpty"
 >;
 
 function sourceExtras(config: OperationSourceExtras): OperationSourceExtras {
 	return {
 		compatibilityBranches: config.compatibilityBranches,
+		canonicalExample: config.canonicalExample,
 		semanticException: config.semanticException,
 		renderKind: config.renderKind,
 		renderTargetFields: config.renderTargetFields,

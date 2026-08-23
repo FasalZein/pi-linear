@@ -22,7 +22,7 @@ const readmePath = resolve(root, 'README.md');
 const referencePath = resolve(root, 'REFERENCE.md');
 const START = '<!-- BEGIN GENERATED LINEAR OPERATIONS -->';
 const END = '<!-- END GENERATED LINEAR OPERATIONS -->';
-const LINEAR_TOOL_USAGE = 'Discover Linear operations by domain or exact name, or run raw GraphQL with query. { "operation": "help", "variables": { "domain": "issues" } } lists names. { "operation": "help", "variables": { "operation": "<name>" } } returns purpose, exact parameters, accepted branches, and an example, then loads the strict linear_<name> typed tool. Call that tool directly; ordinary named operations do not execute through linear. batch and get_result remain loader-only.';
+const LINEAR_TOOL_USAGE = 'Discover Linear operations by domain or exact name, or run raw GraphQL with query. { "operation": "help", "variables": { "domain": "issues" } } lists names. { "operation": "help", "variables": { "operation": "<name>" } } returns purpose, exact parameters, accepted branches, and direct arguments, then loads linear_<name>. Call linear_<name> with those direct arguments; ordinary named operations do not execute through linear. batch and get_result remain loader-only.';
 
 export const generatedFiles = [manifestPath, contractsPath, catalogPath, readmePath, referencePath] as const;
 
@@ -116,17 +116,31 @@ function readmeCatalog(): string {
 function referenceCatalog(): string {
   const rows = operationDefinitions.map((definition) => {
     const required = definition.canonical.fields.filter(({ required }) => required).map(({ name }) => name).join(', ') || 'none';
-    const example = `\`${JSON.stringify(definition.compatibility.example)}\``;
+    const example = `\`${JSON.stringify(definition.canonical.example)}\``;
     return `| \`${definition.name}\` | \`${definition.toolName}\` | ${definition.domain} | ${required} | ${definition.purpose} | ${example} |`;
   });
   return [
     '## Generated operation catalog',
     '',
-    '| Operation | Typed tool | Domain | Always required | Purpose | First call |',
+    'Use exact loader help to activate an ordinary operation. Then call its typed tool with the direct arguments in the table.',
+    '',
+    '| Operation | Typed tool | Domain | Always required | Purpose | Typed arguments |',
     '| --- | --- | --- | --- | --- | --- |',
     ...rows,
     '',
-    '### Loader envelopes',
+    '### Exact help and typed call',
+    '',
+    '```json',
+    '{ "operation": "help", "variables": { "operation": "get_issue" } }',
+    '```',
+    '',
+    'Then call `linear_get_issue`:',
+    '',
+    '```json',
+    '{ "issue": "AEO-258" }',
+    '```',
+    '',
+    '### Loader discovery and retained exceptional envelopes',
     '',
     '```json',
     '{ "operation": "help" }',
@@ -134,10 +148,6 @@ function referenceCatalog(): string {
     '',
     '```json',
     '{ "operation": "help", "variables": { "domain": "issues" } }',
-    '```',
-    '',
-    '```json',
-    '{ "operation": "help", "variables": { "operation": "get_issue" } }',
     '```',
     '',
     '```json',

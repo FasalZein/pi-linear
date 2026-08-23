@@ -277,7 +277,7 @@ describe('runtime discovery', () => {
       'list_issue_statuses',
     ]);
     expect(aliasCards[0].details).toMatchObject({
-      example: { operation: 'create_comment', variables: { issue: 'AEO-258', body: 'Comment text' } },
+      example: { issue: 'AEO-258', body: 'Comment text' },
     });
     for (const card of aliasCards) expect(card.details).not.toHaveProperty('aliases');
     expect(fetch).not.toHaveBeenCalled();
