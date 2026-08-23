@@ -329,7 +329,7 @@ describe('result handles', () => {
       },
     });
     expect(card.details).not.toHaveProperty('loadedTools');
-    expect((linearApiTool() as any).description).toContain('get_result: Retrieve a stored Linear result by handle.');
+    expect((linearApiTool() as any).description).toContain('loader: batch, get_result');
     expect(typedToolNames()).not.toContain('linear_get_result');
   });
 });

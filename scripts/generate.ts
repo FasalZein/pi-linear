@@ -2,9 +2,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BATCH_PURPOSE } from '../extensions/batch';
-import { operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
-import { GET_RESULT_PURPOSE } from '../extensions/result-handles';
+import { DOMAINS, operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
 import { buildTypedToolMetadata } from '../extensions/typed-tool-metadata';
 import {
   LINEAR_AGENT_QUERY_DISCIPLINE,
@@ -24,7 +22,7 @@ const readmePath = resolve(root, 'README.md');
 const referencePath = resolve(root, 'REFERENCE.md');
 const START = '<!-- BEGIN GENERATED LINEAR OPERATIONS -->';
 const END = '<!-- END GENERATED LINEAR OPERATIONS -->';
-const LINEAR_TOOL_USAGE = 'Discover Linear operations or run raw GraphQL. { "operation": "help", "variables": { "operation": "<name>" } } returns exact parameters and loads the strict linear_<name> typed tool. Call that typed tool with the operation variables directly; ordinary named operations do not execute through linear. Loader-only batch and get_result remain executable and do not add typed tools.';
+const LINEAR_TOOL_USAGE = 'Discover Linear operations by domain or exact name, or run raw GraphQL with query. { "operation": "help", "variables": { "domain": "issues" } } lists names. { "operation": "help", "variables": { "operation": "<name>" } } returns purpose, exact parameters, accepted branches, and an example, then loads the strict linear_<name> typed tool. Call that tool directly; ordinary named operations do not execute through linear. batch and get_result remain loader-only.';
 
 export const generatedFiles = [manifestPath, contractsPath, catalogPath, readmePath, referencePath] as const;
 
@@ -87,9 +85,11 @@ function contracts() {
 
 export function operationCatalogText(): string {
   return [
-    ...operationDefinitions.map(({ name, purpose }) => `${name}: ${purpose}`),
-    `batch: ${BATCH_PURPOSE}`,
-    `get_result: ${GET_RESULT_PURPOSE}`,
+    ...DOMAINS.map((domain) => ({
+      domain,
+      names: operationDefinitions.filter((definition) => definition.domain === domain).map(({ name }) => name),
+    })).filter(({ names }) => names.length).map(({ domain, names }) => `${domain}: ${names.join(', ')}`),
+    'loader: batch, get_result',
   ].join('\n');
 }
 

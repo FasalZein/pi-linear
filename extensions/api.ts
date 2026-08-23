@@ -7,7 +7,6 @@ import {
   formatInvocation,
   getOperation,
   operationDefinitions,
-  operationSignature,
   operationsForDomain,
   parameterShapes,
   operations,
@@ -143,10 +142,7 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
   if (typeof domain === 'string' && DEFINITION_DOMAINS.includes(domain as OperationDomain)) {
     return {
       domain,
-      operations: operationsForDomain(domain as OperationDomain).map((operation) => ({
-        name: operation.name,
-        signature: operationSignature(operation),
-      })),
+      operations: operationsForDomain(domain as OperationDomain).map(({ name }) => ({ name })),
     };
   }
   if (typeof operationName === 'string') {

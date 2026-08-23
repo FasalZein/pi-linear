@@ -14,7 +14,7 @@ Help is optional. This request returns the accepted domains and examples for the
 { "operation": "help", "variables": { "domain": "issues" } }
 ```
 
-Domain help returns only the canonical names and compact signatures for that domain.
+Domain help returns only the canonical names for that domain. Exact operation help returns purpose, parameters, accepted branches, and an example.
 
 ```json
 { "operation": "help", "variables": { "operation": "update_issue" } }

@@ -6,9 +6,9 @@
  * expectations — is authored beside the operation in `extensions/operations/`.
  * Runtime compatibility, generated contracts, help, and tests project from there.
  *
- * A second authority is always a catalog: a module that enumerates operations by name.
- * These checks fail when any module other than the source directory enumerates two or more
- * operation names, which is the smallest shape an operation-keyed catalog can take.
+ * A second authority is always a hand-maintained catalog: a module that enumerates operations by name.
+ * These checks fail when any authored module outside the source directory enumerates two or more
+ * operation names. The generated discovery projection is checked separately for deterministic parity.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -17,6 +17,7 @@ import contracts from '../extensions/generated/operation-contracts.json';
 import { getOperationDefinition, operationDefinitions, operations } from '../extensions/operations';
 
 const SOURCE_DIR = join('extensions', 'operations');
+const GENERATED_DISCOVERY = join('extensions', 'generated', 'operation-catalog.ts');
 const names = operationDefinitions.map(({ name }) => name);
 
 function sourceFiles(directory: string): string[] {
@@ -38,7 +39,7 @@ describe('no second operation-keyed authority', () => {
 
   it('keeps every operation-name enumeration inside the source directory', () => {
     const offenders = sourceFiles('extensions')
-      .filter((path) => !isOperationSource(path))
+      .filter((path) => !isOperationSource(path) && path !== GENERATED_DISCOVERY)
       .map((path) => {
         const text = readFileSync(path, 'utf8');
         return { path, hits: names.filter((name) => new RegExp(`\\b${name}\\b`).test(text)) };

@@ -145,7 +145,7 @@ describe('batch help and catalog', () => {
 
   it('publishes batch and the loader-only telemetry override', () => {
     const tool = linearApiTool() as any;
-    expect(tool.description).toContain('batch: Batch independent reads with read-only operations, or use explicit phases for one ordinary mutation, grouped issue creates, or one guarded relation delete.');
+    expect(tool.description).toContain('loader: batch, get_result');
     expect(Object.keys(tool.parameters.properties).sort()).toEqual(['operation', 'query', 'sink', 'telemetry', 'variables', 'workspace']);
   });
 });

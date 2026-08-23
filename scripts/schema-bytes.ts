@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { registerLinearExtension } from '../extensions/index';
 
 type Tool = { name: string; description: string; parameters: unknown };
-type Baseline = { baseline: number; current: number };
+type Baseline = { baseline: number; current: number; before?: number };
 
 const tools: Tool[] = [];
 let active: string[] = [];
@@ -43,6 +43,10 @@ for (const [name, additions] of scenarios) {
   console.log(`${name}: v0.5 baseline ${expected.baseline} bytes; v0.9 current ${current} bytes`);
   if (current !== expected.current) {
     console.error(`${name}: expected current ${expected.current} bytes`);
+    failed = true;
+  }
+  if (expected.before !== undefined && current >= expected.before) {
+    console.error(`${name}: must decrease from measured pre-slice value ${expected.before} bytes`);
     failed = true;
   }
 }
