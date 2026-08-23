@@ -199,7 +199,7 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
         })),
       } : {}),
       strictRawArguments: true,
-      example: operation.example.variables,
+      example: operation.canonicalExample ?? operation.example.variables,
     },
   };
 }

@@ -239,13 +239,15 @@ describe('runtime discovery', () => {
     });
 
     const domain = await execute(tool, { operation: 'help', variables: { domain: 'issues' } });
-    expect(domain.details.operations.map(({ name }: any) => name)).toEqual([
-      'list_issues', 'get_issue', 'create_issue', 'update_issue', 'search_issues',
+    expect(domain.details.operations).toEqual([
+      { name: 'list_issues' },
+      { name: 'get_issue' },
+      { name: 'create_issue' },
+      { name: 'update_issue' },
+      { name: 'search_issues' },
     ]);
-    const createIssueSignature = domain.details.operations.find(({ name }: any) => name === 'create_issue').signature;
-    expect(createIssueSignature).toContain('projectId?: UUID');
-    expect(createIssueSignature).toContain('labelIds?: [UUID!]');
-    expect(createIssueSignature).not.toContain('input');
+    expect(JSON.stringify(domain.details)).not.toContain('projectId');
+    expect(JSON.stringify(domain.details)).not.toContain('input');
 
     const comments = await execute(tool, { operation: 'help', variables: { domain: 'comments' } });
     expect(comments.details.operations.map(({ name }: any) => name)).toEqual([
@@ -275,7 +277,7 @@ describe('runtime discovery', () => {
       'list_issue_statuses',
     ]);
     expect(aliasCards[0].details).toMatchObject({
-      example: { operation: 'create_comment', variables: { issue: 'AEO-258', body: 'Comment text' } },
+      example: { issue: 'AEO-258', body: 'Comment text' },
     });
     for (const card of aliasCards) expect(card.details).not.toHaveProperty('aliases');
     expect(fetch).not.toHaveBeenCalled();

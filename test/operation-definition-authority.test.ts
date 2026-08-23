@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { Kind, parse } from 'graphql';
+import { validateToolArguments } from '@earendil-works/pi-ai';
 import { describe, expect, it } from 'vitest';
-import { helpResult, resolveRequest } from '../extensions/api';
+import { helpResult, linearApiTool, resolveRequest } from '../extensions/api';
 import {
   getOperation,
   operationDefinitions,
@@ -11,6 +12,7 @@ import {
 } from '../extensions/operations';
 import { requirementBranchMatches } from '../extensions/operation-definition';
 import type { RequirementBranch } from '../extensions/operation-types';
+import { typedLinearTools } from '../extensions/typed-tools';
 
 // Static renderer fixture updated for canonical invocation fields. Tests never generate it during verification.
 const RENDERER_FIXTURE = JSON.parse(readFileSync(
@@ -195,17 +197,44 @@ describe('v0.6 operation definition authority', () => {
     assertRendererFixtureParity();
   });
 
-  it('projects complete canonical help while preserving examples, preparation, and raw fallback', () => {
+  it('projects direct typed examples while preserving compatibility preparation and raw fallback', () => {
     for (const definition of operationDefinitions) {
       expect(helpResult({ operation: definition.name })).toMatchObject({
         name: definition.name,
         purpose: definition.purpose,
         parameters: definition.canonical.fields,
         requirements: definition.canonical.branches.map(({ all }) => all),
-        example: definition.compatibility.example,
+        example: definition.canonical.example,
       });
       expect(() => resolveRequest(definition.compatibility.example)).not.toThrow();
     }
     expect(resolveRequest({ query: 'query { viewer { id } }', variables: {} }).named).toBe(false);
+  });
+
+  it('makes all 49 exact-help examples valid only on their activated typed tools', async () => {
+    const typedTools = new Map(typedLinearTools().map((tool) => [tool.name, tool]));
+    const loader = linearApiTool() as any;
+    for (const definition of operationDefinitions) {
+      const activated: string[] = [];
+      const help = helpResult({ operation: definition.name }, (names) => {
+        activated.push(...names);
+        return names;
+      });
+      expect(activated, definition.name).toEqual([definition.toolName]);
+      expect(help.example, definition.name).toEqual(definition.canonical.example);
+      const tool = typedTools.get(definition.toolName)!;
+      expect(() => validateToolArguments(tool as any, {
+        id: `help-${definition.name}`,
+        name: definition.toolName,
+        arguments: help.example,
+      } as any), definition.name).not.toThrow();
+      await expect(loader.execute(
+        `loader-${definition.name}`,
+        definition.compatibility.example,
+        undefined,
+        undefined,
+        { hasUI: false },
+      ), definition.name).rejects.toThrow(`cannot run through linear`);
+    }
   });
 });

@@ -1,6 +1,6 @@
 import { StringEnum } from '@earendil-works/pi-ai';
 import { Type, type TSchema } from 'typebox';
-import { formatInvocation, type LinearOperation } from './operations';
+import { getOperationDefinition, type LinearOperation } from './operations';
 import { canonicalOperation } from './canonical';
 import { typedToolName } from './tool-names';
 
@@ -241,7 +241,7 @@ export function parameterSchema(operation: LinearOperation) {
 }
 
 function toolDescription(operation: LinearOperation): string {
-  return `${operation.purpose} Equivalent to linear ${formatInvocation(operation.example)}.`;
+  return `${operation.purpose} Call with direct arguments ${JSON.stringify(getOperationDefinition(operation.name).canonical.example)}.`;
 }
 
 export type TypedToolMetadata = {

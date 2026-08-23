@@ -111,6 +111,8 @@ export type LinearOperation = {
 	legacyParameters?: readonly (readonly OperationParameter[])[];
 	aliasParameters?: Readonly<Record<string, readonly OperationParameter[]>>;
 	example: OperationExample;
+	/** Direct typed-tool example override when compatibility variables are not schema-valid. */
+	canonicalExample?: Record<string, unknown>;
 	document: string;
 	variants?: readonly GraphQLDocumentVariant[];
 	pagination?: PaginationMetadata;

@@ -6,8 +6,8 @@ import {
   DOMAINS,
   formatInvocation,
   getOperation,
+  getOperationDefinition,
   operationDefinitions,
-  operationSignature,
   operationsForDomain,
   parameterShapes,
   operations,
@@ -143,10 +143,7 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
   if (typeof domain === 'string' && DEFINITION_DOMAINS.includes(domain as OperationDomain)) {
     return {
       domain,
-      operations: operationsForDomain(domain as OperationDomain).map((operation) => ({
-        name: operation.name,
-        signature: operationSignature(operation),
-      })),
+      operations: operationsForDomain(domain as OperationDomain).map(({ name }) => ({ name })),
     };
   }
   if (typeof operationName === 'string') {
@@ -166,7 +163,7 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
       purpose: operation.purpose,
       parameters: Object.entries(canonical.fields).map(([name, type]) => ({ name, type, required: alwaysRequired.has(name) })),
       requirements: canonical.branches,
-      example: operation.example,
+      example: getOperationDefinition(operation.name).canonical.example,
     };
   }
   throw new Error(`Invalid help request. ${HELP_SHAPES}`);

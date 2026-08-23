@@ -5,10 +5,10 @@ import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { contractProjection, generatedFiles, renderGeneratedFiles, staleGeneratedFiles, syncAllowlistFile } from '../scripts/generate';
-import { linearApiTool } from '../extensions/api';
+import { helpResult, linearApiTool } from '../extensions/api';
 import manifest from '../extensions/generated/linear-tools.manifest.json';
 import contracts from '../extensions/generated/operation-contracts.json';
-import { operationDefinitions } from '../extensions/operations';
+import { DOMAINS, operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
 import { typedLinearTools } from '../extensions/typed-tools';
 
 const expectedNames = ['linear', ...operationDefinitions.map(({ toolName }) => toolName)];
@@ -129,8 +129,8 @@ describe('generated products', () => {
     [
       'typed tool description',
       'extensions/typed-tool-metadata.ts',
-      'Equivalent to linear',
-      'Same as linear',
+      'Call with direct arguments',
+      'Invoke with direct arguments',
     ],
     [
       'typed tool schema field',
@@ -239,36 +239,53 @@ describe('generated products', () => {
     });
   });
 
-  it('publishes every catalog operation in the linear tool description and no others', () => {
+  it('publishes every operation name once under its authoritative domain', () => {
     const description = (linearApiTool() as any).description as string;
     expect(description).not.toContain('{ "operation": "<name>", "variables": { … } }');
     expect(description).toContain('{ "operation": "help", "variables": { "operation": "<name>" } }');
     expect(description).toContain('ordinary named operations do not execute through linear');
-    expect(description).toContain('linear_<name> typed tool');
-    const expected = operationDefinitions.map(({ name, purpose }) => ({ name, purpose }));
-    for (const { name, purpose } of expected) {
-      expect(description).toContain(`${name}: ${purpose}`);
+    expect(description).toContain('Call linear_<name> with those direct arguments');
+
+    const published = new Map([...description.matchAll(/^([a-z]+): ([a-z0-9_, ]+)$/gm)]
+      .map((match) => [match[1]!, match[2]!.split(', ')]));
+    const expectedDomains = DOMAINS.filter((domain) => operationDefinitions.some((definition) => definition.domain === domain));
+    expect([...published.keys()]).toEqual([...expectedDomains, 'loader']);
+    for (const domain of expectedDomains) {
+      expect(published.get(domain)).toEqual(operationDefinitions
+        .filter((definition) => definition.domain === domain)
+        .map(({ name }) => name));
     }
-    const published = [...description.matchAll(/^([a-z][a-z0-9_]*): (.*)$/gm)].map((match) => ({
-      name: match[1]!,
-      purpose: match[2]!,
-    }));
-    expect(published.filter(({ name }) => name !== 'batch' && name !== 'get_result')).toEqual(expected);
-    expect(published).toContainEqual({
-      name: 'batch',
-      purpose: 'Batch independent reads with read-only operations, or use explicit phases for one ordinary mutation, grouped issue creates, or one guarded relation delete.',
-    });
-    expect(published).toContainEqual({
-      name: 'get_result',
-      purpose: 'Retrieve a stored Linear result by handle.',
-    });
+    expect(published.get('loader')).toEqual(['batch', 'get_result']);
+    expect([...published.values()].flat().filter((name) => name !== 'batch' && name !== 'get_result').sort())
+      .toEqual(operationDefinitions.map(({ name }) => name).sort());
+    for (const { purpose } of operationDefinitions) expect(description).not.toContain(purpose);
   });
 
-  it('publishes grammatical save purposes in the generated catalog', () => {
-    const description = (linearApiTool() as any).description as string;
-    expect(description).toContain('save_initiative: Create or update an initiative.');
-    expect(description).toContain('save_milestone: Create or update a milestone.');
-    expect(description).toContain('save_project: Create or update a project.');
+  it('keeps every exact help card sufficient to call and load its typed tool', () => {
+    for (const definition of operationDefinitions) {
+      const loaded: string[] = [];
+      const result = helpResult({ operation: definition.name }, (names) => {
+        loaded.push(...names);
+        return names;
+      });
+      const operation = projectCompatibilityOperation(definition);
+      const alwaysRequired = Object.keys(operation.canonical.fields)
+        .filter((name) => operation.canonical.branches.every((branch) => branch.includes(name)));
+      expect(result, definition.name).toEqual({
+        loadedTools: [definition.toolName],
+        name: definition.name,
+        domain: definition.domain,
+        purpose: definition.purpose,
+        parameters: Object.entries(operation.canonical.fields).map(([name, type]) => ({
+          name,
+          type,
+          required: alwaysRequired.includes(name),
+        })),
+        requirements: operation.canonical.branches,
+        example: definition.canonical.example,
+      });
+      expect(loaded, definition.name).toEqual([definition.toolName]);
+    }
   });
 
   it('publishes one deployable manifest entry for each canonical operation', () => {
@@ -296,13 +313,26 @@ describe('generated products', () => {
     expect(synced).toContain('<!-- pi-linear:query-discipline:start -->');
   });
 
+  it('publishes direct typed calls instead of rejected ordinary loader envelopes', async () => {
+    const readme = await readFile('README.md', 'utf8');
+    const reference = await readFile('REFERENCE.md', 'utf8');
+    expect(readme).toContain('Then call `linear_get_issue` with direct arguments');
+    expect(readme).not.toContain('Call an operation directly');
+    expect(reference).toContain('then call the activated `linear_<operation>` tool with direct arguments');
+    expect(reference).not.toContain('| First call |');
+    for (const definition of operationDefinitions) {
+      expect(reference, definition.name).toContain(`| \`${definition.name}\` | \`${definition.toolName}\``);
+      expect(reference, definition.name).toContain(`\`${JSON.stringify(definition.canonical.example)}\``);
+    }
+  });
+
   it('keeps get_result loader-only and the public surface at 50 tools', () => {
     expect(operationDefinitions).toHaveLength(49);
     expect(typedLinearTools()).toHaveLength(49);
     expect(expectedNames).toHaveLength(50);
     expect(manifest.allowedTools).toHaveLength(50);
     expect(manifest.allowedTools).not.toContain('linear_get_result');
-    expect((linearApiTool() as any).description).toContain('get_result: Retrieve a stored Linear result by handle.');
+    expect((linearApiTool() as any).description).toContain('loader: batch, get_result');
   });
 
   it('ships the complete restricted lossless contract in public documentation', async () => {

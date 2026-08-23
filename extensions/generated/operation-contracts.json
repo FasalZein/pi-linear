@@ -4,7 +4,7 @@
     "tool": {
       "name": "linear_list_comments",
       "label": "Linear list comments",
-      "description": "List comments, optionally for one exact issue. Equivalent to linear { \"operation\": \"list_comments\", \"variables\": { \"issue\": \"AEO-258\" } }.",
+      "description": "List comments, optionally for one exact issue. Call with direct arguments {\"issue\":\"AEO-258\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -254,7 +254,7 @@
     "tool": {
       "name": "linear_create_comment",
       "label": "Linear create comment",
-      "description": "Create a comment on an issue or another supported target. Equivalent to linear { \"operation\": \"create_comment\", \"variables\": { \"issue\": \"AEO-258\", \"body\": \"Comment text\" } }.",
+      "description": "Create a comment on an issue or another supported target. Call with direct arguments {\"issue\":\"AEO-258\",\"body\":\"Comment text\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -911,7 +911,7 @@
     "tool": {
       "name": "linear_update_comment",
       "label": "Linear update comment",
-      "description": "Update a comment by id. Equivalent to linear { \"operation\": \"update_comment\", \"variables\": { \"id\": \"comment-id\", \"body\": \"Updated text\" } }.",
+      "description": "Update a comment by id. Call with direct arguments {\"id\":\"comment-id\",\"body\":\"Updated text\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -1163,7 +1163,7 @@
     "tool": {
       "name": "linear_list_views",
       "label": "Linear list views",
-      "description": "List custom views. Equivalent to linear { \"operation\": \"list_views\", \"variables\": {  } }.",
+      "description": "List custom views. Call with direct arguments {}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -1383,7 +1383,7 @@
     "tool": {
       "name": "linear_get_view",
       "label": "Linear get view",
-      "description": "Get a custom view. Equivalent to linear { \"operation\": \"get_view\", \"variables\": { \"id\": \"view-id\" } }.",
+      "description": "Get a custom view. Call with direct arguments {\"id\":\"view-id\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -1506,7 +1506,7 @@
     "tool": {
       "name": "linear_create_view",
       "label": "Linear create view",
-      "description": "Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData. Equivalent to linear { \"operation\": \"create_view\", \"variables\": { \"name\": \"My issues\", \"filterData\": {  } } }.",
+      "description": "Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData. Call with direct arguments {\"name\":\"My issues\",\"filterData\":{\"assignee\":\"me\"}}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -1589,7 +1589,9 @@
         "operation": "create_view",
         "variables": {
           "name": "My issues",
-          "filterData": {}
+          "filterData": {
+            "assignee": "me"
+          }
         }
       },
       "callFields": [
@@ -1815,7 +1817,9 @@
       "strictRawArguments": true,
       "example": {
         "name": "My issues",
-        "filterData": {}
+        "filterData": {
+          "assignee": "me"
+        }
       }
     },
     "result": {
@@ -1847,7 +1851,7 @@
     "tool": {
       "name": "linear_update_view",
       "label": "Linear update view",
-      "description": "Update a custom view. Equivalent to linear { \"operation\": \"update_view\", \"variables\": { \"id\": \"view-id\", \"name\": \"New name\" } }.",
+      "description": "Update a custom view. Call with direct arguments {\"id\":\"view-id\",\"name\":\"New name\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -2258,7 +2262,7 @@
     "tool": {
       "name": "linear_set_view_preferences",
       "label": "Linear set view preferences",
-      "description": "Set preferences for a custom view. Equivalent to linear { \"operation\": \"set_view_preferences\", \"variables\": { \"viewId\": \"view-id\", \"preferences\": {  } } }.",
+      "description": "Set preferences for a custom view. Call with direct arguments {\"viewId\":\"view-id\",\"preferences\":{\"showEmptyGroups\":true}}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -2348,7 +2352,9 @@
         "operation": "set_view_preferences",
         "variables": {
           "viewId": "view-id",
-          "preferences": {}
+          "preferences": {
+            "showEmptyGroups": true
+          }
         }
       },
       "callFields": [
@@ -2441,7 +2447,9 @@
       "strictRawArguments": true,
       "example": {
         "viewId": "view-id",
-        "preferences": {}
+        "preferences": {
+          "showEmptyGroups": true
+        }
       }
     },
     "result": {
@@ -2465,7 +2473,7 @@
     "tool": {
       "name": "linear_list_cycles",
       "label": "Linear list cycles",
-      "description": "List cycles. Equivalent to linear { \"operation\": \"list_cycles\", \"variables\": {  } }.",
+      "description": "List cycles. Call with direct arguments {}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -2757,7 +2765,7 @@
     "tool": {
       "name": "linear_get_cycle",
       "label": "Linear get cycle",
-      "description": "Get a cycle by exact name or UUID. Equivalent to linear { \"operation\": \"get_cycle\", \"variables\": { \"cycle\": \"Cycle 12\" } }.",
+      "description": "Get a cycle by exact name or UUID. Call with direct arguments {\"cycle\":\"Cycle 12\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -2898,7 +2906,7 @@
     "tool": {
       "name": "linear_create_cycle",
       "label": "Linear create cycle",
-      "description": "Create a cycle. Equivalent to linear { \"operation\": \"create_cycle\", \"variables\": { \"team\": \"AEO\", \"startsAt\": \"2026-08-17\", \"endsAt\": \"2026-08-31\" } }.",
+      "description": "Create a cycle. Call with direct arguments {\"team\":\"AEO\",\"startsAt\":\"2026-08-17\",\"endsAt\":\"2026-08-31\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -3199,7 +3207,7 @@
     "tool": {
       "name": "linear_update_cycle",
       "label": "Linear update cycle",
-      "description": "Update a cycle. Equivalent to linear { \"operation\": \"update_cycle\", \"variables\": { \"id\": \"cycle-id\", \"name\": \"Cycle 12\" } }.",
+      "description": "Update a cycle. Call with direct arguments {\"id\":\"cycle-id\",\"name\":\"Cycle 12\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -3469,7 +3477,7 @@
     "tool": {
       "name": "linear_list_documents",
       "label": "Linear list documents",
-      "description": "List documents. Equivalent to linear { \"operation\": \"list_documents\", \"variables\": {  } }.",
+      "description": "List documents. Call with direct arguments {}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -3760,7 +3768,7 @@
     "tool": {
       "name": "linear_get_document",
       "label": "Linear get document",
-      "description": "Get a document by exact title or UUID. Equivalent to linear { \"operation\": \"get_document\", \"variables\": { \"document\": \"Planning notes\" } }.",
+      "description": "Get a document by exact title or UUID. Call with direct arguments {\"document\":\"Planning notes\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -3921,7 +3929,7 @@
     "tool": {
       "name": "linear_create_document",
       "label": "Linear create document",
-      "description": "Create a document. Equivalent to linear { \"operation\": \"create_document\", \"variables\": { \"title\": \"Planning notes\", \"content\": \"Notes\" } }.",
+      "description": "Create a document. Call with direct arguments {\"title\":\"Planning notes\",\"content\":\"Notes\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -4349,7 +4357,7 @@
     "tool": {
       "name": "linear_update_document",
       "label": "Linear update document",
-      "description": "Update a document. Equivalent to linear { \"operation\": \"update_document\", \"variables\": { \"documentId\": \"document-id\", \"title\": \"Updated notes\" } }.",
+      "description": "Update a document. Call with direct arguments {\"documentId\":\"document-id\",\"title\":\"Updated notes\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -4984,7 +4992,7 @@
     "tool": {
       "name": "linear_list_initiatives",
       "label": "Linear list initiatives",
-      "description": "List initiatives. Equivalent to linear { \"operation\": \"list_initiatives\", \"variables\": {  } }.",
+      "description": "List initiatives. Call with direct arguments {}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -5263,7 +5271,7 @@
     "tool": {
       "name": "linear_get_initiative",
       "label": "Linear get initiative",
-      "description": "Get an initiative by exact name or UUID. Equivalent to linear { \"operation\": \"get_initiative\", \"variables\": { \"initiative\": \"Platform\" } }.",
+      "description": "Get an initiative by exact name or UUID. Call with direct arguments {\"initiative\":\"Platform\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -5404,7 +5412,7 @@
     "tool": {
       "name": "linear_list_issue_labels",
       "label": "Linear list issue labels",
-      "description": "List issue labels. Equivalent to linear { \"operation\": \"list_issue_labels\", \"variables\": {  } }.",
+      "description": "List issue labels. Call with direct arguments {}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -5696,7 +5704,7 @@
     "tool": {
       "name": "linear_create_issue_label",
       "label": "Linear create issue label",
-      "description": "Create an issue label. Equivalent to linear { \"operation\": \"create_issue_label\", \"variables\": { \"name\": \"needs-review\", \"color\": \"#ff0000\" } }.",
+      "description": "Create an issue label. Call with direct arguments {\"name\":\"needs-review\",\"color\":\"#ff0000\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -6005,7 +6013,7 @@
     "tool": {
       "name": "linear_update_issue_label",
       "label": "Linear update issue label",
-      "description": "Update an issue label. Equivalent to linear { \"operation\": \"update_issue_label\", \"variables\": { \"id\": \"label-id\", \"name\": \"review\" } }.",
+      "description": "Update an issue label. Call with direct arguments {\"id\":\"label-id\",\"name\":\"review\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -6352,7 +6360,7 @@
     "tool": {
       "name": "linear_list_issue_relations",
       "label": "Linear list issue relations",
-      "description": "List issue relations. Equivalent to linear { \"operation\": \"list_issue_relations\", \"variables\": {  } }.",
+      "description": "List issue relations. Call with direct arguments {}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -6551,7 +6559,7 @@
     "tool": {
       "name": "linear_create_issue_relation",
       "label": "Linear create issue relation",
-      "description": "Create a relation between two issues. Equivalent to linear { \"operation\": \"create_issue_relation\", \"variables\": { \"issue\": \"AEO-258\", \"relatedIssue\": \"AEO-259\", \"type\": \"related\" } }.",
+      "description": "Create a relation between two issues. Call with direct arguments {\"issue\":\"AEO-258\",\"relatedIssue\":\"AEO-259\",\"type\":\"related\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -6795,7 +6803,7 @@
     "tool": {
       "name": "linear_update_issue_relation",
       "label": "Linear update issue relation",
-      "description": "Update an issue relation. Equivalent to linear { \"operation\": \"update_issue_relation\", \"variables\": { \"id\": \"relation-id\", \"type\": \"blocks\" } }.",
+      "description": "Update an issue relation. Call with direct arguments {\"id\":\"relation-id\",\"type\":\"blocks\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -7036,7 +7044,7 @@
     "tool": {
       "name": "linear_delete_issue_relation",
       "label": "Linear delete issue relation",
-      "description": "Delete one issue relation after exact relation and endpoint verification. Equivalent to linear { \"operation\": \"delete_issue_relation\", \"variables\": { \"relationId\": \"33333333-3333-4333-8333-333333333333\", \"issueId\": \"11111111-1111-4111-8111-111111111111\", \"relatedIssueId\": \"22222222-2222-4222-8222-222222222222\", \"type\": \"related\" } }.",
+      "description": "Delete one issue relation after exact relation and endpoint verification. Call with direct arguments {\"relationId\":\"33333333-3333-4333-8333-333333333333\",\"issueId\":\"11111111-1111-4111-8111-111111111111\",\"relatedIssueId\":\"22222222-2222-4222-8222-222222222222\",\"type\":\"related\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -7245,7 +7253,7 @@
     "tool": {
       "name": "linear_list_issue_statuses",
       "label": "Linear list issue statuses",
-      "description": "List issue workflow states. Equivalent to linear { \"operation\": \"list_issue_statuses\", \"variables\": {  } }.",
+      "description": "List issue workflow states. Call with direct arguments {}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -7467,7 +7475,7 @@
     "tool": {
       "name": "linear_list_issues",
       "label": "Linear list issues",
-      "description": "List issues with exact convenience filters. Equivalent to linear { \"operation\": \"list_issues\", \"variables\": { \"assignee\": \"me\", \"stateType\": \"started\" } }.",
+      "description": "List issues with exact convenience filters. Call with direct arguments {\"assignee\":\"me\",\"stateType\":\"started\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -8025,7 +8033,7 @@
     "tool": {
       "name": "linear_get_issue",
       "label": "Linear get issue",
-      "description": "Get one issue by exact identifier or UUID. Equivalent to linear { \"operation\": \"get_issue\", \"variables\": { \"issue\": \"AEO-258\" } }.",
+      "description": "Get one issue by exact identifier or UUID. Call with direct arguments {\"issue\":\"AEO-258\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -8192,7 +8200,7 @@
     "tool": {
       "name": "linear_create_issue",
       "label": "Linear create issue",
-      "description": "Create an issue. A parent reference supplies the team when team is omitted. Equivalent to linear { \"operation\": \"create_issue\", \"variables\": { \"title\": \"v0.4 trial child\", \"parent\": \"AEO-258\" } }.",
+      "description": "Create an issue. A parent reference supplies the team when team is omitted. Call with direct arguments {\"title\":\"v0.4 trial child\",\"parent\":\"AEO-258\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -9047,7 +9055,7 @@
     "tool": {
       "name": "linear_update_issue",
       "label": "Linear update issue",
-      "description": "Update an issue by exact identifier or UUID. Equivalent to linear { \"operation\": \"update_issue\", \"variables\": { \"issue\": \"AEO-258\", \"state\": \"Backlog\" } }.",
+      "description": "Update an issue by exact identifier or UUID. Call with direct arguments {\"issue\":\"AEO-258\",\"state\":\"Backlog\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -10123,7 +10131,7 @@
     "tool": {
       "name": "linear_search_issues",
       "label": "Linear search issues",
-      "description": "Search issues by text. Equivalent to linear { \"operation\": \"search_issues\", \"variables\": { \"term\": \"authentication\" } }.",
+      "description": "Search issues by text. Call with direct arguments {\"term\":\"authentication\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -10489,7 +10497,7 @@
     "tool": {
       "name": "linear_list_milestones",
       "label": "Linear list milestones",
-      "description": "List project milestones. Equivalent to linear { \"operation\": \"list_milestones\", \"variables\": {  } }.",
+      "description": "List project milestones. Call with direct arguments {}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -10709,7 +10717,7 @@
     "tool": {
       "name": "linear_get_milestone",
       "label": "Linear get milestone",
-      "description": "Get a milestone by exact name or UUID. Equivalent to linear { \"operation\": \"get_milestone\", \"variables\": { \"milestone\": \"Beta\" } }.",
+      "description": "Get a milestone by exact name or UUID. Call with direct arguments {\"milestone\":\"Beta\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -10850,7 +10858,7 @@
     "tool": {
       "name": "linear_list_project_labels",
       "label": "Linear list project labels",
-      "description": "List project labels. Equivalent to linear { \"operation\": \"list_project_labels\", \"variables\": {  } }.",
+      "description": "List project labels. Call with direct arguments {}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -11070,7 +11078,7 @@
     "tool": {
       "name": "linear_create_project_label",
       "label": "Linear create project label",
-      "description": "Create a project label. Equivalent to linear { \"operation\": \"create_project_label\", \"variables\": { \"name\": \"Strategic\" } }.",
+      "description": "Create a project label. Call with direct arguments {\"name\":\"Strategic\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -11308,7 +11316,7 @@
     "tool": {
       "name": "linear_update_project_label",
       "label": "Linear update project label",
-      "description": "Update a project label. Equivalent to linear { \"operation\": \"update_project_label\", \"variables\": { \"id\": \"label-id\", \"name\": \"Strategy\" } }.",
+      "description": "Update a project label. Call with direct arguments {\"id\":\"label-id\",\"name\":\"Strategy\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -11628,7 +11636,7 @@
     "tool": {
       "name": "linear_list_project_relations",
       "label": "Linear list project relations",
-      "description": "List project relations. Equivalent to linear { \"operation\": \"list_project_relations\", \"variables\": {  } }.",
+      "description": "List project relations. Call with direct arguments {}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -11827,7 +11835,7 @@
     "tool": {
       "name": "linear_create_project_relation",
       "label": "Linear create project relation",
-      "description": "Create a relation between two projects. Equivalent to linear { \"operation\": \"create_project_relation\", \"variables\": { \"projectId\": \"project-id\", \"relatedProjectId\": \"other-project-id\", \"type\": \"related\", \"anchorType\": \"project\", \"relatedAnchorType\": \"project\" } }.",
+      "description": "Create a relation between two projects. Call with direct arguments {\"projectId\":\"project-id\",\"relatedProjectId\":\"other-project-id\",\"type\":\"related\",\"anchorType\":\"project\",\"relatedAnchorType\":\"project\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -12110,7 +12118,7 @@
     "tool": {
       "name": "linear_update_project_relation",
       "label": "Linear update project relation",
-      "description": "Update a project relation. Equivalent to linear { \"operation\": \"update_project_relation\", \"variables\": { \"id\": \"relation-id\", \"type\": \"related\" } }.",
+      "description": "Update a project relation. Call with direct arguments {\"id\":\"relation-id\",\"type\":\"related\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -12453,7 +12461,7 @@
     "tool": {
       "name": "linear_list_projects",
       "label": "Linear list projects",
-      "description": "List projects. Equivalent to linear { \"operation\": \"list_projects\", \"variables\": {  } }.",
+      "description": "List projects. Call with direct arguments {}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -12754,7 +12762,7 @@
     "tool": {
       "name": "linear_get_project",
       "label": "Linear get project",
-      "description": "Get a project by exact name or UUID. Equivalent to linear { \"operation\": \"get_project\", \"variables\": { \"project\": \"Platform\" } }.",
+      "description": "Get a project by exact name or UUID. Call with direct arguments {\"project\":\"Platform\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -12915,7 +12923,7 @@
     "tool": {
       "name": "linear_list_teams",
       "label": "Linear list teams",
-      "description": "List teams and workflow states. Equivalent to linear { \"operation\": \"list_teams\", \"variables\": {  } }.",
+      "description": "List teams and workflow states. Call with direct arguments {}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -13135,7 +13143,7 @@
     "tool": {
       "name": "linear_get_team",
       "label": "Linear get team",
-      "description": "Get a team by exact key or UUID. Equivalent to linear { \"operation\": \"get_team\", \"variables\": { \"team\": \"AEO\" } }.",
+      "description": "Get a team by exact key or UUID. Call with direct arguments {\"team\":\"AEO\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -13276,7 +13284,7 @@
     "tool": {
       "name": "linear_list_users",
       "label": "Linear list users",
-      "description": "List users. Equivalent to linear { \"operation\": \"list_users\", \"variables\": {  } }.",
+      "description": "List users. Call with direct arguments {}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -13556,7 +13564,7 @@
     "tool": {
       "name": "linear_get_user",
       "label": "Linear get user",
-      "description": "Get a user by me, UUID, email, name, or display name. Equivalent to linear { \"operation\": \"get_user\", \"variables\": { \"user\": \"me\" } }.",
+      "description": "Get a user by me, UUID, email, name, or display name. Call with direct arguments {\"user\":\"me\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -13697,7 +13705,7 @@
     "tool": {
       "name": "linear_switch_workspace",
       "label": "Linear switch workspace",
-      "description": "Switch the active stored workspace without exposing credentials. Equivalent to linear { \"operation\": \"switch_workspace\", \"variables\": { \"name\": \"work\" } }.",
+      "description": "Switch the active stored workspace without exposing credentials. Call with direct arguments {\"name\":\"work\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -13817,7 +13825,7 @@
     "tool": {
       "name": "linear_save_initiative",
       "label": "Linear save initiative",
-      "description": "Create or update an initiative. Equivalent to linear { \"operation\": \"save_initiative\", \"variables\": { \"name\": \"Platform\" } }.",
+      "description": "Create or update an initiative. Call with direct arguments {\"name\":\"Platform\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -14949,7 +14957,7 @@
     "tool": {
       "name": "linear_save_milestone",
       "label": "Linear save milestone",
-      "description": "Create or update a milestone. Equivalent to linear { \"operation\": \"save_milestone\", \"variables\": { \"name\": \"Beta\", \"projectId\": \"project-id\" } }.",
+      "description": "Create or update a milestone. Call with direct arguments {\"name\":\"Beta\",\"projectId\":\"project-id\"}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -15478,7 +15486,7 @@
     "tool": {
       "name": "linear_save_project",
       "label": "Linear save project",
-      "description": "Create or update a project. Equivalent to linear { \"operation\": \"save_project\", \"variables\": { \"name\": \"Platform\", \"teamIds\": [\"team-id\"] } }.",
+      "description": "Create or update a project. Call with direct arguments {\"name\":\"Platform\",\"teamIds\":[\"team-id\"]}.",
       "parameters": {
         "type": "object",
         "properties": {
