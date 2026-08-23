@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { linearApiTool } from '../extensions/api';
+import { resolveRequest } from '../extensions/api';
+import { executeTyped } from './helpers/typed-execution';
 import { operations } from '../extensions/operations';
 import { projection } from '../extensions/selections';
 import { isolateLinearCredentials } from './helpers/credentials';
@@ -18,8 +19,8 @@ afterEach(() => {
   else process.env.LINEAR_API_KEY = originalKey;
 });
 
-function execute(params: Record<string, unknown>) {
-  return (linearApiTool() as any).execute('call-1', params, undefined, undefined, { hasUI: false });
+function execute(params: { operation: string; variables?: Record<string, unknown> }) {
+  return executeTyped(params.operation, params.variables);
 }
 
 function graphqlStub(
@@ -164,39 +165,14 @@ describe('list_issues named issue set', () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
     process.env.LINEAR_API_KEY = 'test-key';
-    const tool = linearApiTool() as any;
-
-    await expect(tool.execute(
-      'call',
-      { operation: 'list_issues', variables: { issues: [] } },
-      undefined,
-      undefined,
-      { hasUI: false },
-    )).rejects.toThrow('issues must contain at least one issue identifier or UUID');
-
-    await expect(tool.execute(
-      'call',
-      { operation: 'list_issues', variables: { issues: 'AEO-258' } },
-      undefined,
-      undefined,
-      { hasUI: false },
-    )).rejects.toThrow('issues must be an array of issue identifiers or UUIDs');
-
-    await expect(tool.execute(
-      'call',
-      { operation: 'list_issues', variables: { issues: ['login-bug'] } },
-      undefined,
-      undefined,
-      { hasUI: false },
-    )).rejects.toThrow('Invalid Linear issue reference "login-bug". Use TEAM-123 or a UUID.');
-
-    await expect(tool.execute(
-      'call',
-      { operation: 'list_issues', variables: { issues: ['AEO-258', 'aeo-258'] } },
-      undefined,
-      undefined,
-      { hasUI: false },
-    )).rejects.toThrow('Duplicate Linear issue reference "aeo-258"');
+    expect(() => resolveRequest({ operation: 'list_issues', variables: { issues: [] } }))
+      .toThrow('issues must contain at least one issue identifier or UUID');
+    expect(() => resolveRequest({ operation: 'list_issues', variables: { issues: 'AEO-258' } }))
+      .toThrow('issues must be an array of issue identifiers or UUIDs');
+    expect(() => resolveRequest({ operation: 'list_issues', variables: { issues: ['login-bug'] } }))
+      .toThrow('Invalid Linear issue reference "login-bug". Use TEAM-123 or a UUID.');
+    expect(() => resolveRequest({ operation: 'list_issues', variables: { issues: ['AEO-258', 'aeo-258'] } }))
+      .toThrow('Duplicate Linear issue reference "aeo-258"');
 
     expect(fetch).not.toHaveBeenCalled();
   });

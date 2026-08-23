@@ -184,7 +184,7 @@ async function runAuthenticatedSmoke(apiKey: string): Promise<JsonObject> {
   if (!typedGetIssue) throw new Error('smoke.activation: activated linear_get_issue is unavailable');
 
   const compatibilityIssue = await executeTool(compatibility, {
-    operation: 'get_issue', variables: { issue: ISSUE_REFERENCE }, sink: 'inline',
+    query: operations.get_issue!.document, variables: { id: ISSUE_REFERENCE }, sink: 'inline',
   });
   const typedIssue = await executeTool(typedGetIssue, { issue: ISSUE_REFERENCE });
   assertNoCredentialLeak({ compatibilityIssue, typedIssue }, apiKey);
@@ -195,26 +195,22 @@ async function runAuthenticatedSmoke(apiKey: string): Promise<JsonObject> {
   const listResults = new Map<string, { nodes: unknown[]; root: string }>();
   let followedCursors = 0;
   for (const operation of zeroArgumentReads()) {
-    const zeroArgumentResult = await executeTool(compatibility, {
-      operation: operation.name, variables: {}, sink: 'inline',
-    });
+    const typedTool = harness.tool(`linear_${operation.name}`);
+    if (!typedTool) throw new Error(`smoke.runtime: linear_${operation.name} is unavailable`);
+    const zeroArgumentResult = await executeTool(typedTool, {});
     assertNoCredentialLeak(zeroArgumentResult, apiKey);
     const root = rootName(operation);
     const zeroArgumentData = await executionData(zeroArgumentResult.details);
     assertNoCredentialLeak(zeroArgumentData, apiKey);
     if (!(root in zeroArgumentData)) throw new Error(`smoke.runtime: ${operation.name} root is missing`);
 
-    const result = await executeTool(compatibility, {
-      operation: operation.name, variables: { first: 1 }, sink: 'inline',
-    });
+    const result = await executeTool(typedTool, { first: 1 });
     assertNoCredentialLeak(result, apiKey);
     const page = connection(result.details, root);
     listResults.set(operation.name, { nodes: page.nodes, root });
     if (page.pageInfo.hasNextPage) {
       if (!page.pageInfo.endCursor) throw new Error(`smoke.pagination: ${operation.name} hasNextPage without endCursor`);
-      const next = await executeTool(compatibility, {
-        operation: operation.name, variables: { first: 1, after: page.pageInfo.endCursor }, sink: 'inline',
-      });
+      const next = await executeTool(typedTool, { first: 1, after: page.pageInfo.endCursor });
       assertNoCredentialLeak(next, apiKey);
       connection(next.details, root);
       followedCursors++;
@@ -239,9 +235,9 @@ async function runAuthenticatedSmoke(apiKey: string): Promise<JsonObject> {
       pairResults.push({ list, get: pair.get, status: 'skipped:no valid get input exists' });
       continue;
     }
-    const got = await executeTool(compatibility, {
-      operation: pair.get, variables: { [pair.parameter]: id }, sink: 'inline',
-    });
+    const getTool = harness.tool(`linear_${pair.get}`);
+    if (!getTool) throw new Error(`smoke.runtime: linear_${pair.get} is unavailable`);
+    const got = await executeTool(getTool, { [pair.parameter]: id });
     assertNoCredentialLeak(got, apiKey);
     if (entityId(got.details, pair.root) !== id) throw new Error(`smoke.identity: ${list} to ${pair.get} identity differed`);
     pairResults.push({ list, get: pair.get, status: 'passed' });
@@ -249,9 +245,7 @@ async function runAuthenticatedSmoke(apiKey: string): Promise<JsonObject> {
 
   let missingMessage = '';
   try {
-    await executeTool(compatibility, {
-      operation: 'get_issue', variables: { issue: MISSING_ISSUE_ID }, sink: 'inline',
-    });
+    await executeTool(typedGetIssue, { issue: MISSING_ISSUE_ID });
   } catch (error) {
     missingMessage = error instanceof Error ? error.message : String(error);
   }
@@ -272,9 +266,9 @@ async function runAuthenticatedSmoke(apiKey: string): Promise<JsonObject> {
   }) as typeof fetch;
   let rejectionMessage = '';
   try {
-    await executeTool(compatibility, {
-      operation: 'create_comment', variables: { issue: ISSUE_REFERENCE, body: 'must not execute' },
-    });
+    const createComment = harness.tool('linear_create_comment');
+    if (!createComment) throw new Error('smoke.readonly: linear_create_comment is unavailable');
+    await executeTool(createComment, { issue: ISSUE_REFERENCE, body: 'must not execute' });
   } catch (error) {
     rejectionMessage = error instanceof Error ? error.message : String(error);
   } finally {

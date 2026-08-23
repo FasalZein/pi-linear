@@ -176,13 +176,13 @@ describe('public summary and full views', () => {
     expect(requests).toEqual([]);
   });
 
-  it('keeps linear and typed tools on the same default documents', async () => {
+  it('keeps raw and typed tools on the same default documents', async () => {
     const requests = capturedRequests();
     await run('list_issues');
     const named = requests.splice(0);
     await (linearApiTool() as any).execute(
       'call-1',
-      { operation: 'list_issues', variables: {} },
+      { query: operations.list_issues!.document, variables: { first: 20 } },
       undefined,
       undefined,
       { hasUI: false },

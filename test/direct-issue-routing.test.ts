@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { linearApiTool } from '../extensions/api';
+import { executeTyped } from './helpers/typed-execution';
 import { operations } from '../extensions/operations';
 import { isolateLinearCredentials } from './helpers/credentials';
 import { prepareOperation } from './helpers/operation-plan';
@@ -19,8 +19,8 @@ afterEach(() => {
   else process.env.LINEAR_API_KEY = originalKey;
 });
 
-function execute(params: Record<string, unknown>) {
-  return (linearApiTool() as any).execute('call-1', params, undefined, undefined, { hasUI: false });
+function execute(params: { operation: string; variables?: Record<string, unknown> }) {
+  return executeTyped(params.operation, params.variables);
 }
 
 function graphqlStub(
@@ -136,7 +136,7 @@ describe('direct issue identifier routing', () => {
 
     await expect(execute({
       operation: 'update_issue',
-      variables: { issue: 'AEO-258', stateId: STATE_ID },
+      variables: { issue: 'AEO-258', state: STATE_ID },
     })).rejects.toThrow(`does not belong to team "${TEAM_ID}"`);
     expect(requests).toHaveLength(2);
     expect(requests.every(({ query }) => !query.includes('mutation'))).toBe(true);
@@ -157,7 +157,7 @@ describe('direct issue identifier routing', () => {
 
     await execute({
       operation: 'update_issue',
-      variables: { issue: 'AEO-258', teamId: FOREIGN_TEAM_ID, stateId: STATE_ID },
+      variables: { issue: 'AEO-258', teamId: FOREIGN_TEAM_ID, state: STATE_ID },
     });
     expect(requests).toHaveLength(3);
     expect(requests.some(({ query }) => query.includes('ResolveIssueById'))).toBe(false);

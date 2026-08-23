@@ -47,9 +47,11 @@ describe('discovery-only loader execution', () => {
     expect(credentialWork).not.toHaveBeenCalled();
   });
 
-  it('keeps unknown operation guidance redacted without credential work', async () => {
-    await expect(execute({ operation: 'lin_api_secret123456789' }))
-      .rejects.toThrow('Unknown Linear operation "[REDACTED]"');
+  it('keeps unknown operation guidance generic without credential work', async () => {
+    const operation = 'lin_api_secret123456789';
+    const error = await execute({ operation }).catch((failure: Error) => failure);
+    expect(error.message).toBe('Unknown Linear operation. Send { "operation": "help" }.');
+    expect(error.message).not.toContain(operation);
     expect(credentialWork).not.toHaveBeenCalled();
   });
 });

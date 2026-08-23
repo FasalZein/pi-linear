@@ -315,7 +315,7 @@ describe('runtime discovery', () => {
     const tool = linearApiTool() as any;
 
     await expect(execute(tool, { operation: 'missing' })).rejects.toThrow(
-      'Unknown Linear operation "missing". Send { "operation": "help" }.',
+      'Unknown Linear operation. Send { "operation": "help" }.',
     );
     await expect(execute(tool, { operation: 'get_issue', variables: { teamKey: 'AEO' } }))
       .rejects.toThrow('load linear_get_issue, then call linear_get_issue');

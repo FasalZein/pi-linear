@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { linearApiTool } from '../extensions/api';
+import { linearApiTool, resolveRequest } from '../extensions/api';
 import { linearErrorTelemetry } from '../extensions/client';
 import { operations } from '../extensions/operations';
 import { SAFE_NAMED_MUTATION_ROOTS } from '../extensions/safety';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
+import { executeTyped } from './helpers/typed-execution';
 
 isolateLinearCredentials();
 
@@ -17,12 +18,18 @@ const originalKey = process.env.LINEAR_API_KEY;
 const originalMutations = process.env.LINEAR_MUTATIONS;
 const originalReadonly = process.env.LINEAR_READONLY;
 
-function execute(input: Record<string, unknown>, mode: 'allowlist' | 'readonly' = 'allowlist') {
-  return (linearApiTool(mode) as any).execute('call', input, undefined, undefined, { hasUI: false });
+function execute(input: Record<string, any>, mode: 'allowlist' | 'readonly' = 'allowlist') {
+  if (input.operation === 'batch') {
+    return (linearApiTool(mode) as any).execute('call', input, undefined, undefined, { hasUI: false });
+  }
+  return executeTyped(input.operation, input.variables, { mode });
 }
 
-function executeWithSignal(input: Record<string, unknown>, signal: AbortSignal) {
-  return (linearApiTool('allowlist') as any).execute('call', input, signal, undefined, { hasUI: false });
+function executeWithSignal(input: Record<string, any>, signal: AbortSignal) {
+  if (input.operation === 'batch') {
+    return (linearApiTool('allowlist') as any).execute('call', input, signal, undefined, { hasUI: false });
+  }
+  return executeTyped(input.operation, input.variables, { signal });
 }
 
 function response(body: unknown, headers: Record<string, string> = {}) {
@@ -84,10 +91,10 @@ describe('delete_issue_relation strict guarded delete', () => {
       { ...variables, issue: ISSUE },
       { relationId: RELATION, issueId: ISSUE, relatedIssueId: RELATED },
     ]) expect(() => tool.prepareArguments(invalid)).toThrow();
-    await expect(execute({ operation: 'delete_issue_relation', variables: { ...variables, relationId: 'bad' } }))
-      .rejects.toThrow('Invalid relationId: expected a UUID.');
-    await expect(execute({ operation: 'delete_issue_relation', variables: { ...variables, input: {} } }))
-      .rejects.toThrow('Invalid parameters for "delete_issue_relation": unknown input.');
+    expect(() => resolveRequest({ operation: 'delete_issue_relation', variables: { ...variables, relationId: 'bad' } }))
+      .toThrow('Invalid relationId: expected a UUID.');
+    expect(() => resolveRequest({ operation: 'delete_issue_relation', variables: { ...variables, input: {} } }))
+      .toThrow('Invalid parameters for "delete_issue_relation": unknown input.');
     expect(fetch).not.toHaveBeenCalled();
   });
 

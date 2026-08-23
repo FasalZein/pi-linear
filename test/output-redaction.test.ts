@@ -173,10 +173,7 @@ describe('redaction at the execution boundary', () => {
   it('redacts resolution metadata carrying resolved values', async () => {
     installServer(() => ({ data: { issue: { id: `issue-${TOKEN}`, identifier: 'AEO-258', title: 'ok' } } }));
 
-    const result = await execute(linearApiTool() as any, {
-      operation: 'get_issue',
-      variables: { issue: 'AEO-258' },
-    });
+    const result = await execute(tools.get('linear_get_issue')!, { issue: 'AEO-258' });
     const serialized = JSON.stringify(result.details.resolution);
     expect(serialized).not.toContain('secret123456789');
     expect(serialized).toContain(REDACTED);
@@ -338,10 +335,7 @@ describe('exact active-secret redaction', () => {
   it('removes the active key from resolution metadata', async () => {
     installServer(() => ({ data: { issue: { id: `id-${UNKNOWN_FORMAT_KEY}`, identifier: 'AEO-258', title: 'ok' } } }));
 
-    const result = await execute(linearApiTool() as any, {
-      operation: 'get_issue',
-      variables: { issue: 'AEO-258' },
-    });
+    const result = await execute(tools.get('linear_get_issue')!, { issue: 'AEO-258' });
     expect(JSON.stringify(result.details.resolution)).not.toContain(UNKNOWN_FORMAT_KEY);
   });
 

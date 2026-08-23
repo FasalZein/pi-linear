@@ -220,8 +220,8 @@ function discoveryOnlyError(operationName: string): Error {
       + `Send { "operation": "help", "variables": { "operation": "${operation.name}" } } to load ${toolName}, `
       + `then call ${toolName} with the operation variables directly.`,
     );
-  } catch (error) {
-    throw redactError(error);
+  } catch {
+    return new Error('Unknown Linear operation. Send { "operation": "help" }.');
   }
 }
 

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { linearApiTool } from '../extensions/api';
+import { executeTyped } from './helpers/typed-execution';
 import { isolateLinearCredentials } from './helpers/credentials';
 
 isolateLinearCredentials();
@@ -18,8 +18,8 @@ afterEach(() => {
   else process.env.LINEAR_API_KEY = originalKey;
 });
 
-function execute(params: Record<string, unknown>) {
-  return (linearApiTool() as any).execute('call-1', params, undefined, undefined, { hasUI: false });
+function execute(params: { operation: string; variables?: Record<string, unknown> }) {
+  return executeTyped(params.operation, params.variables);
 }
 
 function graphqlStub(

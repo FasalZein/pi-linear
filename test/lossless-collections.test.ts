@@ -171,8 +171,8 @@ describe('lossless collection routing', () => {
   });
 });
 
-describe('loader and typed collection parity', () => {
-  it('returns the same complete named result through both public tools', async () => {
+describe('raw and typed collection parity', () => {
+  it('returns the same complete result through both public tools', async () => {
     process.env.LINEAR_API_KEY = 'test-key';
     process.env.LINEAR_SPILL_BYTES = '50000';
     const nodes = rows(105, 5);
@@ -184,9 +184,9 @@ describe('loader and typed collection parity', () => {
       json: async () => ({ data: { issues: { nodes, pageInfo: { hasNextPage: true, endCursor: 'server-next' }, totalCount: 301 } } }),
     })));
 
-    const loader = await (linearApiTool() as any).execute(
+    const raw = await (linearApiTool() as any).execute(
       'loader-call',
-      { operation: 'list_issues', variables: {} },
+      { query: 'query { issues { nodes { id title } pageInfo { hasNextPage endCursor } totalCount } }' },
       undefined,
       undefined,
       { hasUI: false },
@@ -194,9 +194,9 @@ describe('loader and typed collection parity', () => {
     const typed = typedLinearTools().find((tool) => tool.name === 'linear_list_issues') as any;
     const typedResult = await typed.execute('typed-call', {}, undefined, undefined, { hasUI: false });
 
-    expect(loader.details).toEqual(typedResult.details);
-    expect(loader.details.data.issues.nodes).toEqual(nodes);
-    expect(JSON.parse(loader.content[0].text)).toEqual(loader.details);
+    expect(raw.details.data).toEqual(typedResult.details.data);
+    expect(raw.details.data.issues.nodes).toEqual(nodes);
+    expect(JSON.parse(raw.content[0].text)).toEqual(raw.details);
     expect(JSON.parse(typedResult.content[0].text)).toEqual(typedResult.details);
   });
 });

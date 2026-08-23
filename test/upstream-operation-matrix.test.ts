@@ -1,6 +1,6 @@
 import { Kind, parse } from "graphql";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { linearApiTool, resolveRequest } from "../extensions/api";
+import { resolveRequest } from "../extensions/api";
 import { operations } from "../extensions/operations";
 import { isolateLinearCredentials } from "./helpers/credentials";
 import { prepareOperation } from "./helpers/operation-plan";
@@ -502,20 +502,12 @@ describe("independent upstream operation matrix", () => {
 	)("rejects an empty $name request before network access", async (fixture) => {
 		const fetch = vi.fn();
 		vi.stubGlobal("fetch", fetch);
-		const tool = linearApiTool() as any;
-		const error = await tool
-			.execute(
-				"call",
-				{ operation: fixture.name, variables: {} },
-				undefined,
-				undefined,
-				{ hasUI: false },
-			)
-			.then(
-				() => new Error("Expected local validation failure."),
-				(value: unknown) =>
-					value instanceof Error ? value : new Error(String(value)),
-			);
+		let error = new Error("Expected local validation failure.");
+		try {
+			resolveRequest({ operation: fixture.name, variables: {} });
+		} catch (value) {
+			error = value instanceof Error ? value : new Error(String(value));
+		}
 		expect(error.message).toContain(`Invalid parameters for "${fixture.name}"`);
 		expect(error.message).toContain("Valid parameters:");
 		expect(error.message).toContain("Example:");
@@ -525,7 +517,6 @@ describe("independent upstream operation matrix", () => {
 	it("rejects contradictory mixed shapes before network access", async () => {
 		const fetch = vi.fn();
 		vi.stubGlobal("fetch", fetch);
-		const tool = linearApiTool() as any;
 		for (const request of [
 			{
 				operation: "get_issue",
@@ -541,9 +532,8 @@ describe("independent upstream operation matrix", () => {
 				},
 			},
 		]) {
-			await expect(
-				tool.execute("call", request, undefined, undefined, { hasUI: false }),
-			).rejects.toThrow("parameters do not match one accepted shape");
+			expect(() => resolveRequest(request))
+				.toThrow("parameters do not match one accepted shape");
 		}
 		expect(fetch).not.toHaveBeenCalled();
 	});
