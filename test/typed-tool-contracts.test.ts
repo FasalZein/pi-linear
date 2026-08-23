@@ -533,19 +533,15 @@ describe('typed execution delegates to the v0.4 operation pipeline', () => {
     return requests;
   }
 
-  it('resolves references and emits the same GraphQL as linear', async () => {
+  it('resolves references and emits the shared operation GraphQL', async () => {
     const requests = installServer();
     const typedResult = await execute(tools.get('linear_get_issue')!, { issue: 'AEO-258' });
-    const typedRequests = requests.splice(0);
 
-    const apiResult = await execute(linearApiTool() as any, {
-      operation: 'get_issue',
-      variables: { issue: 'AEO-258' },
+    expect(requests.at(-1)).toMatchObject({
+      query: operations.get_issue!.document,
+      variables: { id: 'AEO-258' },
     });
-
-    expect(typedRequests.map(({ query, variables }) => ({ query, variables })))
-      .toEqual(requests.map(({ query, variables }) => ({ query, variables })));
-    expect(typedResult.details).toEqual(apiResult.details);
+    expect(typedResult.details.data.issue).toMatchObject({ id: 'AEO-258', identifier: 'AEO-258' });
   });
 
   it('reports resolution metadata for renderers', async () => {

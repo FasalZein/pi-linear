@@ -6,6 +6,7 @@ import { linearApiTool, resolveRequest } from '../extensions/api';
 import { assertBatchAccounting, batchHelp } from '../extensions/batch';
 import { operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
 import type { MutationMode } from '../extensions/safety';
+import { typedLinearTools } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
 
 isolateLinearCredentials();
@@ -43,6 +44,12 @@ function execute(params: Record<string, unknown>, mode: MutationMode = 'allowlis
 
 function executeWithSignal(params: Record<string, unknown>, signal: AbortSignal, mode: MutationMode = 'allowlist') {
   return (linearApiTool(mode) as any).execute('call-1', params, signal, undefined, { hasUI: false });
+}
+
+function executeTyped(operation: string, variables: Record<string, unknown>) {
+  const tool = typedLinearTools().find(({ name }) => name === `linear_${operation}`);
+  if (!tool) throw new Error(`Missing typed tool for ${operation}.`);
+  return (tool as any).execute('call-1', variables, undefined, undefined, { hasUI: false });
 }
 
 function batch(reads: unknown[], extra: Record<string, unknown> = {}) {
@@ -472,7 +479,7 @@ describe('batch read phase', () => {
       return { body: { data: { issue: issueNode(ISSUE_A, 'AEO-1') } } };
     });
 
-    const result = await execute({ operation: 'get_issue', variables: { issue: 'AEO-1' } });
+    const result = await executeTyped('get_issue', { issue: 'AEO-1' });
     expect(requests).toHaveLength(1);
     expect(result.details.data.issue).toEqual(issueNode(ISSUE_A, 'AEO-1'));
     expect(result.details).not.toHaveProperty('skipped');
@@ -485,7 +492,7 @@ describe('batch read phase', () => {
         ? { one: issueNode(ISSUE_A, 'AEO-2') }
         : { issue: issueNode(ISSUE_A, 'AEO-2') } },
     }));
-    await expect(execute({ operation: 'get_issue', variables: { issue: 'AEO-1' } }))
+    await expect(executeTyped('get_issue', { issue: 'AEO-1' }))
       .rejects.toThrow('Linear issue resolver returned mismatched identifier "AEO-2" for "AEO-1".');
     const result = await batch([{ key: 'one', operation: 'get_issue', variables: { issue: 'AEO-1' } }]);
     expect(result.details.errors[0].message)
@@ -510,7 +517,7 @@ describe('batch read phase', () => {
     process.env.LINEAR_API_KEY = 'test-key';
 
     const batchCall = batch([{ key: 'one', operation: 'get_issue', variables: { issue: 'AEO-1' } }]);
-    const directCall = execute({ operation: 'get_issue', variables: { issue: 'AEO-2' } });
+    const directCall = executeTyped('get_issue', { issue: 'AEO-2' });
     const [batchResult, directResult] = await Promise.all([batchCall, directCall]);
     expect(requests).toHaveLength(2);
     expect(batchResult.details.data.one.issue.title).toBe('batch');
@@ -553,10 +560,7 @@ describe('pure mutation operation plans', () => {
     const { requests } = graphqlStub((request) => request.query.includes('customViewCreate')
       ? { body: { data: { customViewCreate: { success: true, customView: { id: 'view-id', name: 'Mine' } } } } }
       : { body: { data: { teams: { nodes: [{ id: TEAM_ID, key: 'AEO' }] } } } });
-    const result = await execute({
-      operation: 'create_view',
-      variables: { name: 'Mine', team: 'AEO', filterData: {} },
-    });
+    const result = await executeTyped('create_view', { name: 'Mine', team: 'AEO' });
     expect(requests).toHaveLength(2);
     expect(result.details.data.customViewCreate.customView).toMatchObject({ id: 'view-id', name: 'Mine' });
     expect(result.details).not.toHaveProperty('resolution');
@@ -682,10 +686,10 @@ describe('batch mutation phase', () => {
         ? { [alias]: { nodes: [{ id: TEAM_ID, key: 'WRONG' }] } }
         : { teams: { nodes: [{ id: TEAM_ID, key: 'WRONG' }] } } } };
     });
-    const direct = await execute({
-      operation: 'create_cycle',
-      variables: { team: 'AEO', startsAt: '2026-08-17', endsAt: '2026-08-31' },
-    }).catch((error: Error) => error);
+    const direct = await executeTyped(
+      'create_cycle',
+      { team: 'AEO', startsAt: '2026-08-17', endsAt: '2026-08-31' },
+    ).catch((error: Error) => error);
     const batched = await execute({
       operation: 'batch',
       variables: { mutations: [{ key: 'write', operation: 'create_cycle', variables: { team: 'AEO', startsAt: '2026-08-17', endsAt: '2026-08-31' } }] },
@@ -1393,7 +1397,7 @@ describe('batch transactional create', () => {
       return { body: { data: { teams: { nodes: [{ id: TEAM_ID, key: 'AEO' }] } } } };
     });
 
-    const result = await execute({ operation: 'create_issue', variables: { title: 'Solo', team: 'AEO' } });
+    const result = await executeTyped('create_issue', { title: 'Solo', team: 'AEO' });
     expect(requests.some((request) => request.query.includes('issueCreate'))).toBe(true);
     expect(requests.every((request) => !request.query.includes('issueBatchCreate'))).toBe(true);
     expect(result.details.data.issueCreate.issue.title).toBe('Solo');

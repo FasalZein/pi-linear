@@ -24,7 +24,7 @@ const readmePath = resolve(root, 'README.md');
 const referencePath = resolve(root, 'REFERENCE.md');
 const START = '<!-- BEGIN GENERATED LINEAR OPERATIONS -->';
 const END = '<!-- END GENERATED LINEAR OPERATIONS -->';
-const LINEAR_TOOL_USAGE = 'Run a named Linear operation or raw GraphQL. The operation names listed below are callable directly as { "operation": "<name>", "variables": { … } }. { "operation": "help", "variables": { "operation": "<name>" } } returns exact parameters. For canonical named operations, it also loads the strict typed tool. Loader-only batch and get_result do not add typed tools.';
+const LINEAR_TOOL_USAGE = 'Discover Linear operations or run raw GraphQL. { "operation": "help", "variables": { "operation": "<name>" } } returns exact parameters and loads the strict linear_<name> typed tool. Call that typed tool with the operation variables directly; ordinary named operations do not execute through linear. Loader-only batch and get_result remain executable and do not add typed tools.';
 
 export const generatedFiles = [manifestPath, contractsPath, catalogPath, readmePath, referencePath] as const;
 

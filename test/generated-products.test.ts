@@ -241,8 +241,10 @@ describe('generated products', () => {
 
   it('publishes every catalog operation in the linear tool description and no others', () => {
     const description = (linearApiTool() as any).description as string;
-    expect(description).toContain('{ "operation": "<name>", "variables": { … } }');
+    expect(description).not.toContain('{ "operation": "<name>", "variables": { … } }');
     expect(description).toContain('{ "operation": "help", "variables": { "operation": "<name>" } }');
+    expect(description).toContain('ordinary named operations do not execute through linear');
+    expect(description).toContain('linear_<name> typed tool');
     const expected = operationDefinitions.map(({ name, purpose }) => ({ name, purpose }));
     for (const { name, purpose } of expected) {
       expect(description).toContain(`${name}: ${purpose}`);

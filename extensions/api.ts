@@ -48,7 +48,7 @@ export {
 
 const REQUEST_SHAPES = 'Invalid request. Send exactly one of: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }, { "operation": "help" }, or { "query": "query { viewer { id } }", "variables": {} }.';
 const HELP_SHAPES = 'Send exactly one of: { "operation": "help" }, { "operation": "help", "variables": { "domain": "issues" } }, or { "operation": "help", "variables": { "operation": "get_issue" } }.';
-const NATURAL_SEARCH_REMOVED = 'Natural search was removed. The operation catalog is in the `linear` tool description. Send `{ "operation": "help", "variables": { "operation": "get_issue" } }` for exact parameters, or call the operation directly.';
+const NATURAL_SEARCH_REMOVED = 'Natural search was removed. The operation catalog is in the `linear` tool description. Send `{ "operation": "help", "variables": { "operation": "get_issue" } }` for exact parameters and to load `linear_get_issue`.';
 const definitionDomainSet = new Set(operationDefinitions.map(({ domain }) => domain));
 const DEFINITION_DOMAINS = DOMAINS.filter((domain) => definitionDomainSet.has(domain));
 
@@ -211,13 +211,27 @@ function assertRawResultPointersRepresentable(query: string): void {
   }
 }
 
+function discoveryOnlyError(operationName: string): Error {
+  try {
+    const operation = getOperation(operationName);
+    const toolName = typedToolName(operation.name);
+    return new Error(
+      `Named operation "${operationName}" cannot run through linear. `
+      + `Send { "operation": "help", "variables": { "operation": "${operation.name}" } } to load ${toolName}, `
+      + `then call ${toolName} with the operation variables directly.`,
+    );
+  } catch (error) {
+    throw redactError(error);
+  }
+}
+
 export function linearApiTool(mode: MutationMode = 'allowlist', activator?: ToolActivator) {
   return defineTool({
     name: 'linear',
     label: 'Linear API',
     description: LINEAR_TOOL_DESCRIPTION,
     parameters: Type.Object({
-      operation: Type.Optional(Type.String({ description: 'Bundled operation name.' })),
+      operation: Type.Optional(Type.String({ description: 'Use help to discover typed tools, or call loader-only batch and get_result.' })),
       query: Type.Optional(Type.String({ description: 'Raw GraphQL escape hatch.' })),
       variables: Type.Optional(Type.Record(Type.String(), Type.Any())),
       workspace: Type.Optional(Type.String({ description: 'Stored workspace name, or default/active for normal credential selection.' })),
@@ -233,12 +247,15 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
     renderCall: renderLinearApiCall,
     renderResult: renderLinearApiResult,
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+      if (signal?.aborted) throw new Error('Request cancelled.');
+      if (params.operation && !params.query && !['help', 'batch', 'get_result'].includes(params.operation)) {
+        throw discoveryOnlyError(params.operation);
+      }
       const explicitTelemetry = telemetryMode(params.telemetry);
       // Collected before any output path, including the help early return: an active key
       // in an unknown format is only removable as an exact value.
       const secrets: string[] = [...activeSecrets()];
       return withRedactedErrors(async () => {
-        if (signal?.aborted) throw new Error('Request cancelled.');
         const call = linearCallContext(mode, signal, ctx, {
           workspace: params.workspace,
           sink: params.sink,
