@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { parse, type IntrospectionQuery, type OperationDefinitionNode } from 'graphql';
 import { registerLinearExtension } from '../extensions/index';
 import { linearGraphQL, resolveApiKey } from '../extensions/client';
+import { assertReadOnlyEvidence, recordingTransport, requestEvidence, type RequestEvidence } from './request-recorder';
 import { operations, type LinearOperation } from '../extensions/operations';
 import { redactText } from '../extensions/redact';
 import {
@@ -159,7 +160,7 @@ async function writeSummary(summary: JsonObject, apiKey: string): Promise<void> 
   await writeFile(join(root, 'readonly-smoke-summary.json'), JSON.stringify(summary, null, 2));
 }
 
-async function runAuthenticatedSmoke(apiKey: string): Promise<JsonObject> {
+async function runAuthenticatedSmoke(apiKey: string, requests: RequestEvidence): Promise<JsonObject> {
   const [fixtureSource, scopeSource, sourceQuery] = await Promise.all([
     readFile(new URL('./fixtures/readonly-schema-contract.json', import.meta.url), 'utf8'),
     readFile(new URL('./fixtures/readonly-schema-scope.json', import.meta.url), 'utf8'),
@@ -260,13 +261,6 @@ async function runAuthenticatedSmoke(apiKey: string): Promise<JsonObject> {
     throw new Error('smoke.missing-reference: semantic not-found signal mismatch');
   }
 
-  const originalFetch = globalThis.fetch;
-  let mutationRequests = 0;
-  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    const body = typeof init?.body === 'string' ? init.body : '';
-    if (/\bmutation\b/.test(body)) mutationRequests++;
-    return originalFetch(input, init);
-  }) as typeof fetch;
   let rejectionMessage = '';
   try {
     const createComment = harness.tool('linear_create_comment');
@@ -274,8 +268,6 @@ async function runAuthenticatedSmoke(apiKey: string): Promise<JsonObject> {
     await executeTool(createComment, { issue: ISSUE_REFERENCE, body: 'must not execute' });
   } catch (error) {
     rejectionMessage = error instanceof Error ? error.message : String(error);
-  } finally {
-    globalThis.fetch = originalFetch;
   }
   if (
     process.env.NODE_ENV === 'test'
@@ -288,7 +280,7 @@ async function runAuthenticatedSmoke(apiKey: string): Promise<JsonObject> {
   if (rejectionMessage !== expectedRejection) {
     throw new Error('smoke.readonly: mutation gate rejection signal mismatch');
   }
-  if (mutationRequests !== 0) throw new Error(`smoke.readonly: observed ${mutationRequests} mutation requests`);
+  assertReadOnlyEvidence(requests);
 
   assertNoCredentialLeak({ pairResults, knownTokenProbe: redactText(KNOWN_TOKEN, [apiKey]) }, apiKey);
   const summary = {
@@ -308,8 +300,9 @@ async function runAuthenticatedSmoke(apiKey: string): Promise<JsonObject> {
       listGet: pairResults,
       getIssueIdentity: 'passed',
       missingReference: 'passed',
-      mutationRequests,
+      mutationRequests: requests.mutation,
       redaction: 'passed',
+      requests,
     },
   };
   await writeSummary(summary, apiKey);
@@ -328,11 +321,15 @@ export async function runReadonlySmoke(): Promise<JsonObject> {
   const apiKey = await smokeApiKey();
   const previousApiKey = process.env.LINEAR_API_KEY;
   process.env.LINEAR_API_KEY = apiKey;
+  const originalFetch = globalThis.fetch;
+  const requests = requestEvidence();
+  globalThis.fetch = recordingTransport(originalFetch, requests) as typeof fetch;
   try {
-    return await runAuthenticatedSmoke(apiKey);
+    return await runAuthenticatedSmoke(apiKey, requests);
   } catch (error) {
     throw new Error(safeFailure(error instanceof Error ? error.message : String(error), apiKey));
   } finally {
+    globalThis.fetch = originalFetch;
     if (previousApiKey === undefined) delete process.env.LINEAR_API_KEY;
     else process.env.LINEAR_API_KEY = previousApiKey;
   }
@@ -340,7 +337,21 @@ export async function runReadonlySmoke(): Promise<JsonObject> {
 
 try {
   const summary = await runReadonlySmoke();
-  process.stdout.write(`READONLY SMOKE PASS: ${JSON.stringify(summary)}\n`);
+  const runtime = summary.runtime as JsonObject;
+  const requests = runtime.requests as JsonObject;
+  process.stdout.write(`READONLY SMOKE PASS: ${JSON.stringify({
+    status: summary.status,
+    schema: summary.schema,
+    runtime: {
+      activation: runtime.activation,
+      zeroArgumentReads: runtime.zeroArgumentReads,
+      followedCursors: runtime.followedCursors,
+      getIssueIdentity: runtime.getIssueIdentity,
+      missingReference: runtime.missingReference,
+      redaction: runtime.redaction,
+      requests: { total: requests.total, query: requests.query, mutation: requests.mutation },
+    },
+  })}\n`);
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
   process.stderr.write(`READONLY SMOKE FAIL: ${redactText(message)}\n`);

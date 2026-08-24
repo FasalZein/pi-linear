@@ -7,12 +7,52 @@ import {
   isObjectType,
   isScalarType,
   parse,
+  validate,
   type GraphQLSchema,
   type IntrospectionQuery,
   type OperationDefinitionNode,
   type TypeNode,
 } from 'graphql';
 import type { LinearOperation } from '../extensions/operations';
+
+export type PackageGraphQLDocument = {
+  id: string;
+  sourceClass: string;
+  operationType: 'query' | 'mutation' | 'subscription';
+  operationName: string | null;
+  rootFields: readonly string[];
+  variables: Readonly<Record<string, string>>;
+  document: string;
+  sha256: string;
+};
+export type PackageGraphQLInventory = {
+  schemaVersion: 1;
+  exclusions: readonly { id: string; reason: string }[];
+  documents: readonly PackageGraphQLDocument[];
+};
+
+export function validateDocumentsAgainstSchema(
+  schema: GraphQLSchema,
+  inventory: PackageGraphQLInventory,
+): void {
+  for (const descriptor of inventory.documents) {
+    if (sha256(descriptor.document) !== descriptor.sha256) {
+      throw new Error(`documents.${descriptor.id}: document hash does not match`);
+    }
+    const document = parse(descriptor.document);
+    const errors = validate(schema, document);
+    if (errors.length) {
+      throw new Error(`documents.${descriptor.id}: ${errors.map(({ message }) => message).join('; ')}`);
+    }
+  }
+}
+
+export function validatePackageDocuments(
+  introspection: IntrospectionQuery,
+  inventory: PackageGraphQLInventory,
+): void {
+  validateDocumentsAgainstSchema(buildClientSchema(introspection), inventory);
+}
 
 export type RootKind = 'Query' | 'Mutation';
 export type ReadonlySchemaScope = {
@@ -36,6 +76,7 @@ export type ReadonlySchemaProvenance = {
   scope: string;
   scopeSha256: string;
   normalizedSha256: string;
+  requests?: import('./request-recorder').RequestEvidence;
 };
 export type ReadonlySchemaFixture = {
   schemaVersion: 1;

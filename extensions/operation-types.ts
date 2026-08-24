@@ -116,6 +116,8 @@ export type LinearOperation = {
 	canonicalExample?: Record<string, unknown>;
 	document: string;
 	variants?: readonly GraphQLDocumentVariant[];
+	/** Every finite document selected by this operation at runtime. */
+	inventoryDocuments?: readonly { id: string; document: string }[];
 	pagination?: PaginationMetadata;
 	resolverPaths?: Readonly<Record<string, string>>;
 	requiresVariables?: boolean;
@@ -179,6 +181,7 @@ export type OperationCompatibilityDefinition = {
 	aliasFields?: Readonly<Record<string, readonly OperationParameter[]>>;
 	example: OperationExample;
 	document: string;
+	inventoryDocuments?: readonly { id: string; document: string }[];
 	pagination?: PaginationMetadata;
 	resolverPaths?: Readonly<Record<string, string>>;
 	/** Derived compatibility flag retained for stable v0.4 diagnostics. */

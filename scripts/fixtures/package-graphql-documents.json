@@ -1,0 +1,2942 @@
+{
+  "schemaVersion": 1,
+  "exclusions": [
+    {
+      "id": "caller.linear_graphql",
+      "reason": "Caller-supplied documents are not package-created."
+    },
+    {
+      "id": "local.SwitchWorkspaceLocal",
+      "reason": "The local workspace operation never reaches transport."
+    },
+    {
+      "id": "local.linear_get_result",
+      "reason": "Result retrieval reads an artifact and creates no GraphQL request."
+    }
+  ],
+  "documents": [
+    {
+      "id": "batch.alias.operation.create_comment.commentCreate",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_1_input: CommentCreateInput!) {\n  entry_1: commentCreate(input: $entry_1_input) {\n    success\n    comment {\n      id\n      body\n      quotedText\n      createdAt\n      updatedAt\n      editedAt\n      resolvedAt\n      url\n      issue {\n        id\n        identifier\n        title\n      }\n      parent {\n        id\n      }\n      user {\n        id\n        name\n        email\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "commentCreate"
+      ],
+      "variables": {
+        "entry_1_input": "CommentCreateInput!"
+      },
+      "sha256": "5a2fb86ece0caffe5d70bc6c14b06a006a2f5b54b155ce59c298fcbc0b28d0a8"
+    },
+    {
+      "id": "batch.alias.operation.create_cycle.cycleCreate",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_10_input: CycleCreateInput!) {\n  entry_10: cycleCreate(input: $entry_10_input) {\n    success\n    cycle {\n      id\n      name\n      number\n      description\n      startsAt\n      endsAt\n      completedAt\n      archivedAt\n      autoArchivedAt\n      isActive\n      isFuture\n      isPast\n      isNext\n      isPrevious\n      progress\n      createdAt\n      updatedAt\n      team {\n        id\n        key\n        name\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "cycleCreate"
+      ],
+      "variables": {
+        "entry_10_input": "CycleCreateInput!"
+      },
+      "sha256": "08f4cf9eb77a348e136b05366fcd1e836fd4aac3bd1758e735d51b921a3dcb79"
+    },
+    {
+      "id": "batch.alias.operation.create_document.documentCreate",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_16_input: DocumentCreateInput!) {\n  entry_16: documentCreate(input: $entry_16_input) {\n    success\n    document {\n      id\n      title\n      content\n      color\n      icon\n      slugId\n      sortOrder\n      hiddenAt\n      trashed\n      summary\n      archivedAt\n      createdAt\n      updatedAt\n      url\n      team {\n        id\n        key\n        name\n      }\n      project {\n        id\n        name\n      }\n      issue {\n        id\n        identifier\n        title\n      }\n      initiative {\n        id\n        name\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "documentCreate"
+      ],
+      "variables": {
+        "entry_16_input": "DocumentCreateInput!"
+      },
+      "sha256": "050dec58ec133b221f0d522a80d82216fd1a6ac198169002eb895e7f93d6011d"
+    },
+    {
+      "id": "batch.alias.operation.create_issue_label.issueLabelCreate",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_21_input: IssueLabelCreateInput!, $entry_21_replaceTeamLabels: Boolean) {\n  entry_21: issueLabelCreate(\n    input: $entry_21_input\n    replaceTeamLabels: $entry_21_replaceTeamLabels\n  ) {\n    success\n    issueLabel {\n      id\n      name\n      description\n      color\n      isGroup\n      createdAt\n      updatedAt\n      retiredAt\n      team {\n        id\n        key\n        name\n      }\n      parent {\n        id\n        name\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "issueLabelCreate"
+      ],
+      "variables": {
+        "entry_21_input": "IssueLabelCreateInput!",
+        "entry_21_replaceTeamLabels": "Boolean"
+      },
+      "sha256": "32725d0424af6b3c8279d0bdd1653293e40cc17b0de38b4f9e744a85478975eb"
+    },
+    {
+      "id": "batch.alias.operation.create_issue_relation.issueRelationCreate",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_24_input: IssueRelationCreateInput!) {\n  entry_24: issueRelationCreate(input: $entry_24_input) {\n    success\n    issueRelation {\n      id\n      createdAt\n      updatedAt\n      type\n      issue {\n        id\n        identifier\n        title\n      }\n      relatedIssue {\n        id\n        identifier\n        title\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "issueRelationCreate"
+      ],
+      "variables": {
+        "entry_24_input": "IssueRelationCreateInput!"
+      },
+      "sha256": "07162a5e3d49b71ac5af27962d7e32d85f9f600f1bfd8094336714db8896026d"
+    },
+    {
+      "id": "batch.alias.operation.create_issue.issueCreate",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_32_input: IssueCreateInput!) {\n  entry_32: issueCreate(input: $entry_32_input) {\n    success\n    issue {\n      id\n      identifier\n      number\n      title\n      description\n      priority\n      url\n      branchName\n      dueDate\n      createdAt\n      updatedAt\n      estimate\n      priorityLabel\n      completedAt\n      startedAt\n      archivedAt\n      trashed\n      state {\n        id\n        name\n        type\n      }\n      team {\n        id\n        key\n        name\n      }\n      assignee {\n        id\n        name\n        email\n      }\n      labels(first: 50) {\n        nodes {\n          id\n          name\n        }\n      }\n      project {\n        id\n        name\n      }\n      parent {\n        id\n        identifier\n        title\n      }\n      cycle {\n        id\n        name\n        number\n      }\n      creator {\n        id\n        name\n        email\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "issueCreate"
+      ],
+      "variables": {
+        "entry_32_input": "IssueCreateInput!"
+      },
+      "sha256": "cea55a19a19aa3b2d4e38e13fbce1fb5a4518b972155a72e4932a4f535d377d4"
+    },
+    {
+      "id": "batch.alias.operation.create_project_label.projectLabelCreate",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_41_input: ProjectLabelCreateInput!) {\n  entry_41: projectLabelCreate(input: $entry_41_input) {\n    success\n    projectLabel {\n      id\n      name\n      description\n      color\n      isGroup\n      createdAt\n      updatedAt\n      retiredAt\n      parent {\n        id\n        name\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "projectLabelCreate"
+      ],
+      "variables": {
+        "entry_41_input": "ProjectLabelCreateInput!"
+      },
+      "sha256": "1bdaaf6b58df7c9df7bee1ae74f33099396b508e9c29958a2286b62d031aee66"
+    },
+    {
+      "id": "batch.alias.operation.create_project_relation.projectRelationCreate",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_44_input: ProjectRelationCreateInput!) {\n  entry_44: projectRelationCreate(input: $entry_44_input) {\n    success\n    projectRelation {\n      id\n      createdAt\n      updatedAt\n      type\n      anchorType\n      relatedAnchorType\n      project {\n        id\n        name\n      }\n      projectMilestone {\n        id\n        name\n      }\n      relatedProject {\n        id\n        name\n      }\n      relatedProjectMilestone {\n        id\n        name\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "projectRelationCreate"
+      ],
+      "variables": {
+        "entry_44_input": "ProjectRelationCreateInput!"
+      },
+      "sha256": "f980fe9f8ad05c86a0eb7d7114fadd87b2aafca7247133c515daa36eeed50191"
+    },
+    {
+      "id": "batch.alias.operation.create_view.customViewCreate",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_5_input: CustomViewCreateInput!) {\n  entry_5: customViewCreate(input: $entry_5_input) {\n    success\n    customView {\n      id\n      name\n      description\n      icon\n      color\n      filterData\n      projectFilterData\n      initiativeFilterData\n      feedItemFilterData\n      shared\n      slugId\n      archivedAt\n      createdAt\n      updatedAt\n      modelName\n      team {\n        id\n        key\n        name\n      }\n      owner {\n        id\n        name\n        email\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "customViewCreate"
+      ],
+      "variables": {
+        "entry_5_input": "CustomViewCreateInput!"
+      },
+      "sha256": "2b54cc3c2ed3394755eda9325ad6a1848648251ce0afec20c4ec837cb60ec798"
+    },
+    {
+      "id": "batch.alias.operation.delete_issue_relation.issueRelationDelete",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_26_id: String!) {\n  entry_26: issueRelationDelete(id: $entry_26_id) {\n    success\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "issueRelationDelete"
+      ],
+      "variables": {
+        "entry_26_id": "String!"
+      },
+      "sha256": "54f85cb4fc6fd9cf140577e200a6aa3d7e57f2e7f503478b101228730cb309e6"
+    },
+    {
+      "id": "batch.alias.operation.get_cycle.default",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_9_id: String!) {\n  entry_9: cycle(id: $entry_9_id) {\n    id\n    name\n    number\n    description\n    startsAt\n    endsAt\n    completedAt\n    archivedAt\n    autoArchivedAt\n    isActive\n    isFuture\n    isPast\n    isNext\n    isPrevious\n    progress\n    createdAt\n    updatedAt\n    team {\n      id\n      key\n      name\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "cycle"
+      ],
+      "variables": {
+        "entry_9_id": "String!"
+      },
+      "sha256": "1196c515c46fe5a84cbb3fc582b63f890ad2218dc2e0fd947c0b38b494e516f6"
+    },
+    {
+      "id": "batch.alias.operation.get_document.full",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_15_id: String!) {\n  entry_15: document(id: $entry_15_id) {\n    id\n    title\n    content\n    color\n    icon\n    slugId\n    sortOrder\n    hiddenAt\n    trashed\n    summary\n    archivedAt\n    createdAt\n    updatedAt\n    url\n    team {\n      id\n      key\n      name\n    }\n    project {\n      id\n      name\n    }\n    issue {\n      id\n      identifier\n      title\n    }\n    initiative {\n      id\n      name\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "document"
+      ],
+      "variables": {
+        "entry_15_id": "String!"
+      },
+      "sha256": "71e6a87b192ee7730cf52db1efbb20605f72cad7707b8281ef35a8c37a59e125"
+    },
+    {
+      "id": "batch.alias.operation.get_document.summary",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_14_id: String!) {\n  entry_14: document(id: $entry_14_id) {\n    id\n    title\n    url\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "document"
+      ],
+      "variables": {
+        "entry_14_id": "String!"
+      },
+      "sha256": "606cb22cb331d0cc4cd97d9ba6fb00e64f45365952b4abbeda976f76ce9360e0"
+    },
+    {
+      "id": "batch.alias.operation.get_initiative.default",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_19_id: String!) {\n  entry_19: initiative(id: $entry_19_id) {\n    id\n    name\n    description\n    content\n    status\n    color\n    icon\n    targetDate\n    targetDateResolution\n    sortOrder\n    health\n    completedAt\n    startedAt\n    archivedAt\n    trashed\n    createdAt\n    updatedAt\n    url\n    owner {\n      id\n      name\n      email\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "initiative"
+      ],
+      "variables": {
+        "entry_19_id": "String!"
+      },
+      "sha256": "43ab58262d8c8777d10ef83413008217c3b9415280c77051203e04fbf14c84b3"
+    },
+    {
+      "id": "batch.alias.operation.get_issue.full",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_31_id: String!) {\n  entry_31: issue(id: $entry_31_id) {\n    id\n    identifier\n    number\n    title\n    description\n    priority\n    url\n    branchName\n    dueDate\n    createdAt\n    updatedAt\n    estimate\n    priorityLabel\n    completedAt\n    startedAt\n    archivedAt\n    trashed\n    state {\n      id\n      name\n      type\n    }\n    team {\n      id\n      key\n      name\n    }\n    assignee {\n      id\n      name\n      email\n    }\n    labels(first: 50) {\n      nodes {\n        id\n        name\n      }\n    }\n    project {\n      id\n      name\n    }\n    parent {\n      id\n      identifier\n      title\n    }\n    cycle {\n      id\n      name\n      number\n    }\n    creator {\n      id\n      name\n      email\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "issue"
+      ],
+      "variables": {
+        "entry_31_id": "String!"
+      },
+      "sha256": "ea8dafe4d5f6f7eaab74b94ae3233820e8ad8f45b561cf22ccf936f060de416c"
+    },
+    {
+      "id": "batch.alias.operation.get_issue.summary",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_30_id: String!) {\n  entry_30: issue(id: $entry_30_id) {\n    id\n    identifier\n    title\n    url\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "issue"
+      ],
+      "variables": {
+        "entry_30_id": "String!"
+      },
+      "sha256": "3bc6291c74629181ee9d19d51d64bf518904f708ab6ba6ca3bed6307f1bbc966"
+    },
+    {
+      "id": "batch.alias.operation.get_milestone.default",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_39_id: String!) {\n  entry_39: projectMilestone(id: $entry_39_id) {\n    id\n    name\n    description\n    status\n    progress\n    targetDate\n    sortOrder\n    createdAt\n    updatedAt\n    project {\n      id\n      name\n      url\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "projectMilestone"
+      ],
+      "variables": {
+        "entry_39_id": "String!"
+      },
+      "sha256": "081fff3579727ef173c1d7a8080bde62902664ef41c02652a10b9bb0f95994a5"
+    },
+    {
+      "id": "batch.alias.operation.get_project.full",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_49_id: String!) {\n  entry_49: project(id: $entry_49_id) {\n    id\n    name\n    description\n    color\n    icon\n    state\n    priority\n    slugId\n    startDate\n    targetDate\n    completedAt\n    canceledAt\n    health\n    progress\n    startedAt\n    archivedAt\n    trashed\n    priorityLabel\n    createdAt\n    updatedAt\n    url\n    teams(first: 10) {\n      nodes {\n        id\n        key\n        name\n      }\n    }\n    lead {\n      id\n      name\n      email\n    }\n    members(first: 10) {\n      nodes {\n        id\n        name\n        email\n      }\n    }\n    status {\n      id\n      name\n    }\n    content\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "project"
+      ],
+      "variables": {
+        "entry_49_id": "String!"
+      },
+      "sha256": "a351c44e0e27e477b3f9b972ad8820819164fcb159cd5036106f7efcadef7206"
+    },
+    {
+      "id": "batch.alias.operation.get_project.summary",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_48_id: String!) {\n  entry_48: project(id: $entry_48_id) {\n    id\n    name\n    url\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "project"
+      ],
+      "variables": {
+        "entry_48_id": "String!"
+      },
+      "sha256": "e06bc77c80b2345c12d1d12318e15d828ef0a6673450c4e9e3f9a6dbb7d4a4e7"
+    },
+    {
+      "id": "batch.alias.operation.get_team.default",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_51_id: String!) {\n  entry_51: team(id: $entry_51_id) {\n    id\n    key\n    name\n    description\n    color\n    icon\n    private\n    createdAt\n    updatedAt\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "team"
+      ],
+      "variables": {
+        "entry_51_id": "String!"
+      },
+      "sha256": "978f8c022687a1b0c50a197affc2b885a0305dda8c1bc7023fdebc9081861675"
+    },
+    {
+      "id": "batch.alias.operation.get_user.default",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_53_id: String!) {\n  entry_53: user(id: $entry_53_id) {\n    id\n    name\n    displayName\n    email\n    active\n    admin\n    guest\n    isAssignable\n    createdAt\n    updatedAt\n    url\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "user"
+      ],
+      "variables": {
+        "entry_53_id": "String!"
+      },
+      "sha256": "2f16b3cfa9272bc202b354fb47ff24a5360c86a46fcd40fbc9bbc76050245eca"
+    },
+    {
+      "id": "batch.alias.operation.get_view.default",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_4_id: String!) {\n  entry_4: customView(id: $entry_4_id) {\n    id\n    name\n    description\n    icon\n    color\n    filterData\n    projectFilterData\n    initiativeFilterData\n    feedItemFilterData\n    shared\n    slugId\n    archivedAt\n    createdAt\n    updatedAt\n    modelName\n    team {\n      id\n      key\n      name\n    }\n    owner {\n      id\n      name\n      email\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "customView"
+      ],
+      "variables": {
+        "entry_4_id": "String!"
+      },
+      "sha256": "cab97204e8216c80ba0d9a052526f93af688152f0754833042c90570fc070539"
+    },
+    {
+      "id": "batch.alias.operation.list_comments.default",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_0_after: String, $entry_0_before: String, $entry_0_first: Int, $entry_0_includeArchived: Boolean, $entry_0_last: Int, $entry_0_orderBy: PaginationOrderBy, $entry_0_filter: CommentFilter) {\n  entry_0: comments(\n    after: $entry_0_after\n    before: $entry_0_before\n    first: $entry_0_first\n    includeArchived: $entry_0_includeArchived\n    last: $entry_0_last\n    orderBy: $entry_0_orderBy\n    filter: $entry_0_filter\n  ) {\n    nodes {\n      id\n      body\n      quotedText\n      createdAt\n      updatedAt\n      editedAt\n      resolvedAt\n      url\n      issue {\n        id\n        identifier\n        title\n      }\n      parent {\n        id\n      }\n      user {\n        id\n        name\n        email\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "comments"
+      ],
+      "variables": {
+        "entry_0_after": "String",
+        "entry_0_before": "String",
+        "entry_0_first": "Int",
+        "entry_0_includeArchived": "Boolean",
+        "entry_0_last": "Int",
+        "entry_0_orderBy": "PaginationOrderBy",
+        "entry_0_filter": "CommentFilter"
+      },
+      "sha256": "41e4c96ed4d6a0765ec60e0b9caadf48ab2b44607e8f0671db3b3c3b232cdda5"
+    },
+    {
+      "id": "batch.alias.operation.list_cycles.default",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_8_after: String, $entry_8_before: String, $entry_8_first: Int, $entry_8_includeArchived: Boolean, $entry_8_last: Int, $entry_8_orderBy: PaginationOrderBy, $entry_8_filter: CycleFilter) {\n  entry_8: cycles(\n    after: $entry_8_after\n    before: $entry_8_before\n    first: $entry_8_first\n    includeArchived: $entry_8_includeArchived\n    last: $entry_8_last\n    orderBy: $entry_8_orderBy\n    filter: $entry_8_filter\n  ) {\n    nodes {\n      id\n      name\n      number\n      description\n      startsAt\n      endsAt\n      completedAt\n      archivedAt\n      autoArchivedAt\n      isActive\n      isFuture\n      isPast\n      isNext\n      isPrevious\n      progress\n      createdAt\n      updatedAt\n      team {\n        id\n        key\n        name\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "cycles"
+      ],
+      "variables": {
+        "entry_8_after": "String",
+        "entry_8_before": "String",
+        "entry_8_first": "Int",
+        "entry_8_includeArchived": "Boolean",
+        "entry_8_last": "Int",
+        "entry_8_orderBy": "PaginationOrderBy",
+        "entry_8_filter": "CycleFilter"
+      },
+      "sha256": "110842c35490bebb0f0ad25248c0c0a2a89ae91f7d3a123f3a3bb54b0a42ea4f"
+    },
+    {
+      "id": "batch.alias.operation.list_documents.full",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_13_after: String, $entry_13_before: String, $entry_13_first: Int, $entry_13_includeArchived: Boolean, $entry_13_last: Int, $entry_13_orderBy: PaginationOrderBy, $entry_13_filter: DocumentFilter, $entry_13_sort: [DocumentSortInput!]) {\n  entry_13: documents(\n    after: $entry_13_after\n    before: $entry_13_before\n    first: $entry_13_first\n    includeArchived: $entry_13_includeArchived\n    last: $entry_13_last\n    orderBy: $entry_13_orderBy\n    filter: $entry_13_filter\n    sort: $entry_13_sort\n  ) {\n    nodes {\n      id\n      title\n      content\n      color\n      icon\n      slugId\n      sortOrder\n      hiddenAt\n      trashed\n      summary\n      archivedAt\n      createdAt\n      updatedAt\n      url\n      team {\n        id\n        key\n        name\n      }\n      project {\n        id\n        name\n      }\n      issue {\n        id\n        identifier\n        title\n      }\n      initiative {\n        id\n        name\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "documents"
+      ],
+      "variables": {
+        "entry_13_after": "String",
+        "entry_13_before": "String",
+        "entry_13_first": "Int",
+        "entry_13_includeArchived": "Boolean",
+        "entry_13_last": "Int",
+        "entry_13_orderBy": "PaginationOrderBy",
+        "entry_13_filter": "DocumentFilter",
+        "entry_13_sort": "[DocumentSortInput!]"
+      },
+      "sha256": "9cf1bfc71a9bad0ef710208c98e62ce1da1ea60d52cea1ff0b7279d74abfe909"
+    },
+    {
+      "id": "batch.alias.operation.list_documents.summary",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_12_after: String, $entry_12_before: String, $entry_12_first: Int, $entry_12_includeArchived: Boolean, $entry_12_last: Int, $entry_12_orderBy: PaginationOrderBy, $entry_12_filter: DocumentFilter, $entry_12_sort: [DocumentSortInput!]) {\n  entry_12: documents(\n    after: $entry_12_after\n    before: $entry_12_before\n    first: $entry_12_first\n    includeArchived: $entry_12_includeArchived\n    last: $entry_12_last\n    orderBy: $entry_12_orderBy\n    filter: $entry_12_filter\n    sort: $entry_12_sort\n  ) {\n    nodes {\n      id\n      title\n      url\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "documents"
+      ],
+      "variables": {
+        "entry_12_after": "String",
+        "entry_12_before": "String",
+        "entry_12_first": "Int",
+        "entry_12_includeArchived": "Boolean",
+        "entry_12_last": "Int",
+        "entry_12_orderBy": "PaginationOrderBy",
+        "entry_12_filter": "DocumentFilter",
+        "entry_12_sort": "[DocumentSortInput!]"
+      },
+      "sha256": "feec93c1f0106dbf0882903b999d948a795782b48dad230f21eeba87d8f19dd9"
+    },
+    {
+      "id": "batch.alias.operation.list_initiatives.default",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_18_after: String, $entry_18_before: String, $entry_18_first: Int, $entry_18_includeArchived: Boolean, $entry_18_last: Int, $entry_18_orderBy: PaginationOrderBy, $entry_18_filter: InitiativeFilter, $entry_18_sort: [InitiativeSortInput!]) {\n  entry_18: initiatives(\n    after: $entry_18_after\n    before: $entry_18_before\n    first: $entry_18_first\n    includeArchived: $entry_18_includeArchived\n    last: $entry_18_last\n    orderBy: $entry_18_orderBy\n    filter: $entry_18_filter\n    sort: $entry_18_sort\n  ) {\n    nodes {\n      id\n      name\n      description\n      content\n      status\n      color\n      icon\n      targetDate\n      targetDateResolution\n      sortOrder\n      health\n      completedAt\n      startedAt\n      archivedAt\n      trashed\n      createdAt\n      updatedAt\n      url\n      owner {\n        id\n        name\n        email\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "initiatives"
+      ],
+      "variables": {
+        "entry_18_after": "String",
+        "entry_18_before": "String",
+        "entry_18_first": "Int",
+        "entry_18_includeArchived": "Boolean",
+        "entry_18_last": "Int",
+        "entry_18_orderBy": "PaginationOrderBy",
+        "entry_18_filter": "InitiativeFilter",
+        "entry_18_sort": "[InitiativeSortInput!]"
+      },
+      "sha256": "1fbb234267f91deb345e6b22455920efadf26fbbb8c06d2813c155b2ab7ab13a"
+    },
+    {
+      "id": "batch.alias.operation.list_issue_labels.default",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_20_after: String, $entry_20_before: String, $entry_20_first: Int, $entry_20_includeArchived: Boolean, $entry_20_last: Int, $entry_20_orderBy: PaginationOrderBy, $entry_20_filter: IssueLabelFilter) {\n  entry_20: issueLabels(\n    after: $entry_20_after\n    before: $entry_20_before\n    first: $entry_20_first\n    includeArchived: $entry_20_includeArchived\n    last: $entry_20_last\n    orderBy: $entry_20_orderBy\n    filter: $entry_20_filter\n  ) {\n    nodes {\n      id\n      name\n      description\n      color\n      isGroup\n      createdAt\n      updatedAt\n      retiredAt\n      team {\n        id\n        key\n        name\n      }\n      parent {\n        id\n        name\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "issueLabels"
+      ],
+      "variables": {
+        "entry_20_after": "String",
+        "entry_20_before": "String",
+        "entry_20_first": "Int",
+        "entry_20_includeArchived": "Boolean",
+        "entry_20_last": "Int",
+        "entry_20_orderBy": "PaginationOrderBy",
+        "entry_20_filter": "IssueLabelFilter"
+      },
+      "sha256": "a60b3370dad736119f8e0e51ea3f1473ef011551db1590083584815eb25fb5a6"
+    },
+    {
+      "id": "batch.alias.operation.list_issue_relations.default",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_23_after: String, $entry_23_before: String, $entry_23_first: Int, $entry_23_includeArchived: Boolean, $entry_23_last: Int, $entry_23_orderBy: PaginationOrderBy) {\n  entry_23: issueRelations(\n    after: $entry_23_after\n    before: $entry_23_before\n    first: $entry_23_first\n    includeArchived: $entry_23_includeArchived\n    last: $entry_23_last\n    orderBy: $entry_23_orderBy\n  ) {\n    nodes {\n      id\n      createdAt\n      updatedAt\n      type\n      issue {\n        id\n        identifier\n        title\n      }\n      relatedIssue {\n        id\n        identifier\n        title\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "issueRelations"
+      ],
+      "variables": {
+        "entry_23_after": "String",
+        "entry_23_before": "String",
+        "entry_23_first": "Int",
+        "entry_23_includeArchived": "Boolean",
+        "entry_23_last": "Int",
+        "entry_23_orderBy": "PaginationOrderBy"
+      },
+      "sha256": "1276bf43024c8eff13b3efa6cc6588c14f70d9723fd6d65f77ac2dd6e0f8fb11"
+    },
+    {
+      "id": "batch.alias.operation.list_issue_statuses.default",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_27_after: String, $entry_27_before: String, $entry_27_first: Int, $entry_27_includeArchived: Boolean, $entry_27_last: Int, $entry_27_orderBy: PaginationOrderBy, $entry_27_filter: WorkflowStateFilter) {\n  entry_27: workflowStates(\n    after: $entry_27_after\n    before: $entry_27_before\n    first: $entry_27_first\n    includeArchived: $entry_27_includeArchived\n    last: $entry_27_last\n    orderBy: $entry_27_orderBy\n    filter: $entry_27_filter\n  ) {\n    nodes {\n      id\n      name\n      type\n      color\n      position\n      description\n      createdAt\n      updatedAt\n      team {\n        id\n        key\n        name\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "workflowStates"
+      ],
+      "variables": {
+        "entry_27_after": "String",
+        "entry_27_before": "String",
+        "entry_27_first": "Int",
+        "entry_27_includeArchived": "Boolean",
+        "entry_27_last": "Int",
+        "entry_27_orderBy": "PaginationOrderBy",
+        "entry_27_filter": "WorkflowStateFilter"
+      },
+      "sha256": "856a8eca1b8407863f6e9d15d8148a8a3d2e0a4a012e9957cb14f1b4a4e66c9d"
+    },
+    {
+      "id": "batch.alias.operation.list_issues.full",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_29_after: String, $entry_29_before: String, $entry_29_first: Int, $entry_29_includeArchived: Boolean, $entry_29_last: Int, $entry_29_orderBy: PaginationOrderBy, $entry_29_filter: IssueFilter, $entry_29_sort: [IssueSortInput!]) {\n  entry_29: issues(\n    after: $entry_29_after\n    before: $entry_29_before\n    first: $entry_29_first\n    includeArchived: $entry_29_includeArchived\n    last: $entry_29_last\n    orderBy: $entry_29_orderBy\n    filter: $entry_29_filter\n    sort: $entry_29_sort\n  ) {\n    nodes {\n      id\n      identifier\n      number\n      title\n      description\n      priority\n      url\n      branchName\n      dueDate\n      createdAt\n      updatedAt\n      estimate\n      priorityLabel\n      completedAt\n      startedAt\n      archivedAt\n      trashed\n      state {\n        id\n        name\n        type\n      }\n      team {\n        id\n        key\n        name\n      }\n      assignee {\n        id\n        name\n        email\n      }\n      labels(first: 50) {\n        nodes {\n          id\n          name\n        }\n      }\n      project {\n        id\n        name\n      }\n      parent {\n        id\n        identifier\n        title\n      }\n      cycle {\n        id\n        name\n        number\n      }\n      creator {\n        id\n        name\n        email\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "issues"
+      ],
+      "variables": {
+        "entry_29_after": "String",
+        "entry_29_before": "String",
+        "entry_29_first": "Int",
+        "entry_29_includeArchived": "Boolean",
+        "entry_29_last": "Int",
+        "entry_29_orderBy": "PaginationOrderBy",
+        "entry_29_filter": "IssueFilter",
+        "entry_29_sort": "[IssueSortInput!]"
+      },
+      "sha256": "5d87624046335f112d7c6b38fd6eb4b9e92e1323e46921cdedb2fb29fdd857b6"
+    },
+    {
+      "id": "batch.alias.operation.list_issues.summary",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_28_after: String, $entry_28_before: String, $entry_28_first: Int, $entry_28_includeArchived: Boolean, $entry_28_last: Int, $entry_28_orderBy: PaginationOrderBy, $entry_28_filter: IssueFilter, $entry_28_sort: [IssueSortInput!]) {\n  entry_28: issues(\n    after: $entry_28_after\n    before: $entry_28_before\n    first: $entry_28_first\n    includeArchived: $entry_28_includeArchived\n    last: $entry_28_last\n    orderBy: $entry_28_orderBy\n    filter: $entry_28_filter\n    sort: $entry_28_sort\n  ) {\n    nodes {\n      id\n      identifier\n      title\n      url\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "issues"
+      ],
+      "variables": {
+        "entry_28_after": "String",
+        "entry_28_before": "String",
+        "entry_28_first": "Int",
+        "entry_28_includeArchived": "Boolean",
+        "entry_28_last": "Int",
+        "entry_28_orderBy": "PaginationOrderBy",
+        "entry_28_filter": "IssueFilter",
+        "entry_28_sort": "[IssueSortInput!]"
+      },
+      "sha256": "175a39eb2bf9e35b931e1569a1f2b76035e9349c317770f8045847a8af665689"
+    },
+    {
+      "id": "batch.alias.operation.list_milestones.default",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_38_after: String, $entry_38_before: String, $entry_38_first: Int, $entry_38_includeArchived: Boolean, $entry_38_last: Int, $entry_38_orderBy: PaginationOrderBy, $entry_38_filter: ProjectMilestoneFilter) {\n  entry_38: projectMilestones(\n    after: $entry_38_after\n    before: $entry_38_before\n    first: $entry_38_first\n    includeArchived: $entry_38_includeArchived\n    last: $entry_38_last\n    orderBy: $entry_38_orderBy\n    filter: $entry_38_filter\n  ) {\n    nodes {\n      id\n      name\n      description\n      status\n      progress\n      targetDate\n      sortOrder\n      createdAt\n      updatedAt\n      project {\n        id\n        name\n        url\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "projectMilestones"
+      ],
+      "variables": {
+        "entry_38_after": "String",
+        "entry_38_before": "String",
+        "entry_38_first": "Int",
+        "entry_38_includeArchived": "Boolean",
+        "entry_38_last": "Int",
+        "entry_38_orderBy": "PaginationOrderBy",
+        "entry_38_filter": "ProjectMilestoneFilter"
+      },
+      "sha256": "a6781d4a16aed67cf9475271ad12daf02e6db4e385779535f67f2ac4557ef5ff"
+    },
+    {
+      "id": "batch.alias.operation.list_project_labels.default",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_40_after: String, $entry_40_before: String, $entry_40_first: Int, $entry_40_includeArchived: Boolean, $entry_40_last: Int, $entry_40_orderBy: PaginationOrderBy, $entry_40_filter: ProjectLabelFilter) {\n  entry_40: projectLabels(\n    after: $entry_40_after\n    before: $entry_40_before\n    first: $entry_40_first\n    includeArchived: $entry_40_includeArchived\n    last: $entry_40_last\n    orderBy: $entry_40_orderBy\n    filter: $entry_40_filter\n  ) {\n    nodes {\n      id\n      name\n      description\n      color\n      isGroup\n      createdAt\n      updatedAt\n      retiredAt\n      parent {\n        id\n        name\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "projectLabels"
+      ],
+      "variables": {
+        "entry_40_after": "String",
+        "entry_40_before": "String",
+        "entry_40_first": "Int",
+        "entry_40_includeArchived": "Boolean",
+        "entry_40_last": "Int",
+        "entry_40_orderBy": "PaginationOrderBy",
+        "entry_40_filter": "ProjectLabelFilter"
+      },
+      "sha256": "50169e5ad84c83746ff40441276de6895c12c4f495253e2b5877050a1d4d0304"
+    },
+    {
+      "id": "batch.alias.operation.list_project_relations.default",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_43_after: String, $entry_43_before: String, $entry_43_first: Int, $entry_43_includeArchived: Boolean, $entry_43_last: Int, $entry_43_orderBy: PaginationOrderBy) {\n  entry_43: projectRelations(\n    after: $entry_43_after\n    before: $entry_43_before\n    first: $entry_43_first\n    includeArchived: $entry_43_includeArchived\n    last: $entry_43_last\n    orderBy: $entry_43_orderBy\n  ) {\n    nodes {\n      id\n      createdAt\n      updatedAt\n      type\n      anchorType\n      relatedAnchorType\n      project {\n        id\n        name\n      }\n      projectMilestone {\n        id\n        name\n      }\n      relatedProject {\n        id\n        name\n      }\n      relatedProjectMilestone {\n        id\n        name\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "projectRelations"
+      ],
+      "variables": {
+        "entry_43_after": "String",
+        "entry_43_before": "String",
+        "entry_43_first": "Int",
+        "entry_43_includeArchived": "Boolean",
+        "entry_43_last": "Int",
+        "entry_43_orderBy": "PaginationOrderBy"
+      },
+      "sha256": "3f663e43609311d43ea9bbafa279740d5408d560263785b3c516def5d04ea903"
+    },
+    {
+      "id": "batch.alias.operation.list_projects.full",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_47_after: String, $entry_47_before: String, $entry_47_first: Int, $entry_47_includeArchived: Boolean, $entry_47_last: Int, $entry_47_orderBy: PaginationOrderBy, $entry_47_filter: ProjectFilter, $entry_47_sort: [ProjectSortInput!]) {\n  entry_47: projects(\n    after: $entry_47_after\n    before: $entry_47_before\n    first: $entry_47_first\n    includeArchived: $entry_47_includeArchived\n    last: $entry_47_last\n    orderBy: $entry_47_orderBy\n    filter: $entry_47_filter\n    sort: $entry_47_sort\n  ) {\n    nodes {\n      id\n      name\n      description\n      color\n      icon\n      state\n      priority\n      slugId\n      startDate\n      targetDate\n      completedAt\n      canceledAt\n      health\n      progress\n      startedAt\n      archivedAt\n      trashed\n      priorityLabel\n      createdAt\n      updatedAt\n      url\n      teams(first: 10) {\n        nodes {\n          id\n          key\n          name\n        }\n      }\n      lead {\n        id\n        name\n        email\n      }\n      members(first: 10) {\n        nodes {\n          id\n          name\n          email\n        }\n      }\n      status {\n        id\n        name\n      }\n      content\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "projects"
+      ],
+      "variables": {
+        "entry_47_after": "String",
+        "entry_47_before": "String",
+        "entry_47_first": "Int",
+        "entry_47_includeArchived": "Boolean",
+        "entry_47_last": "Int",
+        "entry_47_orderBy": "PaginationOrderBy",
+        "entry_47_filter": "ProjectFilter",
+        "entry_47_sort": "[ProjectSortInput!]"
+      },
+      "sha256": "c4a0bb85f0bfe87721e03d4bf1dfb8a40267bb91ba6ab140e7b743136c6aafad"
+    },
+    {
+      "id": "batch.alias.operation.list_projects.summary",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_46_after: String, $entry_46_before: String, $entry_46_first: Int, $entry_46_includeArchived: Boolean, $entry_46_last: Int, $entry_46_orderBy: PaginationOrderBy, $entry_46_filter: ProjectFilter, $entry_46_sort: [ProjectSortInput!]) {\n  entry_46: projects(\n    after: $entry_46_after\n    before: $entry_46_before\n    first: $entry_46_first\n    includeArchived: $entry_46_includeArchived\n    last: $entry_46_last\n    orderBy: $entry_46_orderBy\n    filter: $entry_46_filter\n    sort: $entry_46_sort\n  ) {\n    nodes {\n      id\n      name\n      url\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "projects"
+      ],
+      "variables": {
+        "entry_46_after": "String",
+        "entry_46_before": "String",
+        "entry_46_first": "Int",
+        "entry_46_includeArchived": "Boolean",
+        "entry_46_last": "Int",
+        "entry_46_orderBy": "PaginationOrderBy",
+        "entry_46_filter": "ProjectFilter",
+        "entry_46_sort": "[ProjectSortInput!]"
+      },
+      "sha256": "3ad8c75eb0228575ca2fca97feb79376f897b1798bc44da3c8d19cc24788ebe2"
+    },
+    {
+      "id": "batch.alias.operation.list_teams.default",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_50_after: String, $entry_50_before: String, $entry_50_first: Int, $entry_50_includeArchived: Boolean, $entry_50_last: Int, $entry_50_orderBy: PaginationOrderBy, $entry_50_filter: TeamFilter) {\n  entry_50: teams(\n    after: $entry_50_after\n    before: $entry_50_before\n    first: $entry_50_first\n    includeArchived: $entry_50_includeArchived\n    last: $entry_50_last\n    orderBy: $entry_50_orderBy\n    filter: $entry_50_filter\n  ) {\n    nodes {\n      id\n      key\n      name\n      description\n      color\n      icon\n      private\n      createdAt\n      updatedAt\n      states(first: 50) {\n        nodes {\n          id\n          name\n          type\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "teams"
+      ],
+      "variables": {
+        "entry_50_after": "String",
+        "entry_50_before": "String",
+        "entry_50_first": "Int",
+        "entry_50_includeArchived": "Boolean",
+        "entry_50_last": "Int",
+        "entry_50_orderBy": "PaginationOrderBy",
+        "entry_50_filter": "TeamFilter"
+      },
+      "sha256": "cf16e665d47f28422a25e44832c8d45f67a01dc2443bcc4326d45b488be9b14c"
+    },
+    {
+      "id": "batch.alias.operation.list_users.default",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_52_after: String, $entry_52_before: String, $entry_52_first: Int, $entry_52_includeArchived: Boolean, $entry_52_last: Int, $entry_52_orderBy: PaginationOrderBy, $entry_52_filter: UserFilter, $entry_52_sort: [UserSortInput!], $entry_52_includeDisabled: Boolean) {\n  entry_52: users(\n    after: $entry_52_after\n    before: $entry_52_before\n    first: $entry_52_first\n    includeArchived: $entry_52_includeArchived\n    last: $entry_52_last\n    orderBy: $entry_52_orderBy\n    filter: $entry_52_filter\n    sort: $entry_52_sort\n    includeDisabled: $entry_52_includeDisabled\n  ) {\n    nodes {\n      id\n      name\n      displayName\n      email\n      active\n      admin\n      guest\n      isAssignable\n      createdAt\n      updatedAt\n      url\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "users"
+      ],
+      "variables": {
+        "entry_52_after": "String",
+        "entry_52_before": "String",
+        "entry_52_first": "Int",
+        "entry_52_includeArchived": "Boolean",
+        "entry_52_last": "Int",
+        "entry_52_orderBy": "PaginationOrderBy",
+        "entry_52_filter": "UserFilter",
+        "entry_52_sort": "[UserSortInput!]",
+        "entry_52_includeDisabled": "Boolean"
+      },
+      "sha256": "73fc0a72b1e116952d9d85f0741b5643cbef9cbc2dd2335d7c4f7e7f9c97747b"
+    },
+    {
+      "id": "batch.alias.operation.list_views.default",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_3_after: String, $entry_3_before: String, $entry_3_first: Int, $entry_3_includeArchived: Boolean, $entry_3_last: Int, $entry_3_orderBy: PaginationOrderBy, $entry_3_filter: CustomViewFilter) {\n  entry_3: customViews(\n    after: $entry_3_after\n    before: $entry_3_before\n    first: $entry_3_first\n    includeArchived: $entry_3_includeArchived\n    last: $entry_3_last\n    orderBy: $entry_3_orderBy\n    filter: $entry_3_filter\n  ) {\n    nodes {\n      id\n      name\n      description\n      icon\n      color\n      filterData\n      projectFilterData\n      initiativeFilterData\n      feedItemFilterData\n      shared\n      slugId\n      archivedAt\n      createdAt\n      updatedAt\n      modelName\n      team {\n        id\n        key\n        name\n      }\n      owner {\n        id\n        name\n        email\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "customViews"
+      ],
+      "variables": {
+        "entry_3_after": "String",
+        "entry_3_before": "String",
+        "entry_3_first": "Int",
+        "entry_3_includeArchived": "Boolean",
+        "entry_3_last": "Int",
+        "entry_3_orderBy": "PaginationOrderBy",
+        "entry_3_filter": "CustomViewFilter"
+      },
+      "sha256": "2874e4a013501d1ab527304e34e49bfd6834c324733a65c590d4deca03a70599"
+    },
+    {
+      "id": "batch.alias.operation.save_initiative.create",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_54_input: InitiativeCreateInput!) {\n  entry_54: initiativeCreate(input: $entry_54_input) {\n    success\n    initiative {\n      id\n      name\n      description\n      content\n      status\n      color\n      icon\n      targetDate\n      targetDateResolution\n      sortOrder\n      health\n      completedAt\n      startedAt\n      archivedAt\n      trashed\n      createdAt\n      updatedAt\n      url\n      owner {\n        id\n        name\n        email\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "initiativeCreate"
+      ],
+      "variables": {
+        "entry_54_input": "InitiativeCreateInput!"
+      },
+      "sha256": "02c0b9eed29f337863a7a7c91d6301a1e3364a21496f9ed66b1ac487f3b2509a"
+    },
+    {
+      "id": "batch.alias.operation.save_initiative.update",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_55_id: String!, $entry_55_input: InitiativeUpdateInput!) {\n  entry_55: initiativeUpdate(id: $entry_55_id, input: $entry_55_input) {\n    success\n    initiative {\n      id\n      name\n      description\n      content\n      status\n      color\n      icon\n      targetDate\n      targetDateResolution\n      sortOrder\n      health\n      completedAt\n      startedAt\n      archivedAt\n      trashed\n      createdAt\n      updatedAt\n      url\n      owner {\n        id\n        name\n        email\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "initiativeUpdate"
+      ],
+      "variables": {
+        "entry_55_id": "String!",
+        "entry_55_input": "InitiativeUpdateInput!"
+      },
+      "sha256": "a3a0955c991b870a408d949066abf2ccf4ae29d1a5ee814d72d8c9307cdc2d37"
+    },
+    {
+      "id": "batch.alias.operation.save_milestone.create",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_56_input: ProjectMilestoneCreateInput!) {\n  entry_56: projectMilestoneCreate(input: $entry_56_input) {\n    success\n    projectMilestone {\n      id\n      name\n      description\n      status\n      progress\n      targetDate\n      sortOrder\n      createdAt\n      updatedAt\n      project {\n        id\n        name\n        url\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "projectMilestoneCreate"
+      ],
+      "variables": {
+        "entry_56_input": "ProjectMilestoneCreateInput!"
+      },
+      "sha256": "7e33d8fe56a7ce617be5ed4dbd44c128ec6d478ba08b066f45d0b866bb0287bd"
+    },
+    {
+      "id": "batch.alias.operation.save_milestone.update",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_57_id: String!, $entry_57_input: ProjectMilestoneUpdateInput!) {\n  entry_57: projectMilestoneUpdate(id: $entry_57_id, input: $entry_57_input) {\n    success\n    projectMilestone {\n      id\n      name\n      description\n      status\n      progress\n      targetDate\n      sortOrder\n      createdAt\n      updatedAt\n      project {\n        id\n        name\n        url\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "projectMilestoneUpdate"
+      ],
+      "variables": {
+        "entry_57_id": "String!",
+        "entry_57_input": "ProjectMilestoneUpdateInput!"
+      },
+      "sha256": "d4e40d89be97540b175846af155088a9536c1034c777cfae06f32e70bdb053c4"
+    },
+    {
+      "id": "batch.alias.operation.save_project.create",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_58_input: ProjectCreateInput!, $entry_58_slackChannelName: String) {\n  entry_58: projectCreate(\n    input: $entry_58_input\n    slackChannelName: $entry_58_slackChannelName\n  ) {\n    success\n    project {\n      id\n      name\n      description\n      color\n      icon\n      state\n      priority\n      slugId\n      startDate\n      targetDate\n      completedAt\n      canceledAt\n      health\n      progress\n      startedAt\n      archivedAt\n      trashed\n      priorityLabel\n      createdAt\n      updatedAt\n      url\n      teams(first: 10) {\n        nodes {\n          id\n          key\n          name\n        }\n      }\n      lead {\n        id\n        name\n        email\n      }\n      members(first: 10) {\n        nodes {\n          id\n          name\n          email\n        }\n      }\n      status {\n        id\n        name\n      }\n      content\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "projectCreate"
+      ],
+      "variables": {
+        "entry_58_input": "ProjectCreateInput!",
+        "entry_58_slackChannelName": "String"
+      },
+      "sha256": "da287c1d9040b2e8e8dbcc4f563545a6843109491bb3d2c8df3fe40b3d7fa050"
+    },
+    {
+      "id": "batch.alias.operation.save_project.update",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_59_id: String!, $entry_59_input: ProjectUpdateInput!) {\n  entry_59: projectUpdate(id: $entry_59_id, input: $entry_59_input) {\n    success\n    project {\n      id\n      name\n      description\n      color\n      icon\n      state\n      priority\n      slugId\n      startDate\n      targetDate\n      completedAt\n      canceledAt\n      health\n      progress\n      startedAt\n      archivedAt\n      trashed\n      priorityLabel\n      createdAt\n      updatedAt\n      url\n      teams(first: 10) {\n        nodes {\n          id\n          key\n          name\n        }\n      }\n      lead {\n        id\n        name\n        email\n      }\n      members(first: 10) {\n        nodes {\n          id\n          name\n          email\n        }\n      }\n      status {\n        id\n        name\n      }\n      content\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "projectUpdate"
+      ],
+      "variables": {
+        "entry_59_id": "String!",
+        "entry_59_input": "ProjectUpdateInput!"
+      },
+      "sha256": "51ab79ae0d6a99ea62e68facdb5707fea0f4e9467fe153a66aa17684c416e0a9"
+    },
+    {
+      "id": "batch.alias.operation.search_issues.exact-full",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_37_id: String!) {\n  entry_37: issue(id: $entry_37_id) {\n    id\n    identifier\n    number\n    title\n    description\n    priority\n    url\n    branchName\n    dueDate\n    createdAt\n    updatedAt\n    estimate\n    priorityLabel\n    completedAt\n    startedAt\n    archivedAt\n    trashed\n    state {\n      id\n      name\n      type\n    }\n    team {\n      id\n      key\n      name\n    }\n    assignee {\n      id\n      name\n      email\n    }\n    labels(first: 50) {\n      nodes {\n        id\n        name\n      }\n    }\n    project {\n      id\n      name\n    }\n    parent {\n      id\n      identifier\n      title\n    }\n    cycle {\n      id\n      name\n      number\n    }\n    creator {\n      id\n      name\n      email\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "issue"
+      ],
+      "variables": {
+        "entry_37_id": "String!"
+      },
+      "sha256": "7b47fe403e55962b473935f6f5747c432594073c545dcd0e3ba1cf7b0f6c56b9"
+    },
+    {
+      "id": "batch.alias.operation.search_issues.exact-summary",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_36_id: String!) {\n  entry_36: issue(id: $entry_36_id) {\n    id\n    identifier\n    title\n    url\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "issue"
+      ],
+      "variables": {
+        "entry_36_id": "String!"
+      },
+      "sha256": "e8a7d2dcc52fdddb121978e150a82f867cbc904fffeaa7bde908c3dc72b2ccbe"
+    },
+    {
+      "id": "batch.alias.operation.search_issues.full",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_35_after: String, $entry_35_before: String, $entry_35_first: Int, $entry_35_includeArchived: Boolean, $entry_35_last: Int, $entry_35_orderBy: PaginationOrderBy, $entry_35_filter: IssueFilter, $entry_35_term: String!, $entry_35_includeComments: Boolean, $entry_35_teamId: String) {\n  entry_35: searchIssues(\n    after: $entry_35_after\n    before: $entry_35_before\n    first: $entry_35_first\n    includeArchived: $entry_35_includeArchived\n    last: $entry_35_last\n    orderBy: $entry_35_orderBy\n    filter: $entry_35_filter\n    term: $entry_35_term\n    includeComments: $entry_35_includeComments\n    teamId: $entry_35_teamId\n  ) {\n    nodes {\n      id\n      identifier\n      number\n      title\n      description\n      priority\n      url\n      branchName\n      dueDate\n      createdAt\n      updatedAt\n      estimate\n      priorityLabel\n      completedAt\n      startedAt\n      archivedAt\n      trashed\n      state {\n        id\n        name\n        type\n      }\n      team {\n        id\n        key\n        name\n      }\n      assignee {\n        id\n        name\n        email\n      }\n      labels(first: 50) {\n        nodes {\n          id\n          name\n        }\n      }\n      project {\n        id\n        name\n      }\n      parent {\n        id\n        identifier\n        title\n      }\n      cycle {\n        id\n        name\n        number\n      }\n      creator {\n        id\n        name\n        email\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n    totalCount\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "searchIssues"
+      ],
+      "variables": {
+        "entry_35_after": "String",
+        "entry_35_before": "String",
+        "entry_35_first": "Int",
+        "entry_35_includeArchived": "Boolean",
+        "entry_35_last": "Int",
+        "entry_35_orderBy": "PaginationOrderBy",
+        "entry_35_filter": "IssueFilter",
+        "entry_35_term": "String!",
+        "entry_35_includeComments": "Boolean",
+        "entry_35_teamId": "String"
+      },
+      "sha256": "949c04452d1c913233d71245eb6388e222f81f7267f481ea196fb08493987fe4"
+    },
+    {
+      "id": "batch.alias.operation.search_issues.summary",
+      "sourceClass": "compiled-batch",
+      "document": "query ($entry_34_after: String, $entry_34_before: String, $entry_34_first: Int, $entry_34_includeArchived: Boolean, $entry_34_last: Int, $entry_34_orderBy: PaginationOrderBy, $entry_34_filter: IssueFilter, $entry_34_term: String!, $entry_34_includeComments: Boolean, $entry_34_teamId: String) {\n  entry_34: searchIssues(\n    after: $entry_34_after\n    before: $entry_34_before\n    first: $entry_34_first\n    includeArchived: $entry_34_includeArchived\n    last: $entry_34_last\n    orderBy: $entry_34_orderBy\n    filter: $entry_34_filter\n    term: $entry_34_term\n    includeComments: $entry_34_includeComments\n    teamId: $entry_34_teamId\n  ) {\n    nodes {\n      id\n      identifier\n      title\n      url\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n    totalCount\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "searchIssues"
+      ],
+      "variables": {
+        "entry_34_after": "String",
+        "entry_34_before": "String",
+        "entry_34_first": "Int",
+        "entry_34_includeArchived": "Boolean",
+        "entry_34_last": "Int",
+        "entry_34_orderBy": "PaginationOrderBy",
+        "entry_34_filter": "IssueFilter",
+        "entry_34_term": "String!",
+        "entry_34_includeComments": "Boolean",
+        "entry_34_teamId": "String"
+      },
+      "sha256": "877c51749e6e0a257410e28649a90c5b4407235ba6351007472d0a233e358b78"
+    },
+    {
+      "id": "batch.alias.operation.set_view_preferences.viewPreferencesCreate",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_7_input: ViewPreferencesCreateInput!) {\n  entry_7: viewPreferencesCreate(input: $entry_7_input) {\n    success\n    viewPreferences {\n      id\n      type\n      viewType\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "viewPreferencesCreate"
+      ],
+      "variables": {
+        "entry_7_input": "ViewPreferencesCreateInput!"
+      },
+      "sha256": "402f2f6e76b2ea002b68800bca48df3d5a03504c1a0dc85b112642fe0a0cdedb"
+    },
+    {
+      "id": "batch.alias.operation.update_comment.commentUpdate",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_2_id: String!, $entry_2_input: CommentUpdateInput!, $entry_2_skipEditedAt: Boolean) {\n  entry_2: commentUpdate(\n    id: $entry_2_id\n    input: $entry_2_input\n    skipEditedAt: $entry_2_skipEditedAt\n  ) {\n    success\n    comment {\n      id\n      body\n      quotedText\n      createdAt\n      updatedAt\n      editedAt\n      resolvedAt\n      url\n      issue {\n        id\n        identifier\n        title\n      }\n      parent {\n        id\n      }\n      user {\n        id\n        name\n        email\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "commentUpdate"
+      ],
+      "variables": {
+        "entry_2_id": "String!",
+        "entry_2_input": "CommentUpdateInput!",
+        "entry_2_skipEditedAt": "Boolean"
+      },
+      "sha256": "9851722a0c33e01d0108997906ad5b46d1f6ddcb61f63be7e8f69457f695fe54"
+    },
+    {
+      "id": "batch.alias.operation.update_cycle.cycleUpdate",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_11_id: String!, $entry_11_input: CycleUpdateInput!) {\n  entry_11: cycleUpdate(id: $entry_11_id, input: $entry_11_input) {\n    success\n    cycle {\n      id\n      name\n      number\n      description\n      startsAt\n      endsAt\n      completedAt\n      archivedAt\n      autoArchivedAt\n      isActive\n      isFuture\n      isPast\n      isNext\n      isPrevious\n      progress\n      createdAt\n      updatedAt\n      team {\n        id\n        key\n        name\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "cycleUpdate"
+      ],
+      "variables": {
+        "entry_11_id": "String!",
+        "entry_11_input": "CycleUpdateInput!"
+      },
+      "sha256": "bf060862c30cc35089790b6994240749b01d1c8ad266032a4fc9247ee73dac37"
+    },
+    {
+      "id": "batch.alias.operation.update_document.documentUpdate",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_17_id: String!, $entry_17_input: DocumentUpdateInput!) {\n  entry_17: documentUpdate(id: $entry_17_id, input: $entry_17_input) {\n    success\n    document {\n      id\n      title\n      content\n      color\n      icon\n      slugId\n      sortOrder\n      hiddenAt\n      trashed\n      summary\n      archivedAt\n      createdAt\n      updatedAt\n      url\n      team {\n        id\n        key\n        name\n      }\n      project {\n        id\n        name\n      }\n      issue {\n        id\n        identifier\n        title\n      }\n      initiative {\n        id\n        name\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "documentUpdate"
+      ],
+      "variables": {
+        "entry_17_id": "String!",
+        "entry_17_input": "DocumentUpdateInput!"
+      },
+      "sha256": "2ec52feec3fb45efbf36e7225f3f6405a4c948d62a8a84b22fa603fffd434c77"
+    },
+    {
+      "id": "batch.alias.operation.update_issue_label.issueLabelUpdate",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_22_id: String!, $entry_22_input: IssueLabelUpdateInput!, $entry_22_replaceTeamLabels: Boolean) {\n  entry_22: issueLabelUpdate(\n    id: $entry_22_id\n    input: $entry_22_input\n    replaceTeamLabels: $entry_22_replaceTeamLabels\n  ) {\n    success\n    issueLabel {\n      id\n      name\n      description\n      color\n      isGroup\n      createdAt\n      updatedAt\n      retiredAt\n      team {\n        id\n        key\n        name\n      }\n      parent {\n        id\n        name\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "issueLabelUpdate"
+      ],
+      "variables": {
+        "entry_22_id": "String!",
+        "entry_22_input": "IssueLabelUpdateInput!",
+        "entry_22_replaceTeamLabels": "Boolean"
+      },
+      "sha256": "c62991da92cbbab5f75659f0a4b5a620e67c86da1688de9a9718aa55468d40cf"
+    },
+    {
+      "id": "batch.alias.operation.update_issue_relation.issueRelationUpdate",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_25_id: String!, $entry_25_input: IssueRelationUpdateInput!) {\n  entry_25: issueRelationUpdate(id: $entry_25_id, input: $entry_25_input) {\n    success\n    issueRelation {\n      id\n      createdAt\n      updatedAt\n      type\n      issue {\n        id\n        identifier\n        title\n      }\n      relatedIssue {\n        id\n        identifier\n        title\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "issueRelationUpdate"
+      ],
+      "variables": {
+        "entry_25_id": "String!",
+        "entry_25_input": "IssueRelationUpdateInput!"
+      },
+      "sha256": "e64ff45f5f93021ee2906087d7c636e9a636bb1b2dd5628cc938d533c62d8b44"
+    },
+    {
+      "id": "batch.alias.operation.update_issue.issueUpdate",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_33_id: String!, $entry_33_input: IssueUpdateInput!) {\n  entry_33: issueUpdate(id: $entry_33_id, input: $entry_33_input) {\n    success\n    issue {\n      id\n      identifier\n      number\n      title\n      description\n      priority\n      url\n      branchName\n      dueDate\n      createdAt\n      updatedAt\n      estimate\n      priorityLabel\n      completedAt\n      startedAt\n      archivedAt\n      trashed\n      state {\n        id\n        name\n        type\n      }\n      team {\n        id\n        key\n        name\n      }\n      assignee {\n        id\n        name\n        email\n      }\n      labels(first: 50) {\n        nodes {\n          id\n          name\n        }\n      }\n      project {\n        id\n        name\n      }\n      parent {\n        id\n        identifier\n        title\n      }\n      cycle {\n        id\n        name\n        number\n      }\n      creator {\n        id\n        name\n        email\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "issueUpdate"
+      ],
+      "variables": {
+        "entry_33_id": "String!",
+        "entry_33_input": "IssueUpdateInput!"
+      },
+      "sha256": "9d470dbe8c7871d36ae885032ff79b1a2e8d3137b064a4034f7ddb01b53679c6"
+    },
+    {
+      "id": "batch.alias.operation.update_project_label.projectLabelUpdate",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_42_id: String!, $entry_42_input: ProjectLabelUpdateInput!) {\n  entry_42: projectLabelUpdate(id: $entry_42_id, input: $entry_42_input) {\n    success\n    projectLabel {\n      id\n      name\n      description\n      color\n      isGroup\n      createdAt\n      updatedAt\n      retiredAt\n      parent {\n        id\n        name\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "projectLabelUpdate"
+      ],
+      "variables": {
+        "entry_42_id": "String!",
+        "entry_42_input": "ProjectLabelUpdateInput!"
+      },
+      "sha256": "3d75ec2cd7faf50e3303ec840ee8b52c976090030cf06bd4303406a06132cb51"
+    },
+    {
+      "id": "batch.alias.operation.update_project_relation.projectRelationUpdate",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_45_id: String!, $entry_45_input: ProjectRelationUpdateInput!) {\n  entry_45: projectRelationUpdate(id: $entry_45_id, input: $entry_45_input) {\n    success\n    projectRelation {\n      id\n      createdAt\n      updatedAt\n      type\n      anchorType\n      relatedAnchorType\n      project {\n        id\n        name\n      }\n      projectMilestone {\n        id\n        name\n      }\n      relatedProject {\n        id\n        name\n      }\n      relatedProjectMilestone {\n        id\n        name\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "projectRelationUpdate"
+      ],
+      "variables": {
+        "entry_45_id": "String!",
+        "entry_45_input": "ProjectRelationUpdateInput!"
+      },
+      "sha256": "61921f33a5d96f3a2573865c25de39a771d97cfe629ba2203a10cfacc7eb6391"
+    },
+    {
+      "id": "batch.alias.operation.update_view.customViewUpdate",
+      "sourceClass": "compiled-batch",
+      "document": "mutation ($entry_6_id: String!, $entry_6_input: CustomViewUpdateInput!) {\n  entry_6: customViewUpdate(id: $entry_6_id, input: $entry_6_input) {\n    success\n    customView {\n      id\n      name\n      description\n      icon\n      color\n      filterData\n      projectFilterData\n      initiativeFilterData\n      feedItemFilterData\n      shared\n      slugId\n      archivedAt\n      createdAt\n      updatedAt\n      modelName\n      team {\n        id\n        key\n        name\n      }\n      owner {\n        id\n        name\n        email\n      }\n    }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": null,
+      "rootFields": [
+        "customViewUpdate"
+      ],
+      "variables": {
+        "entry_6_id": "String!",
+        "entry_6_input": "CustomViewUpdateInput!"
+      },
+      "sha256": "89530557646be4606c8c884846902e3ec3472664b13f7c14910c3ea4892fd6fa"
+    },
+    {
+      "id": "batch.lookup.document.id",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_10_document_id: String!) {\n  _lookup_mutation_10_document: document(id: $_lookup_mutation_10_document_id) {\n    id\n    title\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "document"
+      ],
+      "variables": {
+        "_lookup_mutation_10_document_id": "String!"
+      },
+      "sha256": "40d9d0f61321eb45564fd4d3b907641c65094bdf1b69e4e798671fe822c8a482"
+    },
+    {
+      "id": "batch.lookup.document.title",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_11_document_title: String!) {\n  _lookup_mutation_11_document: documents(\n    first: 2\n    filter: {title: {eq: $_lookup_mutation_11_document_title}}\n  ) {\n    nodes {\n      id\n      title\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "documents"
+      ],
+      "variables": {
+        "_lookup_mutation_11_document_title": "String!"
+      },
+      "sha256": "1881bf733b714f3cf4bb0bf66cca8479cc917ac0f1ad216af21d953f4e103161"
+    },
+    {
+      "id": "batch.lookup.issue",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_0_issue_id: String!) {\n  _lookup_mutation_0_issue: issue(id: $_lookup_mutation_0_issue_id) {\n    id\n    identifier\n    team {\n      id\n      key\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "issue"
+      ],
+      "variables": {
+        "_lookup_mutation_0_issue_id": "String!"
+      },
+      "sha256": "86e98cd5053c7362095a8659a7113d79c3f44e87a07ff537afeb083eac2c19e3"
+    },
+    {
+      "id": "batch.lookup.issue-relation",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_12_relation_id: String!) {\n  _lookup_mutation_12_relation: issueRelation(\n    id: $_lookup_mutation_12_relation_id\n  ) {\n    id\n    type\n    issue {\n      id\n    }\n    relatedIssue {\n      id\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "issueRelation"
+      ],
+      "variables": {
+        "_lookup_mutation_12_relation_id": "String!"
+      },
+      "sha256": "1937580efe14c15e254ab0fc4d7462ab2508aea7c120a68ac5838fab30784859"
+    },
+    {
+      "id": "batch.lookup.named.customView.id",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_23_named_id: String!) {\n  _lookup_mutation_23_named: customView(id: $_lookup_mutation_23_named_id) {\n    id\n    name\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "customView"
+      ],
+      "variables": {
+        "_lookup_mutation_23_named_id": "String!"
+      },
+      "sha256": "e4f19aa212d3213a1c05dc65ee4054fb20d5c10f40446b2968aaeef9d04c834a"
+    },
+    {
+      "id": "batch.lookup.named.customView.name",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_24_named_name: String!) {\n  _lookup_mutation_24_named: customViews(\n    first: 2\n    filter: {name: {eq: $_lookup_mutation_24_named_name}}\n  ) {\n    nodes {\n      id\n      name\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "customViews"
+      ],
+      "variables": {
+        "_lookup_mutation_24_named_name": "String!"
+      },
+      "sha256": "8083d513a628084337a215e7955035cf00093df5bb4438f479e9df58f238026d"
+    },
+    {
+      "id": "batch.lookup.named.cycle.id",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_17_named_id: String!) {\n  _lookup_mutation_17_named: cycle(id: $_lookup_mutation_17_named_id) {\n    id\n    name\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "cycle"
+      ],
+      "variables": {
+        "_lookup_mutation_17_named_id": "String!"
+      },
+      "sha256": "b549b4bf54c55e60e48f88f76fa209df94d438bc2ddeb6d4b771f1e637f0fce8"
+    },
+    {
+      "id": "batch.lookup.named.cycle.name",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_18_named_name: String!) {\n  _lookup_mutation_18_named: cycles(\n    first: 2\n    filter: {name: {eq: $_lookup_mutation_18_named_name}}\n  ) {\n    nodes {\n      id\n      name\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "cycles"
+      ],
+      "variables": {
+        "_lookup_mutation_18_named_name": "String!"
+      },
+      "sha256": "e79aa2e72e2701a9bde0232ca492daee408c906a94e9b41661d67f2f8fa3dbdb"
+    },
+    {
+      "id": "batch.lookup.named.document.id",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_19_named_id: String!) {\n  _lookup_mutation_19_named: document(id: $_lookup_mutation_19_named_id) {\n    id\n    name: title\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "document"
+      ],
+      "variables": {
+        "_lookup_mutation_19_named_id": "String!"
+      },
+      "sha256": "bd640dc80096a01b9738e709f5dc320bcee489117cba63a2a15c97d3c8cb0f4d"
+    },
+    {
+      "id": "batch.lookup.named.document.name",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_20_named_name: String!) {\n  _lookup_mutation_20_named: documents(\n    first: 2\n    filter: {title: {eq: $_lookup_mutation_20_named_name}}\n  ) {\n    nodes {\n      id\n      name: title\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "documents"
+      ],
+      "variables": {
+        "_lookup_mutation_20_named_name": "String!"
+      },
+      "sha256": "dd2cc1d604726f6f64710aa90bcdb322ca2123b41a1ad7d275d9695f42e57b05"
+    },
+    {
+      "id": "batch.lookup.named.initiative.id",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_15_named_id: String!) {\n  _lookup_mutation_15_named: initiative(id: $_lookup_mutation_15_named_id) {\n    id\n    name\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "initiative"
+      ],
+      "variables": {
+        "_lookup_mutation_15_named_id": "String!"
+      },
+      "sha256": "1d34b0c206d1989b072c5f16837d50dc10147fb74ffa7eda061fe6f9507d1ff0"
+    },
+    {
+      "id": "batch.lookup.named.initiative.name",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_16_named_name: String!) {\n  _lookup_mutation_16_named: initiatives(\n    first: 2\n    filter: {name: {eq: $_lookup_mutation_16_named_name}}\n  ) {\n    nodes {\n      id\n      name\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "initiatives"
+      ],
+      "variables": {
+        "_lookup_mutation_16_named_name": "String!"
+      },
+      "sha256": "efdbcf04649f2758d6e205faffccfe8bbf6a0b9f05e55036c190fb8143077672"
+    },
+    {
+      "id": "batch.lookup.named.project.id",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_13_named_id: String!) {\n  _lookup_mutation_13_named: project(id: $_lookup_mutation_13_named_id) {\n    id\n    name\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "project"
+      ],
+      "variables": {
+        "_lookup_mutation_13_named_id": "String!"
+      },
+      "sha256": "df348d01e1dbce6803851cab6a799abd8179eea3f12f63d6bf04f47afb1ebe3b"
+    },
+    {
+      "id": "batch.lookup.named.project.name",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_14_named_name: String!) {\n  _lookup_mutation_14_named: projects(\n    first: 2\n    filter: {name: {eq: $_lookup_mutation_14_named_name}}\n  ) {\n    nodes {\n      id\n      name\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "projects"
+      ],
+      "variables": {
+        "_lookup_mutation_14_named_name": "String!"
+      },
+      "sha256": "36ef54544966b34d64903d3c7daa1e18f7b4d2974e063a066c2d231b64954bde"
+    },
+    {
+      "id": "batch.lookup.named.projectMilestone.id",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_21_named_id: String!) {\n  _lookup_mutation_21_named: projectMilestone(id: $_lookup_mutation_21_named_id) {\n    id\n    name\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "projectMilestone"
+      ],
+      "variables": {
+        "_lookup_mutation_21_named_id": "String!"
+      },
+      "sha256": "d5666cb77d8c81033ebab77eb599f5f048a0719b68582a64277b01087e16cab6"
+    },
+    {
+      "id": "batch.lookup.named.projectMilestone.name",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_22_named_name: String!) {\n  _lookup_mutation_22_named: projectMilestones(\n    first: 2\n    filter: {name: {eq: $_lookup_mutation_22_named_name}}\n  ) {\n    nodes {\n      id\n      name\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "projectMilestones"
+      ],
+      "variables": {
+        "_lookup_mutation_22_named_name": "String!"
+      },
+      "sha256": "cb96eb0c039b25609d0a6819feff857a738ea2a55a5c6cf3c29489cf443bba15"
+    },
+    {
+      "id": "batch.lookup.state.id",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_3_state_id: String!) {\n  _lookup_mutation_3_state: workflowState(id: $_lookup_mutation_3_state_id) {\n    id\n    name\n    team {\n      id\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "workflowState"
+      ],
+      "variables": {
+        "_lookup_mutation_3_state_id": "String!"
+      },
+      "sha256": "ed9ef9724fd861c55b7604d33ae3adebe34b4ea3e6cdb8b0701c094a929400c7"
+    },
+    {
+      "id": "batch.lookup.state.name",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_4_state_teamId: ID!, $_lookup_mutation_4_state_name: String!) {\n  _lookup_mutation_4_state: workflowStates(\n    first: 2\n    filter: {team: {id: {eq: $_lookup_mutation_4_state_teamId}}, name: {eqIgnoreCase: $_lookup_mutation_4_state_name}}\n  ) {\n    nodes {\n      id\n      name\n      team {\n        id\n      }\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "workflowStates"
+      ],
+      "variables": {
+        "_lookup_mutation_4_state_teamId": "ID!",
+        "_lookup_mutation_4_state_name": "String!"
+      },
+      "sha256": "67faf544fbf6cb7a4519d906ee338ebc7fad1326c31bef0ce587658381a5f028"
+    },
+    {
+      "id": "batch.lookup.state.team-id",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_5_state_teamId: ID!, $_lookup_mutation_5_state_name: String!) {\n  _lookup_mutation_5_state: workflowStates(\n    first: 2\n    filter: {team: {id: {eq: $_lookup_mutation_5_state_teamId}}, name: {eqIgnoreCase: $_lookup_mutation_5_state_name}}\n  ) {\n    nodes {\n      id\n      name\n      team {\n        id\n        key\n      }\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "workflowStates"
+      ],
+      "variables": {
+        "_lookup_mutation_5_state_teamId": "ID!",
+        "_lookup_mutation_5_state_name": "String!"
+      },
+      "sha256": "013bb3c58ed040bcaf8f786c9047c91db3d39e5d4918d8705218289984c7f358"
+    },
+    {
+      "id": "batch.lookup.state.team-key",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_6_state_teamKey: String!, $_lookup_mutation_6_state_name: String!) {\n  _lookup_mutation_6_state: workflowStates(\n    first: 2\n    filter: {team: {key: {eq: $_lookup_mutation_6_state_teamKey}}, name: {eqIgnoreCase: $_lookup_mutation_6_state_name}}\n  ) {\n    nodes {\n      id\n      name\n      team {\n        id\n        key\n      }\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "workflowStates"
+      ],
+      "variables": {
+        "_lookup_mutation_6_state_teamKey": "String!",
+        "_lookup_mutation_6_state_name": "String!"
+      },
+      "sha256": "1f32c2ed49a02a3713fb31e6592acac71959e45054288e2492e54748e6081fb6"
+    },
+    {
+      "id": "batch.lookup.team.id",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_1_team_id: String!) {\n  _lookup_mutation_1_team: team(id: $_lookup_mutation_1_team_id) {\n    id\n    key\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "team"
+      ],
+      "variables": {
+        "_lookup_mutation_1_team_id": "String!"
+      },
+      "sha256": "09f161a337d5c857f1561c9b18eb2be7590c5d755828902269bbe3c9183de931"
+    },
+    {
+      "id": "batch.lookup.team.key",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_2_team_key: String!) {\n  _lookup_mutation_2_team: teams(\n    first: 2\n    filter: {key: {eq: $_lookup_mutation_2_team_key}}\n  ) {\n    nodes {\n      id\n      key\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "teams"
+      ],
+      "variables": {
+        "_lookup_mutation_2_team_key": "String!"
+      },
+      "sha256": "acd43b0f7aefed69b88ddc237ce837aa5d2ebbd5e9a8912a960cd4f48b547c07"
+    },
+    {
+      "id": "batch.lookup.user.id",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_8_user_id: String!) {\n  _lookup_mutation_8_user: user(id: $_lookup_mutation_8_user_id) {\n    id\n    name\n    displayName\n    email\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "user"
+      ],
+      "variables": {
+        "_lookup_mutation_8_user_id": "String!"
+      },
+      "sha256": "477b1ddf7d8f27509bfd4a91810b53d775d00713fde3627b71034963209ff07c"
+    },
+    {
+      "id": "batch.lookup.user.identity",
+      "sourceClass": "compiled-batch",
+      "document": "query ($_lookup_mutation_9_user_reference: String!) {\n  _lookup_mutation_9_user_byEmail: users(\n    first: 2\n    filter: {email: {eq: $_lookup_mutation_9_user_reference}}\n  ) {\n    nodes {\n      id\n      name\n      displayName\n      email\n    }\n  }\n  _lookup_mutation_9_user_byName: users(\n    first: 2\n    filter: {name: {eq: $_lookup_mutation_9_user_reference}}\n  ) {\n    nodes {\n      id\n      name\n      displayName\n      email\n    }\n  }\n  _lookup_mutation_9_user_byDisplayName: users(\n    first: 2\n    filter: {displayName: {eq: $_lookup_mutation_9_user_reference}}\n  ) {\n    nodes {\n      id\n      name\n      displayName\n      email\n    }\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "users",
+        "users",
+        "users"
+      ],
+      "variables": {
+        "_lookup_mutation_9_user_reference": "String!"
+      },
+      "sha256": "08e6e77d7fd1f84c459cf157c719b4c55671456580657aaf3157a68379553d9c"
+    },
+    {
+      "id": "batch.lookup.user.viewer",
+      "sourceClass": "compiled-batch",
+      "document": "{\n  _lookup_mutation_7_user: viewer {\n    id\n    name\n    displayName\n    email\n  }\n}",
+      "operationType": "query",
+      "operationName": null,
+      "rootFields": [
+        "viewer"
+      ],
+      "variables": {},
+      "sha256": "abd6d4e733647898574b9f71c6dabde270570751274d936d2580d13d413fbc41"
+    },
+    {
+      "id": "batch.merged.all-reads",
+      "sourceClass": "compiled-batch",
+      "document": "query ValidateAllBatchReads($entry_0_after: String, $entry_0_before: String, $entry_0_first: Int, $entry_0_includeArchived: Boolean, $entry_0_last: Int, $entry_0_orderBy: PaginationOrderBy, $entry_0_filter: CommentFilter, $entry_3_after: String, $entry_3_before: String, $entry_3_first: Int, $entry_3_includeArchived: Boolean, $entry_3_last: Int, $entry_3_orderBy: PaginationOrderBy, $entry_3_filter: CustomViewFilter, $entry_4_id: String!, $entry_8_after: String, $entry_8_before: String, $entry_8_first: Int, $entry_8_includeArchived: Boolean, $entry_8_last: Int, $entry_8_orderBy: PaginationOrderBy, $entry_8_filter: CycleFilter, $entry_9_id: String!, $entry_12_after: String, $entry_12_before: String, $entry_12_first: Int, $entry_12_includeArchived: Boolean, $entry_12_last: Int, $entry_12_orderBy: PaginationOrderBy, $entry_12_filter: DocumentFilter, $entry_12_sort: [DocumentSortInput!], $entry_13_after: String, $entry_13_before: String, $entry_13_first: Int, $entry_13_includeArchived: Boolean, $entry_13_last: Int, $entry_13_orderBy: PaginationOrderBy, $entry_13_filter: DocumentFilter, $entry_13_sort: [DocumentSortInput!], $entry_14_id: String!, $entry_15_id: String!, $entry_18_after: String, $entry_18_before: String, $entry_18_first: Int, $entry_18_includeArchived: Boolean, $entry_18_last: Int, $entry_18_orderBy: PaginationOrderBy, $entry_18_filter: InitiativeFilter, $entry_18_sort: [InitiativeSortInput!], $entry_19_id: String!, $entry_20_after: String, $entry_20_before: String, $entry_20_first: Int, $entry_20_includeArchived: Boolean, $entry_20_last: Int, $entry_20_orderBy: PaginationOrderBy, $entry_20_filter: IssueLabelFilter, $entry_23_after: String, $entry_23_before: String, $entry_23_first: Int, $entry_23_includeArchived: Boolean, $entry_23_last: Int, $entry_23_orderBy: PaginationOrderBy, $entry_27_after: String, $entry_27_before: String, $entry_27_first: Int, $entry_27_includeArchived: Boolean, $entry_27_last: Int, $entry_27_orderBy: PaginationOrderBy, $entry_27_filter: WorkflowStateFilter, $entry_28_after: String, $entry_28_before: String, $entry_28_first: Int, $entry_28_includeArchived: Boolean, $entry_28_last: Int, $entry_28_orderBy: PaginationOrderBy, $entry_28_filter: IssueFilter, $entry_28_sort: [IssueSortInput!], $entry_29_after: String, $entry_29_before: String, $entry_29_first: Int, $entry_29_includeArchived: Boolean, $entry_29_last: Int, $entry_29_orderBy: PaginationOrderBy, $entry_29_filter: IssueFilter, $entry_29_sort: [IssueSortInput!], $entry_30_id: String!, $entry_31_id: String!, $entry_34_after: String, $entry_34_before: String, $entry_34_first: Int, $entry_34_includeArchived: Boolean, $entry_34_last: Int, $entry_34_orderBy: PaginationOrderBy, $entry_34_filter: IssueFilter, $entry_34_term: String!, $entry_34_includeComments: Boolean, $entry_34_teamId: String, $entry_35_after: String, $entry_35_before: String, $entry_35_first: Int, $entry_35_includeArchived: Boolean, $entry_35_last: Int, $entry_35_orderBy: PaginationOrderBy, $entry_35_filter: IssueFilter, $entry_35_term: String!, $entry_35_includeComments: Boolean, $entry_35_teamId: String, $entry_36_id: String!, $entry_37_id: String!, $entry_38_after: String, $entry_38_before: String, $entry_38_first: Int, $entry_38_includeArchived: Boolean, $entry_38_last: Int, $entry_38_orderBy: PaginationOrderBy, $entry_38_filter: ProjectMilestoneFilter, $entry_39_id: String!, $entry_40_after: String, $entry_40_before: String, $entry_40_first: Int, $entry_40_includeArchived: Boolean, $entry_40_last: Int, $entry_40_orderBy: PaginationOrderBy, $entry_40_filter: ProjectLabelFilter, $entry_43_after: String, $entry_43_before: String, $entry_43_first: Int, $entry_43_includeArchived: Boolean, $entry_43_last: Int, $entry_43_orderBy: PaginationOrderBy, $entry_46_after: String, $entry_46_before: String, $entry_46_first: Int, $entry_46_includeArchived: Boolean, $entry_46_last: Int, $entry_46_orderBy: PaginationOrderBy, $entry_46_filter: ProjectFilter, $entry_46_sort: [ProjectSortInput!], $entry_47_after: String, $entry_47_before: String, $entry_47_first: Int, $entry_47_includeArchived: Boolean, $entry_47_last: Int, $entry_47_orderBy: PaginationOrderBy, $entry_47_filter: ProjectFilter, $entry_47_sort: [ProjectSortInput!], $entry_48_id: String!, $entry_49_id: String!, $entry_50_after: String, $entry_50_before: String, $entry_50_first: Int, $entry_50_includeArchived: Boolean, $entry_50_last: Int, $entry_50_orderBy: PaginationOrderBy, $entry_50_filter: TeamFilter, $entry_51_id: String!, $entry_52_after: String, $entry_52_before: String, $entry_52_first: Int, $entry_52_includeArchived: Boolean, $entry_52_last: Int, $entry_52_orderBy: PaginationOrderBy, $entry_52_filter: UserFilter, $entry_52_sort: [UserSortInput!], $entry_52_includeDisabled: Boolean, $entry_53_id: String!) {\n  entry_0: comments(\n    after: $entry_0_after\n    before: $entry_0_before\n    first: $entry_0_first\n    includeArchived: $entry_0_includeArchived\n    last: $entry_0_last\n    orderBy: $entry_0_orderBy\n    filter: $entry_0_filter\n  ) {\n    nodes {\n      id\n      body\n      quotedText\n      createdAt\n      updatedAt\n      editedAt\n      resolvedAt\n      url\n      issue {\n        id\n        identifier\n        title\n      }\n      parent {\n        id\n      }\n      user {\n        id\n        name\n        email\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n  entry_3: customViews(\n    after: $entry_3_after\n    before: $entry_3_before\n    first: $entry_3_first\n    includeArchived: $entry_3_includeArchived\n    last: $entry_3_last\n    orderBy: $entry_3_orderBy\n    filter: $entry_3_filter\n  ) {\n    nodes {\n      id\n      name\n      description\n      icon\n      color\n      filterData\n      projectFilterData\n      initiativeFilterData\n      feedItemFilterData\n      shared\n      slugId\n      archivedAt\n      createdAt\n      updatedAt\n      modelName\n      team {\n        id\n        key\n        name\n      }\n      owner {\n        id\n        name\n        email\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n  entry_4: customView(id: $entry_4_id) {\n    id\n    name\n    description\n    icon\n    color\n    filterData\n    projectFilterData\n    initiativeFilterData\n    feedItemFilterData\n    shared\n    slugId\n    archivedAt\n    createdAt\n    updatedAt\n    modelName\n    team {\n      id\n      key\n      name\n    }\n    owner {\n      id\n      name\n      email\n    }\n  }\n  entry_8: cycles(\n    after: $entry_8_after\n    before: $entry_8_before\n    first: $entry_8_first\n    includeArchived: $entry_8_includeArchived\n    last: $entry_8_last\n    orderBy: $entry_8_orderBy\n    filter: $entry_8_filter\n  ) {\n    nodes {\n      id\n      name\n      number\n      description\n      startsAt\n      endsAt\n      completedAt\n      archivedAt\n      autoArchivedAt\n      isActive\n      isFuture\n      isPast\n      isNext\n      isPrevious\n      progress\n      createdAt\n      updatedAt\n      team {\n        id\n        key\n        name\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n  entry_9: cycle(id: $entry_9_id) {\n    id\n    name\n    number\n    description\n    startsAt\n    endsAt\n    completedAt\n    archivedAt\n    autoArchivedAt\n    isActive\n    isFuture\n    isPast\n    isNext\n    isPrevious\n    progress\n    createdAt\n    updatedAt\n    team {\n      id\n      key\n      name\n    }\n  }\n  entry_12: documents(\n    after: $entry_12_after\n    before: $entry_12_before\n    first: $entry_12_first\n    includeArchived: $entry_12_includeArchived\n    last: $entry_12_last\n    orderBy: $entry_12_orderBy\n    filter: $entry_12_filter\n    sort: $entry_12_sort\n  ) {\n    nodes {\n      id\n      title\n      url\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n  entry_13: documents(\n    after: $entry_13_after\n    before: $entry_13_before\n    first: $entry_13_first\n    includeArchived: $entry_13_includeArchived\n    last: $entry_13_last\n    orderBy: $entry_13_orderBy\n    filter: $entry_13_filter\n    sort: $entry_13_sort\n  ) {\n    nodes {\n      id\n      title\n      content\n      color\n      icon\n      slugId\n      sortOrder\n      hiddenAt\n      trashed\n      summary\n      archivedAt\n      createdAt\n      updatedAt\n      url\n      team {\n        id\n        key\n        name\n      }\n      project {\n        id\n        name\n      }\n      issue {\n        id\n        identifier\n        title\n      }\n      initiative {\n        id\n        name\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n  entry_14: document(id: $entry_14_id) {\n    id\n    title\n    url\n  }\n  entry_15: document(id: $entry_15_id) {\n    id\n    title\n    content\n    color\n    icon\n    slugId\n    sortOrder\n    hiddenAt\n    trashed\n    summary\n    archivedAt\n    createdAt\n    updatedAt\n    url\n    team {\n      id\n      key\n      name\n    }\n    project {\n      id\n      name\n    }\n    issue {\n      id\n      identifier\n      title\n    }\n    initiative {\n      id\n      name\n    }\n  }\n  entry_18: initiatives(\n    after: $entry_18_after\n    before: $entry_18_before\n    first: $entry_18_first\n    includeArchived: $entry_18_includeArchived\n    last: $entry_18_last\n    orderBy: $entry_18_orderBy\n    filter: $entry_18_filter\n    sort: $entry_18_sort\n  ) {\n    nodes {\n      id\n      name\n      description\n      content\n      status\n      color\n      icon\n      targetDate\n      targetDateResolution\n      sortOrder\n      health\n      completedAt\n      startedAt\n      archivedAt\n      trashed\n      createdAt\n      updatedAt\n      url\n      owner {\n        id\n        name\n        email\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n  entry_19: initiative(id: $entry_19_id) {\n    id\n    name\n    description\n    content\n    status\n    color\n    icon\n    targetDate\n    targetDateResolution\n    sortOrder\n    health\n    completedAt\n    startedAt\n    archivedAt\n    trashed\n    createdAt\n    updatedAt\n    url\n    owner {\n      id\n      name\n      email\n    }\n  }\n  entry_20: issueLabels(\n    after: $entry_20_after\n    before: $entry_20_before\n    first: $entry_20_first\n    includeArchived: $entry_20_includeArchived\n    last: $entry_20_last\n    orderBy: $entry_20_orderBy\n    filter: $entry_20_filter\n  ) {\n    nodes {\n      id\n      name\n      description\n      color\n      isGroup\n      createdAt\n      updatedAt\n      retiredAt\n      team {\n        id\n        key\n        name\n      }\n      parent {\n        id\n        name\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n  entry_23: issueRelations(\n    after: $entry_23_after\n    before: $entry_23_before\n    first: $entry_23_first\n    includeArchived: $entry_23_includeArchived\n    last: $entry_23_last\n    orderBy: $entry_23_orderBy\n  ) {\n    nodes {\n      id\n      createdAt\n      updatedAt\n      type\n      issue {\n        id\n        identifier\n        title\n      }\n      relatedIssue {\n        id\n        identifier\n        title\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n  entry_27: workflowStates(\n    after: $entry_27_after\n    before: $entry_27_before\n    first: $entry_27_first\n    includeArchived: $entry_27_includeArchived\n    last: $entry_27_last\n    orderBy: $entry_27_orderBy\n    filter: $entry_27_filter\n  ) {\n    nodes {\n      id\n      name\n      type\n      color\n      position\n      description\n      createdAt\n      updatedAt\n      team {\n        id\n        key\n        name\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n  entry_28: issues(\n    after: $entry_28_after\n    before: $entry_28_before\n    first: $entry_28_first\n    includeArchived: $entry_28_includeArchived\n    last: $entry_28_last\n    orderBy: $entry_28_orderBy\n    filter: $entry_28_filter\n    sort: $entry_28_sort\n  ) {\n    nodes {\n      id\n      identifier\n      title\n      url\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n  entry_29: issues(\n    after: $entry_29_after\n    before: $entry_29_before\n    first: $entry_29_first\n    includeArchived: $entry_29_includeArchived\n    last: $entry_29_last\n    orderBy: $entry_29_orderBy\n    filter: $entry_29_filter\n    sort: $entry_29_sort\n  ) {\n    nodes {\n      id\n      identifier\n      number\n      title\n      description\n      priority\n      url\n      branchName\n      dueDate\n      createdAt\n      updatedAt\n      estimate\n      priorityLabel\n      completedAt\n      startedAt\n      archivedAt\n      trashed\n      state {\n        id\n        name\n        type\n      }\n      team {\n        id\n        key\n        name\n      }\n      assignee {\n        id\n        name\n        email\n      }\n      labels(first: 50) {\n        nodes {\n          id\n          name\n        }\n      }\n      project {\n        id\n        name\n      }\n      parent {\n        id\n        identifier\n        title\n      }\n      cycle {\n        id\n        name\n        number\n      }\n      creator {\n        id\n        name\n        email\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n  entry_30: issue(id: $entry_30_id) {\n    id\n    identifier\n    title\n    url\n  }\n  entry_31: issue(id: $entry_31_id) {\n    id\n    identifier\n    number\n    title\n    description\n    priority\n    url\n    branchName\n    dueDate\n    createdAt\n    updatedAt\n    estimate\n    priorityLabel\n    completedAt\n    startedAt\n    archivedAt\n    trashed\n    state {\n      id\n      name\n      type\n    }\n    team {\n      id\n      key\n      name\n    }\n    assignee {\n      id\n      name\n      email\n    }\n    labels(first: 50) {\n      nodes {\n        id\n        name\n      }\n    }\n    project {\n      id\n      name\n    }\n    parent {\n      id\n      identifier\n      title\n    }\n    cycle {\n      id\n      name\n      number\n    }\n    creator {\n      id\n      name\n      email\n    }\n  }\n  entry_34: searchIssues(\n    after: $entry_34_after\n    before: $entry_34_before\n    first: $entry_34_first\n    includeArchived: $entry_34_includeArchived\n    last: $entry_34_last\n    orderBy: $entry_34_orderBy\n    filter: $entry_34_filter\n    term: $entry_34_term\n    includeComments: $entry_34_includeComments\n    teamId: $entry_34_teamId\n  ) {\n    nodes {\n      id\n      identifier\n      title\n      url\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n    totalCount\n  }\n  entry_35: searchIssues(\n    after: $entry_35_after\n    before: $entry_35_before\n    first: $entry_35_first\n    includeArchived: $entry_35_includeArchived\n    last: $entry_35_last\n    orderBy: $entry_35_orderBy\n    filter: $entry_35_filter\n    term: $entry_35_term\n    includeComments: $entry_35_includeComments\n    teamId: $entry_35_teamId\n  ) {\n    nodes {\n      id\n      identifier\n      number\n      title\n      description\n      priority\n      url\n      branchName\n      dueDate\n      createdAt\n      updatedAt\n      estimate\n      priorityLabel\n      completedAt\n      startedAt\n      archivedAt\n      trashed\n      state {\n        id\n        name\n        type\n      }\n      team {\n        id\n        key\n        name\n      }\n      assignee {\n        id\n        name\n        email\n      }\n      labels(first: 50) {\n        nodes {\n          id\n          name\n        }\n      }\n      project {\n        id\n        name\n      }\n      parent {\n        id\n        identifier\n        title\n      }\n      cycle {\n        id\n        name\n        number\n      }\n      creator {\n        id\n        name\n        email\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n    totalCount\n  }\n  entry_36: issue(id: $entry_36_id) {\n    id\n    identifier\n    title\n    url\n  }\n  entry_37: issue(id: $entry_37_id) {\n    id\n    identifier\n    number\n    title\n    description\n    priority\n    url\n    branchName\n    dueDate\n    createdAt\n    updatedAt\n    estimate\n    priorityLabel\n    completedAt\n    startedAt\n    archivedAt\n    trashed\n    state {\n      id\n      name\n      type\n    }\n    team {\n      id\n      key\n      name\n    }\n    assignee {\n      id\n      name\n      email\n    }\n    labels(first: 50) {\n      nodes {\n        id\n        name\n      }\n    }\n    project {\n      id\n      name\n    }\n    parent {\n      id\n      identifier\n      title\n    }\n    cycle {\n      id\n      name\n      number\n    }\n    creator {\n      id\n      name\n      email\n    }\n  }\n  entry_38: projectMilestones(\n    after: $entry_38_after\n    before: $entry_38_before\n    first: $entry_38_first\n    includeArchived: $entry_38_includeArchived\n    last: $entry_38_last\n    orderBy: $entry_38_orderBy\n    filter: $entry_38_filter\n  ) {\n    nodes {\n      id\n      name\n      description\n      status\n      progress\n      targetDate\n      sortOrder\n      createdAt\n      updatedAt\n      project {\n        id\n        name\n        url\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n  entry_39: projectMilestone(id: $entry_39_id) {\n    id\n    name\n    description\n    status\n    progress\n    targetDate\n    sortOrder\n    createdAt\n    updatedAt\n    project {\n      id\n      name\n      url\n    }\n  }\n  entry_40: projectLabels(\n    after: $entry_40_after\n    before: $entry_40_before\n    first: $entry_40_first\n    includeArchived: $entry_40_includeArchived\n    last: $entry_40_last\n    orderBy: $entry_40_orderBy\n    filter: $entry_40_filter\n  ) {\n    nodes {\n      id\n      name\n      description\n      color\n      isGroup\n      createdAt\n      updatedAt\n      retiredAt\n      parent {\n        id\n        name\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n  entry_43: projectRelations(\n    after: $entry_43_after\n    before: $entry_43_before\n    first: $entry_43_first\n    includeArchived: $entry_43_includeArchived\n    last: $entry_43_last\n    orderBy: $entry_43_orderBy\n  ) {\n    nodes {\n      id\n      createdAt\n      updatedAt\n      type\n      anchorType\n      relatedAnchorType\n      project {\n        id\n        name\n      }\n      projectMilestone {\n        id\n        name\n      }\n      relatedProject {\n        id\n        name\n      }\n      relatedProjectMilestone {\n        id\n        name\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n  entry_46: projects(\n    after: $entry_46_after\n    before: $entry_46_before\n    first: $entry_46_first\n    includeArchived: $entry_46_includeArchived\n    last: $entry_46_last\n    orderBy: $entry_46_orderBy\n    filter: $entry_46_filter\n    sort: $entry_46_sort\n  ) {\n    nodes {\n      id\n      name\n      url\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n  entry_47: projects(\n    after: $entry_47_after\n    before: $entry_47_before\n    first: $entry_47_first\n    includeArchived: $entry_47_includeArchived\n    last: $entry_47_last\n    orderBy: $entry_47_orderBy\n    filter: $entry_47_filter\n    sort: $entry_47_sort\n  ) {\n    nodes {\n      id\n      name\n      description\n      color\n      icon\n      state\n      priority\n      slugId\n      startDate\n      targetDate\n      completedAt\n      canceledAt\n      health\n      progress\n      startedAt\n      archivedAt\n      trashed\n      priorityLabel\n      createdAt\n      updatedAt\n      url\n      teams(first: 10) {\n        nodes {\n          id\n          key\n          name\n        }\n      }\n      lead {\n        id\n        name\n        email\n      }\n      members(first: 10) {\n        nodes {\n          id\n          name\n          email\n        }\n      }\n      status {\n        id\n        name\n      }\n      content\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n  entry_48: project(id: $entry_48_id) {\n    id\n    name\n    url\n  }\n  entry_49: project(id: $entry_49_id) {\n    id\n    name\n    description\n    color\n    icon\n    state\n    priority\n    slugId\n    startDate\n    targetDate\n    completedAt\n    canceledAt\n    health\n    progress\n    startedAt\n    archivedAt\n    trashed\n    priorityLabel\n    createdAt\n    updatedAt\n    url\n    teams(first: 10) {\n      nodes {\n        id\n        key\n        name\n      }\n    }\n    lead {\n      id\n      name\n      email\n    }\n    members(first: 10) {\n      nodes {\n        id\n        name\n        email\n      }\n    }\n    status {\n      id\n      name\n    }\n    content\n  }\n  entry_50: teams(\n    after: $entry_50_after\n    before: $entry_50_before\n    first: $entry_50_first\n    includeArchived: $entry_50_includeArchived\n    last: $entry_50_last\n    orderBy: $entry_50_orderBy\n    filter: $entry_50_filter\n  ) {\n    nodes {\n      id\n      key\n      name\n      description\n      color\n      icon\n      private\n      createdAt\n      updatedAt\n      states(first: 50) {\n        nodes {\n          id\n          name\n          type\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n  entry_51: team(id: $entry_51_id) {\n    id\n    key\n    name\n    description\n    color\n    icon\n    private\n    createdAt\n    updatedAt\n  }\n  entry_52: users(\n    after: $entry_52_after\n    before: $entry_52_before\n    first: $entry_52_first\n    includeArchived: $entry_52_includeArchived\n    last: $entry_52_last\n    orderBy: $entry_52_orderBy\n    filter: $entry_52_filter\n    sort: $entry_52_sort\n    includeDisabled: $entry_52_includeDisabled\n  ) {\n    nodes {\n      id\n      name\n      displayName\n      email\n      active\n      admin\n      guest\n      isAssignable\n      createdAt\n      updatedAt\n      url\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n    }\n  }\n  entry_53: user(id: $entry_53_id) {\n    id\n    name\n    displayName\n    email\n    active\n    admin\n    guest\n    isAssignable\n    createdAt\n    updatedAt\n    url\n  }\n}",
+      "operationType": "query",
+      "operationName": "ValidateAllBatchReads",
+      "rootFields": [
+        "comments",
+        "customViews",
+        "customView",
+        "cycles",
+        "cycle",
+        "documents",
+        "documents",
+        "document",
+        "document",
+        "initiatives",
+        "initiative",
+        "issueLabels",
+        "issueRelations",
+        "workflowStates",
+        "issues",
+        "issues",
+        "issue",
+        "issue",
+        "searchIssues",
+        "searchIssues",
+        "issue",
+        "issue",
+        "projectMilestones",
+        "projectMilestone",
+        "projectLabels",
+        "projectRelations",
+        "projects",
+        "projects",
+        "project",
+        "project",
+        "teams",
+        "team",
+        "users",
+        "user"
+      ],
+      "variables": {
+        "entry_0_after": "String",
+        "entry_0_before": "String",
+        "entry_0_first": "Int",
+        "entry_0_includeArchived": "Boolean",
+        "entry_0_last": "Int",
+        "entry_0_orderBy": "PaginationOrderBy",
+        "entry_0_filter": "CommentFilter",
+        "entry_3_after": "String",
+        "entry_3_before": "String",
+        "entry_3_first": "Int",
+        "entry_3_includeArchived": "Boolean",
+        "entry_3_last": "Int",
+        "entry_3_orderBy": "PaginationOrderBy",
+        "entry_3_filter": "CustomViewFilter",
+        "entry_4_id": "String!",
+        "entry_8_after": "String",
+        "entry_8_before": "String",
+        "entry_8_first": "Int",
+        "entry_8_includeArchived": "Boolean",
+        "entry_8_last": "Int",
+        "entry_8_orderBy": "PaginationOrderBy",
+        "entry_8_filter": "CycleFilter",
+        "entry_9_id": "String!",
+        "entry_12_after": "String",
+        "entry_12_before": "String",
+        "entry_12_first": "Int",
+        "entry_12_includeArchived": "Boolean",
+        "entry_12_last": "Int",
+        "entry_12_orderBy": "PaginationOrderBy",
+        "entry_12_filter": "DocumentFilter",
+        "entry_12_sort": "[DocumentSortInput!]",
+        "entry_13_after": "String",
+        "entry_13_before": "String",
+        "entry_13_first": "Int",
+        "entry_13_includeArchived": "Boolean",
+        "entry_13_last": "Int",
+        "entry_13_orderBy": "PaginationOrderBy",
+        "entry_13_filter": "DocumentFilter",
+        "entry_13_sort": "[DocumentSortInput!]",
+        "entry_14_id": "String!",
+        "entry_15_id": "String!",
+        "entry_18_after": "String",
+        "entry_18_before": "String",
+        "entry_18_first": "Int",
+        "entry_18_includeArchived": "Boolean",
+        "entry_18_last": "Int",
+        "entry_18_orderBy": "PaginationOrderBy",
+        "entry_18_filter": "InitiativeFilter",
+        "entry_18_sort": "[InitiativeSortInput!]",
+        "entry_19_id": "String!",
+        "entry_20_after": "String",
+        "entry_20_before": "String",
+        "entry_20_first": "Int",
+        "entry_20_includeArchived": "Boolean",
+        "entry_20_last": "Int",
+        "entry_20_orderBy": "PaginationOrderBy",
+        "entry_20_filter": "IssueLabelFilter",
+        "entry_23_after": "String",
+        "entry_23_before": "String",
+        "entry_23_first": "Int",
+        "entry_23_includeArchived": "Boolean",
+        "entry_23_last": "Int",
+        "entry_23_orderBy": "PaginationOrderBy",
+        "entry_27_after": "String",
+        "entry_27_before": "String",
+        "entry_27_first": "Int",
+        "entry_27_includeArchived": "Boolean",
+        "entry_27_last": "Int",
+        "entry_27_orderBy": "PaginationOrderBy",
+        "entry_27_filter": "WorkflowStateFilter",
+        "entry_28_after": "String",
+        "entry_28_before": "String",
+        "entry_28_first": "Int",
+        "entry_28_includeArchived": "Boolean",
+        "entry_28_last": "Int",
+        "entry_28_orderBy": "PaginationOrderBy",
+        "entry_28_filter": "IssueFilter",
+        "entry_28_sort": "[IssueSortInput!]",
+        "entry_29_after": "String",
+        "entry_29_before": "String",
+        "entry_29_first": "Int",
+        "entry_29_includeArchived": "Boolean",
+        "entry_29_last": "Int",
+        "entry_29_orderBy": "PaginationOrderBy",
+        "entry_29_filter": "IssueFilter",
+        "entry_29_sort": "[IssueSortInput!]",
+        "entry_30_id": "String!",
+        "entry_31_id": "String!",
+        "entry_34_after": "String",
+        "entry_34_before": "String",
+        "entry_34_first": "Int",
+        "entry_34_includeArchived": "Boolean",
+        "entry_34_last": "Int",
+        "entry_34_orderBy": "PaginationOrderBy",
+        "entry_34_filter": "IssueFilter",
+        "entry_34_term": "String!",
+        "entry_34_includeComments": "Boolean",
+        "entry_34_teamId": "String",
+        "entry_35_after": "String",
+        "entry_35_before": "String",
+        "entry_35_first": "Int",
+        "entry_35_includeArchived": "Boolean",
+        "entry_35_last": "Int",
+        "entry_35_orderBy": "PaginationOrderBy",
+        "entry_35_filter": "IssueFilter",
+        "entry_35_term": "String!",
+        "entry_35_includeComments": "Boolean",
+        "entry_35_teamId": "String",
+        "entry_36_id": "String!",
+        "entry_37_id": "String!",
+        "entry_38_after": "String",
+        "entry_38_before": "String",
+        "entry_38_first": "Int",
+        "entry_38_includeArchived": "Boolean",
+        "entry_38_last": "Int",
+        "entry_38_orderBy": "PaginationOrderBy",
+        "entry_38_filter": "ProjectMilestoneFilter",
+        "entry_39_id": "String!",
+        "entry_40_after": "String",
+        "entry_40_before": "String",
+        "entry_40_first": "Int",
+        "entry_40_includeArchived": "Boolean",
+        "entry_40_last": "Int",
+        "entry_40_orderBy": "PaginationOrderBy",
+        "entry_40_filter": "ProjectLabelFilter",
+        "entry_43_after": "String",
+        "entry_43_before": "String",
+        "entry_43_first": "Int",
+        "entry_43_includeArchived": "Boolean",
+        "entry_43_last": "Int",
+        "entry_43_orderBy": "PaginationOrderBy",
+        "entry_46_after": "String",
+        "entry_46_before": "String",
+        "entry_46_first": "Int",
+        "entry_46_includeArchived": "Boolean",
+        "entry_46_last": "Int",
+        "entry_46_orderBy": "PaginationOrderBy",
+        "entry_46_filter": "ProjectFilter",
+        "entry_46_sort": "[ProjectSortInput!]",
+        "entry_47_after": "String",
+        "entry_47_before": "String",
+        "entry_47_first": "Int",
+        "entry_47_includeArchived": "Boolean",
+        "entry_47_last": "Int",
+        "entry_47_orderBy": "PaginationOrderBy",
+        "entry_47_filter": "ProjectFilter",
+        "entry_47_sort": "[ProjectSortInput!]",
+        "entry_48_id": "String!",
+        "entry_49_id": "String!",
+        "entry_50_after": "String",
+        "entry_50_before": "String",
+        "entry_50_first": "Int",
+        "entry_50_includeArchived": "Boolean",
+        "entry_50_last": "Int",
+        "entry_50_orderBy": "PaginationOrderBy",
+        "entry_50_filter": "TeamFilter",
+        "entry_51_id": "String!",
+        "entry_52_after": "String",
+        "entry_52_before": "String",
+        "entry_52_first": "Int",
+        "entry_52_includeArchived": "Boolean",
+        "entry_52_last": "Int",
+        "entry_52_orderBy": "PaginationOrderBy",
+        "entry_52_filter": "UserFilter",
+        "entry_52_sort": "[UserSortInput!]",
+        "entry_52_includeDisabled": "Boolean",
+        "entry_53_id": "String!"
+      },
+      "sha256": "dadb6933a4f645ca928187d1c4a700d9512f944fb1fbb16f8a65e779d2ad91b3"
+    },
+    {
+      "id": "introspection.readonly-schema",
+      "sourceClass": "introspection",
+      "document": "\n    query IntrospectionQuery {\n      __schema {\n\n        queryType { name kind }\n        mutationType { name kind }\n        subscriptionType { name kind }\n        types {\n          ...FullType\n        }\n        directives {\n          name\n\n          isRepeatable\n\n\n          locations\n          args(includeDeprecated: true) {\n            ...InputValue\n          }\n        }\n      }\n    }\n\n    fragment FullType on __Type {\n      kind\n      name\n\n      specifiedByURL\n\n      fields(includeDeprecated: true) {\n        name\n\n        args(includeDeprecated: true) {\n          ...InputValue\n        }\n        type {\n          ...TypeRef\n        }\n        isDeprecated\n        deprecationReason\n      }\n      inputFields(includeDeprecated: true) {\n        ...InputValue\n      }\n      interfaces {\n        ...TypeRef\n      }\n      enumValues(includeDeprecated: true) {\n        name\n\n        isDeprecated\n        deprecationReason\n      }\n      possibleTypes {\n        ...TypeRef\n      }\n    }\n\n    fragment InputValue on __InputValue {\n      name\n\n      type { ...TypeRef }\n      defaultValue\n      isDeprecated\n      deprecationReason\n    }\n\n    fragment TypeRef on __Type {\n      kind\n      name\n      ofType {\n        name\n        kind\n        ofType {\n          name\n          kind\n          ofType {\n            name\n            kind\n            ofType {\n              name\n              kind\n              ofType {\n                name\n                kind\n                ofType {\n                  name\n                  kind\n                  ofType {\n                    name\n                    kind\n                    ofType {\n                      name\n                      kind\n                      ofType {\n                        name\n                        kind\n                      }\n                    }\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n",
+      "operationType": "query",
+      "operationName": "IntrospectionQuery",
+      "rootFields": [
+        "__schema"
+      ],
+      "variables": {},
+      "sha256": "8f8319dd72fea1824c5f5b365415eb152f1876b7df3d935619ab06606a917cf9"
+    },
+    {
+      "id": "lookup.document.id",
+      "sourceClass": "lookup",
+      "document": "query ResolveDocumentById($id: String!) { document(id: $id) { id title } }",
+      "operationType": "query",
+      "operationName": "ResolveDocumentById",
+      "rootFields": [
+        "document"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "d782a58324ca82d6bd461dd9fb7f305abc9f13f6c32a0c3f68e1b1f36203a8e8"
+    },
+    {
+      "id": "lookup.document.title",
+      "sourceClass": "lookup",
+      "document": "query ResolveDocumentByTitle($title: String!) {\n  documents(first: 2, filter: { title: { eq: $title } }) { nodes { id title } }\n}",
+      "operationType": "query",
+      "operationName": "ResolveDocumentByTitle",
+      "rootFields": [
+        "documents"
+      ],
+      "variables": {
+        "title": "String!"
+      },
+      "sha256": "d44b044ae09a078121cd9449e720830eadad4007d1c92377b44f79a637a0c846"
+    },
+    {
+      "id": "lookup.issue",
+      "sourceClass": "lookup",
+      "document": "query ResolveIssueById($id: String!) {\n  issue(id: $id) { id identifier team { id key } }\n}",
+      "operationType": "query",
+      "operationName": "ResolveIssueById",
+      "rootFields": [
+        "issue"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "983286677bcc6db59c4245adf6cbf966bc05325c2f9f694bf9580be8228f0daa"
+    },
+    {
+      "id": "lookup.issue-relation",
+      "sourceClass": "lookup",
+      "document": "query VerifyIssueRelationDelete($id: String!) {\n  issueRelation(id: $id) { id type issue { id } relatedIssue { id } }\n}",
+      "operationType": "query",
+      "operationName": "VerifyIssueRelationDelete",
+      "rootFields": [
+        "issueRelation"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "d9f84779793c645e2b63717aec1514d15d81fd06fc436e979d8d47d3e8827c49"
+    },
+    {
+      "id": "lookup.named.customView.id",
+      "sourceClass": "lookup",
+      "document": "query ResolveNamedEntityById($id: String!) {\n  customView(id: $id) { id name }\n}",
+      "operationType": "query",
+      "operationName": "ResolveNamedEntityById",
+      "rootFields": [
+        "customView"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "311ae2d9e9a638be4d08ade5441e160f55f29edb845325f4880ef54ca1a8dd1d"
+    },
+    {
+      "id": "lookup.named.customView.name",
+      "sourceClass": "lookup",
+      "document": "query ResolveNamedEntityByName($name: String!) {\n  customViews(first: 2, filter: { name: { eq: $name } }) { nodes { id name } }\n}",
+      "operationType": "query",
+      "operationName": "ResolveNamedEntityByName",
+      "rootFields": [
+        "customViews"
+      ],
+      "variables": {
+        "name": "String!"
+      },
+      "sha256": "792fd2c8195238df2d1d1a9d0e94cc88ef300b5e3c5203bb96bcb5bfcb77d556"
+    },
+    {
+      "id": "lookup.named.cycle.id",
+      "sourceClass": "lookup",
+      "document": "query ResolveNamedEntityById($id: String!) {\n  cycle(id: $id) { id name }\n}",
+      "operationType": "query",
+      "operationName": "ResolveNamedEntityById",
+      "rootFields": [
+        "cycle"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "507e2b8f111bbf9bb10693a04f39242f32c1c56d10459b6c87f26bb5c9e45c9c"
+    },
+    {
+      "id": "lookup.named.cycle.name",
+      "sourceClass": "lookup",
+      "document": "query ResolveNamedEntityByName($name: String!) {\n  cycles(first: 2, filter: { name: { eq: $name } }) { nodes { id name } }\n}",
+      "operationType": "query",
+      "operationName": "ResolveNamedEntityByName",
+      "rootFields": [
+        "cycles"
+      ],
+      "variables": {
+        "name": "String!"
+      },
+      "sha256": "4a3d7044dbfe0e2162f960c12265aad3467ea161592868099274f0f991970257"
+    },
+    {
+      "id": "lookup.named.document.id",
+      "sourceClass": "lookup",
+      "document": "query ResolveNamedEntityById($id: String!) {\n  document(id: $id) { id name: title }\n}",
+      "operationType": "query",
+      "operationName": "ResolveNamedEntityById",
+      "rootFields": [
+        "document"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "0a38faf2ede600f76e252c45d9f7ad74cf43b495eddceca18828f3ede2aae086"
+    },
+    {
+      "id": "lookup.named.document.name",
+      "sourceClass": "lookup",
+      "document": "query ResolveNamedEntityByName($name: String!) {\n  documents(first: 2, filter: { title: { eq: $name } }) { nodes { id name: title } }\n}",
+      "operationType": "query",
+      "operationName": "ResolveNamedEntityByName",
+      "rootFields": [
+        "documents"
+      ],
+      "variables": {
+        "name": "String!"
+      },
+      "sha256": "fc210ef27fecc368875022e6b66cdb12ea6e1e2ccfa533f8600fae4b101a6eed"
+    },
+    {
+      "id": "lookup.named.initiative.id",
+      "sourceClass": "lookup",
+      "document": "query ResolveNamedEntityById($id: String!) {\n  initiative(id: $id) { id name }\n}",
+      "operationType": "query",
+      "operationName": "ResolveNamedEntityById",
+      "rootFields": [
+        "initiative"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "bde743bb6ae096e02d3d22e18aec7cf5db2ac4453190fbbd6398a16ae0466292"
+    },
+    {
+      "id": "lookup.named.initiative.name",
+      "sourceClass": "lookup",
+      "document": "query ResolveNamedEntityByName($name: String!) {\n  initiatives(first: 2, filter: { name: { eq: $name } }) { nodes { id name } }\n}",
+      "operationType": "query",
+      "operationName": "ResolveNamedEntityByName",
+      "rootFields": [
+        "initiatives"
+      ],
+      "variables": {
+        "name": "String!"
+      },
+      "sha256": "023b4cf17dbcf5416b3283c0ef429d36e06c20f260cb0e4154a8661418fdbd99"
+    },
+    {
+      "id": "lookup.named.project.id",
+      "sourceClass": "lookup",
+      "document": "query ResolveNamedEntityById($id: String!) {\n  project(id: $id) { id name }\n}",
+      "operationType": "query",
+      "operationName": "ResolveNamedEntityById",
+      "rootFields": [
+        "project"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "65510a4653fd2defce10aebbfe2cf744f820a9c8ef15f94a4cd495f342cd270f"
+    },
+    {
+      "id": "lookup.named.project.name",
+      "sourceClass": "lookup",
+      "document": "query ResolveNamedEntityByName($name: String!) {\n  projects(first: 2, filter: { name: { eq: $name } }) { nodes { id name } }\n}",
+      "operationType": "query",
+      "operationName": "ResolveNamedEntityByName",
+      "rootFields": [
+        "projects"
+      ],
+      "variables": {
+        "name": "String!"
+      },
+      "sha256": "52b9ff21969843bc0cddf057eab172d073e72dadff539b277aa84fe5c49b55c5"
+    },
+    {
+      "id": "lookup.named.projectMilestone.id",
+      "sourceClass": "lookup",
+      "document": "query ResolveNamedEntityById($id: String!) {\n  projectMilestone(id: $id) { id name }\n}",
+      "operationType": "query",
+      "operationName": "ResolveNamedEntityById",
+      "rootFields": [
+        "projectMilestone"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "ba3f90a944c19100cb6eed528f61de4cc0ea83651bcf6c052b6bee7adc12413f"
+    },
+    {
+      "id": "lookup.named.projectMilestone.name",
+      "sourceClass": "lookup",
+      "document": "query ResolveNamedEntityByName($name: String!) {\n  projectMilestones(first: 2, filter: { name: { eq: $name } }) { nodes { id name } }\n}",
+      "operationType": "query",
+      "operationName": "ResolveNamedEntityByName",
+      "rootFields": [
+        "projectMilestones"
+      ],
+      "variables": {
+        "name": "String!"
+      },
+      "sha256": "81235075ebe054d90334fb7b7ac99c6323172c834b79a0fbfaa0bd093cdbc2c1"
+    },
+    {
+      "id": "lookup.state.id",
+      "sourceClass": "lookup",
+      "document": "query ResolveStateById($id: String!) {\n  workflowState(id: $id) { id name team { id } }\n}",
+      "operationType": "query",
+      "operationName": "ResolveStateById",
+      "rootFields": [
+        "workflowState"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "b93588d598ed9dd93c0dce32dc817188e5d22605ab008be7bde85b938482c03b"
+    },
+    {
+      "id": "lookup.state.name",
+      "sourceClass": "lookup",
+      "document": "query ResolveStateByName($teamId: ID!, $name: String!) {\n  workflowStates(first: 2, filter: { team: { id: { eq: $teamId } }, name: { eqIgnoreCase: $name } }) {\n    nodes { id name team { id } }\n  }\n}",
+      "operationType": "query",
+      "operationName": "ResolveStateByName",
+      "rootFields": [
+        "workflowStates"
+      ],
+      "variables": {
+        "teamId": "ID!",
+        "name": "String!"
+      },
+      "sha256": "4e0de5113bec33c823e7ee30b4e90d69cebf1fa5a96a248a3897abd060c71f87"
+    },
+    {
+      "id": "lookup.state.team-id",
+      "sourceClass": "lookup",
+      "document": "query ResolveStateByTeamId($teamId: ID!, $name: String!) {\n  workflowStates(first: 2, filter: { team: { id: { eq: $teamId } }, name: { eqIgnoreCase: $name } }) {\n    nodes { id name team { id key } }\n  }\n}",
+      "operationType": "query",
+      "operationName": "ResolveStateByTeamId",
+      "rootFields": [
+        "workflowStates"
+      ],
+      "variables": {
+        "teamId": "ID!",
+        "name": "String!"
+      },
+      "sha256": "b64a5ffb915b8432162b89023aa1f624fa1c1dd087e6f2ec57194f828993a08d"
+    },
+    {
+      "id": "lookup.state.team-key",
+      "sourceClass": "lookup",
+      "document": "query ResolveStateByTeamKey($teamKey: String!, $name: String!) {\n  workflowStates(first: 2, filter: { team: { key: { eq: $teamKey } }, name: { eqIgnoreCase: $name } }) {\n    nodes { id name team { id key } }\n  }\n}",
+      "operationType": "query",
+      "operationName": "ResolveStateByTeamKey",
+      "rootFields": [
+        "workflowStates"
+      ],
+      "variables": {
+        "teamKey": "String!",
+        "name": "String!"
+      },
+      "sha256": "c596170e23e010345cb30ab43026aae91d2142a379703ad2a832d2c2f64f0a0b"
+    },
+    {
+      "id": "lookup.team.id",
+      "sourceClass": "lookup",
+      "document": "query ResolveTeamById($id: String!) { team(id: $id) { id key } }",
+      "operationType": "query",
+      "operationName": "ResolveTeamById",
+      "rootFields": [
+        "team"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "d0539b6f55bd2cbb7c137e84602b2062c5c64275039af9a3bfce88e6b36ee6c2"
+    },
+    {
+      "id": "lookup.team.key",
+      "sourceClass": "lookup",
+      "document": "query ResolveTeamByKey($key: String!) {\n  teams(first: 2, filter: { key: { eq: $key } }) { nodes { id key } }\n}",
+      "operationType": "query",
+      "operationName": "ResolveTeamByKey",
+      "rootFields": [
+        "teams"
+      ],
+      "variables": {
+        "key": "String!"
+      },
+      "sha256": "0dd9d6adda88cef0e016f61989d17aa0da85bc2020cff80214c999b984967187"
+    },
+    {
+      "id": "lookup.user.id",
+      "sourceClass": "lookup",
+      "document": "query ResolveUserById($id: String!) { user(id: $id) { id name displayName email } }",
+      "operationType": "query",
+      "operationName": "ResolveUserById",
+      "rootFields": [
+        "user"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "ec60e3283c6ab8d357aaca374b2a700f0c6889960467b60fc75e76b7bff7c9b2"
+    },
+    {
+      "id": "lookup.user.identity",
+      "sourceClass": "lookup",
+      "document": "query ResolveUserByIdentity($reference: String!) {\n  byEmail: users(first: 2, filter: { email: { eq: $reference } }) { nodes { id name displayName email } }\n  byName: users(first: 2, filter: { name: { eq: $reference } }) { nodes { id name displayName email } }\n  byDisplayName: users(first: 2, filter: { displayName: { eq: $reference } }) { nodes { id name displayName email } }\n}",
+      "operationType": "query",
+      "operationName": "ResolveUserByIdentity",
+      "rootFields": [
+        "users",
+        "users",
+        "users"
+      ],
+      "variables": {
+        "reference": "String!"
+      },
+      "sha256": "6a5d11864ff7cd0e4a3d4640b81bddbd625021063033ef72a254b0c35346605b"
+    },
+    {
+      "id": "lookup.user.viewer",
+      "sourceClass": "lookup",
+      "document": "query ResolveViewer { viewer { id name displayName email } }",
+      "operationType": "query",
+      "operationName": "ResolveViewer",
+      "rootFields": [
+        "viewer"
+      ],
+      "variables": {},
+      "sha256": "da39958f77c67cdbd9ce5e9d0464626864f721a54ed85ccedc06c5b81b53ce94"
+    },
+    {
+      "id": "operation.create_comment.commentCreate",
+      "sourceClass": "named-operation",
+      "document": "mutation CreateComment($input: CommentCreateInput!) {\n    commentCreate(input: $input) { success comment { \n  id body quotedText createdAt updatedAt editedAt resolvedAt url\n  issue { id identifier title } parent { id } user { id name email }\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "CreateComment",
+      "rootFields": [
+        "commentCreate"
+      ],
+      "variables": {
+        "input": "CommentCreateInput!"
+      },
+      "sha256": "863176b7e4b9123ffcdecd3b9bf26aa908881d16cd5aebfe0f7fd71394452a95"
+    },
+    {
+      "id": "operation.create_cycle.cycleCreate",
+      "sourceClass": "named-operation",
+      "document": "mutation CreateCycle($input: CycleCreateInput!) {\n    cycleCreate(input: $input) { success cycle { \n  id name number description startsAt endsAt completedAt archivedAt autoArchivedAt isActive isFuture\n  isPast isNext isPrevious progress createdAt updatedAt team { id key name }\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "CreateCycle",
+      "rootFields": [
+        "cycleCreate"
+      ],
+      "variables": {
+        "input": "CycleCreateInput!"
+      },
+      "sha256": "1caeed4cca8d5eb795759195262f6a594cbc490ea818363685b5bf7020a91b47"
+    },
+    {
+      "id": "operation.create_document.documentCreate",
+      "sourceClass": "named-operation",
+      "document": "mutation CreateDocument($input: DocumentCreateInput!) {\n    documentCreate(input: $input) { success document { \n  id title content color icon slugId sortOrder hiddenAt trashed summary archivedAt createdAt updatedAt url\n  team { id key name } project { id name } issue { id identifier title } initiative { id name }\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "CreateDocument",
+      "rootFields": [
+        "documentCreate"
+      ],
+      "variables": {
+        "input": "DocumentCreateInput!"
+      },
+      "sha256": "dcfbccfe7351a469750c9f32f3e654d3693068c9592523ffa94482f47e1ba024"
+    },
+    {
+      "id": "operation.create_issue_label.issueLabelCreate",
+      "sourceClass": "named-operation",
+      "document": "mutation CreateIssueLabel($input: IssueLabelCreateInput!, $replaceTeamLabels: Boolean) {\n  issueLabelCreate(input: $input, replaceTeamLabels: $replaceTeamLabels) {\n    success\n    issueLabel { \n  id name description color isGroup createdAt updatedAt retiredAt\n  team { id key name } parent { id name }\n }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": "CreateIssueLabel",
+      "rootFields": [
+        "issueLabelCreate"
+      ],
+      "variables": {
+        "input": "IssueLabelCreateInput!",
+        "replaceTeamLabels": "Boolean"
+      },
+      "sha256": "8742d335a966cb6eb06a4f46b1e4b2456929482b9d8d6fc3da8ba5ed6898ac34"
+    },
+    {
+      "id": "operation.create_issue_relation.issueRelationCreate",
+      "sourceClass": "named-operation",
+      "document": "mutation CreateIssueRelation($input: IssueRelationCreateInput!) {\n    issueRelationCreate(input: $input) { success issueRelation { \n  id createdAt updatedAt type issue { id identifier title } relatedIssue { id identifier title }\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "CreateIssueRelation",
+      "rootFields": [
+        "issueRelationCreate"
+      ],
+      "variables": {
+        "input": "IssueRelationCreateInput!"
+      },
+      "sha256": "367c69f131111ddd773d6119125cfff68837ecefae78b58e978cc0a638939421"
+    },
+    {
+      "id": "operation.create_issue.issueCreate",
+      "sourceClass": "named-operation",
+      "document": "mutation CreateIssue($input: IssueCreateInput!) {\n    issueCreate(input: $input) { success issue { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "CreateIssue",
+      "rootFields": [
+        "issueCreate"
+      ],
+      "variables": {
+        "input": "IssueCreateInput!"
+      },
+      "sha256": "55a95ea0d53f697f761182b58cacc9f2687363903e295de5fedac512d94a743b"
+    },
+    {
+      "id": "operation.create_project_label.projectLabelCreate",
+      "sourceClass": "named-operation",
+      "document": "mutation CreateProjectLabel($input: ProjectLabelCreateInput!) {\n    projectLabelCreate(input: $input) { success projectLabel { \n  id name description color isGroup createdAt updatedAt retiredAt parent { id name }\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "CreateProjectLabel",
+      "rootFields": [
+        "projectLabelCreate"
+      ],
+      "variables": {
+        "input": "ProjectLabelCreateInput!"
+      },
+      "sha256": "50df0ac0f58059e03ae45b0999db53ddb4876c5ab7315d12060f4d90dfc179cc"
+    },
+    {
+      "id": "operation.create_project_relation.projectRelationCreate",
+      "sourceClass": "named-operation",
+      "document": "mutation CreateProjectRelation($input: ProjectRelationCreateInput!) {\n    projectRelationCreate(input: $input) { success projectRelation { \n  id createdAt updatedAt type anchorType relatedAnchorType project { id name }\n  projectMilestone { id name } relatedProject { id name } relatedProjectMilestone { id name }\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "CreateProjectRelation",
+      "rootFields": [
+        "projectRelationCreate"
+      ],
+      "variables": {
+        "input": "ProjectRelationCreateInput!"
+      },
+      "sha256": "b957c4da2c4c84c65b6cfa6b7137c102328d90e8e17392e82c0e574b3277474f"
+    },
+    {
+      "id": "operation.create_view.customViewCreate",
+      "sourceClass": "named-operation",
+      "document": "mutation CreateView($input: CustomViewCreateInput!) {\n    customViewCreate(input: $input) { success customView { \n  id name description icon color filterData projectFilterData initiativeFilterData feedItemFilterData\n  shared slugId archivedAt createdAt updatedAt modelName team { id key name } owner { id name email }\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "CreateView",
+      "rootFields": [
+        "customViewCreate"
+      ],
+      "variables": {
+        "input": "CustomViewCreateInput!"
+      },
+      "sha256": "49a86af44a081c66130c6de023cb76263f9d6489275ef8b303a88fd4a8666fcb"
+    },
+    {
+      "id": "operation.delete_issue_relation.issueRelationDelete",
+      "sourceClass": "named-operation",
+      "document": "mutation DeleteIssueRelation($id: String!) {\n  issueRelationDelete(id: $id) { success }\n}",
+      "operationType": "mutation",
+      "operationName": "DeleteIssueRelation",
+      "rootFields": [
+        "issueRelationDelete"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "24bb8795f6b8e1d096c19722b73acc3eba032e16035ac94dcb06295e07cd5377"
+    },
+    {
+      "id": "operation.get_cycle.default",
+      "sourceClass": "named-operation",
+      "document": "query GetCycle($id: String!) { cycle(id: $id) { \n  id name number description startsAt endsAt completedAt archivedAt autoArchivedAt isActive isFuture\n  isPast isNext isPrevious progress createdAt updatedAt team { id key name }\n } }",
+      "operationType": "query",
+      "operationName": "GetCycle",
+      "rootFields": [
+        "cycle"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "836ef1a97be7aab62894433db5554e054fe1c5261f912474d28c9fd2eabe9049"
+    },
+    {
+      "id": "operation.get_document.full",
+      "sourceClass": "named-operation",
+      "document": "query GetDocument($id: String!) { document(id: $id) { \n  id title content color icon slugId sortOrder hiddenAt trashed summary archivedAt createdAt updatedAt url\n  team { id key name } project { id name } issue { id identifier title } initiative { id name }\n } }",
+      "operationType": "query",
+      "operationName": "GetDocument",
+      "rootFields": [
+        "document"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "172e38dd58733d388d29707cc6432ca943bfa3b47ce0a0e3d9df96e261d7f4a9"
+    },
+    {
+      "id": "operation.get_document.summary",
+      "sourceClass": "named-operation",
+      "document": "query GetDocument($id: String!) { document(id: $id) { \n  id title url\n } }",
+      "operationType": "query",
+      "operationName": "GetDocument",
+      "rootFields": [
+        "document"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "04a5599badddbdc32e933a759710b353e422b5e6448be865e758749a15565451"
+    },
+    {
+      "id": "operation.get_initiative.default",
+      "sourceClass": "named-operation",
+      "document": "query GetInitiative($id: String!) { initiative(id: $id) { \n  id name description content status color icon targetDate targetDateResolution sortOrder health\n  completedAt startedAt archivedAt trashed createdAt updatedAt url owner { id name email }\n } }",
+      "operationType": "query",
+      "operationName": "GetInitiative",
+      "rootFields": [
+        "initiative"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "23f2ae1fb8ee0d3790e1c9ce12748d22332a8afc01d634a9a52d4b61002c1882"
+    },
+    {
+      "id": "operation.get_issue.full",
+      "sourceClass": "named-operation",
+      "document": "query GetIssue($id: String!) { issue(id: $id) { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } }",
+      "operationType": "query",
+      "operationName": "GetIssue",
+      "rootFields": [
+        "issue"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "5e09af2997bb8d9de56d6c18dd09de66713fdd1657dc62c9dbe7def66536b8b6"
+    },
+    {
+      "id": "operation.get_issue.summary",
+      "sourceClass": "named-operation",
+      "document": "query GetIssue($id: String!) { issue(id: $id) { \n  id identifier title url\n } }",
+      "operationType": "query",
+      "operationName": "GetIssue",
+      "rootFields": [
+        "issue"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "1f59eeb0e30d9db8ad93d7297e311a9f1c2a6faeff67938f0e1970aab2bf5aab"
+    },
+    {
+      "id": "operation.get_milestone.default",
+      "sourceClass": "named-operation",
+      "document": "query GetMilestone($id: String!) { projectMilestone(id: $id) { \n  id name description status progress targetDate sortOrder createdAt updatedAt project { id name url }\n } }",
+      "operationType": "query",
+      "operationName": "GetMilestone",
+      "rootFields": [
+        "projectMilestone"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "efbccf42aeb399c8ca4dfdd0191cec1cc79542b3f26e4e9bd66151fa1b565f21"
+    },
+    {
+      "id": "operation.get_project.full",
+      "sourceClass": "named-operation",
+      "document": "query GetProject($id: String!) { project(id: $id) { \n  id name description color icon state priority slugId startDate targetDate completedAt\n  canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url\n  teams(first: 10) { nodes { id key name } }\n  lead { id name email } members(first: 10) { nodes { id name email } } status { id name }\n  content\n } }",
+      "operationType": "query",
+      "operationName": "GetProject",
+      "rootFields": [
+        "project"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "d72cc5451a5665f9a177b80305c7c22f98ae514e6d0d8d0142d6e559e6312c0d"
+    },
+    {
+      "id": "operation.get_project.summary",
+      "sourceClass": "named-operation",
+      "document": "query GetProject($id: String!) { project(id: $id) { \n  id name url\n } }",
+      "operationType": "query",
+      "operationName": "GetProject",
+      "rootFields": [
+        "project"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "f05fdf2dc8ebbb244cbce71bda3d65de9b0fada211f50a511fb8bd0d49af34e1"
+    },
+    {
+      "id": "operation.get_team.default",
+      "sourceClass": "named-operation",
+      "document": "query GetTeam($id: String!) { team(id: $id) { id key name description color icon private createdAt updatedAt } }",
+      "operationType": "query",
+      "operationName": "GetTeam",
+      "rootFields": [
+        "team"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "ab515d4d222561404920a7ca5d90247c0a8d879682ca7f9358d63a12a1eed351"
+    },
+    {
+      "id": "operation.get_user.default",
+      "sourceClass": "named-operation",
+      "document": "query GetUser($id: String!) { user(id: $id) { id name displayName email active admin guest isAssignable createdAt updatedAt url } }",
+      "operationType": "query",
+      "operationName": "GetUser",
+      "rootFields": [
+        "user"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "a680f6d9e695f12195e9d53af3de92775b5e0b39979e510223407757dc625d16"
+    },
+    {
+      "id": "operation.get_view.default",
+      "sourceClass": "named-operation",
+      "document": "query GetView($id: String!) { customView(id: $id) { \n  id name description icon color filterData projectFilterData initiativeFilterData feedItemFilterData\n  shared slugId archivedAt createdAt updatedAt modelName team { id key name } owner { id name email }\n } }",
+      "operationType": "query",
+      "operationName": "GetView",
+      "rootFields": [
+        "customView"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "863fedf90afdfec6ebbb6f01a79fe0352bbed84d84d3d653d3584a3c775a082f"
+    },
+    {
+      "id": "operation.list_comments.default",
+      "sourceClass": "named-operation",
+      "document": "query ListComments(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: CommentFilter\n    \n    \n  ) {\n    comments(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  ) {\n      nodes { \n  id body quotedText createdAt updatedAt editedAt resolvedAt url\n  issue { id identifier title } parent { id } user { id name email }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "operationType": "query",
+      "operationName": "ListComments",
+      "rootFields": [
+        "comments"
+      ],
+      "variables": {
+        "after": "String",
+        "before": "String",
+        "first": "Int",
+        "includeArchived": "Boolean",
+        "last": "Int",
+        "orderBy": "PaginationOrderBy",
+        "filter": "CommentFilter"
+      },
+      "sha256": "3683fe62fa1a629afd2932e1832f579bec22593696f789f25f188133bc72f802"
+    },
+    {
+      "id": "operation.list_cycles.default",
+      "sourceClass": "named-operation",
+      "document": "query ListCycles(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: CycleFilter\n    \n    \n  ) {\n    cycles(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  ) {\n      nodes { \n  id name number description startsAt endsAt completedAt archivedAt autoArchivedAt isActive isFuture\n  isPast isNext isPrevious progress createdAt updatedAt team { id key name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "operationType": "query",
+      "operationName": "ListCycles",
+      "rootFields": [
+        "cycles"
+      ],
+      "variables": {
+        "after": "String",
+        "before": "String",
+        "first": "Int",
+        "includeArchived": "Boolean",
+        "last": "Int",
+        "orderBy": "PaginationOrderBy",
+        "filter": "CycleFilter"
+      },
+      "sha256": "9e11a1c756de185495820e04dd153025e14d85e143e0ee4716a2f22ab1241431"
+    },
+    {
+      "id": "operation.list_documents.full",
+      "sourceClass": "named-operation",
+      "document": "query ListDocuments(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: DocumentFilter\n    $sort: [DocumentSortInput!]\n    \n  ) {\n    documents(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id title content color icon slugId sortOrder hiddenAt trashed summary archivedAt createdAt updatedAt url\n  team { id key name } project { id name } issue { id identifier title } initiative { id name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "operationType": "query",
+      "operationName": "ListDocuments",
+      "rootFields": [
+        "documents"
+      ],
+      "variables": {
+        "after": "String",
+        "before": "String",
+        "first": "Int",
+        "includeArchived": "Boolean",
+        "last": "Int",
+        "orderBy": "PaginationOrderBy",
+        "filter": "DocumentFilter",
+        "sort": "[DocumentSortInput!]"
+      },
+      "sha256": "1635062ef65e37eba55363f73a8076b033fab01e59f1a2dfbec3cdededa9f95e"
+    },
+    {
+      "id": "operation.list_documents.summary",
+      "sourceClass": "named-operation",
+      "document": "query ListDocuments(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: DocumentFilter\n    $sort: [DocumentSortInput!]\n    \n  ) {\n    documents(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id title url\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "operationType": "query",
+      "operationName": "ListDocuments",
+      "rootFields": [
+        "documents"
+      ],
+      "variables": {
+        "after": "String",
+        "before": "String",
+        "first": "Int",
+        "includeArchived": "Boolean",
+        "last": "Int",
+        "orderBy": "PaginationOrderBy",
+        "filter": "DocumentFilter",
+        "sort": "[DocumentSortInput!]"
+      },
+      "sha256": "46b5c33299dd73da1030fe8ec64f7f23ad8832b1f067009cc915de04c0ead70f"
+    },
+    {
+      "id": "operation.list_initiatives.default",
+      "sourceClass": "named-operation",
+      "document": "query ListInitiatives(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: InitiativeFilter\n    $sort: [InitiativeSortInput!]\n    \n  ) {\n    initiatives(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id name description content status color icon targetDate targetDateResolution sortOrder health\n  completedAt startedAt archivedAt trashed createdAt updatedAt url owner { id name email }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "operationType": "query",
+      "operationName": "ListInitiatives",
+      "rootFields": [
+        "initiatives"
+      ],
+      "variables": {
+        "after": "String",
+        "before": "String",
+        "first": "Int",
+        "includeArchived": "Boolean",
+        "last": "Int",
+        "orderBy": "PaginationOrderBy",
+        "filter": "InitiativeFilter",
+        "sort": "[InitiativeSortInput!]"
+      },
+      "sha256": "00580b9f89f0e2f264c23594e810f652dc955a14a567bb0d5aa6600ed4343a9f"
+    },
+    {
+      "id": "operation.list_issue_labels.default",
+      "sourceClass": "named-operation",
+      "document": "query ListIssueLabels(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueLabelFilter\n    \n    \n  ) {\n    issueLabels(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  ) {\n      nodes { \n  id name description color isGroup createdAt updatedAt retiredAt\n  team { id key name } parent { id name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "operationType": "query",
+      "operationName": "ListIssueLabels",
+      "rootFields": [
+        "issueLabels"
+      ],
+      "variables": {
+        "after": "String",
+        "before": "String",
+        "first": "Int",
+        "includeArchived": "Boolean",
+        "last": "Int",
+        "orderBy": "PaginationOrderBy",
+        "filter": "IssueLabelFilter"
+      },
+      "sha256": "f2b4dbcd83952434ab33105aa96c47a6c783947d03a34e546b4f0b3602291ca4"
+    },
+    {
+      "id": "operation.list_issue_relations.default",
+      "sourceClass": "named-operation",
+      "document": "query ListIssueRelations(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    \n    \n    \n  ) {\n    issueRelations(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n        ) {\n      nodes { \n  id createdAt updatedAt type issue { id identifier title } relatedIssue { id identifier title }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "operationType": "query",
+      "operationName": "ListIssueRelations",
+      "rootFields": [
+        "issueRelations"
+      ],
+      "variables": {
+        "after": "String",
+        "before": "String",
+        "first": "Int",
+        "includeArchived": "Boolean",
+        "last": "Int",
+        "orderBy": "PaginationOrderBy"
+      },
+      "sha256": "b091a846f498f7ff12ead0295187a77e354f8678605279ac5f150592d7aa9f98"
+    },
+    {
+      "id": "operation.list_issue_statuses.default",
+      "sourceClass": "named-operation",
+      "document": "query ListIssueStatuses(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: WorkflowStateFilter\n    \n    \n  ) {\n    workflowStates(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  ) {\n      nodes { \n  id name type color position description createdAt updatedAt team { id key name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "operationType": "query",
+      "operationName": "ListIssueStatuses",
+      "rootFields": [
+        "workflowStates"
+      ],
+      "variables": {
+        "after": "String",
+        "before": "String",
+        "first": "Int",
+        "includeArchived": "Boolean",
+        "last": "Int",
+        "orderBy": "PaginationOrderBy",
+        "filter": "WorkflowStateFilter"
+      },
+      "sha256": "35796798e78c7807c67847ee65cfeaf96a76a0f8ebdaa10c9f4de83bb457feb9"
+    },
+    {
+      "id": "operation.list_issues.full",
+      "sourceClass": "named-operation",
+      "document": "query ListIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    $sort: [IssueSortInput!]\n    \n  ) {\n    issues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "operationType": "query",
+      "operationName": "ListIssues",
+      "rootFields": [
+        "issues"
+      ],
+      "variables": {
+        "after": "String",
+        "before": "String",
+        "first": "Int",
+        "includeArchived": "Boolean",
+        "last": "Int",
+        "orderBy": "PaginationOrderBy",
+        "filter": "IssueFilter",
+        "sort": "[IssueSortInput!]"
+      },
+      "sha256": "eb47939cf5f38d1b62890ace1699db4089ba7c86af113389e012284bf7ccae7f"
+    },
+    {
+      "id": "operation.list_issues.summary",
+      "sourceClass": "named-operation",
+      "document": "query ListIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    $sort: [IssueSortInput!]\n    \n  ) {\n    issues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id identifier title url\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "operationType": "query",
+      "operationName": "ListIssues",
+      "rootFields": [
+        "issues"
+      ],
+      "variables": {
+        "after": "String",
+        "before": "String",
+        "first": "Int",
+        "includeArchived": "Boolean",
+        "last": "Int",
+        "orderBy": "PaginationOrderBy",
+        "filter": "IssueFilter",
+        "sort": "[IssueSortInput!]"
+      },
+      "sha256": "e2686295a18548a75ccabeb8142714b3268183e5b4d270c7c82900690fe6c65e"
+    },
+    {
+      "id": "operation.list_milestones.default",
+      "sourceClass": "named-operation",
+      "document": "query ListMilestones(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: ProjectMilestoneFilter\n    \n    \n  ) {\n    projectMilestones(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  ) {\n      nodes { \n  id name description status progress targetDate sortOrder createdAt updatedAt project { id name url }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "operationType": "query",
+      "operationName": "ListMilestones",
+      "rootFields": [
+        "projectMilestones"
+      ],
+      "variables": {
+        "after": "String",
+        "before": "String",
+        "first": "Int",
+        "includeArchived": "Boolean",
+        "last": "Int",
+        "orderBy": "PaginationOrderBy",
+        "filter": "ProjectMilestoneFilter"
+      },
+      "sha256": "208ef0d89fc01781ee1fd43362d7b6caa0b6389c4706f7a57e01e874f5b8cd31"
+    },
+    {
+      "id": "operation.list_project_labels.default",
+      "sourceClass": "named-operation",
+      "document": "query ListProjectLabels(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: ProjectLabelFilter\n    \n    \n  ) {\n    projectLabels(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  ) {\n      nodes { \n  id name description color isGroup createdAt updatedAt retiredAt parent { id name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "operationType": "query",
+      "operationName": "ListProjectLabels",
+      "rootFields": [
+        "projectLabels"
+      ],
+      "variables": {
+        "after": "String",
+        "before": "String",
+        "first": "Int",
+        "includeArchived": "Boolean",
+        "last": "Int",
+        "orderBy": "PaginationOrderBy",
+        "filter": "ProjectLabelFilter"
+      },
+      "sha256": "def752c34009d59e6380435ad1fab2e1772f44ff55457abee31debd2e8f5c97b"
+    },
+    {
+      "id": "operation.list_project_relations.default",
+      "sourceClass": "named-operation",
+      "document": "query ListProjectRelations(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    \n    \n    \n  ) {\n    projectRelations(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n        ) {\n      nodes { \n  id createdAt updatedAt type anchorType relatedAnchorType project { id name }\n  projectMilestone { id name } relatedProject { id name } relatedProjectMilestone { id name }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "operationType": "query",
+      "operationName": "ListProjectRelations",
+      "rootFields": [
+        "projectRelations"
+      ],
+      "variables": {
+        "after": "String",
+        "before": "String",
+        "first": "Int",
+        "includeArchived": "Boolean",
+        "last": "Int",
+        "orderBy": "PaginationOrderBy"
+      },
+      "sha256": "e2bd5319d58356aae69ef598ede9207eff6a05531468b99b04af58717343cc20"
+    },
+    {
+      "id": "operation.list_projects.full",
+      "sourceClass": "named-operation",
+      "document": "query ListProjects(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: ProjectFilter\n    $sort: [ProjectSortInput!]\n    \n  ) {\n    projects(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id name description color icon state priority slugId startDate targetDate completedAt\n  canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url\n  teams(first: 10) { nodes { id key name } }\n  lead { id name email } members(first: 10) { nodes { id name email } } status { id name }\n  content\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "operationType": "query",
+      "operationName": "ListProjects",
+      "rootFields": [
+        "projects"
+      ],
+      "variables": {
+        "after": "String",
+        "before": "String",
+        "first": "Int",
+        "includeArchived": "Boolean",
+        "last": "Int",
+        "orderBy": "PaginationOrderBy",
+        "filter": "ProjectFilter",
+        "sort": "[ProjectSortInput!]"
+      },
+      "sha256": "24c38042f7a2f75cbb11f7313d85d5431703dde9072d3ee54aa403b7e6d8cb00"
+    },
+    {
+      "id": "operation.list_projects.summary",
+      "sourceClass": "named-operation",
+      "document": "query ListProjects(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: ProjectFilter\n    $sort: [ProjectSortInput!]\n    \n  ) {\n    projects(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort ) {\n      nodes { \n  id name url\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "operationType": "query",
+      "operationName": "ListProjects",
+      "rootFields": [
+        "projects"
+      ],
+      "variables": {
+        "after": "String",
+        "before": "String",
+        "first": "Int",
+        "includeArchived": "Boolean",
+        "last": "Int",
+        "orderBy": "PaginationOrderBy",
+        "filter": "ProjectFilter",
+        "sort": "[ProjectSortInput!]"
+      },
+      "sha256": "1f0046dcfe347585997b364c17ee1466763c1e5ba18697e6ff77e5e349a10f9a"
+    },
+    {
+      "id": "operation.list_teams.default",
+      "sourceClass": "named-operation",
+      "document": "query ListTeams(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: TeamFilter\n    \n    \n  ) {\n    teams(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  ) {\n      nodes { id key name description color icon private createdAt updatedAt states(first: 50) { nodes { id name type } } } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "operationType": "query",
+      "operationName": "ListTeams",
+      "rootFields": [
+        "teams"
+      ],
+      "variables": {
+        "after": "String",
+        "before": "String",
+        "first": "Int",
+        "includeArchived": "Boolean",
+        "last": "Int",
+        "orderBy": "PaginationOrderBy",
+        "filter": "TeamFilter"
+      },
+      "sha256": "b1e6871db89585cb46d1f6f5ebd3497f3947ee8375814184abfbb950780e8fba"
+    },
+    {
+      "id": "operation.list_users.default",
+      "sourceClass": "named-operation",
+      "document": "query ListUsers(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: UserFilter\n    $sort: [UserSortInput!]\n    $includeDisabled: Boolean\n  ) {\n    users(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter sort: $sort includeDisabled: $includeDisabled) {\n      nodes { id name displayName email active admin guest isAssignable createdAt updatedAt url } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "operationType": "query",
+      "operationName": "ListUsers",
+      "rootFields": [
+        "users"
+      ],
+      "variables": {
+        "after": "String",
+        "before": "String",
+        "first": "Int",
+        "includeArchived": "Boolean",
+        "last": "Int",
+        "orderBy": "PaginationOrderBy",
+        "filter": "UserFilter",
+        "sort": "[UserSortInput!]",
+        "includeDisabled": "Boolean"
+      },
+      "sha256": "87bb76f4ce2b41dc18f1a67d3a9f229c3df76c1720044301292a93bcde2b6a3f"
+    },
+    {
+      "id": "operation.list_views.default",
+      "sourceClass": "named-operation",
+      "document": "query ListViews(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: CustomViewFilter\n    \n    \n  ) {\n    customViews(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  ) {\n      nodes { \n  id name description icon color filterData projectFilterData initiativeFilterData feedItemFilterData\n  shared slugId archivedAt createdAt updatedAt modelName team { id key name } owner { id name email }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor }\n    }\n  }",
+      "operationType": "query",
+      "operationName": "ListViews",
+      "rootFields": [
+        "customViews"
+      ],
+      "variables": {
+        "after": "String",
+        "before": "String",
+        "first": "Int",
+        "includeArchived": "Boolean",
+        "last": "Int",
+        "orderBy": "PaginationOrderBy",
+        "filter": "CustomViewFilter"
+      },
+      "sha256": "c4561dbb96d296b6a059597c1529f525293ce26a666b0346f944bd98423a4b07"
+    },
+    {
+      "id": "operation.save_initiative.create",
+      "sourceClass": "named-operation",
+      "document": "mutation CreateInitiative($input: InitiativeCreateInput!) {\n    initiativeCreate(input: $input) { success initiative { \n  id name description content status color icon targetDate targetDateResolution sortOrder health\n  completedAt startedAt archivedAt trashed createdAt updatedAt url owner { id name email }\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "CreateInitiative",
+      "rootFields": [
+        "initiativeCreate"
+      ],
+      "variables": {
+        "input": "InitiativeCreateInput!"
+      },
+      "sha256": "db09f43d54ea3ba7dd1c558082f4776c51ae23ff8d19d337569f249c2e5d2e27"
+    },
+    {
+      "id": "operation.save_initiative.update",
+      "sourceClass": "named-operation",
+      "document": "mutation UpdateInitiative($id: String! $input: InitiativeUpdateInput!) {\n    initiativeUpdate(id: $id, input: $input) { success initiative { \n  id name description content status color icon targetDate targetDateResolution sortOrder health\n  completedAt startedAt archivedAt trashed createdAt updatedAt url owner { id name email }\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "UpdateInitiative",
+      "rootFields": [
+        "initiativeUpdate"
+      ],
+      "variables": {
+        "id": "String!",
+        "input": "InitiativeUpdateInput!"
+      },
+      "sha256": "19e530c8c59efb5e2a4368387ce7b246576fddab08491a90423f786f3c60ce85"
+    },
+    {
+      "id": "operation.save_milestone.create",
+      "sourceClass": "named-operation",
+      "document": "mutation CreateMilestone($input: ProjectMilestoneCreateInput!) {\n    projectMilestoneCreate(input: $input) { success projectMilestone { \n  id name description status progress targetDate sortOrder createdAt updatedAt project { id name url }\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "CreateMilestone",
+      "rootFields": [
+        "projectMilestoneCreate"
+      ],
+      "variables": {
+        "input": "ProjectMilestoneCreateInput!"
+      },
+      "sha256": "8f5c2e1d37f88f7856d68851de5b7d9ccbe79afc61eae8de385460fcf2be1666"
+    },
+    {
+      "id": "operation.save_milestone.update",
+      "sourceClass": "named-operation",
+      "document": "mutation UpdateMilestone($id: String! $input: ProjectMilestoneUpdateInput!) {\n    projectMilestoneUpdate(id: $id, input: $input) { success projectMilestone { \n  id name description status progress targetDate sortOrder createdAt updatedAt project { id name url }\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "UpdateMilestone",
+      "rootFields": [
+        "projectMilestoneUpdate"
+      ],
+      "variables": {
+        "id": "String!",
+        "input": "ProjectMilestoneUpdateInput!"
+      },
+      "sha256": "ab64949263fcc8bc5b0f677cbf2c2accee9f2a4e35ccb90182c3e16d275d97a7"
+    },
+    {
+      "id": "operation.save_project.create",
+      "sourceClass": "named-operation",
+      "document": "mutation CreateProject($input: ProjectCreateInput! $slackChannelName: String) {\n    projectCreate(input: $input, slackChannelName: $slackChannelName) { success project { \n  id name description color icon state priority slugId startDate targetDate completedAt\n  canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url\n  teams(first: 10) { nodes { id key name } }\n  lead { id name email } members(first: 10) { nodes { id name email } } status { id name }\n  content\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "CreateProject",
+      "rootFields": [
+        "projectCreate"
+      ],
+      "variables": {
+        "input": "ProjectCreateInput!",
+        "slackChannelName": "String"
+      },
+      "sha256": "ba6530861639713e9de4e5e6e32ef1163fda74c65619483e9b20c42b5a844081"
+    },
+    {
+      "id": "operation.save_project.update",
+      "sourceClass": "named-operation",
+      "document": "mutation UpdateProject($id: String! $input: ProjectUpdateInput!) {\n    projectUpdate(id: $id, input: $input) { success project { \n  id name description color icon state priority slugId startDate targetDate completedAt\n  canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url\n  teams(first: 10) { nodes { id key name } }\n  lead { id name email } members(first: 10) { nodes { id name email } } status { id name }\n  content\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "UpdateProject",
+      "rootFields": [
+        "projectUpdate"
+      ],
+      "variables": {
+        "id": "String!",
+        "input": "ProjectUpdateInput!"
+      },
+      "sha256": "fadfc42183b9bde9026163876e87a2bcb854ef39895be8c4ed18ae8a063dbda2"
+    },
+    {
+      "id": "operation.search_issues.exact-full",
+      "sourceClass": "named-operation",
+      "document": "query GetIssue($id: String!) { issue(id: $id) { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } }",
+      "operationType": "query",
+      "operationName": "GetIssue",
+      "rootFields": [
+        "issue"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "5e09af2997bb8d9de56d6c18dd09de66713fdd1657dc62c9dbe7def66536b8b6"
+    },
+    {
+      "id": "operation.search_issues.exact-summary",
+      "sourceClass": "named-operation",
+      "document": "query GetIssue($id: String!) { issue(id: $id) { \n  id identifier title url\n } }",
+      "operationType": "query",
+      "operationName": "GetIssue",
+      "rootFields": [
+        "issue"
+      ],
+      "variables": {
+        "id": "String!"
+      },
+      "sha256": "1f59eeb0e30d9db8ad93d7297e311a9f1c2a6faeff67938f0e1970aab2bf5aab"
+    },
+    {
+      "id": "operation.search_issues.full",
+      "sourceClass": "named-operation",
+      "document": "query SearchIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    \n    $term: String! $includeComments: Boolean $teamId: String\n  ) {\n    searchIssues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  term: $term includeComments: $includeComments teamId: $teamId) {\n      nodes { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor } totalCount\n    }\n  }",
+      "operationType": "query",
+      "operationName": "SearchIssues",
+      "rootFields": [
+        "searchIssues"
+      ],
+      "variables": {
+        "after": "String",
+        "before": "String",
+        "first": "Int",
+        "includeArchived": "Boolean",
+        "last": "Int",
+        "orderBy": "PaginationOrderBy",
+        "filter": "IssueFilter",
+        "term": "String!",
+        "includeComments": "Boolean",
+        "teamId": "String"
+      },
+      "sha256": "081cd71e5a77d383d6ef9ce1e695817150dfab4bedab9124d877606d8619134d"
+    },
+    {
+      "id": "operation.search_issues.summary",
+      "sourceClass": "named-operation",
+      "document": "query SearchIssues(\n    $after: String $before: String $first: Int $includeArchived: Boolean $last: Int $orderBy: PaginationOrderBy\n    $filter: IssueFilter\n    \n    $term: String! $includeComments: Boolean $teamId: String\n  ) {\n    searchIssues(after: $after before: $before first: $first includeArchived: $includeArchived last: $last orderBy: $orderBy\n      filter: $filter  term: $term includeComments: $includeComments teamId: $teamId) {\n      nodes { \n  id identifier title url\n } pageInfo { hasNextPage hasPreviousPage startCursor endCursor } totalCount\n    }\n  }",
+      "operationType": "query",
+      "operationName": "SearchIssues",
+      "rootFields": [
+        "searchIssues"
+      ],
+      "variables": {
+        "after": "String",
+        "before": "String",
+        "first": "Int",
+        "includeArchived": "Boolean",
+        "last": "Int",
+        "orderBy": "PaginationOrderBy",
+        "filter": "IssueFilter",
+        "term": "String!",
+        "includeComments": "Boolean",
+        "teamId": "String"
+      },
+      "sha256": "3c20f92a64e75134ea8292e79046f01a2a8e7525b5044f055ddf45d551935b5f"
+    },
+    {
+      "id": "operation.set_view_preferences.viewPreferencesCreate",
+      "sourceClass": "named-operation",
+      "document": "mutation SetViewPreferences($input: ViewPreferencesCreateInput!) {\n    viewPreferencesCreate(input: $input) { success viewPreferences { id type viewType } }\n  }",
+      "operationType": "mutation",
+      "operationName": "SetViewPreferences",
+      "rootFields": [
+        "viewPreferencesCreate"
+      ],
+      "variables": {
+        "input": "ViewPreferencesCreateInput!"
+      },
+      "sha256": "7d09f0f339f251a7c228b7cc7f7b5204eb36d9d0cc1ca9f2baabd5c317cbeb0a"
+    },
+    {
+      "id": "operation.update_comment.commentUpdate",
+      "sourceClass": "named-operation",
+      "document": "mutation UpdateComment($id: String!, $input: CommentUpdateInput!, $skipEditedAt: Boolean) {\n  commentUpdate(id: $id, input: $input, skipEditedAt: $skipEditedAt) {\n    success\n    comment { \n  id body quotedText createdAt updatedAt editedAt resolvedAt url\n  issue { id identifier title } parent { id } user { id name email }\n }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": "UpdateComment",
+      "rootFields": [
+        "commentUpdate"
+      ],
+      "variables": {
+        "id": "String!",
+        "input": "CommentUpdateInput!",
+        "skipEditedAt": "Boolean"
+      },
+      "sha256": "a437645048b50d584e0b90e018bec69b83ff8e95a5d7b44e9ff7005a8951593d"
+    },
+    {
+      "id": "operation.update_cycle.cycleUpdate",
+      "sourceClass": "named-operation",
+      "document": "mutation UpdateCycle($id: String! $input: CycleUpdateInput!) {\n    cycleUpdate(id: $id, input: $input) { success cycle { \n  id name number description startsAt endsAt completedAt archivedAt autoArchivedAt isActive isFuture\n  isPast isNext isPrevious progress createdAt updatedAt team { id key name }\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "UpdateCycle",
+      "rootFields": [
+        "cycleUpdate"
+      ],
+      "variables": {
+        "id": "String!",
+        "input": "CycleUpdateInput!"
+      },
+      "sha256": "7c77f5c3cd5e130d4d70a9acf3548c9b653f5abcd95a15f240cfaacbb0d5c197"
+    },
+    {
+      "id": "operation.update_document.documentUpdate",
+      "sourceClass": "named-operation",
+      "document": "mutation UpdateDocument($id: String! $input: DocumentUpdateInput!) {\n    documentUpdate(id: $id, input: $input) { success document { \n  id title content color icon slugId sortOrder hiddenAt trashed summary archivedAt createdAt updatedAt url\n  team { id key name } project { id name } issue { id identifier title } initiative { id name }\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "UpdateDocument",
+      "rootFields": [
+        "documentUpdate"
+      ],
+      "variables": {
+        "id": "String!",
+        "input": "DocumentUpdateInput!"
+      },
+      "sha256": "d4c956b2fc28f702778a8463bfa39a000c42d9c000954c6a1fc6191176610617"
+    },
+    {
+      "id": "operation.update_issue_label.issueLabelUpdate",
+      "sourceClass": "named-operation",
+      "document": "mutation UpdateIssueLabel($id: String!, $input: IssueLabelUpdateInput!, $replaceTeamLabels: Boolean) {\n  issueLabelUpdate(id: $id, input: $input, replaceTeamLabels: $replaceTeamLabels) {\n    success\n    issueLabel { \n  id name description color isGroup createdAt updatedAt retiredAt\n  team { id key name } parent { id name }\n }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": "UpdateIssueLabel",
+      "rootFields": [
+        "issueLabelUpdate"
+      ],
+      "variables": {
+        "id": "String!",
+        "input": "IssueLabelUpdateInput!",
+        "replaceTeamLabels": "Boolean"
+      },
+      "sha256": "344e647f60991226bcaaa81dd5e6b2225eee1cf61734654c506ffe780da59802"
+    },
+    {
+      "id": "operation.update_issue_relation.issueRelationUpdate",
+      "sourceClass": "named-operation",
+      "document": "mutation UpdateIssueRelation($id: String! $input: IssueRelationUpdateInput!) {\n    issueRelationUpdate(id: $id, input: $input) { success issueRelation { \n  id createdAt updatedAt type issue { id identifier title } relatedIssue { id identifier title }\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "UpdateIssueRelation",
+      "rootFields": [
+        "issueRelationUpdate"
+      ],
+      "variables": {
+        "id": "String!",
+        "input": "IssueRelationUpdateInput!"
+      },
+      "sha256": "4d63ef8425cf301adcd2246c4afca7014b397d97fab87f05bae50deeae61107d"
+    },
+    {
+      "id": "operation.update_issue.issueUpdate",
+      "sourceClass": "named-operation",
+      "document": "mutation UpdateIssue($id: String! $input: IssueUpdateInput!) {\n    issueUpdate(id: $id, input: $input) { success issue { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "UpdateIssue",
+      "rootFields": [
+        "issueUpdate"
+      ],
+      "variables": {
+        "id": "String!",
+        "input": "IssueUpdateInput!"
+      },
+      "sha256": "3269523b88770302451f474d68479bc086f292528aa6bd6bb603ba37dd70987c"
+    },
+    {
+      "id": "operation.update_project_label.projectLabelUpdate",
+      "sourceClass": "named-operation",
+      "document": "mutation UpdateProjectLabel($id: String! $input: ProjectLabelUpdateInput!) {\n    projectLabelUpdate(id: $id, input: $input) { success projectLabel { \n  id name description color isGroup createdAt updatedAt retiredAt parent { id name }\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "UpdateProjectLabel",
+      "rootFields": [
+        "projectLabelUpdate"
+      ],
+      "variables": {
+        "id": "String!",
+        "input": "ProjectLabelUpdateInput!"
+      },
+      "sha256": "da7047a0b8f06ff3e5a527b98f8eaa991a8cb6ed1387ad443de111a944a96755"
+    },
+    {
+      "id": "operation.update_project_relation.projectRelationUpdate",
+      "sourceClass": "named-operation",
+      "document": "mutation UpdateProjectRelation($id: String! $input: ProjectRelationUpdateInput!) {\n    projectRelationUpdate(id: $id, input: $input) { success projectRelation { \n  id createdAt updatedAt type anchorType relatedAnchorType project { id name }\n  projectMilestone { id name } relatedProject { id name } relatedProjectMilestone { id name }\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "UpdateProjectRelation",
+      "rootFields": [
+        "projectRelationUpdate"
+      ],
+      "variables": {
+        "id": "String!",
+        "input": "ProjectRelationUpdateInput!"
+      },
+      "sha256": "ca01c62f3711cd3fe8f1e3f956147f50963403496e584043594cefe2e29700a4"
+    },
+    {
+      "id": "operation.update_view.customViewUpdate",
+      "sourceClass": "named-operation",
+      "document": "mutation UpdateView($id: String! $input: CustomViewUpdateInput!) {\n    customViewUpdate(id: $id, input: $input) { success customView { \n  id name description icon color filterData projectFilterData initiativeFilterData feedItemFilterData\n  shared slugId archivedAt createdAt updatedAt modelName team { id key name } owner { id name email }\n } }\n  }",
+      "operationType": "mutation",
+      "operationName": "UpdateView",
+      "rootFields": [
+        "customViewUpdate"
+      ],
+      "variables": {
+        "id": "String!",
+        "input": "CustomViewUpdateInput!"
+      },
+      "sha256": "859efea092fac7ebe82af014eec12534e6959b47e6fa90eff5489325ba32b778"
+    },
+    {
+      "id": "transaction.issue-batch-create",
+      "sourceClass": "transaction",
+      "document": "mutation BatchIssueCreate($input: IssueBatchCreateInput!) {\n  issueBatchCreate(input: $input) {\n    success\n    issues { \n  id identifier number title description priority url branchName dueDate createdAt updatedAt\n  estimate priorityLabel completedAt startedAt archivedAt trashed\n  state { id name type }\n  team { id key name }\n  assignee { id name email }\n  labels(first: 50) { nodes { id name } }\n  project { id name }\n  parent { id identifier title }\n  cycle { id name number }\n  creator { id name email }\n }\n  }\n}",
+      "operationType": "mutation",
+      "operationName": "BatchIssueCreate",
+      "rootFields": [
+        "issueBatchCreate"
+      ],
+      "variables": {
+        "input": "IssueBatchCreateInput!"
+      },
+      "sha256": "d7fd54a7ca8a2673231a39541c0fbd3535aedf7def5cc905d4b6b94f601823c3"
+    }
+  ]
+}

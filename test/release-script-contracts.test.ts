@@ -15,6 +15,8 @@ const required = [
   'test:providers',
   'verify:package',
   'smoke:readonly',
+  'validate:readonly-schema',
+  'capture:readonly-schema',
   'verify:clean',
 ];
 

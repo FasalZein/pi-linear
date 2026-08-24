@@ -1,10 +1,13 @@
+import { createHash } from 'node:crypto';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
+import { Kind, parse, print, type FieldNode, type OperationDefinitionNode } from 'graphql';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DOMAINS, operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
 import { buildTypedToolMetadata } from '../extensions/typed-tool-metadata';
 import { exceptionalToolDefinitions } from '../extensions/exceptional-tools';
+import { PACKAGE_DOCUMENT_EXCLUSIONS, runtimePackageDocuments } from '../extensions/package-documents';
 import {
   LINEAR_AGENT_QUERY_DISCIPLINE,
   LINEAR_AGENT_QUERY_DISCIPLINE_END,
@@ -21,11 +24,13 @@ const contractsPath = resolve(generated, 'operation-contracts.json');
 const catalogPath = resolve(generated, 'operation-catalog.ts');
 const readmePath = resolve(root, 'README.md');
 const referencePath = resolve(root, 'REFERENCE.md');
+const packageDocumentsPath = resolve(root, 'scripts/fixtures/package-graphql-documents.json');
+const introspectionPath = resolve(root, 'scripts/fixtures/readonly-introspection.graphql');
 const START = '<!-- BEGIN GENERATED LINEAR OPERATIONS -->';
 const END = '<!-- END GENERATED LINEAR OPERATIONS -->';
 const LINEAR_TOOL_USAGE = 'Discovery help only. Exact help loads linear_<name>; linear_get_result is active.';
 
-export const generatedFiles = [manifestPath, contractsPath, catalogPath, readmePath, referencePath] as const;
+export const generatedFiles = [manifestPath, contractsPath, catalogPath, packageDocumentsPath, readmePath, referencePath] as const;
 
 const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
 
@@ -200,15 +205,42 @@ function referenceCatalog(): string {
   ].join('\n');
 }
 
+function packageDocumentInventory(introspectionDocument: string) {
+  const documents = runtimePackageDocuments(introspectionDocument).map((entry) => {
+    const definition = parse(entry.document).definitions.find(
+      (candidate): candidate is OperationDefinitionNode => candidate.kind === Kind.OPERATION_DEFINITION,
+    );
+    if (!definition) throw new Error(`Package document ${entry.id} has no operation definition.`);
+    return {
+      ...entry,
+      operationType: definition.operation,
+      operationName: definition.name?.value ?? null,
+      rootFields: definition.selectionSet.selections
+        .filter((selection): selection is FieldNode => selection.kind === Kind.FIELD)
+        .map(({ name }) => name.value),
+      variables: Object.fromEntries((definition.variableDefinitions ?? []).map(({ variable, type }) => [
+        variable.name.value, print(type),
+      ])),
+      sha256: createHash('sha256').update(entry.document).digest('hex'),
+    };
+  });
+  if (new Set(documents.map(({ id }) => id)).size !== documents.length) {
+    throw new Error('Package document inventory contains duplicate IDs.');
+  }
+  return { schemaVersion: 1, exclusions: PACKAGE_DOCUMENT_EXCLUSIONS, documents };
+}
+
 export async function renderGeneratedFiles(): Promise<Record<string, string>> {
   const base = {
     readme: await readFile(readmePath, 'utf8'),
     reference: await readFile(referencePath, 'utf8'),
+    introspection: await readFile(introspectionPath, 'utf8'),
   };
   return {
     [manifestPath]: json(manifest()),
     [contractsPath]: json(contracts()),
     [catalogPath]: catalogModule(),
+    [packageDocumentsPath]: json(packageDocumentInventory(base.introspection)),
     [readmePath]: replaceGeneratedSection(base.readme, readmeCatalog()),
     [referencePath]: replaceGeneratedSection(base.reference, referenceCatalog()),
   };

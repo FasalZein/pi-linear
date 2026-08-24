@@ -143,7 +143,7 @@ type PlannedEntry = {
   deferredDocument?: string;
 };
 
-const ISSUE_BATCH_CREATE_DOCUMENT = `mutation BatchIssueCreate($input: IssueBatchCreateInput!) {
+export const ISSUE_BATCH_CREATE_DOCUMENT = `mutation BatchIssueCreate($input: IssueBatchCreateInput!) {
   issueBatchCreate(input: $input) {
     success
     issues { ${projection('issue', 'detail')} }
@@ -164,7 +164,7 @@ function operationDefinition(document: DocumentNode): OperationDefinitionNode {
   return definition;
 }
 
-function aliasDocument(key: string, document: string): { ast: DocumentNode; root: string } {
+export function aliasDocument(key: string, document: string): { ast: DocumentNode; root: string } {
   const source = parse(document);
   const op = operationDefinition(source);
   const roots = op.selectionSet.selections.filter((selection) => selection.kind === Kind.FIELD);
@@ -193,7 +193,7 @@ function aliasDocument(key: string, document: string): { ast: DocumentNode; root
   return { ast, root };
 }
 
-function mergeDocuments(
+export function mergeDocuments(
   operation: OperationTypeNode,
   name: string,
   parts: readonly DocumentNode[],
@@ -354,6 +354,14 @@ function compilePlanLookup(entryKey: string, lookup: LookupPlan): CompiledLookup
       return lookup.resolve(Object.fromEntries(aliases.map((alias) => [roots.get(alias)!, raw[alias]])), {});
     },
   };
+}
+
+export function compileLookupDocument(key: string, lookup: LookupPlan): string {
+  const resolved = new Proxy({}, { get: () => ({ id: '00000000-0000-4000-8000-000000000000' }) });
+  return print(compilePlanLookup(key, {
+    ...lookup,
+    variables: () => lookup.variables(resolved),
+  }).ast);
 }
 
 function prefixVariables(key: string, variables: Record<string, unknown>): Record<string, unknown> {

@@ -195,6 +195,7 @@ export function withGetResultView(
 		},
 		parameters: [...source.parameters, resultViewParam],
 		document: documents[defaultView],
+		inventoryDocuments: (["summary", "full"] as const).map((id) => ({ id, document: documents[id] })),
 		plan: async (variables) => {
 			const plan = innerPlan ? await innerPlan(variables) : pureQueryPlan({ variables });
 			return {
@@ -324,6 +325,7 @@ export function listOperation(config: {
 	acceptedParameters?: readonly OperationParameter[];
 	validateVariables?: LinearOperation["validateVariables"];
 	resultView?: { entity: ResultViewEntity; defaultView: ResultView };
+	inventoryDocuments?: readonly { id: string; document: string }[];
 } & OperationSourceExtras): OperationSource {
 	const parameters = config.parameters ?? [];
 	const queryName = config.name.replace(/(^|_)(\w)/g, (_, _a, c) => c.toUpperCase());
@@ -376,6 +378,12 @@ export function listOperation(config: {
 			: undefined,
 		example: { operation: config.name, variables: config.example ?? {} },
 		document,
+		...((documents || config.inventoryDocuments) ? {
+			inventoryDocuments: [
+				...(documents ? (["summary", "full"] as const).map((id) => ({ id, document: documents[id] })) : []),
+				...(config.inventoryDocuments ?? []),
+			],
+		} : {}),
 		pagination: {
 			defaultPageSize: config.pageSize,
 			...(config.filterType ? { filterType: config.filterType } : {}),

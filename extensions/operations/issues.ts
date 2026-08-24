@@ -854,6 +854,10 @@ export const issues: readonly OperationDefinition[] = ([
 		root: "searchIssues",
 		selection: projection("issue", "list"),
 		resultView: { entity: "issue", defaultView: "summary" },
+		inventoryDocuments: (["summary", "full"] as const).map((id) => ({
+			id: `exact-${id}`,
+			document: getDocument("GetIssue", "issue", projection("issue", id === "summary" ? "list" : "detail")),
+		})),
 		purpose: "Search issues by text.",
 		pageSize: 20,
 		filterType: "IssueFilter",
