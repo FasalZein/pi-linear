@@ -104,6 +104,36 @@ describe('credential lock safety', () => {
     await expect(access(lock)).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
+  it('recovers after the recovery claimant also dies', async () => {
+    const file = await put(credentials());
+    const lock = `${file}.lock`;
+    const owner = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)']);
+    const deadOwnerPid = owner.pid!;
+    owner.kill('SIGKILL');
+    await new Promise<void>((resolve) => owner.once('exit', () => resolve()));
+    await mkdir(lock, { mode: 0o700 });
+    await writeFile(join(lock, 'owner.json'), JSON.stringify({ pid: deadOwnerPid, token: 'dead-owner' }), { mode: 0o600 });
+
+    const recovery = join(lock, 'recovery.json');
+    const ready = join(agentDirectory, 'recovery-ready');
+    const claimant = spawn(process.execPath, [
+      '-e',
+      "const fs=require('node:fs');fs.writeFileSync(process.argv[1],JSON.stringify({pid:process.pid,token:'dead-recovery'}),{mode:0o600});fs.writeFileSync(process.argv[2],'ready');setInterval(()=>{},1000)",
+      recovery,
+      ready,
+    ]);
+    while (await access(ready).then(() => false, () => true)) {
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    }
+    claimant.kill('SIGKILL');
+    await new Promise<void>((resolve) => claimant.once('exit', () => resolve()));
+
+    await addWorkspace('third', 'lin_api_third_secret_123456789');
+
+    expect((await readCredentials()).workspaces.third).toEqual({ apiKey: 'lin_api_third_secret_123456789' });
+    await expect(access(lock)).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
   it('rejects a symbolic-link lock without writing through it', async () => {
     const file = await put(credentials());
     const before = await readFile(file);

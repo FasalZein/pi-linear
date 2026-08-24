@@ -449,7 +449,10 @@ describe('generated products', () => {
     for (const claim of [
       'singular read uses the complete `full` result view',
       'collection uses the disclosed `summary` result view',
-      'Exact issue identifiers, UUIDs',
+      'Exact issue identifiers and UUIDs',
+      'project and document slugs can use singular roots because the returned `slugId` proves the requested identity',
+      'Cycle references support UUIDs or exact names because the live `Cycle` type has no `slugId`',
+      'A non-UUID reference uses exact-name lookup, then reads the result through the UUID singular root',
       'Mutations follow in a second phase.',
       'Each effective key appears exactly once',
       'not GraphQL complexity or response payload size',

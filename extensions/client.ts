@@ -110,7 +110,7 @@ function invalidCredentialLock(): never {
   throw new Error('Invalid Linear credential lock. Repair or remove it before changing stored credentials.');
 }
 
-async function readCredentialLockOwner(lockPath: string): Promise<CredentialLockOwner> {
+async function readCredentialLockRecord(lockPath: string, fileName: string): Promise<CredentialLockOwner> {
   const lockStat = await fs.lstat(lockPath).catch((error) => {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
     throw error;
@@ -124,13 +124,13 @@ async function readCredentialLockOwner(lockPath: string): Promise<CredentialLock
     }
     invalidCredentialLock();
   };
-  const ownerPath = path.join(lockPath, 'owner.json');
-  const ownerStat = await fs.lstat(ownerPath).catch(() => undefined);
-  if (!ownerStat) return changed();
-  if (!ownerStat.isFile() || ownerStat.isSymbolicLink()) invalidCredentialLock();
-  let owner: unknown;
+  const recordPath = path.join(lockPath, fileName);
+  const recordStat = await fs.lstat(recordPath).catch(() => undefined);
+  if (!recordStat) return changed();
+  if (!recordStat.isFile() || recordStat.isSymbolicLink()) invalidCredentialLock();
+  let record: unknown;
   try {
-    owner = JSON.parse(await fs.readFile(ownerPath, 'utf8'));
+    record = JSON.parse(await fs.readFile(recordPath, 'utf8'));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return changed();
     invalidCredentialLock();
@@ -139,10 +139,18 @@ async function readCredentialLockOwner(lockPath: string): Promise<CredentialLock
   if (!current || current.dev !== lockStat.dev || current.ino !== lockStat.ino) {
     throw Object.assign(new Error('Credential lock changed.'), { code: 'ENOENT' });
   }
-  if (!isRecord(owner) || !Number.isSafeInteger(owner.pid) || Number(owner.pid) <= 0 || typeof owner.token !== 'string') {
+  if (!isRecord(record) || !Number.isSafeInteger(record.pid) || Number(record.pid) <= 0 || typeof record.token !== 'string') {
     invalidCredentialLock();
   }
-  return { pid: Number(owner.pid), token: owner.token };
+  return { pid: Number(record.pid), token: record.token };
+}
+
+function readCredentialLockOwner(lockPath: string): Promise<CredentialLockOwner> {
+  return readCredentialLockRecord(lockPath, 'owner.json');
+}
+
+function readCredentialRecoveryClaim(lockPath: string): Promise<CredentialLockOwner> {
+  return readCredentialLockRecord(lockPath, 'recovery.json');
 }
 
 function ownerProcessIsGone(pid: number): boolean {
@@ -171,12 +179,41 @@ async function recoverCredentialLock(lockPath: string, expected: CredentialLockO
     await fs.writeFile(recoveryPath, JSON.stringify(recovery), { flag: 'wx', mode: 0o600 });
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    let existing: CredentialLockOwner;
+    try {
+      existing = await readCredentialRecoveryClaim(lockPath);
+    } catch (readError) {
+      if ((readError as NodeJS.ErrnoException).code === 'ENOENT') return;
+      throw readError;
+    }
+    if (!ownerProcessIsGone(existing.pid)) {
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      return;
+    }
+    let current: CredentialLockOwner;
+    try {
+      current = await readCredentialLockOwner(lockPath);
+    } catch (readError) {
+      if ((readError as NodeJS.ErrnoException).code === 'ENOENT') return;
+      throw readError;
+    }
+    if (current.pid !== expected.pid || current.token !== expected.token || !ownerProcessIsGone(current.pid)) return;
+    const movedPath = `${lockPath}.remove-${process.pid}-${randomUUID()}`;
+    try {
+      await fs.rename(lockPath, movedPath);
+    } catch (moveError) {
+      if ((moveError as NodeJS.ErrnoException).code === 'ENOENT') return;
+      throw moveError;
+    }
+    const moved = await readCredentialLockOwner(movedPath);
+    if (moved.pid !== expected.pid || moved.token !== expected.token) invalidCredentialLock();
+    await fs.rm(movedPath, { recursive: true });
     return;
   }
   const current = await readCredentialLockOwner(lockPath);
   if (current.pid !== expected.pid || current.token !== expected.token || !ownerProcessIsGone(current.pid)) {
-    await fs.rm(recoveryPath, { force: true });
+    const claim = await readCredentialRecoveryClaim(lockPath);
+    if (claim.pid === recovery.pid && claim.token === recovery.token) await fs.rm(recoveryPath);
     return;
   }
   await moveAndRemoveCredentialLock(lockPath, expected);
