@@ -172,6 +172,41 @@ async function moveAndRemoveCredentialLock(lockPath: string, expected: Credentia
   await fs.rm(movedPath, { recursive: true });
 }
 
+function sameCredentialLockOwner(left: CredentialLockOwner, right: CredentialLockOwner): boolean {
+  return left.pid === right.pid && left.token === right.token;
+}
+
+async function restoreCredentialRecoveryClaim(movedPath: string, recoveryPath: string): Promise<void> {
+  try {
+    await fs.link(movedPath, recoveryPath);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code !== 'EEXIST' && code !== 'ENOENT') throw error;
+  }
+  await fs.rm(movedPath, { force: true });
+}
+
+async function removeCredentialRecoveryClaim(lockPath: string, expected: CredentialLockOwner): Promise<void> {
+  const recoveryPath = path.join(lockPath, 'recovery.json');
+  const movedName = `recovery.remove-${process.pid}-${randomUUID()}.json`;
+  const movedPath = path.join(lockPath, movedName);
+  try {
+    await fs.rename(recoveryPath, movedPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+    throw error;
+  }
+  const moved = await readCredentialLockRecord(lockPath, movedName).catch((error) => {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+    throw error;
+  });
+  if (!moved || sameCredentialLockOwner(moved, expected)) {
+    await fs.rm(movedPath, { force: true });
+    return;
+  }
+  await restoreCredentialRecoveryClaim(movedPath, recoveryPath);
+}
+
 async function recoverCredentialLock(lockPath: string, expected: CredentialLockOwner): Promise<void> {
   const recoveryPath = path.join(lockPath, 'recovery.json');
   const recovery = { pid: process.pid, token: randomUUID() };
@@ -197,23 +232,45 @@ async function recoverCredentialLock(lockPath: string, expected: CredentialLockO
       if ((readError as NodeJS.ErrnoException).code === 'ENOENT') return;
       throw readError;
     }
-    if (current.pid !== expected.pid || current.token !== expected.token || !ownerProcessIsGone(current.pid)) return;
-    const movedPath = `${lockPath}.remove-${process.pid}-${randomUUID()}`;
+    if (!sameCredentialLockOwner(current, expected) || !ownerProcessIsGone(current.pid)) return;
+
+    const abandonedName = `recovery.abandoned-${process.pid}-${randomUUID()}.json`;
+    const abandonedPath = path.join(lockPath, abandonedName);
     try {
-      await fs.rename(lockPath, movedPath);
+      await fs.rename(recoveryPath, abandonedPath);
     } catch (moveError) {
       if ((moveError as NodeJS.ErrnoException).code === 'ENOENT') return;
       throw moveError;
     }
-    const moved = await readCredentialLockOwner(movedPath);
-    if (moved.pid !== expected.pid || moved.token !== expected.token) invalidCredentialLock();
-    await fs.rm(movedPath, { recursive: true });
-    return;
+    const abandoned = await readCredentialLockRecord(lockPath, abandonedName).catch((readError) => {
+      if ((readError as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+      throw readError;
+    });
+    if (!abandoned) return;
+    if (!sameCredentialLockOwner(abandoned, existing)) {
+      await restoreCredentialRecoveryClaim(abandonedPath, recoveryPath);
+      return;
+    }
+    try {
+      await fs.writeFile(recoveryPath, JSON.stringify(recovery), { flag: 'wx', mode: 0o600 });
+    } catch (claimError) {
+      await fs.rm(abandonedPath, { force: true });
+      if ((claimError as NodeJS.ErrnoException).code === 'EEXIST' || (claimError as NodeJS.ErrnoException).code === 'ENOENT') return;
+      throw claimError;
+    }
+    await fs.rm(abandonedPath, { force: true });
   }
-  const current = await readCredentialLockOwner(lockPath);
-  if (current.pid !== expected.pid || current.token !== expected.token || !ownerProcessIsGone(current.pid)) {
-    const claim = await readCredentialRecoveryClaim(lockPath);
-    if (claim.pid === recovery.pid && claim.token === recovery.token) await fs.rm(recoveryPath);
+
+  let current: CredentialLockOwner;
+  let claim: CredentialLockOwner;
+  try {
+    [current, claim] = await Promise.all([readCredentialLockOwner(lockPath), readCredentialRecoveryClaim(lockPath)]);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+    throw error;
+  }
+  if (!sameCredentialLockOwner(current, expected) || !ownerProcessIsGone(current.pid) || !sameCredentialLockOwner(claim, recovery)) {
+    await removeCredentialRecoveryClaim(lockPath, recovery);
     return;
   }
   await moveAndRemoveCredentialLock(lockPath, expected);

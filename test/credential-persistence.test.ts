@@ -134,6 +134,115 @@ describe('credential lock safety', () => {
     await expect(access(lock)).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
+  it('recovers when a stale-claim reclaimer dies between takeover steps', async () => {
+    const file = await put(credentials());
+    const lock = `${file}.lock`;
+    const owner = spawn(process.execPath, ['-e', '']);
+    const deadOwnerPid = owner.pid!;
+    await new Promise<void>((resolve) => owner.once('exit', () => resolve()));
+    await mkdir(lock, { mode: 0o700 });
+    await writeFile(join(lock, 'owner.json'), JSON.stringify({ pid: deadOwnerPid, token: 'dead-owner' }), { mode: 0o600 });
+    await writeFile(join(lock, 'recovery.abandoned-dead.json'), JSON.stringify({ pid: deadOwnerPid, token: 'dead-recovery' }), { mode: 0o600 });
+
+    await addWorkspace('third', 'lin_api_third_secret_123456789');
+
+    expect((await readCredentials()).workspaces.third).toEqual({ apiKey: 'lin_api_third_secret_123456789' });
+    await expect(access(lock)).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('does not let a second stale reclaimer move a new live lock', async () => {
+    const file = await put(credentials());
+    const lock = `${file}.lock`;
+    const deadOwner = spawn(process.execPath, ['-e', '']);
+    const deadOwnerPid = deadOwner.pid!;
+    const deadClaimant = spawn(process.execPath, ['-e', '']);
+    const deadClaimantPid = deadClaimant.pid!;
+    await Promise.all([
+      new Promise<void>((resolve) => deadOwner.once('exit', () => resolve())),
+      new Promise<void>((resolve) => deadClaimant.once('exit', () => resolve())),
+    ]);
+    await mkdir(lock, { mode: 0o700 });
+    await writeFile(join(lock, 'owner.json'), JSON.stringify({ pid: deadOwnerPid, token: 'dead-owner' }), { mode: 0o600 });
+    await writeFile(join(lock, 'recovery.json'), JSON.stringify({ pid: deadClaimantPid, token: 'dead-recovery' }), { mode: 0o600 });
+
+    const worker = join(process.cwd(), 'node_modules/vite-node/vite-node.mjs');
+    const helper = join(process.cwd(), 'test/helpers/credential-lock-race-worker.ts');
+    const barrier = (name: string) => join(agentDirectory, name);
+    const paths = {
+      aObserved: barrier('a-observed'),
+      bObserved: barrier('b-observed'),
+      aReadRelease: barrier('a-read-release'),
+      bReadRelease: barrier('b-read-release'),
+      aMoved: barrier('a-moved'),
+      aMovedRelease: barrier('a-moved-release'),
+      writerReady: barrier('writer-ready'),
+      writerRelease: barrier('writer-release'),
+      bAction: barrier('b-action'),
+    };
+    const waitFor = async (target: string) => {
+      while (await access(target).then(() => false, () => true)) {
+        await new Promise<void>((resolve) => setImmediate(resolve));
+      }
+    };
+    const startWorker = (name: string, args: string[]) => {
+      const child = spawn(process.execPath, [worker, helper, agentDirectory, name, ...args], {
+        cwd: process.cwd(),
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      let stderr = '';
+      child.stderr.on('data', (chunk) => { stderr += chunk; });
+      return {
+        child,
+        exited: new Promise<void>((resolve, reject) => child.once('exit', (code) => {
+          if (code === 0) resolve();
+          else reject(new Error(`Credential race worker ${name} exited ${code}: ${stderr}`));
+        })),
+      };
+    };
+    const a = startWorker('reclaimer-a', [paths.aObserved, paths.aReadRelease, paths.aMoved, paths.aMovedRelease, '', '', '']);
+    const b = startWorker('reclaimer-b', [paths.bObserved, paths.bReadRelease, '', '', '', '', paths.bAction]);
+    let writer: ReturnType<typeof startWorker> | undefined;
+    let completed = false;
+
+    try {
+      await Promise.all([waitFor(paths.aObserved), waitFor(paths.bObserved)]);
+      await writeFile(paths.aReadRelease, 'release');
+      await waitFor(paths.aMoved);
+
+      writer = startWorker('live-writer', ['', '', '', '', paths.writerReady, paths.writerRelease, '']);
+      await waitFor(paths.writerReady);
+      const liveIdentity = await stat(lock);
+      expect(JSON.parse(await readFile(join(lock, 'owner.json'), 'utf8')).pid).toBe(writer.child.pid);
+
+      await writeFile(paths.aMovedRelease, 'release');
+      await writeFile(paths.bReadRelease, 'release');
+      await waitFor(paths.bAction);
+
+      const afterStaleAttempt = await stat(lock);
+      expect({ dev: afterStaleAttempt.dev, ino: afterStaleAttempt.ino }).toEqual({ dev: liveIdentity.dev, ino: liveIdentity.ino });
+      expect(JSON.parse(await readFile(join(lock, 'owner.json'), 'utf8')).pid).toBe(writer.child.pid);
+      await writeFile(paths.writerRelease, 'release');
+      await Promise.all([a.exited, b.exited, writer.exited]);
+      completed = true;
+    } finally {
+      await Promise.all([
+        writeFile(paths.aReadRelease, 'release'),
+        writeFile(paths.bReadRelease, 'release'),
+        writeFile(paths.aMovedRelease, 'release'),
+        writeFile(paths.writerRelease, 'release'),
+      ]);
+      if (!completed) {
+        for (const child of [a.child, b.child, writer?.child]) {
+          if (child && child.exitCode === null) child.kill('SIGKILL');
+        }
+        await Promise.allSettled([a.exited, b.exited, writer?.exited]);
+      }
+    }
+
+    expect(Object.keys((await readCredentials()).workspaces)).toEqual(expect.arrayContaining(['reclaimer-a', 'reclaimer-b', 'live-writer']));
+    await expect(access(lock)).rejects.toMatchObject({ code: 'ENOENT' });
+  }, 30_000);
+
   it('rejects a symbolic-link lock without writing through it', async () => {
     const file = await put(credentials());
     const before = await readFile(file);
