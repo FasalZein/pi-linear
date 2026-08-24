@@ -1,3 +1,4 @@
+import { validateToolArguments } from '@earendil-works/pi-ai';
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from '@earendil-works/pi-coding-agent';
 import { mkdtemp, mkdir, readFile, readdir, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -29,6 +30,14 @@ function execute(params: Record<string, unknown>) {
 
 function executeDirect(params: Record<string, unknown>) {
   return (linearGetResultTool() as any).execute('call-1', params, undefined, undefined, { hasUI: false });
+}
+
+async function executeThroughPi(tool: any, params: Record<string, unknown>) {
+  const prepared = tool.prepareArguments?.(params) ?? params;
+  const validated = validateToolArguments(tool, {
+    id: 'call-1', name: tool.name, arguments: prepared,
+  } as any);
+  return tool.execute('call-1', validated, undefined, undefined, { hasUI: false });
 }
 
 async function artifact(data: Record<string, unknown>) {
@@ -142,6 +151,55 @@ describe('result handles', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it('rejects invalid raw offsets through Pi before conversion or artifact execution', async () => {
+    const tool = linearGetResultTool() as any;
+    const execute = vi.spyOn(tool, 'execute');
+    const handle = 'linear-result:v1:550e8400-e29b-41d4-a716-446655440000';
+    const invalid = [
+      { offset: '1' },
+      { offset: true },
+      { offset: false },
+      { offset: null },
+      { offset: -1 },
+      { offset: 1.5 },
+      { offset: [] },
+      { offset: {} },
+      { offset: Number.NaN },
+      { offset: Number.POSITIVE_INFINITY },
+      { offset: 0, unknown: true },
+    ];
+
+    for (const fields of invalid) {
+      await expect(executeThroughPi(tool, { handle, ...fields }))
+        .rejects.toThrow(/Invalid arguments for "linear_get_result"/);
+    }
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('repeats strict offset validation in direct execution before artifact access', async () => {
+    const handle = 'linear-result:v1:550e8400-e29b-41d4-a716-446655440000';
+    for (const fields of [
+      { offset: '1' }, { offset: true }, { offset: false }, { offset: null },
+      { offset: -1 }, { offset: 1.5 }, { offset: [] }, { offset: {} },
+      { offset: Number.NaN }, { offset: Number.POSITIVE_INFINITY },
+      { offset: 0, unknown: true },
+    ]) {
+      await expect(executeDirect({ handle, ...fields }))
+        .rejects.toThrow(/Invalid arguments for "linear_get_result"/);
+    }
+  });
+
+  it('keeps valid integer offsets unchanged through Pi validation', async () => {
+    await artifactRoot();
+    const stored = await artifact({ value: ['first', 'second'] });
+    const tool = linearGetResultTool() as any;
+    const args = { handle: stored.handle, path: '/data/value', offset: 1 };
+    await expect(executeThroughPi(tool, args)).resolves.toMatchObject({
+      details: { data: { value: ['second'] } },
+    });
+    expect(args).toEqual({ handle: stored.handle, path: '/data/value', offset: 1 });
+  });
+
   it('publishes a strict direct schema without loader wrapper fields', () => {
     const tool = linearGetResultTool() as any;
     expect(tool.name).toBe('linear_get_result');
@@ -167,7 +225,7 @@ describe('result handles', () => {
       details: { data: { value: 'found' } },
     });
     await expect(get(stored.handle, '/data/a~01b')).rejects.toThrow('Invalid JSON Pointer');
-    await expect(get(stored.handle, 'data')).rejects.toThrow('Invalid JSON Pointer');
+    await expect(get(stored.handle, 'data')).rejects.toThrow(/Invalid arguments for "linear_get_result"/);
   });
 
   it('segments strings by Unicode code points and supports continuation offsets', async () => {
@@ -236,15 +294,16 @@ describe('result handles', () => {
   it('rejects invalid offsets and retrieval-only routing fields', async () => {
     await artifactRoot();
     const stored = await artifact({ value: ['a', 'b'] });
-    for (const offset of [-1, 1.5, 3]) {
-      await expect(get(stored.handle, '/data/value', offset)).rejects.toThrow('Invalid result offset');
+    for (const offset of [-1, 1.5]) {
+      await expect(get(stored.handle, '/data/value', offset)).rejects.toThrow(/Invalid arguments for "linear_get_result"/);
     }
+    await expect(get(stored.handle, '/data/value', 3)).rejects.toThrow('Invalid result offset');
     await expect(execute({ operation: 'get_result', variables: { handle: stored.handle, filename: stored.path } }))
-      .rejects.toThrow(/Invalid parameters for "get_result"/);
+      .rejects.toThrow(/Invalid arguments for "linear_get_result"/);
     await expect(execute({ operation: 'get_result', variables: { handle: stored.handle }, sink: 'artifact' }))
-      .rejects.toThrow(/Invalid parameters for "get_result"/);
+      .rejects.toThrow(/Invalid arguments for "linear_get_result"/);
     await expect(execute({ operation: 'get_result', variables: { handle: stored.handle }, workspace: 'default' }))
-      .rejects.toThrow(/Invalid parameters for "get_result"/);
+      .rejects.toThrow(/Invalid arguments for "linear_get_result"/);
   });
 
   it('rejects traversal, path, URI, malformed, alternate, and missing handles safely', async () => {
