@@ -2,7 +2,7 @@ import { mkdtemp, readFile, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { linearApiTool } from '../extensions/api';
+import { linearGraphqlTool } from '../extensions/api';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { REDACTED, redactDeep, redactError, redactText } from '../extensions/redact';
 
@@ -187,7 +187,7 @@ describe('redaction at the execution boundary', () => {
         safe: { nodes: [] },
       },
     }));
-    const result = await execute(linearApiTool() as any, {
+    const result = await execute(linearGraphqlTool() as any, {
       query: 'query { viewer { id } }',
       sink: 'artifact',
     });
@@ -212,7 +212,7 @@ describe('redaction at the execution boundary', () => {
   it('redacts an automatic composite spill triggered by size', async () => {
     process.env.LINEAR_SPILL_BYTES = '10';
     installServer(() => ({ data: { viewer: { id: 'user-1', note: `key ${TOKEN}` } } }));
-    const result = await execute(linearApiTool() as any, { query: 'query { viewer { id note } }' });
+    const result = await execute(linearGraphqlTool() as any, { query: 'query { viewer { id note } }' });
 
     expect(result.details.path).toBeTruthy();
     const contents = await spilledFile();
@@ -277,7 +277,7 @@ describe('redaction at the execution boundary', () => {
 
   it('redacts the raw GraphQL escape hatch as well', async () => {
     installServer(() => ({ data: { viewer: { id: 'user-1', note: `key ${TOKEN}` } } }));
-    const result = await execute(linearApiTool() as any, { query: 'query { viewer { id note } }' });
+    const result = await execute(linearGraphqlTool() as any, { query: 'query { viewer { id note } }' });
 
     expect(JSON.stringify(result.details)).not.toContain('secret123456789');
     expect(JSON.stringify(result.details)).toContain(REDACTED);
@@ -311,7 +311,7 @@ describe('exact active-secret redaction', () => {
     installServer(() => ({
       data: { [UNKNOWN_FORMAT_KEY]: { nodes: [{ [UNKNOWN_FORMAT_KEY]: UNKNOWN_FORMAT_KEY }] } },
     }));
-    const result = await execute(linearApiTool() as any, {
+    const result = await execute(linearGraphqlTool() as any, {
       query: 'query { viewer { id } }',
       sink: 'artifact',
     });
@@ -327,7 +327,7 @@ describe('exact active-secret redaction', () => {
   it('removes the active key from an automatic composite spill', async () => {
     process.env.LINEAR_SPILL_BYTES = '10';
     installServer(() => ({ data: { viewer: { id: 'user-1', note: `leaked ${UNKNOWN_FORMAT_KEY}` } } }));
-    await execute(linearApiTool() as any, { query: 'query { viewer { id note } }' });
+    await execute(linearGraphqlTool() as any, { query: 'query { viewer { id note } }' });
     const contents = await spilledFile();
     expect(contents).not.toContain(UNKNOWN_FORMAT_KEY);
   });
@@ -364,7 +364,7 @@ describe('exact active-secret redaction', () => {
 
   it('removes the active key from the raw GraphQL surface', async () => {
     installServer(() => ({ data: { viewer: { id: 'user-1', note: `key ${UNKNOWN_FORMAT_KEY}` } } }));
-    const result = await execute(linearApiTool() as any, { query: 'query { viewer { id note } }' });
+    const result = await execute(linearGraphqlTool() as any, { query: 'query { viewer { id note } }' });
     expect(JSON.stringify(result.details)).not.toContain(UNKNOWN_FORMAT_KEY);
     expect(JSON.stringify(result.details)).toContain(REDACTED);
   });

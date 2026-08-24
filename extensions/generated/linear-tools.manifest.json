@@ -1,6 +1,14 @@
 {
   "schemaVersion": 2,
   "package": "@tothemoon/pi-linear-lite",
+  "discoveryTool": {
+    "name": "linear",
+    "requiredOperation": "help",
+    "variableForms": [
+      "domain",
+      "operation"
+    ]
+  },
   "initialActiveTools": [
     "linear",
     "linear_get_result"

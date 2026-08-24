@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { linearApiTool } from "../extensions/api";
+import { linearGraphqlTool } from "../extensions/api";
 import { writeCredentials } from "../extensions/client";
 import { executeTyped } from "./helpers/typed-execution";
 
@@ -16,7 +16,7 @@ const temporaryDirectories: string[] = [];
 
 function execute(params: Record<string, any>) {
 	if (params.query) {
-		return (linearApiTool() as any).execute("call", params, undefined, undefined, { hasUI: false });
+		return (linearGraphqlTool() as any).execute("call", params, undefined, undefined, { hasUI: false });
 	}
 	return executeTyped(params.operation, params.variables, { workspace: params.workspace });
 }

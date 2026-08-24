@@ -4,7 +4,7 @@ import type {
   ToolRenderResultOptions,
 } from '@earendil-works/pi-coding-agent';
 import { Text } from '@earendil-works/pi-tui';
-import { getOperation, operationDefinitions, type LinearOperation } from '../operations';
+import { operationDefinitions, type LinearOperation } from '../operations';
 import { canonicalFieldNames } from '../canonical';
 import { typedToolName } from '../tool-names';
 import type { OperationDefinition } from '../operation-types';
@@ -15,7 +15,6 @@ import {
   cleanOneLine,
   detailLine,
   expandedJson,
-  formatToolArgValue,
   scrubCredentials,
   jsonHint,
   LinearListComponent,
@@ -504,38 +503,19 @@ export function operationRenderers(operation: LinearOperation): OperationRendere
 }
 
 // ---------------------------------------------------------------------------
-// linear: the loader keeps the same visual language as the typed tools.
+// linear: discovery only.
 // ---------------------------------------------------------------------------
 
 const API_TOOL = 'linear';
 
-function apiOperation(args: ToolArgs | undefined): LinearOperation | undefined {
-  const name = asString(args?.operation);
-  if (!name || name === 'help') return undefined;
-  try {
-    return getOperation(name);
-  } catch {
-    return undefined;
-  }
-}
-
 export function renderLinearApiCall(args: any, theme: Theme): LinearBlockComponent {
-  const toolArgs = (args ?? {}) as ToolArgs;
-  const variables = asRecord(toolArgs.variables) ?? {};
-  const operation = asString(toolArgs.operation);
-  // Every rendered value passes the credential scrubber, including nested objects,
-  // because a caller can put a token anywhere in `variables`.
-  const summary = Object.entries(variables)
-    .map(([key, value]) => `${key}=${scrubCredentials(formatToolArgValue(value) ?? String(value))}`)
-    .join('  ');
-
-  let text = theme.fg('toolTitle', theme.bold(API_TOOL));
-  if (operation) text += ` ${theme.fg('accent', scrubCredentials(operation))}`;
-  else if (asString(toolArgs.query)) text += ` ${theme.fg('accent', 'graphql')}`;
-  if (summary) text += ` ${theme.fg('dim', summary)}`;
-  if (operation === 'get_result') text += ` ${theme.fg('warning', 'deprecated → linear_get_result')}`;
-  else if (asString(toolArgs.query)) text += ` ${theme.fg('warning', 'deprecated → linear_graphql')}`;
-  return new LinearBlockComponent([text]);
+  const variables = asRecord(asRecord(args)?.variables) ?? {};
+  const target = asString(variables.operation) ?? asString(variables.domain);
+  return new LinearBlockComponent([
+    target
+      ? `${theme.fg('toolTitle', theme.bold(API_TOOL))} ${theme.fg('dim', 'help:')} ${theme.fg('accent', scrubCredentials(target))}`
+      : `${theme.fg('toolTitle', theme.bold(API_TOOL))} ${theme.fg('accent', 'catalog')}`,
+  ]);
 }
 
 function helpBlock(theme: Theme, details: Record<string, unknown>): LinearBlockComponent | undefined {
@@ -695,9 +675,6 @@ export function renderLinearGetResultResult(
     '',
     theme.fg('success', retrieval.complete === true ? '✓ Stored result complete' : '✓ Stored result segment'),
   ];
-  if (asString(asRecord(context.args)?.operation) === 'get_result') {
-    lines.push(wrapped(theme.fg('warning', 'Deprecated loader route. Use linear_get_result with direct arguments.'), 2));
-  }
   if (range) {
     lines.push(wrapped(theme.fg('dim', `Range: ${range.start ?? '?'}–${range.end ?? '?'} of ${range.total ?? '?'} ${asString(range.unit) ?? 'values'}`), 2));
   }
@@ -715,7 +692,17 @@ export function renderLinearGraphqlResult(
   theme: Theme,
   context: LinearRenderContext,
 ): Text | LinearBlockComponent | LinearListComponent<Entity> {
-  return renderLinearResult(result, options, theme, context, true);
+  if (options.isPartial) return new Text(theme.fg('warning', 'Running request…'), 0, 0);
+  if (context.isError) {
+    const message = resultErrorMessage(result);
+    let recovery = errorRecovery(message, 'linear_graphql', 'operation', true);
+    if (!recovery.includes('linear_graphql')) recovery = `${recovery} Then call linear_graphql again.`;
+    return renderErrorResult(result, theme, recovery);
+  }
+  if (shouldShowJson(options, context)) return expandedJson(result, theme);
+  const digest = digestResult(result, []);
+  if (digest.kind === 'spill') return new LinearBlockComponent(spillBlock(theme, digest));
+  return rawGraphqlBlock(theme, result, digest.notes);
 }
 
 export function renderLinearApiResult(
@@ -723,58 +710,11 @@ export function renderLinearApiResult(
   options: ToolRenderResultOptions,
   theme: Theme,
   context: LinearRenderContext,
-): Text | LinearBlockComponent | LinearListComponent<Entity> {
-  return renderLinearResult(result, options, theme, context, false);
-}
-
-function renderLinearResult(
-  result: AgentToolResult<any>,
-  options: ToolRenderResultOptions,
-  theme: Theme,
-  context: LinearRenderContext,
-  directGraphql: boolean,
-): Text | LinearBlockComponent | LinearListComponent<Entity> {
-  const args = (context.args ?? {}) as ToolArgs;
-  if (asString(args.operation) === 'get_result') return renderLinearGetResultResult(result, options, theme, context);
-  const operation = apiOperation(args);
-  const spec = operation ? specFor(operation.name) : specFor('list_issues');
-  const verb = verbFor(operation?.name ?? 'get');
-
-  if (options.isPartial) {
-    const label = asString(args.operation) ?? 'request';
-    return new Text(theme.fg('warning', `Running ${label}…`), 0, 0);
-  }
+): Text | LinearBlockComponent {
+  if (options.isPartial) return new Text(theme.fg('warning', 'Loading Linear help…'), 0, 0);
   if (context.isError) {
-    const message = resultErrorMessage(result);
-    let recovery = errorRecovery(
-      message,
-      directGraphql ? 'linear_graphql' : API_TOOL,
-      operation ? spec.noun : 'operation',
-      !operation && !!asString(args.query),
-    );
-    if (directGraphql && !recovery.includes('linear_graphql')) {
-      recovery = `${recovery} Then call linear_graphql again.`;
-    }
-    if (operation && recovery.startsWith(`Open the ${API_TOOL} parameter card`)) {
-      recovery = `Send { "operation": "help", "variables": { "operation": "${operation.name}" } } for the parameter card.`;
-    }
-    return renderErrorResult(result, theme, recovery);
+    return renderErrorResult(result, theme, 'Send { "operation": "help" } or request exact domain or operation help.');
   }
   if (shouldShowJson(options, context)) return expandedJson(result, theme);
-
-  const help = helpBlock(theme, asRecord(result.details) ?? {});
-  if (help) return help;
-
-  const definition = operation
-    ? operationDefinitions.find(({ name }) => name === operation.name)
-    : undefined;
-  const roots = definition?.result.dataPaths.map((path) => path.split('.')[0]!).filter(Boolean) ?? [];
-  const digest = digestResult(result, roots);
-  if (!operation && asString(args.operation) !== 'help' && digest.kind !== 'spill') {
-    const notes = directGraphql
-      ? digest.notes
-      : [...digest.notes, 'Deprecated loader route. Use linear_graphql with direct arguments.'];
-    return rawGraphqlBlock(theme, result, notes);
-  }
-  return renderDigest(digest, result, theme, spec, verb, definition!, context);
+  return helpBlock(theme, asRecord(result.details) ?? {}) ?? expandedJson(result, theme);
 }

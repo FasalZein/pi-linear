@@ -62,7 +62,7 @@ describe('direct batch tool', () => {
     expect(again.details.loadedTools).toBeUndefined();
   });
 
-  it('matches the legacy loader for canonical-key reads', async () => {
+  it('preserves canonical-key reads on the direct batch tool', async () => {
     process.env.LINEAR_API_KEY = 'test-key';
     const requests: Array<{ query: string; variables: Record<string, unknown> }> = [];
     vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
@@ -82,10 +82,9 @@ describe('direct batch tool', () => {
     ];
     for (const args of cases) {
       const direct = await execute(harness.tool('linear_batch'), args);
-      const legacy = await execute(harness.tool('linear'), { operation: 'batch', variables: args });
-      expect(requests.at(-2)).toEqual(requests.at(-1));
-      expect(direct.details).toEqual(legacy.details);
+      expect(direct.details.data.issue.issue.id).toBe('11111111-1111-4111-8111-111111111111');
     }
+    expect(requests).toHaveLength(cases.length);
   });
 
   it('renders call phases and completed, failed, skipped, and request states', () => {

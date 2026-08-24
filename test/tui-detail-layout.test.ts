@@ -1,7 +1,7 @@
 import { Text } from '@earendil-works/pi-tui';
 import { describe, expect, it } from 'vitest';
 import { getOperation } from '../extensions/operations';
-import { operationRenderers, renderLinearApiResult } from '../extensions/renderers';
+import { operationRenderers } from '../extensions/renderers';
 import { statusStyle } from '../extensions/renderers/entities';
 
 const plainTheme = {
@@ -34,15 +34,6 @@ function typed(
   return operationRenderers(getOperation(operation)).renderResult(
     result(details),
     { expanded: options.expanded ?? false, isPartial: options.isPartial ?? false },
-    theme,
-    { args } as any,
-  );
-}
-
-function api(details: unknown, args: Record<string, unknown>, theme = plainTheme) {
-  return renderLinearApiResult(
-    result(details),
-    { expanded: false, isPartial: false },
     theme,
     { args } as any,
   );
@@ -143,12 +134,9 @@ describe('structured cycle and view details', () => {
     expect(rendered).toContain('Samantha Okonkwo');
   });
 
-  it('keeps structured details on both public surfaces and resizes without a fixed Text', () => {
+  it('keeps structured typed details resizable without a fixed Text', () => {
     const details = { data: { cycle: CYCLE }, meta };
-    for (const component of [
-      typed('get_cycle', details),
-      api(details, { operation: 'get_cycle', variables: { id: 'cycle-1' } }),
-    ]) {
+    for (const component of [typed('get_cycle', details)]) {
       expect(component).not.toBeInstanceOf(Text);
       expect(typeof component.render).toBe('function');
       for (const width of WIDTHS) {

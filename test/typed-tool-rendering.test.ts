@@ -3,6 +3,7 @@ import { getOperation } from '../extensions/operations';
 import {
   operationRenderers,
   renderLinearApiCall,
+  renderLinearBatchResult,
   renderLinearApiResult,
   renderLinearGetResultCall,
   renderLinearGetResultResult,
@@ -255,7 +256,8 @@ describe('direct result rendering', () => {
     ['raw', { query: 'query { viewer { id } }' }],
     ['batch', { operation: 'batch' }],
   ])('uses direct recovery guidance for %s spills', (_surface, args) => {
-    const text = block(renderLinearApiResult(
+    const renderer = _surface === 'raw' ? renderLinearGraphqlResult : renderLinearBatchResult;
+    const text = block(renderer(
       result({
         handle: 'linear-result:v1:550e8400-e29b-41d4-a716-446655440000',
         path: '/tmp/linear/raw/result.json',
@@ -287,15 +289,14 @@ describe('direct result rendering', () => {
     expect(text).not.toContain('call linear again');
   });
 
-  it('keeps legacy raw error recovery on linear', () => {
-    const args = { query: 'query { viewer { id } }' };
+  it('keeps loader error recovery on discovery help', () => {
     const text = block(renderLinearApiResult(
-      result({ error: 'Linear GraphQL error: Variable "$id" of required type "ID!" was not provided.' }),
+      result({ error: 'Invalid arguments for "linear".' }),
       { expanded: false, isPartial: false },
       theme,
-      { args, isError: true } as any,
+      { args: { operation: 'help' }, isError: true } as any,
     ));
-    expect(text).toContain('call linear again');
+    expect(text).toContain('{ "operation": "help" }');
     expect(text).not.toContain('linear_graphql');
   });
 
@@ -311,19 +312,20 @@ describe('direct result rendering', () => {
     expect(block(rendered)).toContain('viewer');
     expect(block(rendered)).not.toContain('Deprecated loader route');
 
-    expect(block(renderLinearApiCall(args, theme))).toContain('deprecated → linear_graphql');
+    expect(block(renderLinearApiCall({ operation: 'help' }, theme))).toContain('linear catalog');
   });
 
-  it('marks the legacy loader call and result as deprecated', () => {
-    const args = { operation: 'get_result', variables: { handle: 'linear-result:v1:550e8400-e29b-41d4-a716-446655440000' } };
-    expect(block(renderLinearApiCall(args, theme))).toContain('deprecated → linear_get_result');
+  it('renders exact get_result discovery help without a space-form callable name', () => {
+    const args = { operation: 'help', variables: { operation: 'get_result' } };
+    expect(block(renderLinearApiCall(args, theme))).toContain('get_result');
     const rendered = renderLinearApiResult(
-      result({ data: { value: 'stored' }, meta: { retrieval: { complete: true } } }),
+      result({ name: 'get_result', purpose: 'Retrieve stored result data.', parameters: [{ name: 'handle', type: 'string', required: true }] }),
       { expanded: false, isPartial: false },
       theme,
       { args },
     );
-    expect(block(rendered)).toContain('Deprecated loader route. Use linear_get_result with direct arguments.');
+    expect(block(rendered)).toContain('get_result');
+    expect(block(rendered)).not.toContain('linear get_result');
   });
 });
 
@@ -337,16 +339,11 @@ describe('linear rendering', () => {
     );
   }
 
-  it('labels the call with the operation and its variables', () => {
-    const text = block(renderLinearApiCall({ operation: 'get_issue', variables: { issue: 'AEO-258' } }, theme));
+  it('labels exact discovery help with the unprefixed help value', () => {
+    const text = block(renderLinearApiCall({ operation: 'help', variables: { operation: 'get_issue' } }, theme));
     expect(text).toContain('linear');
     expect(text).toContain('get_issue');
-    expect(text).toContain('issue=AEO-258');
-  });
-
-  it('renders operation results with the same language as the typed tools', () => {
-    const text = block(apiResult({ data: { issue: ISSUE }, meta }, { operation: 'get_issue' }));
-    expect(text).toContain('✓ Loaded AEO-258 Fix login redirect');
+    expect(text).not.toContain('linear get_issue');
   });
 
   it('renders a parameter card and reports the tool it loaded', () => {
@@ -373,14 +370,14 @@ describe('linear rendering', () => {
     expect(text).toContain('issues  comments');
   });
 
-  it('points a failed call at the parameter card', () => {
+  it('points a failed call at discovery help', () => {
     const text = block(renderLinearApiResult(
       result({ error: 'Invalid parameters' }),
       { expanded: false, isPartial: false },
       theme,
-      { args: { operation: 'get_issue' }, isError: true } as any,
+      { args: { operation: 'help' }, isError: true } as any,
     ));
-    expect(text).toContain('"operation": "get_issue"');
+    expect(text).toContain('{ "operation": "help" }');
   });
 });
 
@@ -426,7 +423,7 @@ describe('data extremes', () => {
 
 describe('escape hatch and local operations', () => {
   it('summarises a raw GraphQL response without borrowing entity language', () => {
-    const text = block(renderLinearApiResult(
+    const text = block(renderLinearGraphqlResult(
       result({ data: { viewer: { id: 'user-1', name: 'sam' } }, meta }),
       { expanded: false, isPartial: false },
       theme,
@@ -448,7 +445,7 @@ describe('credential safety in rendered rows', () => {
   const token = 'lin_api_secret123456789';
 
   it('scrubs a credential in a direct linear variable', () => {
-    const text = block(renderLinearApiCall({ operation: 'get_issue', variables: { token } }, theme));
+    const text = block(renderLinearApiCall({ operation: 'help', variables: { operation: token } }, theme));
     expect(text).toContain('[REDACTED]');
     expect(text).not.toContain('secret123456789');
   });
@@ -456,8 +453,8 @@ describe('credential safety in rendered rows', () => {
   it('scrubs a credential nested inside a linear variable key or value', () => {
     const text = block(renderLinearApiCall(
       {
-        operation: 'get_issue',
-        variables: { headers: { Authorization: `Bearer ${token}` }, list: [token], [token]: 'safe' },
+        operation: 'help',
+        variables: { operation: token },
       },
       theme,
     ));
@@ -466,7 +463,7 @@ describe('credential safety in rendered rows', () => {
   });
 
   it('scrubs a credential in a raw GraphQL query call row', () => {
-    const text = block(renderLinearApiCall({ query: `query { viewer { id } } # ${token}`, variables: { key: token } }, theme));
+    const text = block(renderLinearGraphqlCall({ query: `query { viewer { id } } # ${token}`, variables: { key: token } }, theme));
     expect(text).not.toContain('secret123456789');
   });
 
@@ -483,11 +480,11 @@ describe('credential safety in rendered rows', () => {
     expect(expandedTyped).toContain('[REDACTED]');
     expect(expandedTyped).not.toContain('secret123456789');
 
-    const expandedApi = block(renderLinearApiResult(
+    const expandedApi = block(renderLinearGraphqlResult(
       result(details),
       { expanded: true, isPartial: false },
       theme,
-      { args: { operation: 'get_issue' } } as any,
+      { args: { query: 'query { issue { id } }' } } as any,
     ));
     expect(expandedApi).not.toContain('secret123456789');
   });
@@ -522,7 +519,7 @@ describe('credential safety in result data', () => {
   });
 
   it('scrubs a credential in a raw GraphQL summary row', () => {
-    const text = block(renderLinearApiResult(
+    const text = block(renderLinearGraphqlResult(
       result({ data: { viewer: { token } }, meta }),
       { expanded: false, isPartial: false },
       theme,

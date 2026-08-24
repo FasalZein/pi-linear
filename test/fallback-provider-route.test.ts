@@ -81,9 +81,9 @@ describe('fallback provider route', () => {
     const openaiGuidance = openaiPayload.tools.find((tool: { name: string }) => tool.name === 'linear')
       ?.parameters.properties.operation.description;
     for (const guidance of [anthropicGuidance, openaiGuidance]) {
-      expect(guidance).toContain('Legacy batch and get_result are deprecated');
-      expect(guidance).toContain('linear_batch or linear_get_result with direct arguments');
-      expect(guidance).not.toContain('loader-only batch and get_result');
+      expect(guidance).toBe('Discover operations and activate an exact direct tool.');
+      expect(guidance).not.toContain('linear batch');
+      expect(guidance).not.toContain('linear get_result');
     }
   });
 });

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { linearGraphQL } from '../extensions/client';
 import { getOperation } from '../extensions/operations';
-import { operationRenderers, renderLinearApiResult } from '../extensions/renderers';
+import { operationRenderers, renderLinearApiResult, renderLinearGraphqlResult } from '../extensions/renderers';
 import { priorityStyle, statusStyle } from '../extensions/renderers/entities';
 
 const plainTheme = {
@@ -50,6 +50,15 @@ function api(details: unknown, args: Record<string, unknown>, theme = plainTheme
   );
 }
 
+function graphql(details: unknown, args: Record<string, unknown>, theme = plainTheme, isError = false) {
+  return renderLinearGraphqlResult(
+    result(details),
+    { expanded: false, isPartial: false },
+    theme,
+    { args, isError } as any,
+  );
+}
+
 function text(component: any, width = 120): string {
   return component.render(width).join('\n');
 }
@@ -59,12 +68,9 @@ function compact(component: any, width: number): string {
 }
 
 describe('v0.6 state correctness', () => {
-  it('renders a null single-entity root as a dedicated not-found state on both public surfaces', () => {
+  it('renders a null single-entity root as a dedicated typed not-found state', () => {
     const details = { data: { issue: null }, meta };
-    for (const component of [
-      typed('get_issue', details, { issue: 'AEO-404' }),
-      api(details, { operation: 'get_issue', variables: { issue: 'AEO-404' } }),
-    ]) {
+    for (const component of [typed('get_issue', details, { issue: 'AEO-404' })]) {
       const rendered = text(component);
       expect(rendered).toContain('✗ Issue not found');
       expect(rendered).toContain('AEO-404');
@@ -353,7 +359,7 @@ describe('v0.6 state correctness', () => {
   });
 
   it('renders a compact structured raw GraphQL digest', () => {
-    const rendered = text(api({
+    const rendered = text(graphql({
       data: {
         viewer: { id: 'user-1', name: 'Sam' },
         issues: { nodes: [{ id: '1' }, { id: '2' }], pageInfo: { hasNextPage: true, endCursor: 'next-1' } },
@@ -392,7 +398,7 @@ describe('v0.6 state correctness', () => {
     expect(loaded).not.toContain('+ loaded');
 
     const token = 'lin_api_secret123456789';
-    const secret = text(api({ data: { viewer: { [token]: token } }, meta }, { query: 'query { viewer }' }));
+    const secret = text(graphql({ data: { viewer: { [token]: token } }, meta }, { query: 'query { viewer }' }));
     expect(secret).toContain('[REDACTED]');
     expect(secret).not.toContain('secret123456789');
   });

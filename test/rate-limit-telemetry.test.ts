@@ -9,7 +9,7 @@ import {
   linearRateLimitTelemetry,
   parseLinearRateLimitHeaders,
 } from '../extensions/client';
-import { linearApiTool } from '../extensions/api';
+import { linearApiTool, linearBatchTool, linearGraphqlTool } from '../extensions/api';
 import { getResult } from '../extensions/result-handles';
 import {
   executeOperationInContext,
@@ -34,6 +34,17 @@ afterEach(async () => {
   else process.env.LINEAR_API_KEY = originalApiKey;
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
+
+function executeBatchLegacy(params: Record<string, unknown>, ..._unused: unknown[]) {
+  const { operation: _operation, variables, ...direct } = params;
+  return (linearBatchTool() as any).execute(
+    'call-1',
+    { ...(variables as Record<string, unknown>), ...direct },
+    undefined,
+    undefined,
+    { hasUI: false },
+  );
+}
 
 function response(status: number, body: unknown, headers: Record<string, string> = {}) {
   return {
@@ -390,7 +401,7 @@ describe('model-facing budget warnings', () => {
     const execute = (tool: any, params: Record<string, unknown>) =>
       tool.execute('call-1', params, undefined, undefined, { hasUI: false });
 
-    const raw = await execute(linearApiTool(), { query: 'query { viewer { id } }' });
+    const raw = await execute(linearGraphqlTool(), { query: 'query { viewer { id } }' });
     const tools = typedLinearTools();
     const singular = tools.find(({ name }) => name === 'linear_get_issue');
     const collection = tools.find(({ name }) => name === 'linear_list_teams');
@@ -413,7 +424,7 @@ describe('model-facing budget warnings', () => {
       }
       return response(200, { data: { change: { success: true, issue: { ...issue, title: 'Updated' } } } }, { 'X-Complexity': '5' });
     }));
-    const result = await (linearApiTool() as any).execute('call-1', {
+    const result = await executeBatchLegacy({
       operation: 'batch',
       variables: {
         reads: [{ key: 'read', operation: 'get_issue', variables: { issue: issue.id } }],
@@ -437,7 +448,7 @@ describe('model-facing budget warnings', () => {
       .mockRejectedValueOnce(new Error('mutation transport failed'));
     vi.stubGlobal('fetch', fetch);
 
-    const error = await (linearApiTool() as any).execute('call-1', {
+    const error = await executeBatchLegacy({
       operation: 'batch',
       variables: {
         reads: [{ key: 'read', operation: 'get_issue', variables: { issue: issue.id } }],
@@ -462,7 +473,7 @@ describe('model-facing budget warnings', () => {
       }));
     vi.stubGlobal('fetch', fetch);
 
-    const result = await (linearApiTool() as any).execute('call-1', {
+    const result = await executeBatchLegacy({
       operation: 'batch',
       telemetry: 'always',
       variables: {
@@ -492,7 +503,7 @@ describe('model-facing budget warnings', () => {
       variables: { issue: '11111111-1111-4111-8111-111111111111' },
       telemetry: 'always',
     }, undefined, undefined, { hasUI: false }))
-      .rejects.toThrow('load linear_get_issue, then call linear_get_issue');
+      .rejects.toThrow('Call linear_get_issue with direct arguments.');
 
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -507,7 +518,7 @@ describe('model-facing budget warnings', () => {
     }));
     vi.stubGlobal('fetch', fetch);
 
-    const result = await (linearApiTool() as any).execute('call-1', {
+    const result = await (linearGraphqlTool() as any).execute('call-1', {
       query: 'query Viewer($id: String) { viewer { id } }',
       variables: { id: 'user-1' },
       telemetry: 'always',
@@ -537,7 +548,7 @@ describe('model-facing budget warnings', () => {
       .mockResolvedValueOnce(response(200, { data: { change: { success: true, issue: { ...issue, title: 'Updated' } } } }, { 'X-Complexity': '5' }));
     vi.stubGlobal('fetch', fetch);
 
-    const result = await (linearApiTool() as any).execute('call-1', {
+    const result = await executeBatchLegacy({
       operation: 'batch', telemetry: 'always', variables: {
         reads: [{ key: 'read', operation: 'get_issue', variables: { issue: '11111111-1111-4111-8111-111111111111' } }],
         mutations: [{ key: 'change', operation: 'update_issue', variables: { issue: '11111111-1111-4111-8111-111111111111', title: 'Updated' } }],
@@ -574,7 +585,7 @@ describe('model-facing budget warnings', () => {
     });
     vi.stubGlobal('fetch', fetch);
 
-    const result = await (linearApiTool() as any).execute('call-1', {
+    const result = await executeBatchLegacy({
       operation: 'batch', telemetry: 'always', variables: {
         mutations: [{ operation: 'delete_issue_relation', variables }],
       },
@@ -591,11 +602,11 @@ describe('model-facing budget warnings', () => {
     vi.stubGlobal('fetch', fetch);
     delete process.env.LINEAR_API_KEY;
 
-    await expect((linearApiTool() as any).execute('call-1', {
+    await expect((linearGraphqlTool() as any).execute('call-1', {
       query: 'query { viewer { id } }', telemetry: 'sometimes',
-    }, undefined, undefined, { hasUI: false })).rejects.toThrow('Invalid telemetry override. Use "always" or omit telemetry.');
+    }, undefined, undefined, { hasUI: false })).rejects.toThrow(/Invalid arguments for "linear_graphql"/);
     expect(fetch).not.toHaveBeenCalled();
-    expect((linearApiTool() as any).parameters.properties.telemetry).toBeDefined();
+    expect((linearGraphqlTool() as any).parameters.properties.telemetry).toBeDefined();
     for (const tool of typedLinearTools()) {
       expect((tool.parameters as any).properties?.telemetry).toBeUndefined();
     }

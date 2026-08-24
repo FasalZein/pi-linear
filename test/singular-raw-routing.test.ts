@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { linearApiTool } from '../extensions/api';
+import { linearGetResultTool, linearGraphqlTool } from '../extensions/api';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
 import { executeTyped } from './helpers/typed-execution';
@@ -22,8 +22,11 @@ async function useArtifactRoot() {
 }
 
 function execute(params: Record<string, any>) {
-  if (params.query || params.operation === 'get_result') {
-    return (linearApiTool() as any).execute('call-1', params, undefined, undefined, { hasUI: false });
+  if (params.query) {
+    return (linearGraphqlTool() as any).execute('call-1', params, undefined, undefined, { hasUI: false });
+  }
+  if (params.operation === 'get_result') {
+    return (linearGetResultTool() as any).execute('call-1', params.variables, undefined, undefined, { hasUI: false });
   }
   return executeTyped(params.operation, params.variables, { workspace: params.workspace });
 }

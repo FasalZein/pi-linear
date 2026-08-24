@@ -10,6 +10,7 @@ import {
   STRING_CAP,
   compactLinearResult,
   linearApiTool,
+  linearGraphqlTool,
   routeLinearResult,
   resolveRequest,
 } from '../extensions/api';
@@ -158,7 +159,7 @@ describe('named operations', () => {
     }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
     vi.stubGlobal('fetch', fetch);
     try {
-      await expect((linearApiTool() as any).execute(
+      await expect((linearGraphqlTool() as any).execute(
         'call-1',
         {
           query: 'mutation Raw($id: String!, $input: DocumentUpdateInput!) { documentUpdate(id: $id, input: $input) { success } }',
@@ -285,31 +286,19 @@ describe('runtime discovery', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('rejects ambiguous and invalid help with exact alternatives before network access', async () => {
+  it('rejects ambiguous, unknown, and removed help fields before network access', async () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
     const tool = linearApiTool() as any;
-    const alternatives = 'Send exactly one of: { "operation": "help" }, { "operation": "help", "variables": { "domain": "issues" } }, or { "operation": "help", "variables": { "operation": "get_issue" } }.';
-    const naturalSearch = 'Natural search was removed. The operation catalog is in the `linear` tool description. Send `{ "operation": "help", "variables": { "operation": "get_issue" } }` for exact parameters and to load `linear_get_issue`.';
-
-    await expect(execute(tool, { operation: 'help', variables: { domain: 'issues', operation: 'get_issue' } }))
-      .rejects.toThrow(alternatives);
-    await expect(execute(tool, { operation: 'help', variables: { query: 'issue lookup by identifier' } }))
-      .rejects.toThrow(naturalSearch);
-    await expect(execute(tool, { operation: 'help', variables: { search: 'comment issue create comment' } }))
-      .rejects.toThrow(naturalSearch);
-    await expect(execute(tool, { operation: 'help', variables: { query: 'issues', search: 'comments' } }))
-      .rejects.toThrow(naturalSearch);
-    await expect(execute(tool, { operation: 'help', variables: { domain: 'issues', query: 'comments' } }))
-      .rejects.toThrow(naturalSearch);
-    await expect(execute(tool, { operation: 'help', variables: { domain: 'issues', includeSchema: true } }))
-      .rejects.toThrow(alternatives);
-    await expect(execute(tool, { operation: 'help', variables: { query: 'issues', includeSchema: 'yes' } }))
-      .rejects.toThrow(naturalSearch);
-    await expect(execute(tool, { operation: 'help', variables: { query: 42 } }))
-      .rejects.toThrow(naturalSearch);
-    await expect(execute(tool, { operation: 'help', variables: { domain: 'unknown' } }))
-      .rejects.toThrow(alternatives);
+    for (const params of [
+      { operation: 'help', variables: { domain: 'issues', operation: 'get_issue' } },
+      { operation: 'help', variables: { query: 'issue lookup by identifier' } },
+      { operation: 'help', variables: { search: 'comment issue create comment' } },
+      { operation: 'help', variables: { domain: 'issues', includeSchema: true } },
+      { operation: 'help', variables: { domain: 'unknown' } },
+    ]) {
+      await expect(execute(tool, params)).rejects.toThrow(/Invalid arguments for "linear"/);
+    }
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -319,12 +308,12 @@ describe('runtime discovery', () => {
     const tool = linearApiTool() as any;
 
     await expect(execute(tool, { operation: 'missing' })).rejects.toThrow(
-      'Unknown Linear operation. Send { "operation": "help" }.',
+      'The linear tool accepts discovery help only. Send { "operation": "help" }.',
     );
     await expect(execute(tool, { operation: 'get_issue', variables: { teamKey: 'AEO' } }))
-      .rejects.toThrow('load linear_get_issue, then call linear_get_issue');
+      .rejects.toThrow('Call linear_get_issue with direct arguments.');
     await expect(execute(tool, { operation: 'create_issue', variables: { title: 'T', project: 'Roadmap', labels: ['bad'] } }))
-      .rejects.toThrow('load linear_create_issue, then call linear_create_issue');
+      .rejects.toThrow('Call linear_create_issue with direct arguments.');
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -338,12 +327,12 @@ describe('runtime discovery', () => {
     }).catch((error: Error) => error);
 
     expect(failure).toBeInstanceOf(Error);
-    expect((failure as Error).message).toContain('[REDACTED]');
+    expect((failure as Error).message).toBe('Unknown Linear operation. Send { "operation": "help" }.');
     expect((failure as Error).message).not.toContain(token);
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('redacts credential forms from malformed raw GraphQL failures', async () => {
+  it('does not echo credential forms from removed raw GraphQL calls', async () => {
     const token = 'lin_api_secret123456789';
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
@@ -351,7 +340,7 @@ describe('runtime discovery', () => {
       .catch((error: Error) => error);
 
     expect(failure).toBeInstanceOf(Error);
-    expect((failure as Error).message).toContain('[REDACTED]');
+    expect((failure as Error).message).toBe('Raw GraphQL cannot run through linear. Call linear_graphql with direct arguments.');
     expect((failure as Error).message).not.toContain(token);
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -578,7 +567,7 @@ describe('read-only tool', () => {
   it('rejects a mutation before credential lookup or network access', async () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
-    const tool = linearApiTool('readonly') as any;
+    const tool = linearGraphqlTool('readonly') as any;
 
     await expect(tool.execute(
       'call-1',

@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { linearApiTool, resolveRequest } from '../extensions/api';
+import { linearApiTool, linearBatchTool, linearGetResultTool, resolveRequest } from '../extensions/api';
 import { assertBatchAccounting, batchHelp } from '../extensions/batch';
 import { LINEAR_BATCH_HELP } from '../extensions/exceptional-tools';
 import { operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
@@ -39,12 +39,22 @@ afterEach(async () => {
   await Promise.all(artifactRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
+function directParams(params: Record<string, unknown>) {
+  const variables = params.variables as Record<string, unknown> | undefined;
+  return { ...(variables ?? {}), ...Object.fromEntries(Object.entries(params).filter(([key]) => !['operation', 'variables'].includes(key))) };
+}
+
 function execute(params: Record<string, unknown>, mode: MutationMode = 'allowlist') {
-  return (linearApiTool(mode) as any).execute('call-1', params, undefined, undefined, { hasUI: false });
+  const tool = params.operation === 'batch'
+    ? linearBatchTool(mode)
+    : params.operation === 'get_result'
+      ? linearGetResultTool()
+      : linearApiTool(mode);
+  return (tool as any).execute('call-1', params.operation === 'help' ? params : directParams(params), undefined, undefined, { hasUI: false });
 }
 
 function executeWithSignal(params: Record<string, unknown>, signal: AbortSignal, mode: MutationMode = 'allowlist') {
-  return (linearApiTool(mode) as any).execute('call-1', params, signal, undefined, { hasUI: false });
+  return (linearBatchTool(mode) as any).execute('call-1', directParams(params), signal, undefined, { hasUI: false });
 }
 
 function executeTyped(operation: string, variables: Record<string, unknown>) {
@@ -130,10 +140,12 @@ describe('batch help and catalog', () => {
     }
   });
 
-  it('publishes batch and the loader-only telemetry override', () => {
-    const tool = linearApiTool() as any;
-    expect(tool.description).toContain('special: graphql, batch, get_result');
-    expect(Object.keys(tool.parameters.properties).sort()).toEqual(['operation', 'query', 'sink', 'telemetry', 'variables', 'workspace']);
+  it('publishes a discovery-only loader and a direct batch telemetry override', () => {
+    const loader = linearApiTool() as any;
+    const direct = linearBatchTool() as any;
+    expect(loader.description).toContain('Exact batch help loads linear_batch');
+    expect(Object.keys(loader.parameters.properties)).toEqual(['operation', 'variables']);
+    expect(JSON.stringify(direct.parameters)).toContain('telemetry');
   });
 });
 
@@ -327,12 +339,13 @@ describe('batch read phase', () => {
     expect(result.details.meta.requests).toEqual({ read: 1, mutation: 0 });
   });
 
-  it('accepts name as a loader-only compatibility label when key is absent', async () => {
-    graphqlStub(() => ({ body: { data: { issue: issueNode(ISSUE_A, 'AEO-1') } } }));
-    const result = await batch([
+  it('rejects the removed name compatibility label before network access', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    await expect(batch([
       { name: 'issue', operation: 'get_issue', variables: { issue: 'AEO-1' } },
-    ]);
-    expect(result.details.data).toEqual({ issue: { issue: issueNode(ISSUE_A, 'AEO-1') } });
+    ])).rejects.toThrow(/Invalid arguments for "linear_batch"/);
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('rejects key and name conflicts with the corrected shape before network access', async () => {
@@ -340,16 +353,16 @@ describe('batch read phase', () => {
     vi.stubGlobal('fetch', fetch);
     await expect(batch([
       { key: 'issue', name: 'other', operation: 'get_issue', variables: { issue: 'AEO-1' } },
-    ])).rejects.toThrow(/cannot include both "key" and "name".*omit "name"/i);
+    ])).rejects.toThrow(/Invalid arguments for "linear_batch"/);
     expect(fetch).not.toHaveBeenCalled();
   });
 
   it('rejects malformed entries with the corrected shape before network access', async () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
-    await expect(operations([null])).rejects.toThrow(/send.*"operation".*"variables".*"key"/i);
-    await expect(operations([{ operation: 'get_issue', variables: [] }])).rejects.toThrow(/send.*"operation".*"variables".*"key"/i);
-    await expect(operations([{ operation: 'get_issue', variables: {}, extra: true }])).rejects.toThrow(/send.*"operation".*"variables".*"key"/i);
+    await expect(operations([null])).rejects.toThrow(/Invalid arguments for "linear_batch"/);
+    await expect(operations([{ operation: 'get_issue', variables: [] }])).rejects.toThrow(/Invalid arguments for "linear_batch"/);
+    await expect(operations([{ operation: 'get_issue', variables: {}, extra: true }])).rejects.toThrow(/Invalid arguments for "linear_batch"/);
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -358,20 +371,20 @@ describe('batch read phase', () => {
     vi.stubGlobal('fetch', fetch);
     process.env.LINEAR_API_KEY = 'test-key';
 
-    await expect(batch([])).rejects.toThrow(/non-empty|reads/i);
+    await expect(batch([])).rejects.toThrow(/Invalid arguments for "linear_batch"/);
     await expect(batch([
       { key: 'one', operation: 'get_issue', variables: { issue: 'AEO-1' } },
       { key: 'one', operation: 'get_issue', variables: { issue: 'AEO-2' } },
     ])).rejects.toThrow(/unique|duplicate/i);
     await expect(batch([
       { key: '1bad', operation: 'get_issue', variables: { issue: 'AEO-1' } },
-    ])).rejects.toThrow(/alias|key/i);
+    ])).rejects.toThrow(/Invalid arguments|alias|key/i);
     await expect(batch([
       { key: 'a-b', operation: 'get_issue', variables: { issue: 'AEO-1' } },
-    ])).rejects.toThrow(/valid batch entry key/i);
+    ])).rejects.toThrow(/Invalid arguments|valid batch entry key/i);
     await expect(batch([
       { name: 'a-b', operation: 'get_issue', variables: { issue: 'AEO-1' } },
-    ])).rejects.toThrow(/valid batch entry key/i);
+    ])).rejects.toThrow(/Invalid arguments for "linear_batch"/);
     expect(fetch).not.toHaveBeenCalled();
   });
 

@@ -65,11 +65,11 @@ describe('active secret collection', () => {
 });
 
 describe('help paths redact unknown-format active secrets', () => {
-  it('redacts an active secret echoed by a failed help request', async () => {
+  it('does not echo an active secret from a failed help request', async () => {
     for (const secret of [ENV_SECRET, WORKSPACE_SECRET]) {
       const error = await execute({ operation: 'help', variables: { operation: `get_issue${secret}` } })
         .then(() => undefined, (thrown: unknown) => thrown as Error);
-      expect(error?.message).toContain(REDACTED);
+      expect(error?.message).toBe('Unknown Linear operation. Send { "operation": "help" }.');
       expect(error?.message).not.toContain(secret);
     }
   });
@@ -98,12 +98,11 @@ describe('call rows redact unknown-format active secrets', () => {
   it('redacts an active secret in rendered linear call arguments', () => {
     const theme: any = { fg: (_name: string, text: string) => text, bold: (text: string) => text };
     const block = renderLinearApiCall(
-      { operation: 'help', variables: { query: `issue ${ENV_SECRET}` }, query: `query { viewer { id ${WORKSPACE_SECRET} } }` },
+      { operation: 'help', variables: { operation: ENV_SECRET } },
       theme,
     );
     const rendered = block.render(200).join('\n');
     expect(rendered).not.toContain(ENV_SECRET);
-    expect(rendered).not.toContain(WORKSPACE_SECRET);
     expect(rendered).toContain(REDACTED);
   });
 });

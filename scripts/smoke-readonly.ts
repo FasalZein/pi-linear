@@ -173,9 +173,9 @@ async function runAuthenticatedSmoke(apiKey: string): Promise<JsonObject> {
   compareReadonlySchema(introspection, fixture, usage, scope);
 
   const harness = extensionHarness();
-  const compatibility = harness.tool('linear');
-  if (!compatibility) throw new Error('smoke.activation: linear is unavailable');
-  const activation = await executeTool(compatibility, { operation: 'help', variables: { operation: 'get_issue' } });
+  const loader = harness.tool('linear');
+  if (!loader) throw new Error('smoke.activation: linear is unavailable');
+  const activation = await executeTool(loader, { operation: 'help', variables: { operation: 'get_issue' } });
   const loaded = activation.details?.loadedTools;
   if (!Array.isArray(loaded) || loaded.length !== 1 || loaded[0] !== 'linear_get_issue' || !harness.active().includes('linear_get_issue')) {
     throw new Error('smoke.activation: linear_get_issue was not loaded through linear');
@@ -183,13 +183,16 @@ async function runAuthenticatedSmoke(apiKey: string): Promise<JsonObject> {
   const typedGetIssue = harness.tool('linear_get_issue');
   if (!typedGetIssue) throw new Error('smoke.activation: activated linear_get_issue is unavailable');
 
-  const compatibilityIssue = await executeTool(compatibility, {
+  await executeTool(loader, { operation: 'help', variables: { operation: 'graphql' } });
+  const graphql = harness.tool('linear_graphql');
+  if (!graphql || !harness.active().includes('linear_graphql')) throw new Error('smoke.activation: linear_graphql was not loaded through linear');
+  const graphqlIssue = await executeTool(graphql, {
     query: operations.get_issue!.document, variables: { id: ISSUE_REFERENCE }, sink: 'inline',
   });
   const typedIssue = await executeTool(typedGetIssue, { issue: ISSUE_REFERENCE });
-  assertNoCredentialLeak({ compatibilityIssue, typedIssue }, apiKey);
-  if (entityId(compatibilityIssue.details, 'issue') !== entityId(typedIssue.details, 'issue')) {
-    throw new Error('smoke.runtime: get_issue identity differed across surfaces');
+  assertNoCredentialLeak({ graphqlIssue, typedIssue }, apiKey);
+  if (entityId(graphqlIssue.details, 'issue') !== entityId(typedIssue.details, 'issue')) {
+    throw new Error('smoke.runtime: get_issue identity differed across direct surfaces');
   }
 
   const listResults = new Map<string, { nodes: unknown[]; root: string }>();
