@@ -4,6 +4,6 @@
   "directBatch": { "baseline": 0, "current": 2465 },
   "initial": { "baseline": 673, "before": 2122, "current": 2068 },
   "oneTool": { "baseline": 1179, "current": 2666 },
-  "fiveTools": { "baseline": 14635, "current": 16703 },
-  "allTools": { "baseline": 64706, "current": 69475 }
+  "fiveTools": { "baseline": 14635, "current": 16891 },
+  "allTools": { "baseline": 64706, "current": 69474 }
 }

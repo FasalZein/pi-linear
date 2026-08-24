@@ -13,7 +13,7 @@ A supported legacy name that maps to one canonical operation. Aliases do not app
 _Avoid_: Duplicate operation
 
 **Operation catalog**:
-The compact list of canonical operations and their purposes. Every session receives it.
+The compact canonical operation-name index available at session start. Exact operation help supplies the authored purpose and parameter card.
 _Avoid_: Tool list
 
 **Parameter card**:
