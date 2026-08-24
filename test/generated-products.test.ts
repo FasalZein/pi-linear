@@ -15,6 +15,17 @@ import { exceptionalToolDefinitions } from '../extensions/exceptional-tools';
 
 const typedNames = operationDefinitions.map(({ toolName }) => toolName);
 const expectedNames = ['linear', ...exceptionalToolDefinitions.map(({ name }) => name), ...typedNames];
+const REFERENCE_DIRECT_TELEMETRY = /set top-level `"telemetry": "always"` on the exact direct tool[^.\n]*`linear_batch`[^.\n]*`linear_graphql`[^.\n]*typed `linear_\*`[^.\n]*\./;
+const CHANGELOG_DIRECT_TELEMETRY = /set top-level `telemetry: "always"` on the exact direct[^.\n]*`linear_batch`[^.\n]*`linear_graphql`[^.\n]*typed `linear_\*`[^.\n]*\./;
+const LOADER_ONLY_TELEMETRY = /(?=[^.\n]*telemetry)(?=[^.\n]*loader)(?=[^.\n]*(?:\bonly\b|\binstead\b|\bpreferred\b))[^.\n]*/i;
+
+function assertDirectTelemetryGuidance(referenceSection: string, changelogEntry: string): void {
+  expect(referenceSection).toMatch(REFERENCE_DIRECT_TELEMETRY);
+  expect(changelogEntry).toMatch(CHANGELOG_DIRECT_TELEMETRY);
+  expect(`${referenceSection}\n${changelogEntry}`).not.toMatch(LOADER_ONLY_TELEMETRY);
+  expect(referenceSection).toContain('deprecated loader routes still accept top-level telemetry for compatibility');
+  expect(changelogEntry).toContain('Deprecated loader routes retain top-level telemetry for compatibility');
+}
 
 async function treeDigest(root: string): Promise<string> {
   const hash = createHash('sha256');
@@ -249,18 +260,19 @@ describe('generated products', () => {
     expect(description).toContain('ordinary named operations do not execute through linear');
     expect(description).toContain('Call activated tools with direct arguments');
     expect(description).toContain('Exact graphql help loads linear_graphql');
+    expect(description).toContain('Exact batch help loads linear_batch');
 
     const published = new Map([...description.matchAll(/^([a-z]+): ([a-z0-9_, ]+)$/gm)]
       .map((match) => [match[1]!, match[2]!.split(', ')]));
     const expectedDomains = DOMAINS.filter((domain) => operationDefinitions.some((definition) => definition.domain === domain));
-    expect([...published.keys()]).toEqual([...expectedDomains, 'loader']);
+    expect([...published.keys()]).toEqual([...expectedDomains, 'special']);
     for (const domain of expectedDomains) {
       expect(published.get(domain)).toEqual(operationDefinitions
         .filter((definition) => definition.domain === domain)
         .map(({ name }) => name));
     }
-    expect(published.get('loader')).toEqual(['batch', 'get_result']);
-    expect([...published.values()].flat().filter((name) => name !== 'batch' && name !== 'get_result').sort())
+    expect(published.get('special')).toEqual(['graphql', 'batch', 'get_result']);
+    expect([...published.values()].flat().filter((name) => !['graphql', 'batch', 'get_result'].includes(name)).sort())
       .toEqual(operationDefinitions.map(({ name }) => name).sort());
     for (const { purpose } of operationDefinitions) expect(description).not.toContain(purpose);
   });
@@ -347,11 +359,12 @@ describe('generated products', () => {
     expect(operationDefinitions).toHaveLength(49);
     expect(typedLinearTools()).toHaveLength(49);
     expect(manifest.lazyTools.map(({ name }) => name)).toEqual(typedNames);
-    expect(expectedNames).toHaveLength(52);
-    expect(manifest.allowedTools).toHaveLength(52);
+    expect(expectedNames).toHaveLength(53);
+    expect(manifest.allowedTools).toHaveLength(53);
     expect(manifest.allowedTools).toContain('linear_get_result');
     expect(manifest.allowedTools).toContain('linear_graphql');
-    expect((linearApiTool() as any).description).toContain('The linear get_result and raw query routes are deprecated');
+    expect(manifest.allowedTools).toContain('linear_batch');
+    expect((linearApiTool() as any).description).toContain('The linear get_result, raw query, and batch execution routes are deprecated');
   });
 
   it('ships the complete restricted lossless contract in public documentation', async () => {
@@ -367,7 +380,7 @@ describe('generated products', () => {
       'cardinality-aware', 'get_result', 'path-scoped errors', 'sink:inline',
       'legacy compatibility path', 'exactly `write` plus',
     ]) expect(published).toContain(claim);
-    expect(readme).toContain('52 tool surfaces');
+    expect(readme).toContain('53 tool surfaces');
     expect(readme).toContain('published across all 49 tools');
     expect(readme).toContain(`generated ${manifest.allowedTools.length} Linear tool names`);
     expect(readme).toContain('The guarded `linear_delete_issue_relation` tool is the only delete tool.');
@@ -375,7 +388,13 @@ describe('generated products', () => {
     expect(reference).toContain('49 inactive typed tools');
     expect(reference).toContain(`does not duplicate ${manifest.lazyTools.length} full schemas`);
     expect(changelog).toContain('By default, results show compact `meta.rateLimit` details only near exhaustion.');
-    expect(changelog).toContain('Loader calls with top-level `telemetry: "always"` are the explicit diagnostic exception.');
+    const referenceTelemetry = reference.match(/## Rate-limit telemetry\n([\s\S]*?)(?=\n## )/)?.[1] ?? '';
+    const changelogTelemetry = changelog.split('\n').find((line) => line.startsWith('- Added internal telemetry')) ?? '';
+    assertDirectTelemetryGuidance(referenceTelemetry, changelogTelemetry);
+
+    const reviewerCounterexample = 'The direct tools `linear_batch`, `linear_graphql`, and typed `linear_*` do not accept telemetry. Use top-level `telemetry: "always"` on the loader instead. Deprecated loader routes retain top-level telemetry for compatibility.';
+    expect(() => assertDirectTelemetryGuidance(reviewerCounterexample, reviewerCounterexample)).toThrow();
+    expect(`${reference}\n${changelog}`).not.toMatch(LOADER_ONLY_TELEMETRY);
     expect(published).not.toMatch(/\bTTL\b/i);
     expect(published).not.toMatch(/registers? (?:a )?typed `linear_get_result`/i);
     expect(published).not.toContain('linear-auditor.md');

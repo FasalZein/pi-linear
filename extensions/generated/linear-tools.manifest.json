@@ -270,12 +270,22 @@
       "deferred": true,
       "schemaSource": "linearGraphqlParameters",
       "renderer": "linearGraphql"
+    },
+    {
+      "name": "linear_batch",
+      "helpName": "batch",
+      "purpose": "Batch independent named Linear operations as flat reads or explicit read and mutation phases.",
+      "initialActive": false,
+      "deferred": true,
+      "schemaSource": "linearBatchParameters",
+      "renderer": "linearBatch"
     }
   ],
   "allowedTools": [
     "linear",
     "linear_get_result",
     "linear_graphql",
+    "linear_batch",
     "linear_list_comments",
     "linear_create_comment",
     "linear_update_comment",

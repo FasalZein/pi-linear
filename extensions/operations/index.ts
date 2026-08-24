@@ -28,15 +28,16 @@ import { issueStatuses, workspaceSwitch } from "./workspace";
 export const BATCH_HELP_EXAMPLE = {
 	operation: "batch",
 	variables: {
-		operations: [{ operation: "get_issue", variables: { issue: "AEO-258" } }],
+		operations: [{ key: "issue", operation: "get_issue", variables: { issue: "AEO-258" } }],
 	},
 } as const;
 
 export const BATCH_PHASED_HELP_EXAMPLE = {
 	operation: "batch",
 	variables: {
-		reads: [{ operation: "get_issue", variables: { issue: "AEO-258" } }],
+		reads: [{ key: "issue", operation: "get_issue", variables: { issue: "AEO-258" } }],
 		mutations: [{
+			key: "delete",
 			operation: "delete_issue_relation",
 			variables: {
 				relationId: "11111111-1111-4111-8111-111111111111",

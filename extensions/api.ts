@@ -28,16 +28,18 @@ import { redactDeep, redactError, withRedactedErrors } from './redact';
 import {
   renderLinearApiCall,
   renderLinearApiResult,
+  renderLinearBatchCall,
+  renderLinearBatchResult,
   renderLinearGetResultCall,
   renderLinearGetResultResult,
   renderLinearGraphqlCall,
   renderLinearGraphqlResult,
 } from './renderers';
 import { typedToolName } from './tool-names';
-import { LINEAR_GRAPHQL_HELP, exceptionalToolDefinitions } from './exceptional-tools';
+import { LINEAR_BATCH_HELP, LINEAR_GRAPHQL_HELP, exceptionalToolDefinitions } from './exceptional-tools';
 import type { MutationMode } from './safety';
 import { LINEAR_TOOL_DESCRIPTION } from './generated/operation-catalog';
-import { batchHelp, executeBatch } from './batch';
+import { executeBatch } from './batch';
 import {
   GET_RESULT_HELP,
   childPointer,
@@ -159,7 +161,7 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
   }
   if (typeof operationName === 'string') {
     if (operationName === 'graphql') return { ...activate(activator, ['linear_graphql']), ...LINEAR_GRAPHQL_HELP };
-    if (operationName === 'batch') return batchHelp();
+    if (operationName === 'batch') return { ...activate(activator, ['linear_batch']), ...LINEAR_BATCH_HELP };
     if (operationName === 'get_result') return GET_RESULT_HELP;
     const operation = getOperation(operationName);
     const canonical = operation.canonical;
@@ -311,6 +313,56 @@ export function linearGraphqlTool(
   });
 }
 
+export function linearBatchTool(
+  mode: MutationMode = 'allowlist',
+  definition = exceptionalToolDefinitions[2],
+) {
+  if (definition.renderer !== 'linearBatch') {
+    throw new Error(`Linear tool configuration error: unknown exceptional renderer ${definition.renderer}.`);
+  }
+  const assertSchema = directSchemaGuard(definition.name, definition.parameters);
+  return defineTool({
+    name: definition.name,
+    label: 'Linear batch',
+    description: definition.purpose,
+    parameters: definition.parameters,
+    prepareArguments: (args: unknown) => {
+      try {
+        assertSchema(args);
+        return args as any;
+      } catch (error) {
+        throw redactError(error, activeSecrets());
+      }
+    },
+    renderCall: renderLinearBatchCall,
+    renderResult: renderLinearBatchResult,
+    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+      if (signal?.aborted) throw new Error('Request cancelled.');
+      try {
+        assertSchema(params);
+      } catch (error) {
+        throw redactError(error, activeSecrets());
+      }
+      const secrets = [...activeSecrets()];
+      return withRedactedErrors(async () => toolResult(await executeBatch(
+        {
+          variables: {
+            ...('operations' in params ? { operations: params.operations } : {}),
+            ...('reads' in params ? { reads: params.reads } : {}),
+            ...('mutations' in params ? { mutations: params.mutations } : {}),
+          },
+          workspace: params.workspace,
+          sink: params.sink,
+          telemetryMode: telemetryMode(params.telemetry),
+        },
+        mode,
+        ctx,
+        signal,
+      ), secrets), secrets);
+    },
+  });
+}
+
 function discoveryOnlyError(operationName: string): Error {
   try {
     const operation = getOperation(operationName);
@@ -331,7 +383,7 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
     label: 'Linear API',
     description: LINEAR_TOOL_DESCRIPTION,
     parameters: Type.Object({
-      operation: Type.Optional(Type.String({ description: 'Use help to discover typed tools, activate linear_graphql, or call loader-only batch. Legacy get_result is deprecated; call linear_get_result with direct arguments.' })),
+      operation: Type.Optional(Type.String({ description: 'Use help to discover typed tools or activate linear_graphql and linear_batch. Legacy batch and get_result are deprecated; call linear_batch or linear_get_result with direct arguments.' })),
       query: Type.Optional(Type.String({ description: 'Deprecated raw GraphQL route. Use exact graphql help, then call linear_graphql directly.' })),
       variables: Type.Optional(Type.Record(Type.String(), Type.Any())),
       workspace: Type.Optional(Type.String({ description: 'Stored workspace name, or default/active for normal credential selection.' })),

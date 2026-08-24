@@ -4,11 +4,12 @@ export const LINEAR_AGENT_QUERY_DISCIPLINE_START = '<!-- pi-linear:query-discipl
 export const LINEAR_AGENT_QUERY_DISCIPLINE_END = '<!-- pi-linear:query-discipline:end -->';
 
 export const LINEAR_AGENT_TOOL_SURFACE = `${LINEAR_AGENT_TOOL_SURFACE_START}
-- Use \`linear\` for discovery and batch. Its legacy \`get_result\` and raw \`query\` routes are deprecated.
+- Use \`linear\` for discovery. Its legacy batch, \`get_result\`, and raw \`query\` execution routes are deprecated.
 - Before the first use of an unfamiliar named operation, call loader help: \`{ "operation": "help", "variables": { "operation": "<name>" } }\`. Help is local and makes no Linear network request.
 - Help activates the matching typed tool. Then call that typed tool with only its declared direct parameters.
 - Never send loader fields (\`operation\`, \`query\`, \`variables\`, \`workspace\`, \`sink\`, or \`telemetry\`) to a typed tool unless its schema declares a same-named business parameter.
-- Use wrapper envelopes only with the \`linear\` loader. The deprecated \`get_result\` envelope exists for compatibility only. For independent reads, prefer \`{ "operation": "batch", "variables": { "operations": [{ "operation": "<name>", "variables": { ... } }] } }\`.
+- Load batch with exact \`batch\` help. Then call \`linear_batch\` directly. For independent reads, use \`{ "operations": [{ "key": "<label>", "operation": "<name>", "variables": { ... } }] }\`.
+- Loader batch and \`get_result\` envelopes exist for compatibility only. Do not use them for new work.
 - Use explicit \`reads\` and \`mutations\` phases only when mutations exist. Batch entry keys are optional caller labels. Do not invent keys; the runtime assigns stable keys when absent.
 - Do not guess parameter names or nested \`input\` shapes. Read loader help, then follow the activated typed schema.
 - Use \`linear_get_result\` for lossless recovery from compact or spilled results. Pass \`{ "handle": "..." }\` directly. Preserve the handle exactly. Follow the returned JSON Pointer and \`nextOffset\` until \`complete\` is true.
