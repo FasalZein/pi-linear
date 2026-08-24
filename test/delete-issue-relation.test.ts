@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { linearBatchTool, resolveRequest } from '../extensions/api';
 import { linearErrorTelemetry } from '../extensions/client';
-import { operations } from '../extensions/operations';
+import { getOperation, operations } from '../extensions/operations';
+import { operationRenderers } from '../extensions/renderers';
 import { SAFE_NAMED_MUTATION_ROOTS } from '../extensions/safety';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
@@ -17,6 +18,13 @@ const variables = { relationId: RELATION, issueId: ISSUE, relatedIssueId: RELATE
 const originalKey = process.env.LINEAR_API_KEY;
 const originalMutations = process.env.LINEAR_MUTATIONS;
 const originalReadonly = process.env.LINEAR_READONLY;
+const theme = {
+  fg: (_role: string, text: string) => text,
+  bg: (_role: string, text: string) => text,
+  bold: (text: string) => text,
+  italic: (text: string) => text,
+  underline: (text: string) => text,
+} as any;
 
 function execute(input: Record<string, any>, mode: 'allowlist' | 'readonly' = 'allowlist') {
   if (input.operation === 'batch') {
@@ -110,6 +118,15 @@ describe('delete_issue_relation strict guarded delete', () => {
     expect(result.details.data).toEqual({
       issueRelationDelete: { ...variables, deleted: true },
     });
+
+    const rendered = operationRenderers(getOperation('delete_issue_relation')).renderResult(
+      result,
+      { expanded: false, isPartial: false },
+      theme,
+      { args: variables } as any,
+    ).render(200).join('\n');
+    expect(rendered).toContain('✓ Deleted relation');
+    expect(rendered).not.toContain('status unknown');
   });
 
   it.each([

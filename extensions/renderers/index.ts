@@ -47,7 +47,7 @@ export type LinearRenderContext = {
 type Meta = {
   truncations?: Array<{ path: string; kept: number; endCursor?: string }>;
   stringsClipped?: number;
-  resultBudget?: { maxBytes: number; truncated: true };
+  resultBudget?: { maxBytes: number; truncated: true; recoverable?: true };
   view?: 'summary' | 'full';
 };
 
@@ -67,8 +67,8 @@ function metaNotes(details: Record<string, unknown>): string[] {
       ? `kept ${truncation.kept} nodes — request the next page with after="${truncation.endCursor}"`
       : `kept ${truncation.kept} nodes — narrow the filter for the rest`);
   }
-  if (meta.resultBudget?.truncated) {
-    notes.push(`result trimmed to ${Math.round(meta.resultBudget.maxBytes / 1024)} KB — request fewer fields or fewer nodes`);
+  if (meta.resultBudget?.recoverable) {
+    notes.push('complete result stored outside this inline result');
   }
   if (typeof meta.stringsClipped === 'number' && meta.stringsClipped > 0) {
     notes.push(`${plural(meta.stringsClipped, 'long field')} clipped`);
@@ -149,12 +149,12 @@ export function digestResult(result: AgentToolResult<any>, expectedRoots: readon
       totalCount: asCount(record.totalCount),
     };
   }
-  if ('success' in record) {
+  if ('success' in record || 'deleted' in record) {
     const entity = Object.entries(record)
-      .filter(([key]) => key !== 'success')
+      .filter(([key]) => key !== 'success' && key !== 'deleted')
       .map(([, value]) => asRecord(value))
       .find((value): value is Entity => !!value);
-    return { kind: 'mutation', success: record.success === true, entity, notes };
+    return { kind: 'mutation', success: record.success === true || record.deleted === true, entity, notes };
   }
   if (/(?:create|update|delete|archive|unarchive)$/i.test(rootEntry?.[0] ?? '')) {
     return { kind: 'mutation', success: false, notes };
@@ -170,6 +170,7 @@ function verbFor(operationName: string): Verb {
     return { past: 'Updated', present: 'Updating' };
   }
   if (operationName.startsWith('save_')) return { past: 'Saved', present: 'Saving' };
+  if (operationName.startsWith('delete_')) return { past: 'Deleted', present: 'Deleting' };
   if (operationName.startsWith('switch_')) return { past: 'Switched', present: 'Switching' };
   if (operationName.startsWith('search_')) return { past: 'Searched', present: 'Searching' };
   return { past: 'Loaded', present: 'Loading' };
@@ -233,6 +234,9 @@ function spillBlock(theme: Theme, digest: Extract<Digest, { kind: 'spill' }>): A
   const lines: Array<string | ReturnType<typeof wrapped>> = [
     '',
     theme.fg('success', `✓ ${size} written to disk`),
+    wrapped(theme.fg('dim', digest.handle
+      ? `Retrieve: linear_get_result({"handle":"${digest.handle}"})`
+      : 'This legacy artifact has no result handle.'), 2),
     `  ${theme.fg('dim', `Compatibility path: ${digest.path}`)}`,
   ];
   for (const entry of digest.index.slice(0, 8)) {
@@ -241,9 +245,6 @@ function spillBlock(theme: Theme, digest: Extract<Digest, { kind: 'spill' }>): A
   if (digest.index.length > 8) {
     lines.push(`  ${theme.fg('dim', `… ${digest.index.length - 8} more entries in the file`)}`);
   }
-  lines.push(wrapped(theme.fg('dim', digest.handle
-    ? `Retrieve: linear_get_result({"handle":"${digest.handle}"})`
-    : 'This legacy artifact has no result handle.'), 2));
   for (const note of digest.notes) lines.push(wrapped(theme.fg('dim', note), 2));
   return [...lines, '', wrapped(theme.fg('dim', jsonHint()))];
 }

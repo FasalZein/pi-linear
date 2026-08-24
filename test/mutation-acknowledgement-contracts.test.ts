@@ -19,8 +19,9 @@ const theme = {
 const definitions = operationDefinitions.filter((definition) => definition.safety.mutation);
 
 function render(operationName: string, root: string, args: Record<string, unknown>): string {
+  const acknowledgement = operationName === 'delete_issue_relation' ? { deleted: true } : { success: true };
   const details = {
-    data: { [root]: { success: true } },
+    data: { [root]: acknowledgement },
     meta: { truncations: [], stringsClipped: 0 },
   };
   return operationRenderers(getOperation(operationName)).renderResult(

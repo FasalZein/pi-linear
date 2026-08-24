@@ -104,8 +104,9 @@ export function shouldShowJson(
 
 export function expandedJson(result: AgentToolResult<any>, theme: Theme): Text {
   const body = scrubCredentials(textContent(result));
+  const heading = asString(asRecord(result.details)?.path) ? 'Full tool result JSON' : 'Full JSON response';
   return new Text(
-    `\n${theme.fg('dim', 'Full JSON response')}\n${body}\n\n${expandHint('show summary')}`,
+    `\n${theme.fg('dim', heading)}\n${body}\n\n${expandHint('show summary')}`,
     0,
     0,
   );

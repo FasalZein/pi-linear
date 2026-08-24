@@ -189,19 +189,31 @@ describe('result states', () => {
     expect(text).toContain('Re-read the record to confirm');
   });
 
-  it('renders a spilled result as a digest plus the artifact path', () => {
-    const text = block(render('list_issues', {
+  it('renders a complete stored result with supported recovery before the compatibility path', () => {
+    const details = {
       handle: 'linear-result:v1:550e8400-e29b-41d4-a716-446655440000',
       path: '/tmp/linear/raw/550e8400-e29b-41d4-a716-446655440000.json',
       bytes: 42_000,
       index: ['AEO-258 · Fix login redirect · In Progress'],
-      meta,
-    }));
+      meta: {
+        ...meta,
+        resultBudget: { maxBytes: 51_200, truncated: true, recoverable: true },
+      },
+    };
+    const text = block(render('list_issues', details));
+    const recovery = 'linear_get_result({"handle":"linear-result:v1:550e8400-e29b-41d4-a716-446655440000"})';
     expect(text).toContain('41 KB written to disk');
+    expect(text).toContain('complete result stored outside this inline result');
     expect(text).toContain('Compatibility path: /tmp/linear/raw/550e8400-e29b-41d4-a716-446655440000.json');
     expect(text).toContain('AEO-258 · Fix login redirect');
-    expect(text.replace(/\s+/g, ' ')).toContain('linear_get_result({"handle":"linear-result:v1:550e8400-e29b-41d4-a716-446655440000"})');
+    expect(text.replace(/\s+/g, ' ')).toContain(recovery);
+    expect(text.indexOf(recovery)).toBeLessThan(text.indexOf('Compatibility path'));
+    expect(text).not.toMatch(/trimmed|clipped|request fewer fields/i);
     expect(text).not.toContain('Read the file');
+
+    const expanded = block(render('list_issues', details, { expanded: true }));
+    expect(expanded).toContain('Full tool result JSON');
+    expect(expanded).not.toContain('Full JSON response');
   });
 
   it('shows the error and the next valid action, never a credential', () => {
