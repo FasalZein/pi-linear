@@ -15,6 +15,17 @@ import { exceptionalToolDefinitions } from '../extensions/exceptional-tools';
 
 const typedNames = operationDefinitions.map(({ toolName }) => toolName);
 const expectedNames = ['linear', ...exceptionalToolDefinitions.map(({ name }) => name), ...typedNames];
+const REFERENCE_DIRECT_TELEMETRY = /set top-level `"telemetry": "always"` on the exact direct tool[^.\n]*`linear_batch`[^.\n]*`linear_graphql`[^.\n]*typed `linear_\*`[^.\n]*\./;
+const CHANGELOG_DIRECT_TELEMETRY = /set top-level `telemetry: "always"` on the exact direct[^.\n]*`linear_batch`[^.\n]*`linear_graphql`[^.\n]*typed `linear_\*`[^.\n]*\./;
+const LOADER_ONLY_TELEMETRY = /(?=[^.\n]*telemetry)(?=[^.\n]*loader)(?=[^.\n]*(?:\bonly\b|\binstead\b|\bpreferred\b))[^.\n]*/i;
+
+function assertDirectTelemetryGuidance(referenceSection: string, changelogEntry: string): void {
+  expect(referenceSection).toMatch(REFERENCE_DIRECT_TELEMETRY);
+  expect(changelogEntry).toMatch(CHANGELOG_DIRECT_TELEMETRY);
+  expect(`${referenceSection}\n${changelogEntry}`).not.toMatch(LOADER_ONLY_TELEMETRY);
+  expect(referenceSection).toContain('deprecated loader routes still accept top-level telemetry for compatibility');
+  expect(changelogEntry).toContain('Deprecated loader routes retain top-level telemetry for compatibility');
+}
 
 async function treeDigest(root: string): Promise<string> {
   const hash = createHash('sha256');
@@ -377,14 +388,13 @@ describe('generated products', () => {
     expect(reference).toContain('49 inactive typed tools');
     expect(reference).toContain(`does not duplicate ${manifest.lazyTools.length} full schemas`);
     expect(changelog).toContain('By default, results show compact `meta.rateLimit` details only near exhaustion.');
-    for (const directTool of ['linear_batch', 'linear_graphql', 'typed `linear_*`']) {
-      expect(reference).toContain(directTool);
-      expect(changelog).toContain(directTool);
-    }
-    expect(reference).toContain('deprecated loader routes still accept top-level telemetry for compatibility');
-    expect(changelog).toContain('Deprecated loader routes retain top-level telemetry for compatibility');
-    expect(`${reference}\n${changelog}`).not.toContain('on the `linear` loader only');
-    expect(`${reference}\n${changelog}`).not.toContain('Loader calls with top-level `telemetry: "always"` are the explicit diagnostic exception.');
+    const referenceTelemetry = reference.match(/## Rate-limit telemetry\n([\s\S]*?)(?=\n## )/)?.[1] ?? '';
+    const changelogTelemetry = changelog.split('\n').find((line) => line.startsWith('- Added internal telemetry')) ?? '';
+    assertDirectTelemetryGuidance(referenceTelemetry, changelogTelemetry);
+
+    const reviewerCounterexample = 'The direct tools `linear_batch`, `linear_graphql`, and typed `linear_*` do not accept telemetry. Use top-level `telemetry: "always"` on the loader instead. Deprecated loader routes retain top-level telemetry for compatibility.';
+    expect(() => assertDirectTelemetryGuidance(reviewerCounterexample, reviewerCounterexample)).toThrow();
+    expect(`${reference}\n${changelog}`).not.toMatch(LOADER_ONLY_TELEMETRY);
     expect(published).not.toMatch(/\bTTL\b/i);
     expect(published).not.toMatch(/registers? (?:a )?typed `linear_get_result`/i);
     expect(published).not.toContain('linear-auditor.md');
