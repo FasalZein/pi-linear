@@ -231,7 +231,7 @@ export const documents: readonly OperationDefinition[] = ([
 		],
 		canonical: {
 			"fields": {
-				"documentId": "DocumentReference",
+				"document": "DocumentReference",
 				"title": "String",
 				"content": "String",
 				"icon": "String",
@@ -251,67 +251,67 @@ export const documents: readonly OperationDefinition[] = ([
 			},
 			"branches": [
 				[
-					"documentId",
+					"document",
 					"title"
 				],
 				[
-					"documentId",
+					"document",
 					"content"
 				],
 				[
-					"documentId",
+					"document",
 					"icon"
 				],
 				[
-					"documentId",
+					"document",
 					"color"
 				],
 				[
-					"documentId",
+					"document",
 					"issueId"
 				],
 				[
-					"documentId",
+					"document",
 					"teamId"
 				],
 				[
-					"documentId",
+					"document",
 					"projectId"
 				],
 				[
-					"documentId",
+					"document",
 					"initiativeId"
 				],
 				[
-					"documentId",
+					"document",
 					"cycleId"
 				],
 				[
-					"documentId",
+					"document",
 					"releaseId"
 				],
 				[
-					"documentId",
+					"document",
 					"resourceFolderId"
 				],
 				[
-					"documentId",
+					"document",
 					"lastAppliedTemplateId"
 				],
 				[
-					"documentId",
+					"document",
 					"ownerId"
 				],
 				[
-					"documentId",
+					"document",
 					"subscriberIds"
 				],
 				[
-					"documentId",
+					"document",
 					"sortOrder"
 				],
 				[
-					"documentId",
+					"document",
 					"hiddenAt"
 				]
 			]
@@ -345,6 +345,7 @@ export const documents: readonly OperationDefinition[] = ([
 			"input",
 		].map((n) => p(n)),
 		example: { documentId: "document-id", title: "Updated notes" },
+		canonicalExample: { document: "document-id", title: "Updated notes" },
 		idKey: "documentId",
 		resolverPaths: {
 			documentId: "resolveDocumentReference",
@@ -353,8 +354,8 @@ export const documents: readonly OperationDefinition[] = ([
 			teamId: "resolveTeamReference",
 		},
 		plan(v) {
-			const requested = String(v.documentId);
-			const input = mergedInput(v, ["documentId", "teamKey"]);
+			const requested = String(v.document ?? v.documentId);
+			const input = mergedInput(v, ["document", "documentId", "teamKey"]);
 			const issueRef = typeof input.issueId === "string" ? input.issueId : undefined;
 			const related = ["cycleId", "initiativeId", "issueId", "projectId", "releaseId", "resourceFolderId"]
 				.some((key) => typeof input[key] === "string" && input[key]);

@@ -18,10 +18,10 @@ function execute(tool: any, params: Record<string, unknown>) {
   return tool.execute('call-1', params, undefined, undefined, { hasUI: false });
 }
 
-function updateTools(documentId = 'Planning notes') {
+function updateTools(document = 'Planning notes') {
   return [
-    ['typed', typedLinearTools().find(({ name }) => name === 'linear_update_document')!, { documentId, title: 'Updated notes' }],
-    ['activated typed', typedLinearTools().find(({ name }) => name === 'linear_update_document')!, { documentId, title: 'Updated notes' }],
+    ['typed', typedLinearTools().find(({ name }) => name === 'linear_update_document')!, { document, title: 'Updated notes' }],
+    ['activated typed', typedLinearTools().find(({ name }) => name === 'linear_update_document')!, { document, title: 'Updated notes' }],
   ] as const;
 }
 

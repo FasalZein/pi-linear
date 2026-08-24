@@ -99,6 +99,19 @@ export function assertRequirementBranches(
   throw new Error('parameters do not match one accepted requirement branch');
 }
 
+function assertProjectedBranches(
+  definition: OperationDefinition,
+  variables: Record<string, unknown>,
+): void {
+  const compatibilityFields = new Set(
+    (definition.compatibility.acceptedFields ?? definition.compatibility.fields).map(({ name }) => name),
+  );
+  const hasCanonicalOnlyField = Object.keys(variables).some((name) => !compatibilityFields.has(name));
+  if (hasCanonicalOnlyField
+    && definition.canonical.branches.some((branch) => requirementBranchMatches(branch, variables))) return;
+  assertRequirementBranches(definition.compatibility.branches, variables);
+}
+
 /** Project the runtime definition from one authored source operation. */
 export function defineOperation(operation: LinearOperation): OperationDefinition {
   const branches = operation.compatibilityBranches;
@@ -242,12 +255,12 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
     ...(compatibility.resolverPaths ? { resolverPaths: compatibility.resolverPaths } : {}),
     ...(compatibility.requiresVariables ? { requiresVariables: true } : {}),
     validateVariables(variables) {
-      assertRequirementBranches(compatibility.branches, variables);
+      assertProjectedBranches(definition, variables);
       compatibility.semanticValidateVariables?.(variables);
     },
     ...(compatibility.plan ? {
       plan: async (variables) => {
-        assertRequirementBranches(compatibility.branches, variables);
+        assertProjectedBranches(definition, variables);
         compatibility.semanticValidateVariables?.(variables);
         return compatibility.plan!(variables);
       },
@@ -255,7 +268,7 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
     ...(compatibility.localResult ? { localResult: compatibility.localResult } : {}),
     ...(compatibility.executeLocal ? {
       executeLocal: async (variables, ctx, mode) => {
-        assertRequirementBranches(compatibility.branches, variables);
+        assertProjectedBranches(definition, variables);
         compatibility.semanticValidateVariables?.(variables);
         return compatibility.executeLocal!(variables, ctx, mode);
       },

@@ -164,6 +164,24 @@ describe('direct issue identifier routing', () => {
     expect(requests.filter(({ query }) => query.includes('mutation'))).toHaveLength(1);
   });
 
+  it.each([
+    ['assignee', 'assigneeId'],
+    ['parent', 'parentId'],
+    ['projectId', 'projectId'],
+    ['projectMilestoneId', 'projectMilestoneId'],
+    ['cycleId', 'cycleId'],
+  ])('clears %s without a reference lookup', async (field, inputField) => {
+    const { requests } = graphqlStub((_query, variables) => {
+      expect(variables).toEqual({ id: 'AEO-258', input: { [inputField]: null } });
+      return { issueUpdate: { success: true, issue: issueNode() } };
+    });
+
+    await execute({ operation: 'update_issue', variables: { issue: 'AEO-258', [field]: null } });
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.query).toContain('mutation UpdateIssue');
+  });
+
   it('still resolves state names with the issue team before update_issue', async () => {
     const { requests } = graphqlStub((query, variables) => {
       if (query.includes('ResolveIssueById')) {

@@ -237,7 +237,7 @@
   "update_document": {
     "entityKind": "document",
     "callFields": [
-      "documentId",
+      "document",
       "title",
       "content",
       "icon",

@@ -167,13 +167,13 @@ describe('closed create and update save schemas', () => {
 describe('mode-specific field ownership', () => {
   it('keeps DocumentCreateInput.id out of update_document', () => {
     expect(accepts('linear_create_document', { title: 'Plan', id: UUID })).toBe(true);
-    expect(accepts('linear_update_document', { documentId: 'Plan', id: UUID })).toBe(false);
+    expect(accepts('linear_update_document', { document: 'Plan', id: UUID })).toBe(false);
   });
 
   it('publishes exact dated document and label fields without unsupported extras', () => {
     const expected: Record<string, string[]> = {
       linear_create_document: ['title', 'content', 'icon', 'color', 'issueId', 'teamId', 'projectId', 'initiativeId', 'cycleId', 'releaseId', 'resourceFolderId', 'lastAppliedTemplateId', 'ownerId', 'subscriberIds', 'sortOrder', 'id', 'workspace'],
-      linear_update_document: ['documentId', 'title', 'content', 'icon', 'color', 'issueId', 'teamId', 'projectId', 'initiativeId', 'cycleId', 'releaseId', 'resourceFolderId', 'lastAppliedTemplateId', 'ownerId', 'subscriberIds', 'sortOrder', 'hiddenAt', 'workspace'],
+      linear_update_document: ['document', 'title', 'content', 'icon', 'color', 'issueId', 'teamId', 'projectId', 'initiativeId', 'cycleId', 'releaseId', 'resourceFolderId', 'lastAppliedTemplateId', 'ownerId', 'subscriberIds', 'sortOrder', 'hiddenAt', 'workspace'],
       linear_create_issue_label: ['name', 'team', 'description', 'color', 'isGroup', 'parentId', 'retiredAt', 'replaceTeamLabels', 'id', 'workspace'],
       linear_update_issue_label: ['id', 'name', 'description', 'color', 'isGroup', 'parentId', 'retiredAt', 'replaceTeamLabels', 'workspace'],
       linear_create_project_label: ['name', 'description', 'color', 'isGroup', 'parentId', 'retiredAt', 'workspace'],
@@ -203,10 +203,10 @@ describe('mode-specific field ownership', () => {
     expect(accepts('linear_save_project', { name: 'Project', teamIds: [UUID], leadTeamId: UUID })).toBe(true);
     expect(accepts('linear_save_project', { projectId: 'Project', leadTeamId: UUID })).toBe(true);
     expect(accepts('linear_create_document', { title: 'Plan', ownerId: UUID })).toBe(true);
-    expect(accepts('linear_update_document', { documentId: 'Plan', ownerId: UUID })).toBe(true);
+    expect(accepts('linear_update_document', { document: 'Plan', ownerId: UUID })).toBe(true);
     expect(accepts('linear_save_initiative', { name: 'Initiative', health: 'onTrack' })).toBe(false);
     expect(accepts('linear_save_project', { name: 'Project', teamIds: [UUID], resources: [] })).toBe(false);
-    expect(accepts('linear_update_document', { documentId: 'Plan', trashed: true })).toBe(false);
+    expect(accepts('linear_update_document', { document: 'Plan', trashed: true })).toBe(false);
   });
 
   it('rejects dated-fixture negatives before any network request', async () => {
@@ -217,7 +217,7 @@ describe('mode-specific field ownership', () => {
       ['linear_save_initiative', { name: 'I', customIdentifier: 'PLAT' }],
       ['linear_save_initiative', { name: 'I', health: 'onTrack' }],
       ['linear_save_project', { name: 'P', teamIds: [UUID], resources: [] }],
-      ['linear_update_document', { documentId: 'D', trashed: true }],
+      ['linear_update_document', { document: 'D', trashed: true }],
       ['linear_create_issue_label', { name: 'L', retiredAt: null }],
       ['linear_create_project_label', { name: 'L', retiredAt: null }],
     ];

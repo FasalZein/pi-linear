@@ -1516,7 +1516,7 @@
           },
           "team": {
             "type": "string",
-            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "description": "Team key such as ABC, or a team UUID.",
             "minLength": 1
           },
           "description": {
@@ -2479,7 +2479,7 @@
         "properties": {
           "team": {
             "type": "string",
-            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "description": "Team key such as ABC, or a team UUID.",
             "minLength": 1
           },
           "after": {
@@ -2912,7 +2912,7 @@
         "properties": {
           "team": {
             "type": "string",
-            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "description": "Team key such as ABC, or a team UUID.",
             "minLength": 1
           },
           "startsAt": {
@@ -3957,7 +3957,7 @@
           },
           "teamId": {
             "type": "string",
-            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "description": "Team key such as ABC, or a team UUID.",
             "minLength": 1
           },
           "projectId": {
@@ -4357,11 +4357,11 @@
     "tool": {
       "name": "linear_update_document",
       "label": "Linear update document",
-      "description": "Update a document. Call with direct arguments {\"documentId\":\"document-id\",\"title\":\"Updated notes\"}.",
+      "description": "Update a document. Call with direct arguments {\"document\":\"document-id\",\"title\":\"Updated notes\"}.",
       "parameters": {
         "type": "object",
         "properties": {
-          "documentId": {
+          "document": {
             "type": "string",
             "description": "Exact document title, or a document UUID.",
             "minLength": 1
@@ -4390,7 +4390,7 @@
           },
           "teamId": {
             "type": "string",
-            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "description": "Team key such as ABC, or a team UUID.",
             "minLength": 1
           },
           "projectId": {
@@ -4463,97 +4463,97 @@
         "anyOf": [
           {
             "required": [
-              "documentId",
+              "document",
               "title"
             ]
           },
           {
             "required": [
-              "documentId",
+              "document",
               "content"
             ]
           },
           {
             "required": [
-              "documentId",
+              "document",
               "icon"
             ]
           },
           {
             "required": [
-              "documentId",
+              "document",
               "color"
             ]
           },
           {
             "required": [
-              "documentId",
+              "document",
               "issueId"
             ]
           },
           {
             "required": [
-              "documentId",
+              "document",
               "teamId"
             ]
           },
           {
             "required": [
-              "documentId",
+              "document",
               "projectId"
             ]
           },
           {
             "required": [
-              "documentId",
+              "document",
               "initiativeId"
             ]
           },
           {
             "required": [
-              "documentId",
+              "document",
               "cycleId"
             ]
           },
           {
             "required": [
-              "documentId",
+              "document",
               "releaseId"
             ]
           },
           {
             "required": [
-              "documentId",
+              "document",
               "resourceFolderId"
             ]
           },
           {
             "required": [
-              "documentId",
+              "document",
               "lastAppliedTemplateId"
             ]
           },
           {
             "required": [
-              "documentId",
+              "document",
               "ownerId"
             ]
           },
           {
             "required": [
-              "documentId",
+              "document",
               "subscriberIds"
             ]
           },
           {
             "required": [
-              "documentId",
+              "document",
               "sortOrder"
             ]
           },
           {
             "required": [
-              "documentId",
+              "document",
               "hiddenAt"
             ]
           }
@@ -4564,17 +4564,17 @@
     "purpose": "Update a document.",
     "kind": "mutation",
     "help": {
-      "signature": "update_document(documentId: DocumentReference, title?: String, content?: String, icon?: String, color?: Color, issueId?: IssueReference, teamId?: TeamReference, projectId?: UUID, initiativeId?: UUID, cycleId?: UUID, releaseId?: UUID, resourceFolderId?: UUID, lastAppliedTemplateId?: UUID, ownerId?: UUID, subscriberIds?: [UUID!], sortOrder?: Float, hiddenAt?: NullableDateTime)",
+      "signature": "update_document(document: DocumentReference, title?: String, content?: String, icon?: String, color?: Color, issueId?: IssueReference, teamId?: TeamReference, projectId?: UUID, initiativeId?: UUID, cycleId?: UUID, releaseId?: UUID, resourceFolderId?: UUID, lastAppliedTemplateId?: UUID, ownerId?: UUID, subscriberIds?: [UUID!], sortOrder?: Float, hiddenAt?: NullableDateTime)",
       "exact": true,
       "example": {
         "operation": "update_document",
         "variables": {
-          "documentId": "document-id",
+          "document": "document-id",
           "title": "Updated notes"
         }
       },
       "callFields": [
-        "documentId",
+        "document",
         "title",
         "content",
         "icon",
@@ -4767,7 +4767,7 @@
     "canonical": {
       "fields": [
         {
-          "name": "documentId",
+          "name": "document",
           "type": "DocumentReference",
           "required": true
         },
@@ -4855,104 +4855,104 @@
       "branches": [
         {
           "all": [
-            "documentId",
+            "document",
             "title"
           ]
         },
         {
           "all": [
-            "documentId",
+            "document",
             "content"
           ]
         },
         {
           "all": [
-            "documentId",
+            "document",
             "icon"
           ]
         },
         {
           "all": [
-            "documentId",
+            "document",
             "color"
           ]
         },
         {
           "all": [
-            "documentId",
+            "document",
             "issueId"
           ]
         },
         {
           "all": [
-            "documentId",
+            "document",
             "teamId"
           ]
         },
         {
           "all": [
-            "documentId",
+            "document",
             "projectId"
           ]
         },
         {
           "all": [
-            "documentId",
+            "document",
             "initiativeId"
           ]
         },
         {
           "all": [
-            "documentId",
+            "document",
             "cycleId"
           ]
         },
         {
           "all": [
-            "documentId",
+            "document",
             "releaseId"
           ]
         },
         {
           "all": [
-            "documentId",
+            "document",
             "resourceFolderId"
           ]
         },
         {
           "all": [
-            "documentId",
+            "document",
             "lastAppliedTemplateId"
           ]
         },
         {
           "all": [
-            "documentId",
+            "document",
             "ownerId"
           ]
         },
         {
           "all": [
-            "documentId",
+            "document",
             "subscriberIds"
           ]
         },
         {
           "all": [
-            "documentId",
+            "document",
             "sortOrder"
           ]
         },
         {
           "all": [
-            "documentId",
+            "document",
             "hiddenAt"
           ]
         }
       ],
       "strictRawArguments": true,
       "example": {
-        "documentId": "document-id",
+        "document": "document-id",
         "title": "Updated notes"
       }
     },
@@ -4966,7 +4966,7 @@
     "render": {
       "entityKind": "document",
       "callFields": [
-        "documentId",
+        "document",
         "title",
         "content",
         "icon",
@@ -5418,7 +5418,7 @@
         "properties": {
           "team": {
             "type": "string",
-            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "description": "Team key such as ABC, or a team UUID.",
             "minLength": 1
           },
           "after": {
@@ -5714,7 +5714,7 @@
           },
           "team": {
             "type": "string",
-            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "description": "Team key such as ABC, or a team UUID.",
             "minLength": 1
           },
           "description": {
@@ -7494,7 +7494,7 @@
           },
           "team": {
             "type": "string",
-            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "description": "Team key such as ABC, or a team UUID.",
             "minLength": 1
           },
           "state": {
@@ -8210,7 +8210,7 @@
           },
           "team": {
             "type": "string",
-            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "description": "Team key such as ABC, or a team UUID.",
             "minLength": 1
           },
           "parent": {
@@ -9074,18 +9074,32 @@
             "minLength": 1
           },
           "assignee": {
-            "type": "string",
-            "description": "User email, exact name, display name, \"me\", or a user UUID.",
-            "minLength": 1
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "User email, exact name, display name, \"me\", a user UUID, or null to clear it."
           },
           "parent": {
-            "type": "string",
-            "description": "Issue identifier such as ABC-123, or an issue UUID.",
-            "minLength": 1
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Issue identifier such as ABC-123, an issue UUID, or null to clear it."
           },
           "teamId": {
             "type": "string",
-            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "description": "Team key such as ABC, or a team UUID.",
             "minLength": 1
           },
           "dueDate": {
@@ -9137,19 +9151,40 @@
             "type": "integer"
           },
           "projectId": {
-            "type": "string",
-            "description": "Linear UUID.",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Linear UUID, or null to clear it."
           },
           "projectMilestoneId": {
-            "type": "string",
-            "description": "Linear UUID.",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Linear UUID, or null to clear it."
           },
           "cycleId": {
-            "type": "string",
-            "description": "Linear UUID.",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Linear UUID, or null to clear it."
           },
           "labelIds": {
             "type": "array",
@@ -9426,7 +9461,7 @@
     "purpose": "Update an issue by exact identifier or UUID.",
     "kind": "mutation",
     "help": {
-      "signature": "update_issue(issue: IssueReference, title?: String, state?: StateReference, assignee?: UserReference, parent?: IssueReference, teamId?: TeamReference, dueDate?: NullableDate, addedLabelIds?: [UUID!], removedLabelIds?: [UUID!], description?: String, descriptionData?: JsonString, priority?: Priority, estimate?: Int, projectId?: UUID, projectMilestoneId?: UUID, cycleId?: UUID, labelIds?: [UUID!], subscriberIds?: [UUID!], delegateId?: UUID, lastAppliedTemplateId?: UUID, slaType?: SlaDayCountType, slaBreachesAt?: NullableDateTime, slaStartedAt?: NullableDateTime, sortOrder?: Float, subIssueSortOrder?: Float, prioritySortOrder?: Float, autoClosedByParentClosing?: Boolean, snoozedById?: UUID, snoozedUntilAt?: NullableDateTime)",
+      "signature": "update_issue(issue: IssueReference, title?: String, state?: StateReference, assignee?: NullableUserReference, parent?: NullableIssueReference, teamId?: TeamReference, dueDate?: NullableDate, addedLabelIds?: [UUID!], removedLabelIds?: [UUID!], description?: String, descriptionData?: JsonString, priority?: Priority, estimate?: Int, projectId?: NullableUUID, projectMilestoneId?: NullableUUID, cycleId?: NullableUUID, labelIds?: [UUID!], subscriberIds?: [UUID!], delegateId?: UUID, lastAppliedTemplateId?: UUID, slaType?: SlaDayCountType, slaBreachesAt?: NullableDateTime, slaStartedAt?: NullableDateTime, sortOrder?: Float, subIssueSortOrder?: Float, prioritySortOrder?: Float, autoClosedByParentClosing?: Boolean, snoozedById?: UUID, snoozedUntilAt?: NullableDateTime)",
       "exact": true,
       "example": {
         "operation": "update_issue",
@@ -9778,12 +9813,12 @@
         },
         {
           "name": "assignee",
-          "type": "UserReference",
+          "type": "NullableUserReference",
           "required": false
         },
         {
           "name": "parent",
-          "type": "IssueReference",
+          "type": "NullableIssueReference",
           "required": false
         },
         {
@@ -9828,17 +9863,17 @@
         },
         {
           "name": "projectId",
-          "type": "UUID",
+          "type": "NullableUUID",
           "required": false
         },
         {
           "name": "projectMilestoneId",
-          "type": "UUID",
+          "type": "NullableUUID",
           "required": false
         },
         {
           "name": "cycleId",
-          "type": "UUID",
+          "type": "NullableUUID",
           "required": false
         },
         {
@@ -10144,7 +10179,7 @@
           },
           "team": {
             "type": "string",
-            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "description": "Team key such as ABC, or a team UUID.",
             "minLength": 1
           },
           "after": {
@@ -13149,7 +13184,7 @@
         "properties": {
           "team": {
             "type": "string",
-            "description": "Team key such as ABC, exact team name, or a team UUID.",
+            "description": "Team key such as ABC, or a team UUID.",
             "minLength": 1
           },
           "workspace": {

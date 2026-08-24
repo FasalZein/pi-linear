@@ -218,6 +218,12 @@ function sampleFor(type: string): unknown {
       return 'https://example.com/icon.png';
     case 'NullableDateTime':
       return '2026-09-01T00:00:00.000Z';
+    case 'NullableUserReference':
+      return 'me';
+    case 'NullableIssueReference':
+      return 'AEO-258';
+    case 'NullableUUID':
+      return '11111111-1111-4111-8111-111111111111';
     case 'SlaDayCountType':
       return 'onlyBusinessDays';
     case 'DateResolutionType':
@@ -410,7 +416,7 @@ describe('typed schema validation across all 49 tools', () => {
       ['linear_update_issue', { issue: 'AEO-258' }],
       ['linear_update_comment', { id: 'comment-1' }],
       ['linear_update_cycle', { id: 'cycle-1' }],
-      ['linear_update_document', { documentId: 'Doc' }],
+      ['linear_update_document', { document: 'Doc' }],
       ['linear_update_issue_label', { id: 'label-1' }],
       ['linear_update_project_label', { id: 'label-1' }],
       ['linear_update_issue_relation', { id: 'relation-1' }],
@@ -481,7 +487,7 @@ describe('typed schema validation across all 49 tools', () => {
   });
 
   it.each([
-    ['top-level', 'linear_update_document', { documentId: 'Doc', trashed: true }, 'variables.trashed'],
+    ['top-level', 'linear_update_document', { document: 'Doc', trashed: true }, 'variables.trashed'],
     ['nested', 'linear_list_issues', { filter: { and: [{ trashed: true }] } }, 'variables.filter.and[0].trashed'],
     ['credential-keyed', 'linear_list_issues', { filter: { lin_api_secret123456789: { trashed: true } } }, 'variables.filter.[REDACTED].trashed'],
   ])('runs destructive-input policy before schema validation for %s input', (_case, toolName, args, path) => {
@@ -492,7 +498,7 @@ describe('typed schema validation across all 49 tools', () => {
 
   it('preserves read-only precedence in prepareArguments', () => {
     const tool = typedLinearTools('readonly').find(({ name }) => name === 'linear_update_document')!;
-    expect(() => tool.prepareArguments!({ documentId: 'Doc', trashed: true })).toThrow('read-only mode');
+    expect(() => tool.prepareArguments!({ document: 'Doc', trashed: true })).toThrow('read-only mode');
   });
 
   it('does not expose credential-shaped keys in prepareArguments schema errors', () => {
@@ -768,7 +774,7 @@ const COMPATIBILITY: ReadonlyArray<{
   {
     tool: 'linear_update_document',
     baseAlone: 'rejected',
-    base: { documentId: 'Planning notes' },
+    base: { document: 'Planning notes' },
     fields: [
       ['title', 'Renamed'],
       ['content', 'body'],
@@ -844,7 +850,18 @@ describe('upstream and runtime capability coverage', () => {
       const value = field.endsWith('Ids') ? [UUID] : UUID;
       expect(accepts('linear_update_issue', { issue: 'AEO-258', [field]: value }), field).toBe(true);
     }
-    expect(accepts('linear_update_issue', { issue: 'AEO-258', dueDate: null })).toBe(true);
+    for (const field of ['assignee', 'parent', 'projectId', 'projectMilestoneId', 'cycleId', 'dueDate']) {
+      expect(accepts('linear_update_issue', { issue: 'AEO-258', [field]: null }), field).toBe(true);
+    }
+  });
+
+  it('publishes only team keys or UUIDs and rejects a human team name before credential access', async () => {
+    const schema = tools.get('linear_create_issue')!.parameters.properties.team;
+    expect(schema.description).toBe('Team key such as ABC, or a team UUID.');
+    await expect(operations.create_issue.plan!({ title: 'T', team: 'AEO' })).resolves.toBeDefined();
+    await expect(operations.create_issue.plan!({ title: 'T', team: UUID })).resolves.toBeDefined();
+    await expect(operations.create_issue.plan!({ title: 'T', team: 'Core Team' }))
+      .rejects.toThrow('Use a team key or UUID.');
   });
 
   it('rejects malformed values for the restored fields', () => {
@@ -941,10 +958,12 @@ describe('strict raw arguments before Pi conversion', () => {
     expect(rawAccepts('linear_create_issue', { title: 'T', team: 'AEO', priority: '2' })).toBe(false);
   });
 
-  it('rejects an invalid null and keeps the valid nullable one', () => {
+  it('rejects an invalid null and keeps valid nullable updates', () => {
     expect(rawAccepts('linear_get_issue', { issue: null })).toBe(false);
     expect(rawAccepts('linear_create_issue', { title: 'T', team: 'AEO', dueDate: null })).toBe(false);
-    expect(rawAccepts('linear_update_issue', { issue: 'AEO-1', dueDate: null })).toBe(true);
+    for (const field of ['assignee', 'parent', 'projectId', 'projectMilestoneId', 'cycleId', 'dueDate']) {
+      expect(rawAccepts('linear_update_issue', { issue: 'AEO-1', [field]: null }), field).toBe(true);
+    }
     expect(rawAccepts('linear_update_issue', { issue: 'AEO-1', dueDate: '2026-09-01' })).toBe(true);
   });
 

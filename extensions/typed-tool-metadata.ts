@@ -7,7 +7,7 @@ import { typedToolName } from './tool-names';
 const REFERENCE_HINTS: Record<string, string> = {
   IssueReference: 'Issue identifier such as ABC-123, or an issue UUID.',
   '[IssueReference!]': 'One or more issue identifiers such as ABC-123, or issue UUIDs.',
-  TeamReference: 'Team key such as ABC, exact team name, or a team UUID.',
+  TeamReference: 'Team key such as ABC, or a team UUID.',
   StateReference: 'Workflow state name, or a state UUID.',
   UserReference: 'User email, exact name, display name, "me", or a user UUID.',
   ProjectReference: 'Exact project name, or a project UUID.',
@@ -28,6 +28,9 @@ const REFERENCE_HINTS: Record<string, string> = {
   UUID: 'Linear UUID.',
   '[UUID!]': 'One or more Linear UUIDs.',
   NullableDate: 'Calendar date YYYY-MM-DD, or null to clear it.',
+  NullableUserReference: 'User email, exact name, display name, "me", a user UUID, or null to clear it.',
+  NullableIssueReference: 'Issue identifier such as ABC-123, an issue UUID, or null to clear it.',
+  NullableUUID: 'Linear UUID, or null to clear it.',
   Priority: '0 none, 1 urgent, 2 high, 3 medium, 4 low.',
   '[ID!]': 'One or more UUIDs.',
   '[SortInput!]': 'Sort clauses, each { key, order }.',
@@ -137,6 +140,9 @@ function schemaFor(type: string): TSchema {
       return Type.String({ ...options, minLength: 1, pattern: '^https?://' });
     case 'NullableDateTime':
       return Type.Union([Type.String({ minLength: 1 }), Type.Null()], options);
+    case 'NullableUserReference':
+    case 'NullableIssueReference':
+      return Type.Union([Type.String({ minLength: 1 }), Type.Null()], options);
     case 'Priority':
       return Type.Integer({ ...options, minimum: 0, maximum: 4 });
     case 'Boolean':
@@ -149,6 +155,8 @@ function schemaFor(type: string): TSchema {
       return Type.Union([Type.String({ pattern: DATE_PATTERN }), Type.Null()], options);
     case 'UUID':
       return Type.String({ ...options, pattern: UUID_PATTERN });
+    case 'NullableUUID':
+      return Type.Union([Type.String({ pattern: UUID_PATTERN }), Type.Null()], options);
     case '[UUID!]':
       return Type.Array(Type.String({ pattern: UUID_PATTERN }), { ...options, minItems: 1 });
     case '[IssueReference!]':

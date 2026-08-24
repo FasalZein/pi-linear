@@ -48,7 +48,7 @@ Use exact loader help to activate an ordinary operation. Then call its typed too
 | `list_documents` | `linear_list_documents` | documents | none | List documents. | `{}` |
 | `get_document` | `linear_get_document` | documents | document | Get a document by exact title or UUID. | `{"document":"Planning notes"}` |
 | `create_document` | `linear_create_document` | documents | title | Create a document. | `{"title":"Planning notes","content":"Notes"}` |
-| `update_document` | `linear_update_document` | documents | documentId | Update a document. | `{"documentId":"document-id","title":"Updated notes"}` |
+| `update_document` | `linear_update_document` | documents | document | Update a document. | `{"document":"document-id","title":"Updated notes"}` |
 | `list_initiatives` | `linear_list_initiatives` | initiatives | none | List initiatives. | `{}` |
 | `get_initiative` | `linear_get_initiative` | initiatives | initiative | Get an initiative by exact name or UUID. | `{"initiative":"Platform"}` |
 | `list_issue_labels` | `linear_list_issue_labels` | labels | none | List issue labels. | `{}` |

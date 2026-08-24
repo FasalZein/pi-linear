@@ -234,6 +234,8 @@ function createIssuePlan(v: Record<string, unknown>): OperationPlan {
 function updateIssuePlan(v: Record<string, unknown>): OperationPlan {
 	const ref = requireIssueReference(issueReference(v));
 	const input = mergedInput(v, ["issue", "issueId", "state", "assignee", "parent"]);
+	if (v.assignee === null) input.assigneeId = null;
+	if (v.parent === null) input.parentId = null;
 	const teamRef = input.teamId;
 	const stateRef = v.state ?? input.stateId;
 	const parentRef = v.parent ?? input.parentId;
@@ -628,8 +630,8 @@ export const issues: readonly OperationDefinition[] = ([
 				"issue": "IssueReference",
 				"title": "String",
 				"state": "StateReference",
-				"assignee": "UserReference",
-				"parent": "IssueReference",
+				"assignee": "NullableUserReference",
+				"parent": "NullableIssueReference",
 				"teamId": "TeamReference",
 				"dueDate": "NullableDate",
 				"addedLabelIds": "[UUID!]",
@@ -638,9 +640,9 @@ export const issues: readonly OperationDefinition[] = ([
 				"descriptionData": "JsonString",
 				"priority": "Priority",
 				"estimate": "Int",
-				"projectId": "UUID",
-				"projectMilestoneId": "UUID",
-				"cycleId": "UUID",
+				"projectId": "NullableUUID",
+				"projectMilestoneId": "NullableUUID",
+				"cycleId": "NullableUUID",
 				"labelIds": "[UUID!]",
 				"subscriberIds": "[UUID!]",
 				"delegateId": "UUID",

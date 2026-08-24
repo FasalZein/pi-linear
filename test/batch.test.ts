@@ -594,6 +594,69 @@ describe('batch mutation phase', () => {
     expect(result.details.meta.requests).toEqual({ read: 0, mutation: 1 });
   });
 
+  it('sends nullable issue association clears without lookup requests', async () => {
+    const { requests } = graphqlStub((request) => {
+      expect(request.query).toContain('edit: issueUpdate');
+      expect(Object.values(request.variables)).toContain('AEO-1');
+      expect(Object.values(request.variables)).toContainEqual({
+        assigneeId: null,
+        parentId: null,
+        projectId: null,
+        projectMilestoneId: null,
+        cycleId: null,
+      });
+      return { body: { data: { edit: { success: true, issue: updated } } } };
+    });
+
+    const result = await execute({
+      operation: 'batch',
+      variables: {
+        mutations: [{
+          key: 'edit',
+          operation: 'update_issue',
+          variables: {
+            issue: 'AEO-1',
+            assignee: null,
+            parent: null,
+            projectId: null,
+            projectMilestoneId: null,
+            cycleId: null,
+          },
+        }],
+      },
+    });
+
+    expect(requests).toHaveLength(1);
+    expect(result.details.meta.requests).toEqual({ read: 0, mutation: 1 });
+  });
+
+  it('keeps documentId on the compatibility batch path', async () => {
+    const document = { id: ISSUE_A, title: 'Planning notes', slugId: 'planning-notes' };
+    const { requests } = graphqlStub((request) => {
+      if (request.query.includes('documentUpdate')) {
+        expect(Object.values(request.variables)).toContain(ISSUE_A);
+        expect(Object.values(request.variables)).toContainEqual({ title: 'Updated notes' });
+        return { body: { data: { edit: { success: true, document: { ...document, title: 'Updated notes' } } } } };
+      }
+      const alias = aliases(request.query, 'documents')[0]!;
+      return { body: { data: { [alias]: { nodes: [document] } } } };
+    });
+
+    const result = await execute({
+      operation: 'batch',
+      variables: {
+        mutations: [{
+          key: 'edit',
+          operation: 'update_document',
+          variables: { documentId: 'Planning notes', title: 'Updated notes' },
+        }],
+      },
+    });
+
+    expect(requests).toHaveLength(2);
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
+  });
+
   it('runs reads then one mutation when both phases succeed', async () => {
     const { requests } = graphqlStub((request) => {
       if (request.query.includes('issueUpdate')) {
