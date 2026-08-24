@@ -222,15 +222,29 @@ export function linearGetResultTool(definition = exceptionalToolDefinitions[0]) 
   if (definition.renderer !== 'linearGetResult') {
     throw new Error(`Linear tool configuration error: unknown exceptional renderer ${definition.renderer}.`);
   }
+  const assertSchema = directSchemaGuard(definition.name, definition.parameters);
   return defineTool({
     name: definition.name,
     label: 'Linear get result',
     description: definition.purpose,
     parameters: definition.parameters,
+    prepareArguments: (args: unknown) => {
+      try {
+        assertSchema(args);
+        return args as any;
+      } catch (error) {
+        throw redactError(error, activeSecrets());
+      }
+    },
     renderCall: renderLinearGetResultCall,
     renderResult: renderLinearGetResultResult,
     async execute(_toolCallId, params, signal) {
       if (signal?.aborted) throw new Error('Request cancelled.');
+      try {
+        assertSchema(params);
+      } catch (error) {
+        throw redactError(error, activeSecrets());
+      }
       const secrets = [...activeSecrets()];
       return withRedactedErrors(() => retrieveResult(params, secrets), secrets);
     },
