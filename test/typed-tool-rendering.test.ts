@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getOperation } from '../extensions/operations';
-import { operationRenderers, renderLinearApiCall, renderLinearApiResult } from '../extensions/renderers';
+import {
+  operationRenderers,
+  renderLinearApiCall,
+  renderLinearApiResult,
+  renderLinearGetResultCall,
+  renderLinearGetResultResult,
+} from '../extensions/renderers';
 import { executeOperation } from '../extensions/runtime';
 import { isolateLinearCredentials } from './helpers/credentials';
 
@@ -191,7 +197,7 @@ describe('result states', () => {
     expect(text).toContain('41 KB written to disk');
     expect(text).toContain('Compatibility path: /tmp/linear/raw/550e8400-e29b-41d4-a716-446655440000.json');
     expect(text).toContain('AEO-258 · Fix login redirect');
-    expect(text.replace(/\s+/g, ' ')).toContain('linear { operation: "get_result", variables: { handle: "linear-result:v1:550e8400-e29b-41d4-a716-446655440000" } }');
+    expect(text.replace(/\s+/g, ' ')).toContain('linear_get_result({"handle":"linear-result:v1:550e8400-e29b-41d4-a716-446655440000"})');
     expect(text).not.toContain('Read the file');
   });
 
@@ -217,6 +223,62 @@ describe('result states', () => {
   it('renders a workspace switch without a Linear entity', () => {
     const text = block(render('switch_workspace', { active: 'work' }));
     expect(text).toContain('work');
+  });
+});
+
+describe('direct result rendering', () => {
+  it('renders direct arguments and retrieval metadata with the selected JSON value', () => {
+    const call = block(renderLinearGetResultCall({ handle: 'linear-result:v1:550e8400-e29b-41d4-a716-446655440000', path: '/data/issues', offset: 2 }, theme));
+    expect(call).toContain('linear_get_result');
+    expect(call).toContain('path=/data/issues');
+    expect(call).toContain('offset=2');
+
+    const rendered = renderLinearGetResultResult(
+      result({
+        data: { value: [{ id: 'issue-3' }], range: { start: 2, end: 3, total: 5, unit: 'items' } },
+        meta: { retrieval: { complete: false, nextOffset: 3 } },
+      }),
+      { expanded: false, isPartial: false },
+      theme,
+      {},
+    );
+    const text = block(rendered);
+    expect(text).toContain('Stored result segment');
+    expect(text).toContain('Range: 2–3 of 5 items');
+    expect(text).toContain('Next offset: 3');
+    expect(text).toContain('[{"id":"issue-3"}]');
+  });
+
+  it.each([
+    ['raw', { query: 'query { viewer { id } }' }],
+    ['batch', { operation: 'batch' }],
+  ])('uses direct recovery guidance for %s spills', (_surface, args) => {
+    const text = block(renderLinearApiResult(
+      result({
+        handle: 'linear-result:v1:550e8400-e29b-41d4-a716-446655440000',
+        path: '/tmp/linear/raw/result.json',
+        bytes: 42_000,
+        index: [],
+        meta: { result: { route: 'artifact' } },
+      }),
+      { expanded: false, isPartial: false },
+      theme,
+      { args },
+    ));
+    expect(text.replace(/\s+/g, ' ')).toContain('linear_get_result({"handle":"linear-result:v1:550e8400-e29b-41d4-a716-446655440000"})');
+    expect(text).not.toContain('operation: "get_result"');
+  });
+
+  it('marks the legacy loader call and result as deprecated', () => {
+    const args = { operation: 'get_result', variables: { handle: 'linear-result:v1:550e8400-e29b-41d4-a716-446655440000' } };
+    expect(block(renderLinearApiCall(args, theme))).toContain('deprecated → linear_get_result');
+    const rendered = renderLinearApiResult(
+      result({ data: { value: 'stored' }, meta: { retrieval: { complete: true } } }),
+      { expanded: false, isPartial: false },
+      theme,
+      { args },
+    );
+    expect(block(rendered)).toContain('Deprecated loader route. Use linear_get_result with direct arguments.');
   });
 });
 

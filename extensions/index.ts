@@ -9,7 +9,8 @@ import {
   setAuthPreference,
   switchWorkspace,
 } from './client';
-import { linearApiTool } from './api';
+import { linearApiTool, linearGetResultTool } from './api';
+import { exceptionalToolDefinitions } from './exceptional-tools';
 import { typedLinearTools, typedToolNames } from './typed-tools';
 import type { MutationMode } from './safety';
 import { registerLinearSettings } from './settings';
@@ -125,6 +126,13 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
   };
 
   pi.registerTool(linearApiTool(mode, activate));
+  const exceptionalTools = exceptionalToolDefinitions.map((definition) => {
+    if (definition.name !== 'linear_get_result') {
+      throw new Error(`Linear tool configuration error: no runtime for exceptional tool ${definition.name}.`);
+    }
+    return linearGetResultTool(definition);
+  });
+  for (const tool of exceptionalTools) pi.registerTool(tool);
   const generatedTypedTools = typedLinearTools(mode);
   for (const tool of generatedTypedTools) pi.registerTool(tool);
 
@@ -133,17 +141,24 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
   pi.on('session_start', () => {
     const allTools = pi.getAllTools();
     const registered = new Set(allTools.map(({ name }) => name));
-    const missing = ['linear', ...lazyToolNames].filter((name) => !registered.has(name));
+    const missing = ['linear', ...exceptionalToolDefinitions.map(({ name }) => name), ...lazyToolNames]
+      .filter((name) => !registered.has(name));
     if (missing.length) {
       throw new Error(`Linear tool configuration error: manifest entries are not registered: ${missing.join(', ')}.`);
     }
-    for (const expected of generatedTypedTools) {
+    for (const expected of [...exceptionalTools, ...generatedTypedTools]) {
       const registeredTool = allTools.find(({ name }) => name === expected.name);
       if (registeredTool?.parameters && JSON.stringify(registeredTool.parameters) !== JSON.stringify(expected.parameters)) {
         throw new Error(`Linear tool configuration error: generated schema drift for manifest entry ${expected.name}.`);
       }
     }
-    pi.setActiveTools(pi.getActiveTools().filter((name) => !lazyToolNames.has(name)));
+    const deferredExceptional = new Set<string>(exceptionalToolDefinitions.filter(({ deferred }) => deferred).map(({ name }) => name));
+    pi.setActiveTools(pi.getActiveTools().filter((name) => !lazyToolNames.has(name) && !deferredExceptional.has(name)));
+    const activeLinearTools = pi.getActiveTools().filter((name) => name === 'linear' || name.startsWith('linear_'));
+    const expectedActive = ['linear', ...exceptionalToolDefinitions.filter(({ initialActive }) => initialActive).map(({ name }) => name)];
+    if (activeLinearTools.join(',') !== expectedActive.join(',')) {
+      throw new Error(`Linear tool configuration error: initial active tools are ${activeLinearTools.join(', ')}; expected ${expectedActive.join(', ')}.`);
+    }
   });
 }
 

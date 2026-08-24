@@ -57,7 +57,7 @@ afterEach(async () => {
 });
 
 describe('restricted Linear agent recovery', () => {
-  it('externalizes and recovers a complete result through loader-only get_result', async () => {
+  it('externalizes and recovers a complete result through direct linear_get_result', async () => {
     const root = await mkdtemp(join(tmpdir(), 'pi-linear-restricted-'));
     roots.push(root);
     process.env.PI_ARTIFACT_PROJECT_ROOT = root;
@@ -71,7 +71,7 @@ describe('restricted Linear agent recovery', () => {
     expect(allowed).toEqual(['write', ...manifest.allowedTools]);
     expect(allowed.filter((name) => !name.startsWith('linear'))).toEqual(['write']);
     expect(allowed).not.toEqual(expect.arrayContaining(['all', 'read', 'bash', 'exec']));
-    expect(allowed).not.toContain('linear_get_result');
+    expect(allowed).toContain('linear_get_result');
 
     const rows = Array.from({ length: 80 }, (_, index) => ({
       id: `row-${index}`,
@@ -86,9 +86,9 @@ describe('restricted Linear agent recovery', () => {
     vi.stubGlobal('fetch', fetch);
 
     const harness = policyHarness(allowed);
-    expect(harness.registered).toHaveLength(50);
-    expect(harness.registered.map(({ name }) => name)).not.toContain('linear_get_result');
-    expect(harness.active()).toEqual(['write', 'linear']);
+    expect(harness.registered).toHaveLength(51);
+    expect(harness.registered.map(({ name }) => name)).toContain('linear_get_result');
+    expect(harness.active()).toEqual(['write', 'linear', 'linear_get_result']);
 
     const externalized = await execute(harness.tool('linear'), {
       query: 'query RestrictedRecovery { issues { nodes { id title description } pageInfo { hasNextPage endCursor } } }',
@@ -99,13 +99,12 @@ describe('restricted Linear agent recovery', () => {
       meta: { routing: { actualSink: 'artifact', reason: 'spill-threshold' } },
     });
 
-    const recovered = await execute(harness.tool('linear'), {
-      operation: 'get_result',
-      variables: { handle: externalized.details.handle },
+    const recovered = await execute(harness.tool('linear_get_result'), {
+      handle: externalized.details.handle,
     });
     expect(recovered.details.data.value).toEqual(JSON.parse(await readFile(externalized.details.path, 'utf8')));
     expect(recovered.details.data.value.data).toEqual(source);
     expect(fetch).toHaveBeenCalledOnce();
-    expect(harness.active()).toEqual(['write', 'linear']);
+    expect(harness.active()).toEqual(['write', 'linear', 'linear_get_result']);
   });
 });

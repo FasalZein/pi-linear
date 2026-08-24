@@ -1,6 +1,6 @@
 # Linear API reference
 
-Version 0.9 of `pi-linear-lite` registers 50 tool surfaces: one active loader, `linear`, plus 49 inactive typed tools. The loader-only `batch` and `get_result` operations add no typed tools. The `linear` tool description publishes compact domain and operation-name discovery. For an ordinary operation, send exact help to the loader, then call the activated `linear_<operation>` tool with direct arguments. The loader also accepts raw GraphQL through `query`, plus optional top-level `workspace`, `sink`, and `telemetry` fields. Only `"telemetry": "always"` is valid. Typed tools do not accept this diagnostic field.
+Version 0.9 of `pi-linear-lite` registers 51 tool surfaces: active `linear` and `linear_get_result`, plus 49 inactive typed tools. Loader-only `batch` adds no typed tool. The legacy loader `get_result` envelope remains compatible but is deprecated. The `linear` tool description publishes compact domain and operation-name discovery. For an ordinary operation, send exact help to the loader, then call the activated `linear_<operation>` tool with direct arguments. The loader also accepts raw GraphQL through `query`, plus optional top-level `workspace`, `sink`, and `telemetry` fields. Only `"telemetry": "always"` is valid. Typed tools do not accept this diagnostic field.
 
 ## Help protocol
 
@@ -95,7 +95,7 @@ Then call `linear_get_issue`:
 { "issue": "AEO-258" }
 ```
 
-### Loader discovery and retained exceptional envelopes
+### Discovery, direct result retrieval, and retained compatibility envelopes
 
 ```json
 { "operation": "help" }
@@ -114,8 +114,10 @@ Then call `linear_get_issue`:
 ```
 
 ```json
-{ "operation": "get_result", "variables": { "handle": "linear-result:v1:550e8400-e29b-41d4-a716-446655440000", "path": "", "offset": 0 } }
+{ "handle": "linear-result:v1:550e8400-e29b-41d4-a716-446655440000", "path": "", "offset": 0 }
 ```
+
+Call the direct `linear_get_result` tool with that object. The legacy `linear` `get_result` envelope remains compatible but is deprecated.
 <!-- END GENERATED LINEAR OPERATIONS -->
 
 A batch can combine independent reads with one guarded `delete_issue_relation`. Its read request includes the exact relation preflight. The delete request runs only after every guard matches and the read-error gate passes.
@@ -164,11 +166,11 @@ Call `linear_search_issues` with direct arguments:
 
 Named singular reads stay complete inline when their serialized result fits Pi's 50KB or 2,000-line custom-tool boundary. Collections, batches, and raw GraphQL results at or above 8KB automatically route to `${PI_ARTIFACT_PROJECT_ROOT:-$HOME/.pi/artifacts}/linear/raw/`. This routing is cardinality-aware: it preserves every returned entity and every caller key.
 
-The returned digest includes a canonical opaque `handle`, full `bytes`, a compact `index`, `meta`, and a legacy compatibility `path`. The artifact contains the complete redacted JSON. Retrieve it through loader-only `{ "operation": "get_result", "variables": { "handle": "linear-result:v1:<UUID>" } }`. Do not use arbitrary file-reading or shell tools. The compatibility path exists only for older integrations.
+The returned digest includes a canonical opaque `handle`, full `bytes`, a compact `index`, `meta`, and a legacy compatibility `path`. The artifact contains the complete redacted JSON. Retrieve it through `linear_get_result({"handle":"linear-result:v1:<UUID>"})`. Do not use arbitrary file-reading or shell tools. The compatibility path exists only for older integrations.
 
 Use `"sink": "artifact"` to force an artifact. Use `"sink": "inline"` to prefer complete inline output. Pi's boundary can override the inline preference and return one recoverable artifact. The runtime performs no lossy compaction: it does not clip strings, cap returned nodes, remove object fields, remove rows, remove batch keys, or fabricate pagination. Linear's `pageInfo`, `totalCount`, server cursors, and requested page size stay unchanged.
 
-`get_result` returns the complete selected value when it fits. For a large string, array, or object, it returns ordered code-point, item, or property segments. Follow `nextOffset` for the same JSON Pointer `path` until `complete` is true. If one child cannot fit, follow its `externalized` path with the same handle.
+`linear_get_result` returns the complete selected value when it fits. For a large string, array, or object, it returns ordered code-point, item, or property segments. Follow `nextOffset` for the same JSON Pointer `path` until `complete` is true. If one child cannot fit, follow its `externalized` path with the same handle.
 
 Raw GraphQL returns usable partial data with all path-scoped errors instead of discarding successful siblings. Every batch caller key appears exactly once across `data`, `errors`, and `skipped`. A failed key has at most one error record. Its first `path` and `message` remain stable. Multiple path errors add `causes`. Usable failed data appears in `partial`. A batch artifact stores and recovers the complete `{ "data": {}, "errors": [], "skipped": [], "meta": {} }` envelope.
 

@@ -1,8 +1,9 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "package": "@tothemoon/pi-linear-lite",
   "initialActiveTools": [
-    "linear"
+    "linear",
+    "linear_get_result"
   ],
   "lazyTools": [
     {
@@ -251,8 +252,20 @@
       "domain": "projects"
     }
   ],
+  "exceptionalTools": [
+    {
+      "name": "linear_get_result",
+      "helpName": "get_result",
+      "purpose": "Retrieve a stored Linear result by handle.",
+      "initialActive": true,
+      "deferred": false,
+      "schemaSource": "linearGetResultParameters",
+      "renderer": "linearGetResult"
+    }
+  ],
   "allowedTools": [
     "linear",
+    "linear_get_result",
     "linear_list_comments",
     "linear_create_comment",
     "linear_update_comment",

@@ -30,6 +30,7 @@ describe('fallback provider route', () => {
     const harness = createLinearHarness();
     harness.startSession();
     const before = harness.activeTools();
+    expect(before.filter((name) => name === 'linear' || name.startsWith('linear_'))).toEqual(['linear', 'linear_get_result']);
     const help = await execute(harness.tool('linear'), {
       operation: 'help',
       variables: { operation: 'get_issue' },
@@ -65,7 +66,7 @@ describe('fallback provider route', () => {
     const openaiPayload = await captureOpenAI(fallbackOpenAI, context);
     expect(hasNativeOnlyMarker(anthropicPayload)).toBe(false);
     expect(hasNativeOnlyMarker(openaiPayload)).toBe(false);
-    expect(anthropicPayload.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear', 'linear_get_issue']);
-    expect(openaiPayload.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear', 'linear_get_issue']);
+    expect(anthropicPayload.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear', 'linear_get_result', 'linear_get_issue']);
+    expect(openaiPayload.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear', 'linear_get_result', 'linear_get_issue']);
   });
 });

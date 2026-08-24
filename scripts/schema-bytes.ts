@@ -21,6 +21,7 @@ registerLinearExtension(pi);
 sessionHandlers.forEach((handler) => handler());
 
 const fixture = JSON.parse(await readFile(resolve('scripts/fixtures/schema-bytes.json'), 'utf8')) as Record<string, Baseline>;
+const initialActive = [...active];
 const scenarios: Array<[string, string[]]> = [
   ['initial', []],
   ['oneTool', ['linear_get_issue']],
@@ -35,8 +36,14 @@ function schemaBytes(names: readonly string[]): number {
 }
 
 let failed = false;
+const directResult = schemaBytes(['linear_get_result']);
+console.log(`directResult: v0.9 current ${directResult} bytes`);
+if (directResult !== fixture.directResult?.current) {
+  console.error(`directResult: expected current ${fixture.directResult?.current ?? 'missing'} bytes`);
+  failed = true;
+}
 for (const [name, additions] of scenarios) {
-  active = [...new Set(['linear', ...additions])];
+  active = [...new Set([...initialActive, ...additions])];
   const current = schemaBytes(active);
   const expected = fixture[name];
   if (!expected) throw new Error(`Missing schema-byte fixture for ${name}.`);

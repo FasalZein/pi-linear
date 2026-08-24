@@ -2,6 +2,7 @@
 
 ## 0.9.0
 
+- Added direct `linear_get_result` as an initially active exceptional tool. Kept the legacy loader `get_result` route compatible but deprecated.
 - Made `linear` discovery-only for ordinary operations. Exact help now returns schema-valid direct arguments for the activated `linear_<operation>` tool. Loader execution remains available only for `batch`, `get_result`, and raw GraphQL.
 - Added `delete_issue_relation`, the only named delete operation. It requires exact relation, source issue, target issue, and relation-type guards, verifies them with one preflight read, and deletes only after an exact match under normal named mutation authority. Generic batch can fold this guard into its read phase before one ordinary mutation.
 - Normalized guarded relation preflight and delete failures to stable operation-specific errors that expose no supplied UUID or active credential.

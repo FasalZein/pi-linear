@@ -1,6 +1,7 @@
 {
-  "initial": { "baseline": 673, "before": 3746, "current": 2122 },
-  "oneTool": { "baseline": 1179, "current": 2720 },
-  "fiveTools": { "baseline": 14635, "current": 16757 },
-  "allTools": { "baseline": 64706, "current": 66369 }
+  "directResult": { "baseline": 0, "current": 530 },
+  "initial": { "baseline": 673, "before": 3746, "current": 2723 },
+  "oneTool": { "baseline": 1179, "current": 3321 },
+  "fiveTools": { "baseline": 14635, "current": 17358 },
+  "allTools": { "baseline": 64706, "current": 66970 }
 }

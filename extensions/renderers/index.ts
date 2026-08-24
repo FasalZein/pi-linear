@@ -243,7 +243,7 @@ function spillBlock(theme: Theme, digest: Extract<Digest, { kind: 'spill' }>): A
     lines.push(`  ${theme.fg('dim', `… ${digest.index.length - 8} more entries in the file`)}`);
   }
   lines.push(wrapped(theme.fg('dim', digest.handle
-    ? `Retrieve: linear { operation: "get_result", variables: { handle: "${digest.handle}" } }`
+    ? `Retrieve: linear_get_result({"handle":"${digest.handle}"})`
     : 'This legacy artifact has no result handle.'), 2));
   for (const note of digest.notes) lines.push(wrapped(theme.fg('dim', note), 2));
   return [...lines, '', wrapped(theme.fg('dim', jsonHint()))];
@@ -533,6 +533,7 @@ export function renderLinearApiCall(args: any, theme: Theme): LinearBlockCompone
   if (operation) text += ` ${theme.fg('accent', scrubCredentials(operation))}`;
   else if (asString(toolArgs.query)) text += ` ${theme.fg('accent', 'graphql')}`;
   if (summary) text += ` ${theme.fg('dim', summary)}`;
+  if (operation === 'get_result') text += ` ${theme.fg('warning', 'deprecated → linear_get_result')}`;
   return new LinearBlockComponent([text]);
 }
 
@@ -606,6 +607,44 @@ function rawGraphqlBlock(theme: Theme, result: AgentToolResult<any>, notes: stri
   return new LinearBlockComponent([...lines, '', wrapped(theme.fg('dim', jsonHint()))]);
 }
 
+export function renderLinearGetResultCall(args: any, theme: Theme): LinearBlockComponent {
+  return renderToolCall('linear_get_result', (args ?? {}) as ToolArgs, theme, ['handle', 'path', 'offset']);
+}
+
+export function renderLinearGetResultResult(
+  result: AgentToolResult<any>,
+  options: ToolRenderResultOptions,
+  theme: Theme,
+  context: LinearRenderContext,
+): Text | LinearBlockComponent {
+  if (options.isPartial) return new Text(theme.fg('warning', 'Retrieving stored result…'), 0, 0);
+  if (context.isError) {
+    return renderErrorResult(result, theme, 'Check the result handle, JSON Pointer, and offset, then call linear_get_result again.');
+  }
+  if (shouldShowJson(options, context)) return expandedJson(result, theme);
+
+  const details = asRecord(result.details) ?? {};
+  const data = asRecord(details.data) ?? {};
+  const retrieval = asRecord(asRecord(details.meta)?.retrieval) ?? {};
+  const range = asRecord(data.range);
+  const lines: Array<string | ReturnType<typeof wrapped>> = [
+    '',
+    theme.fg('success', retrieval.complete === true ? '✓ Stored result complete' : '✓ Stored result segment'),
+  ];
+  if (asString(asRecord(context.args)?.operation) === 'get_result') {
+    lines.push(wrapped(theme.fg('warning', 'Deprecated loader route. Use linear_get_result with direct arguments.'), 2));
+  }
+  if (range) {
+    lines.push(wrapped(theme.fg('dim', `Range: ${range.start ?? '?'}–${range.end ?? '?'} of ${range.total ?? '?'} ${asString(range.unit) ?? 'values'}`), 2));
+  }
+  if (typeof retrieval.nextOffset === 'number') {
+    lines.push(wrapped(theme.fg('dim', `Next offset: ${retrieval.nextOffset}`), 2));
+  }
+  lines.push(wrapped(theme.fg('toolOutput', JSON.stringify(data.value)), 2));
+  lines.push('', wrapped(theme.fg('dim', jsonHint())));
+  return new LinearBlockComponent(lines);
+}
+
 export function renderLinearApiResult(
   result: AgentToolResult<any>,
   options: ToolRenderResultOptions,
@@ -613,6 +652,7 @@ export function renderLinearApiResult(
   context: LinearRenderContext,
 ): Text | LinearBlockComponent | LinearListComponent<Entity> {
   const args = (context.args ?? {}) as ToolArgs;
+  if (asString(args.operation) === 'get_result') return renderLinearGetResultResult(result, options, theme, context);
   const operation = apiOperation(args);
   const spec = operation ? specFor(operation.name) : specFor('list_issues');
   const verb = verbFor(operation?.name ?? 'get');
