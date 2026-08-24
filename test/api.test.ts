@@ -235,6 +235,8 @@ describe('runtime discovery', () => {
       domains: DOMAINS,
       domainHelp: { operation: 'help', variables: { domain: 'issues' } },
       operationHelp: { operation: 'help', variables: { operation: 'get_issue' } },
+      graphqlHelp: { operation: 'help', variables: { operation: 'graphql' } },
+      batchHelp: { operation: 'help', variables: { operation: 'batch' } },
       resultHelp: { operation: 'help', variables: { operation: 'get_result' } },
     });
 

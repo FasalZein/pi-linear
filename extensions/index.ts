@@ -9,7 +9,7 @@ import {
   setAuthPreference,
   switchWorkspace,
 } from './client';
-import { linearApiTool, linearGetResultTool } from './api';
+import { linearApiTool, linearGetResultTool, linearGraphqlTool } from './api';
 import { exceptionalToolDefinitions } from './exceptional-tools';
 import { typedLinearTools, typedToolNames } from './typed-tools';
 import type { MutationMode } from './safety';
@@ -97,7 +97,11 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
     },
   });
 
-  const lazyToolNames = new Set(typedToolNames());
+  const typedNames = new Set(typedToolNames());
+  const deferredExceptionalNames = new Set(
+    exceptionalToolDefinitions.filter(({ deferred }) => deferred).map(({ name }) => name),
+  );
+  const lazyToolNames = new Set([...typedNames, ...deferredExceptionalNames]);
 
   /**
    * Additive activation only: the loader never removes a tool in the same call, so
@@ -127,10 +131,9 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
 
   pi.registerTool(linearApiTool(mode, activate));
   const exceptionalTools = exceptionalToolDefinitions.map((definition) => {
-    if (definition.name !== 'linear_get_result') {
-      throw new Error(`Linear tool configuration error: no runtime for exceptional tool ${definition.name}.`);
-    }
-    return linearGetResultTool(definition);
+    if (definition.name === 'linear_get_result') return linearGetResultTool(definition);
+    if (definition.name === 'linear_graphql') return linearGraphqlTool(mode, definition);
+    throw new Error('Linear tool configuration error: no runtime for exceptional tool.');
   });
   for (const tool of exceptionalTools) pi.registerTool(tool);
   const generatedTypedTools = typedLinearTools(mode);
@@ -152,8 +155,7 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
         throw new Error(`Linear tool configuration error: generated schema drift for manifest entry ${expected.name}.`);
       }
     }
-    const deferredExceptional = new Set<string>(exceptionalToolDefinitions.filter(({ deferred }) => deferred).map(({ name }) => name));
-    pi.setActiveTools(pi.getActiveTools().filter((name) => !lazyToolNames.has(name) && !deferredExceptional.has(name)));
+    pi.setActiveTools(pi.getActiveTools().filter((name) => !lazyToolNames.has(name)));
     const activeLinearTools = pi.getActiveTools().filter((name) => name === 'linear' || name.startsWith('linear_'));
     const expectedActive = ['linear', ...exceptionalToolDefinitions.filter(({ initialActive }) => initialActive).map(({ name }) => name)];
     if (activeLinearTools.join(',') !== expectedActive.join(',')) {

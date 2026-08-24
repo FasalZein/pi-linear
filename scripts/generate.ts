@@ -23,7 +23,7 @@ const readmePath = resolve(root, 'README.md');
 const referencePath = resolve(root, 'REFERENCE.md');
 const START = '<!-- BEGIN GENERATED LINEAR OPERATIONS -->';
 const END = '<!-- END GENERATED LINEAR OPERATIONS -->';
-const LINEAR_TOOL_USAGE = 'Discover Linear operations by domain or exact name, or run raw GraphQL with query. { "operation": "help", "variables": { "domain": "issues" } } lists names. { "operation": "help", "variables": { "operation": "<name>" } } returns purpose, exact parameters, accepted branches, and direct arguments, then loads linear_<name>. Call linear_<name> with those direct arguments; ordinary named operations do not execute through linear. Use linear_get_result for stored results. The linear get_result route is deprecated. batch remains loader-only.';
+const LINEAR_TOOL_USAGE = 'Discover Linear operations by domain or exact name. { "operation": "help", "variables": { "domain": "issues" } } lists names. { "operation": "help", "variables": { "operation": "<name>" } } returns purpose, exact parameters, accepted branches, and direct arguments, then loads linear_<name>. Exact graphql help loads linear_graphql for direct raw GraphQL. Call activated tools with direct arguments; ordinary named operations do not execute through linear. Use linear_get_result for stored results. The linear get_result and raw query routes are deprecated. batch remains loader-only.';
 
 export const generatedFiles = [manifestPath, contractsPath, catalogPath, readmePath, referencePath] as const;
 
@@ -116,7 +116,7 @@ function replaceGeneratedSection(source: string, body: string): string {
 function readmeCatalog(): string {
   const product = manifest();
   const names = product.allowedTools.map((name) => `\`${name}\``).join(', ');
-  return `## Generated tool inventory\n\nThe package registers ${product.allowedTools.length} tools. \`linear\` and \`linear_get_result\` start active. Typed tools load on demand.\n\n${names}`;
+  return `## Generated tool inventory\n\nThe package registers ${product.allowedTools.length} tools. \`linear\` and \`linear_get_result\` start active. \`linear_graphql\` and typed tools load on demand.\n\n${names}`;
 }
 
 function referenceCatalog(): string {

@@ -64,7 +64,8 @@ describe('bound Linear agent allowlist package scripts', () => {
     expect(synced).toContain('Do not guess parameter names or nested `input` shapes.');
     expect(synced).toContain('Use `linear_get_result` for lossless recovery');
     expect(synced).toContain('Pass `{ "handle": "..." }` directly');
-    expect(synced).toContain('legacy `get_result` route is deprecated');
+    expect(synced).toContain('legacy `get_result` and raw `query` routes are deprecated');
+    expect(synced).toContain('call `linear_graphql` directly');
     expect(synced).toContain('Continue through pages only until the requested result is complete.');
     expect(npm('check:linear-agent-allowlists', home).status).toBe(0);
     expect(npm('generate:check', home).status).toBe(0);

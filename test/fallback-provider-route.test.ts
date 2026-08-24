@@ -36,8 +36,12 @@ describe('fallback provider route', () => {
       variables: { operation: 'get_issue' },
     });
     expect(help.details.loadedTools).toEqual(['linear_get_issue']);
+    const graphqlHelp = await execute(harness.tool('linear'), {
+      operation: 'help', variables: { operation: 'graphql' },
+    });
+    expect(graphqlHelp.details.loadedTools).toEqual(['linear_graphql']);
     const after = harness.activeTools();
-    expect(after).toEqual([...before, 'linear_get_issue']);
+    expect(after).toEqual([...before, 'linear_get_issue', 'linear_graphql']);
     expect(harness.tool('linear_get_issue')).toBeTruthy();
     expect(harness.tool('linear_get_issue').promptSnippet).toBeUndefined();
     expect(harness.tool('linear_get_issue').promptGuidelines).toBeUndefined();
@@ -52,10 +56,10 @@ describe('fallback provider route', () => {
     const wrapped = await loadIssueThroughWrapper(createLinearHarness());
     expect(wrapped.addedToolNames).toEqual(['linear_get_issue']);
 
-    const context = activationContext(harness, wrapped.addedToolNames);
+    const context = activationContext(harness, ['linear_get_issue', 'linear_graphql']);
     const placement = splitDeferredTools(context, false);
     expect(placement.deferred.size).toBe(0);
-    expect(placement.immediate.map(({ name }) => name)).toEqual(after.filter((name) => name === 'linear' || name.startsWith('linear_')));
+    expect(placement.immediate.map(({ name }) => name)).toEqual(['linear', 'linear_get_result', 'linear_graphql', 'linear_get_issue']);
 
     const fallbackAnthropic = { ...NATIVE_ANTHROPIC_MODEL, compat: { ...NATIVE_ANTHROPIC_MODEL.compat, supportsToolReferences: false } };
     const fallbackOpenAI = {
@@ -66,8 +70,8 @@ describe('fallback provider route', () => {
     const openaiPayload = await captureOpenAI(fallbackOpenAI, context);
     expect(hasNativeOnlyMarker(anthropicPayload)).toBe(false);
     expect(hasNativeOnlyMarker(openaiPayload)).toBe(false);
-    expect(anthropicPayload.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear', 'linear_get_result', 'linear_get_issue']);
-    expect(openaiPayload.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear', 'linear_get_result', 'linear_get_issue']);
+    expect(anthropicPayload.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear', 'linear_get_result', 'linear_graphql', 'linear_get_issue']);
+    expect(openaiPayload.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear', 'linear_get_result', 'linear_graphql', 'linear_get_issue']);
     const anthropicGuidance = anthropicPayload.tools.find((tool: { name: string }) => tool.name === 'linear')
       ?.input_schema.properties.operation.description;
     const openaiGuidance = openaiPayload.tools.find((tool: { name: string }) => tool.name === 'linear')

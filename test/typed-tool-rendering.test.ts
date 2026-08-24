@@ -6,6 +6,8 @@ import {
   renderLinearApiResult,
   renderLinearGetResultCall,
   renderLinearGetResultResult,
+  renderLinearGraphqlCall,
+  renderLinearGraphqlResult,
 } from '../extensions/renderers';
 import { executeOperation } from '../extensions/runtime';
 import { isolateLinearCredentials } from './helpers/credentials';
@@ -267,6 +269,21 @@ describe('direct result rendering', () => {
     ));
     expect(text.replace(/\s+/g, ' ')).toContain('linear_get_result({"handle":"linear-result:v1:550e8400-e29b-41d4-a716-446655440000"})');
     expect(text).not.toContain('operation: "get_result"');
+  });
+
+  it('uses the dedicated direct GraphQL renderer while preserving raw rendering', () => {
+    const args = { query: 'query { viewer { id } }', sink: 'inline' };
+    expect(block(renderLinearGraphqlCall(args, theme))).toContain('linear_graphql');
+    const rendered = renderLinearGraphqlResult(
+      result({ data: { viewer: { id: 'user-1' } } }),
+      { isPartial: false } as any,
+      theme,
+      { args } as any,
+    );
+    expect(block(rendered)).toContain('viewer');
+    expect(block(rendered)).not.toContain('Deprecated loader route');
+
+    expect(block(renderLinearApiCall(args, theme))).toContain('deprecated → linear_graphql');
   });
 
   it('marks the legacy loader call and result as deprecated', () => {

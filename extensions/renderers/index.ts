@@ -534,6 +534,7 @@ export function renderLinearApiCall(args: any, theme: Theme): LinearBlockCompone
   else if (asString(toolArgs.query)) text += ` ${theme.fg('accent', 'graphql')}`;
   if (summary) text += ` ${theme.fg('dim', summary)}`;
   if (operation === 'get_result') text += ` ${theme.fg('warning', 'deprecated → linear_get_result')}`;
+  else if (asString(toolArgs.query)) text += ` ${theme.fg('warning', 'deprecated → linear_graphql')}`;
   return new LinearBlockComponent([text]);
 }
 
@@ -611,6 +612,10 @@ export function renderLinearGetResultCall(args: any, theme: Theme): LinearBlockC
   return renderToolCall('linear_get_result', (args ?? {}) as ToolArgs, theme, ['handle', 'path', 'offset']);
 }
 
+export function renderLinearGraphqlCall(args: any, theme: Theme): LinearBlockComponent {
+  return renderToolCall('linear_graphql', (args ?? {}) as ToolArgs, theme, ['workspace', 'sink']);
+}
+
 export function renderLinearGetResultResult(
   result: AgentToolResult<any>,
   options: ToolRenderResultOptions,
@@ -645,11 +650,30 @@ export function renderLinearGetResultResult(
   return new LinearBlockComponent(lines);
 }
 
+export function renderLinearGraphqlResult(
+  result: AgentToolResult<any>,
+  options: ToolRenderResultOptions,
+  theme: Theme,
+  context: LinearRenderContext,
+): Text | LinearBlockComponent | LinearListComponent<Entity> {
+  return renderLinearResult(result, options, theme, context, true);
+}
+
 export function renderLinearApiResult(
   result: AgentToolResult<any>,
   options: ToolRenderResultOptions,
   theme: Theme,
   context: LinearRenderContext,
+): Text | LinearBlockComponent | LinearListComponent<Entity> {
+  return renderLinearResult(result, options, theme, context, false);
+}
+
+function renderLinearResult(
+  result: AgentToolResult<any>,
+  options: ToolRenderResultOptions,
+  theme: Theme,
+  context: LinearRenderContext,
+  directGraphql: boolean,
 ): Text | LinearBlockComponent | LinearListComponent<Entity> {
   const args = (context.args ?? {}) as ToolArgs;
   if (asString(args.operation) === 'get_result') return renderLinearGetResultResult(result, options, theme, context);
@@ -685,7 +709,10 @@ export function renderLinearApiResult(
   const roots = definition?.result.dataPaths.map((path) => path.split('.')[0]!).filter(Boolean) ?? [];
   const digest = digestResult(result, roots);
   if (!operation && asString(args.operation) !== 'help' && digest.kind !== 'spill') {
-    return rawGraphqlBlock(theme, result, digest.notes);
+    const notes = directGraphql
+      ? digest.notes
+      : [...digest.notes, 'Deprecated loader route. Use linear_graphql with direct arguments.'];
+    return rawGraphqlBlock(theme, result, notes);
   }
   return renderDigest(digest, result, theme, spec, verb, definition!, context);
 }

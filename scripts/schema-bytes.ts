@@ -42,6 +42,12 @@ if (directResult !== fixture.directResult?.current) {
   console.error(`directResult: expected current ${fixture.directResult?.current ?? 'missing'} bytes`);
   failed = true;
 }
+const directGraphql = schemaBytes(['linear_graphql']);
+console.log(`directGraphql: v0.9 current ${directGraphql} bytes`);
+if (directGraphql !== fixture.directGraphql?.current) {
+  console.error(`directGraphql: expected current ${fixture.directGraphql?.current ?? 'missing'} bytes`);
+  failed = true;
+}
 for (const [name, additions] of scenarios) {
   active = [...new Set([...initialActive, ...additions])];
   const current = schemaBytes(active);

@@ -247,7 +247,8 @@ describe('generated products', () => {
     expect(description).not.toContain('{ "operation": "<name>", "variables": { … } }');
     expect(description).toContain('{ "operation": "help", "variables": { "operation": "<name>" } }');
     expect(description).toContain('ordinary named operations do not execute through linear');
-    expect(description).toContain('Call linear_<name> with those direct arguments');
+    expect(description).toContain('Call activated tools with direct arguments');
+    expect(description).toContain('Exact graphql help loads linear_graphql');
 
     const published = new Map([...description.matchAll(/^([a-z]+): ([a-z0-9_, ]+)$/gm)]
       .map((match) => [match[1]!, match[2]!.split(', ')]));
@@ -346,10 +347,11 @@ describe('generated products', () => {
     expect(operationDefinitions).toHaveLength(49);
     expect(typedLinearTools()).toHaveLength(49);
     expect(manifest.lazyTools.map(({ name }) => name)).toEqual(typedNames);
-    expect(expectedNames).toHaveLength(51);
-    expect(manifest.allowedTools).toHaveLength(51);
+    expect(expectedNames).toHaveLength(52);
+    expect(manifest.allowedTools).toHaveLength(52);
     expect(manifest.allowedTools).toContain('linear_get_result');
-    expect((linearApiTool() as any).description).toContain('The linear get_result route is deprecated');
+    expect(manifest.allowedTools).toContain('linear_graphql');
+    expect((linearApiTool() as any).description).toContain('The linear get_result and raw query routes are deprecated');
   });
 
   it('ships the complete restricted lossless contract in public documentation', async () => {
@@ -365,7 +367,7 @@ describe('generated products', () => {
       'cardinality-aware', 'get_result', 'path-scoped errors', 'sink:inline',
       'legacy compatibility path', 'exactly `write` plus',
     ]) expect(published).toContain(claim);
-    expect(readme).toContain('51 tool surfaces');
+    expect(readme).toContain('52 tool surfaces');
     expect(readme).toContain('published across all 49 tools');
     expect(readme).toContain(`generated ${manifest.allowedTools.length} Linear tool names`);
     expect(readme).toContain('The guarded `linear_delete_issue_relation` tool is the only delete tool.');

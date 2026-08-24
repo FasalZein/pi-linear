@@ -1,13 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { rm } from 'node:fs/promises';
 import {
-  activateGetIssue,
   captureAnthropic,
   captureOpenAI,
   createLinearHarness,
+  execute,
   hasNativeOnlyMarker,
   isolateAgentDir,
-  loadIssueThroughWrapper,
   NATIVE_ANTHROPIC_MODEL,
   NATIVE_OPENAI_MODEL,
   activationContext,
@@ -27,9 +26,11 @@ describe('custom proxies with native flags disabled', () => {
   it('uses fallback payloads and never emits native-only items', async () => {
     directory = await isolateAgentDir();
     const harness = createLinearHarness();
-    await activateGetIssue(harness);
-    const wrapped = await loadIssueThroughWrapper(createLinearHarness());
-    const context = activationContext(harness, wrapped.addedToolNames);
+    harness.startSession();
+    const help = await execute(harness.tool('linear'), {
+      operation: 'help', variables: { operation: 'graphql' },
+    });
+    const context = activationContext(harness, help.details.loadedTools);
 
     const anthropicProxy = {
       ...NATIVE_ANTHROPIC_MODEL,
@@ -49,6 +50,6 @@ describe('custom proxies with native flags disabled', () => {
     expect(hasNativeOnlyMarker(anthropicPayload)).toBe(false);
     expect(hasNativeOnlyMarker(openaiPayload)).toBe(false);
     expect(anthropicPayload.tools.every((tool: { defer_loading?: boolean }) => !tool.defer_loading)).toBe(true);
-    expect(openaiPayload.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear', 'linear_get_result', 'linear_get_issue']);
+    expect(openaiPayload.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear', 'linear_get_result', 'linear_graphql']);
   });
 });

@@ -89,14 +89,15 @@ try {
   };
   loaded.registerLinearExtension(pi);
   for (const handler of sessionHandlers) handler();
-  if (registered.length !== 51) throw new Error(`Extracted package registered ${registered.length} tools.`);
+  if (registered.length !== 52) throw new Error(`Extracted package registered ${registered.length} tools.`);
   if (!registered.some(({ name }) => name === 'linear_get_result')) throw new Error('Extracted package did not register direct linear_get_result.');
+  if (!registered.some(({ name }) => name === 'linear_graphql')) throw new Error('Extracted package did not register direct linear_graphql.');
   const manifest = JSON.parse(await readFile(join(packageRoot, 'extensions/generated/linear-tools.manifest.json'), 'utf8')) as { allowedTools: string[] };
-  if (manifest.allowedTools.length !== 51 || !manifest.allowedTools.includes('linear_get_result')) {
-    throw new Error('Extracted package manifest does not contain the exact 51-tool surface.');
+  if (manifest.allowedTools.length !== 52 || !manifest.allowedTools.includes('linear_get_result') || !manifest.allowedTools.includes('linear_graphql')) {
+    throw new Error('Extracted package manifest does not contain the exact 52-tool surface.');
   }
   const readme = await readFile(join(packageRoot, 'README.md'), 'utf8');
-  if (!readme.includes('51 tool surfaces') || readme.includes('linear-auditor.md')) {
+  if (!readme.includes('52 tool surfaces') || readme.includes('linear-auditor.md')) {
     throw new Error('Extracted package documentation does not contain the current restricted-agent contract.');
   }
   const linearActive = active.filter((name) => name === 'linear' || name.startsWith('linear_'));
