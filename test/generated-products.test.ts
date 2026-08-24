@@ -377,7 +377,14 @@ describe('generated products', () => {
     expect(reference).toContain('49 inactive typed tools');
     expect(reference).toContain(`does not duplicate ${manifest.lazyTools.length} full schemas`);
     expect(changelog).toContain('By default, results show compact `meta.rateLimit` details only near exhaustion.');
-    expect(changelog).toContain('Loader calls with top-level `telemetry: "always"` are the explicit diagnostic exception.');
+    for (const directTool of ['linear_batch', 'linear_graphql', 'typed `linear_*`']) {
+      expect(reference).toContain(directTool);
+      expect(changelog).toContain(directTool);
+    }
+    expect(reference).toContain('deprecated loader routes still accept top-level telemetry for compatibility');
+    expect(changelog).toContain('Deprecated loader routes retain top-level telemetry for compatibility');
+    expect(`${reference}\n${changelog}`).not.toContain('on the `linear` loader only');
+    expect(`${reference}\n${changelog}`).not.toContain('Loader calls with top-level `telemetry: "always"` are the explicit diagnostic exception.');
     expect(published).not.toMatch(/\bTTL\b/i);
     expect(published).not.toMatch(/registers? (?:a )?typed `linear_get_result`/i);
     expect(published).not.toContain('linear-auditor.md');
