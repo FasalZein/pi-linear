@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DOMAINS, operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
 import { buildTypedToolMetadata } from '../extensions/typed-tool-metadata';
+import { exceptionalToolDefinitions } from '../extensions/exceptional-tools';
 import {
   LINEAR_AGENT_QUERY_DISCIPLINE,
   LINEAR_AGENT_QUERY_DISCIPLINE_END,
@@ -22,7 +23,7 @@ const readmePath = resolve(root, 'README.md');
 const referencePath = resolve(root, 'REFERENCE.md');
 const START = '<!-- BEGIN GENERATED LINEAR OPERATIONS -->';
 const END = '<!-- END GENERATED LINEAR OPERATIONS -->';
-const LINEAR_TOOL_USAGE = 'Discover Linear operations by domain or exact name, or run raw GraphQL with query. { "operation": "help", "variables": { "domain": "issues" } } lists names. { "operation": "help", "variables": { "operation": "<name>" } } returns purpose, exact parameters, accepted branches, and direct arguments, then loads linear_<name>. Call linear_<name> with those direct arguments; ordinary named operations do not execute through linear. batch and get_result remain loader-only.';
+const LINEAR_TOOL_USAGE = 'Discover Linear operations by domain or exact name, or run raw GraphQL with query. { "operation": "help", "variables": { "domain": "issues" } } lists names. { "operation": "help", "variables": { "operation": "<name>" } } returns purpose, exact parameters, accepted branches, and direct arguments, then loads linear_<name>. Call linear_<name> with those direct arguments; ordinary named operations do not execute through linear. Use linear_get_result for stored results. The linear get_result route is deprecated. batch remains loader-only.';
 
 export const generatedFiles = [manifestPath, contractsPath, catalogPath, readmePath, referencePath] as const;
 
@@ -30,12 +31,16 @@ const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
 
 function manifest() {
   const lazyTools = operationDefinitions.map(({ toolName: name, name: operation, domain }) => ({ name, operation, domain }));
+  const exceptionalTools = exceptionalToolDefinitions.map(({
+    name, helpName, purpose, initialActive, deferred, schemaSource, renderer,
+  }) => ({ name, helpName, purpose, initialActive, deferred, schemaSource, renderer }));
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     package: '@tothemoon/pi-linear-lite',
-    initialActiveTools: ['linear'],
+    initialActiveTools: ['linear', ...exceptionalTools.filter(({ initialActive }) => initialActive).map(({ name }) => name)],
     lazyTools,
-    allowedTools: ['linear', ...lazyTools.map(({ name }) => name)],
+    exceptionalTools,
+    allowedTools: ['linear', ...exceptionalTools.map(({ name }) => name), ...lazyTools.map(({ name }) => name)],
   };
 }
 
@@ -109,8 +114,9 @@ function replaceGeneratedSection(source: string, body: string): string {
 }
 
 function readmeCatalog(): string {
-  const names = manifest().allowedTools.map((name) => `\`${name}\``).join(', ');
-  return `## Generated tool inventory\n\nThe package registers ${operationDefinitions.length + 1} tools. The loader starts active. Typed tools load on demand.\n\n${names}`;
+  const product = manifest();
+  const names = product.allowedTools.map((name) => `\`${name}\``).join(', ');
+  return `## Generated tool inventory\n\nThe package registers ${product.allowedTools.length} tools. \`linear\` and \`linear_get_result\` start active. Typed tools load on demand.\n\n${names}`;
 }
 
 function referenceCatalog(): string {
@@ -140,7 +146,7 @@ function referenceCatalog(): string {
     '{ "issue": "AEO-258" }',
     '```',
     '',
-    '### Loader discovery and retained exceptional envelopes',
+    '### Discovery, direct result retrieval, and retained compatibility envelopes',
     '',
     '```json',
     '{ "operation": "help" }',
@@ -159,8 +165,10 @@ function referenceCatalog(): string {
     '```',
     '',
     '```json',
-    '{ "operation": "get_result", "variables": { "handle": "linear-result:v1:550e8400-e29b-41d4-a716-446655440000", "path": "", "offset": 0 } }',
+    '{ "handle": "linear-result:v1:550e8400-e29b-41d4-a716-446655440000", "path": "", "offset": 0 }',
     '```',
+    '',
+    'Call the direct `linear_get_result` tool with that object. The legacy `linear` `get_result` envelope remains compatible but is deprecated.',
   ].join('\n');
 }
 

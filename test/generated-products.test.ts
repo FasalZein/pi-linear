@@ -8,10 +8,13 @@ import { contractProjection, generatedFiles, renderGeneratedFiles, staleGenerate
 import { helpResult, linearApiTool } from '../extensions/api';
 import manifest from '../extensions/generated/linear-tools.manifest.json';
 import contracts from '../extensions/generated/operation-contracts.json';
+import schemaBaseline from './fixtures/design-b-s3-1-schema-baseline.json';
 import { DOMAINS, operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
 import { typedLinearTools } from '../extensions/typed-tools';
+import { exceptionalToolDefinitions } from '../extensions/exceptional-tools';
 
-const expectedNames = ['linear', ...operationDefinitions.map(({ toolName }) => toolName)];
+const typedNames = operationDefinitions.map(({ toolName }) => toolName);
+const expectedNames = ['linear', ...exceptionalToolDefinitions.map(({ name }) => name), ...typedNames];
 
 async function treeDigest(root: string): Promise<string> {
   const hash = createHash('sha256');
@@ -288,12 +291,15 @@ describe('generated products', () => {
     }
   });
 
-  it('publishes one deployable manifest entry for each canonical operation', () => {
-    expect(manifest.schemaVersion).toBe(1);
-    expect(manifest.initialActiveTools).toEqual(['linear']);
+  it('publishes one deployable manifest entry for each canonical and exceptional tool', () => {
+    expect(manifest.schemaVersion).toBe(2);
+    expect(manifest.initialActiveTools).toEqual(['linear', 'linear_get_result']);
     expect(manifest.lazyTools).toEqual(operationDefinitions.map(({ name, toolName, domain }) => ({
       name: toolName, operation: name, domain,
     })));
+    expect(manifest.exceptionalTools).toEqual(exceptionalToolDefinitions.map(({
+      name, helpName, purpose, initialActive, deferred, schemaSource, renderer,
+    }) => ({ name, helpName, purpose, initialActive, deferred, schemaSource, renderer })));
     expect(manifest.allowedTools).toEqual(expectedNames);
   });
 
@@ -326,13 +332,24 @@ describe('generated products', () => {
     }
   });
 
-  it('keeps get_result loader-only and the public surface at 50 tools', () => {
+  it('keeps all 49 generated typed schema bytes and operation-contract bytes unchanged', async () => {
+    const typedSchemaSha256 = Object.fromEntries(typedLinearTools().map((tool) => [
+      tool.name,
+      createHash('sha256').update(JSON.stringify(tool.parameters)).digest('hex'),
+    ]));
+    expect(typedSchemaSha256).toEqual(schemaBaseline.typedSchemaSha256);
+    const contractBytes = await readFile(join(process.cwd(), 'extensions/generated/operation-contracts.json'));
+    expect(createHash('sha256').update(contractBytes).digest('hex')).toBe(schemaBaseline.operationContractsSha256);
+  });
+
+  it('keeps 49 typed tools byte-stable and adds one direct exceptional result tool', () => {
     expect(operationDefinitions).toHaveLength(49);
     expect(typedLinearTools()).toHaveLength(49);
-    expect(expectedNames).toHaveLength(50);
-    expect(manifest.allowedTools).toHaveLength(50);
-    expect(manifest.allowedTools).not.toContain('linear_get_result');
-    expect((linearApiTool() as any).description).toContain('loader: batch, get_result');
+    expect(manifest.lazyTools.map(({ name }) => name)).toEqual(typedNames);
+    expect(expectedNames).toHaveLength(51);
+    expect(manifest.allowedTools).toHaveLength(51);
+    expect(manifest.allowedTools).toContain('linear_get_result');
+    expect((linearApiTool() as any).description).toContain('The linear get_result route is deprecated');
   });
 
   it('ships the complete restricted lossless contract in public documentation', async () => {
@@ -348,7 +365,7 @@ describe('generated products', () => {
       'cardinality-aware', 'get_result', 'path-scoped errors', 'sink:inline',
       'legacy compatibility path', 'exactly `write` plus',
     ]) expect(published).toContain(claim);
-    expect(readme).toContain('50 tool surfaces');
+    expect(readme).toContain('51 tool surfaces');
     expect(readme).toContain('published across all 49 tools');
     expect(readme).toContain(`generated ${manifest.allowedTools.length} Linear tool names`);
     expect(readme).toContain('The guarded `linear_delete_issue_relation` tool is the only delete tool.');

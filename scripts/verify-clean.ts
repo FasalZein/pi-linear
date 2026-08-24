@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generate } from './generate';
 import { operationDefinitions } from '../extensions/operations';
+import { exceptionalToolDefinitions } from '../extensions/exceptional-tools';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -24,17 +25,24 @@ run('npm', ['run', 'test:schema-bytes']);
 
 const manifest = JSON.parse(await readFile(join(root, 'extensions/generated/linear-tools.manifest.json'), 'utf8')) as {
   initialActiveTools: string[];
+  schemaVersion: number;
   lazyTools: Array<{ name: string }>;
+  exceptionalTools: Array<{ name: string; initialActive: boolean }>;
   allowedTools: string[];
 };
 const lazyNames = operationDefinitions.map(({ toolName }) => toolName);
-if (manifest.initialActiveTools.join(',') !== 'linear') {
-  throw new Error('Manifest initialActiveTools must be exactly linear.');
+if (manifest.schemaVersion !== 2) throw new Error('Manifest schemaVersion must be 2.');
+if (manifest.initialActiveTools.join(',') !== 'linear,linear_get_result') {
+  throw new Error('Manifest initialActiveTools must be exactly linear and linear_get_result.');
 }
 if (manifest.lazyTools.map(({ name }) => name).join(',') !== lazyNames.join(',')) {
   throw new Error('Manifest lazyTools drifted from operation definitions.');
 }
-if (manifest.allowedTools.join(',') !== ['linear', ...lazyNames].join(',')) {
+const exceptionalNames = exceptionalToolDefinitions.map(({ name }) => name);
+if (manifest.exceptionalTools.map(({ name }) => name).join(',') !== exceptionalNames.join(',')) {
+  throw new Error('Manifest exceptionalTools drifted from exceptional tool definitions.');
+}
+if (manifest.allowedTools.join(',') !== ['linear', ...exceptionalNames, ...lazyNames].join(',')) {
   throw new Error('Manifest allowedTools drifted from the generated allowlist.');
 }
 

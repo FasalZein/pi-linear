@@ -24,8 +24,14 @@ import {
 } from './runtime';
 import { activeSecrets } from './active-secrets';
 import { redactDeep, redactError, withRedactedErrors } from './redact';
-import { renderLinearApiCall, renderLinearApiResult } from './renderers';
+import {
+  renderLinearApiCall,
+  renderLinearApiResult,
+  renderLinearGetResultCall,
+  renderLinearGetResultResult,
+} from './renderers';
 import { typedToolName } from './tool-names';
+import { exceptionalToolDefinitions } from './exceptional-tools';
 import type { MutationMode } from './safety';
 import { LINEAR_TOOL_DESCRIPTION } from './generated/operation-catalog';
 import { batchHelp, executeBatch } from './batch';
@@ -180,6 +186,29 @@ function toolResult(details: JsonObject, secrets: readonly string[] = []) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(redacted) }], details: redacted };
 }
 
+async function retrieveResult(variables: unknown, secrets: readonly string[]) {
+  return toolResult(await getResult(variables), secrets);
+}
+
+export function linearGetResultTool(definition = exceptionalToolDefinitions[0]) {
+  if (definition.renderer !== 'linearGetResult') {
+    throw new Error(`Linear tool configuration error: unknown exceptional renderer ${definition.renderer}.`);
+  }
+  return defineTool({
+    name: definition.name,
+    label: 'Linear get result',
+    description: definition.purpose,
+    parameters: definition.parameters,
+    renderCall: renderLinearGetResultCall,
+    renderResult: renderLinearGetResultResult,
+    async execute(_toolCallId, params, signal) {
+      if (signal?.aborted) throw new Error('Request cancelled.');
+      const secrets = [...activeSecrets()];
+      return withRedactedErrors(() => retrieveResult(params, secrets), secrets);
+    },
+  });
+}
+
 function assertRawResultPointersRepresentable(query: string): void {
   const document = parse(query);
   const fragments = new Map(document.definitions
@@ -228,7 +257,7 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
     label: 'Linear API',
     description: LINEAR_TOOL_DESCRIPTION,
     parameters: Type.Object({
-      operation: Type.Optional(Type.String({ description: 'Use help to discover typed tools, or call loader-only batch and get_result.' })),
+      operation: Type.Optional(Type.String({ description: 'Use help to discover typed tools, or call loader-only batch. Legacy get_result is deprecated; call linear_get_result with direct arguments.' })),
       query: Type.Optional(Type.String({ description: 'Raw GraphQL escape hatch.' })),
       variables: Type.Optional(Type.Record(Type.String(), Type.Any())),
       workspace: Type.Optional(Type.String({ description: 'Stored workspace name, or default/active for normal credential selection.' })),
@@ -277,7 +306,7 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
         if (params.operation === 'get_result' && !params.query) {
           if (params.sink !== undefined) throw new Error('get_result does not accept sink.');
           if (params.workspace !== undefined) throw new Error('get_result does not accept workspace.');
-          return toolResult(await getResult(params.variables), secrets);
+          return retrieveResult(params.variables, secrets);
         }
 
         const request = resolveRequest(params, mode);

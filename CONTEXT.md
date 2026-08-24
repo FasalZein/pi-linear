@@ -61,12 +61,12 @@ A GraphQL document supplied directly for work outside the operation catalog.
 _Avoid_: Operation
 
 **Result handle**:
-An opaque identifier issued for one complete redacted stored result. Use it only through `get_result`.
+An opaque identifier issued for one complete redacted stored result. Use it only through `linear_get_result`.
 _Avoid_: Artifact path, filename
 
 **Result retrieval**:
-A loader-only `get_result` request that selects a stored value by handle, JSON Pointer path, and optional continuation offset.
-_Avoid_: File read, typed retrieval tool
+A direct `linear_get_result` request that selects a stored value by handle, JSON Pointer path, and optional continuation offset.
+_Avoid_: File read, legacy loader envelope
 
 **Result view**:
 The disclosed level of detail for a result. A result view is `summary` or `full`.
@@ -103,5 +103,5 @@ An extension mode that permits reads and rejects all mutations.
 A named Linear account and credential selection.
 
 **Continuation offset**:
-The next code-point, item, or property position for ordered `get_result` recovery.
+The next code-point, item, or property position for ordered `linear_get_result` recovery.
 _Avoid_: Page cursor, byte offset

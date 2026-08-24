@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, readdir, rename, rm, symlink, writeFile } fro
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { linearApiTool, routeLinearResult } from '../extensions/api';
+import { linearApiTool, linearGetResultTool, routeLinearResult } from '../extensions/api';
 import { typedToolNames } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
 
@@ -21,6 +21,10 @@ async function artifactRoot(): Promise<string> {
 
 function execute(params: Record<string, unknown>) {
   return (linearApiTool() as any).execute('call-1', params, undefined, undefined, { hasUI: false });
+}
+
+function executeDirect(params: Record<string, unknown>) {
+  return (linearGetResultTool() as any).execute('call-1', params, undefined, undefined, { hasUI: false });
 }
 
 async function artifact(data: Record<string, unknown>) {
@@ -47,7 +51,17 @@ async function writeEnvelope(root: string, uuid: string, content: string): Promi
 async function get(handle: string, path = '', offset?: number) {
   const variables: Record<string, unknown> = { handle, ...(path ? { path } : {}) };
   if (offset !== undefined) variables.offset = offset;
-  return execute({ operation: 'get_result', variables });
+  const [legacy, direct] = await Promise.allSettled([
+    execute({ operation: 'get_result', variables }),
+    executeDirect(variables),
+  ]);
+  expect(direct.status).toBe(legacy.status);
+  if (legacy.status === 'rejected') {
+    expect((direct as PromiseRejectedResult).reason?.message).toBe(legacy.reason?.message);
+    throw legacy.reason;
+  }
+  expect((direct as PromiseFulfilledResult<unknown>).value).toEqual(legacy.value);
+  return legacy.value;
 }
 
 afterEach(async () => {
@@ -94,6 +108,62 @@ describe('result handles', () => {
       meta: { retrieval: { handle: stored.handle, path: '/data/document/title', complete: true } },
     });
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('keeps direct and legacy retrieval equal across valid and invalid fixtures without network access', async () => {
+    await artifactRoot();
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const stored = await artifact({ value: ['first', 'second'], 'a/b': { '~key': 'found' } });
+
+    for (const variables of [
+      { handle: stored.handle },
+      { handle: stored.handle, path: '/data/value' },
+      { handle: stored.handle, path: '/data/value', offset: 1 },
+      { handle: stored.handle, path: '/data/a~1b/~0key', offset: 0 },
+    ]) {
+      const legacy = await execute({ operation: 'get_result', variables });
+      const direct = await executeDirect(variables);
+      expect(direct).toEqual(legacy);
+    }
+
+    for (const variables of [
+      {},
+      { handle: '../secret' },
+      { handle: stored.handle, path: 'data' },
+      { handle: stored.handle, path: '/missing' },
+      { handle: stored.handle, offset: -1 },
+      { handle: stored.handle, offset: 1.5 },
+      { handle: stored.handle, unknown: true },
+      { handle: stored.handle, workspace: 'default' },
+      { handle: stored.handle, sink: 'artifact' },
+      { handle: stored.handle, telemetry: 'always' },
+      { operation: 'get_result', variables: { handle: stored.handle } },
+    ]) {
+      const legacyError = await execute({ operation: 'get_result', variables }).catch((error: Error) => error);
+      const directError = await executeDirect(variables).catch((error: Error) => error);
+      expect(directError).toBeInstanceOf(Error);
+      expect((directError as Error).message).toBe((legacyError as Error).message);
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('publishes a strict direct schema without loader wrapper fields', () => {
+    const tool = linearGetResultTool() as any;
+    expect(tool.name).toBe('linear_get_result');
+    expect(tool.parameters).toMatchObject({
+      type: 'object',
+      required: ['handle'],
+      additionalProperties: false,
+      properties: {
+        handle: { type: 'string' },
+        path: { type: 'string' },
+        offset: { type: 'integer', minimum: 0 },
+      },
+    });
+    expect(Object.keys(tool.parameters.properties)).toEqual(['handle', 'path', 'offset']);
+    expect(tool).not.toHaveProperty('promptSnippet');
+    expect(tool).not.toHaveProperty('promptGuidelines');
   });
 
   it('uses exact RFC 6901 pointer escaping', async () => {
@@ -320,16 +390,20 @@ describe('result handles', () => {
         { name: 'offset', type: 'Int', required: false },
       ],
       example: {
-        operation: 'get_result',
-        variables: {
-          handle: 'linear-result:v1:550e8400-e29b-41d4-a716-446655440000',
-          path: '/data/document/content',
-          offset: 0,
-        },
+        handle: 'linear-result:v1:550e8400-e29b-41d4-a716-446655440000',
+        path: '/data/document/content',
+        offset: 0,
       },
     });
     expect(card.details).not.toHaveProperty('loadedTools');
-    expect((linearApiTool() as any).description).toContain('loader: batch, get_result');
+    expect(card.details.example).not.toHaveProperty('operation');
+    expect(card.details.example).not.toHaveProperty('variables');
+    const loader = linearApiTool() as any;
+    const operationGuidance = loader.parameters.properties.operation.description;
+    expect(operationGuidance).toContain('Legacy get_result is deprecated');
+    expect(operationGuidance).toContain('call linear_get_result with direct arguments');
+    expect(operationGuidance).not.toContain('loader-only batch and get_result');
+    expect(loader.description).toContain('loader: batch, get_result');
     expect(typedToolNames()).not.toContain('linear_get_result');
   });
 });

@@ -74,12 +74,13 @@ function setup(): FakePi {
 }
 
 describe('typed tool registration', () => {
-  it('registers linear plus one typed tool per catalog operation', () => {
+  it('registers linear, direct result retrieval, and one typed tool per catalog operation', () => {
     const harness = setup();
     const names = harness.registered.map((tool) => tool.name);
-    expect(names).toContain('linear');
-    expect(names.filter((name) => name !== 'linear').sort())
+    expect(names.filter((name) => !['linear', 'linear_get_result'].includes(name)).sort())
       .toEqual([...typedToolNames()].sort());
+    expect(names).toContain('linear');
+    expect(names).toContain('linear_get_result');
     expect(typedToolNames()).toHaveLength(49);
   });
 
@@ -99,6 +100,7 @@ describe('typed tool registration', () => {
     const harness = setup();
     const active = harness.activeTools();
     expect(active).toContain('linear');
+    expect(active).toContain('linear_get_result');
     expect(active).toContain('read');
     expect(active).toContain('bash');
     expect(active.filter((name) => typedToolNames().includes(name))).toEqual([]);

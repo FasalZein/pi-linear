@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { convertTools } from '../node_modules/@earendil-works/pi-ai/dist/api/google-shared.js';
 import { typedLinearTools } from '../extensions/typed-tools';
+import { linearGetResultTool } from '../extensions/api';
 
-const tools = typedLinearTools();
+const typedTools = typedLinearTools();
+const tools = [linearGetResultTool(), ...typedTools];
 
 function declarations(useParameters: boolean) {
   const converted = convertTools(tools as any, useParameters, false);
@@ -21,11 +23,12 @@ function walk(value: unknown, visit: (node: Record<string, unknown>) => void): v
 }
 
 describe('Google schema conversion', () => {
-  it('converts all 49 runtime schemas through both Google paths', () => {
-    expect(tools).toHaveLength(49);
+  it('converts the direct result schema and all 49 typed schemas through both Google paths', () => {
+    expect(typedTools).toHaveLength(49);
+    expect(tools).toHaveLength(50);
     for (const useParameters of [false, true]) {
       const converted = declarations(useParameters);
-      expect(converted, `useParameters=${useParameters}`).toHaveLength(49);
+      expect(converted, `useParameters=${useParameters}`).toHaveLength(50);
       for (const declaration of converted) {
         const parameters = (declaration.parametersJsonSchema ?? declaration.parameters) as Record<string, unknown>;
         expect(declaration.name).toMatch(/^linear_/);

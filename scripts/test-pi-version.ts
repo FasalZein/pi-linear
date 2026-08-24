@@ -93,16 +93,20 @@ const harness = createPi();
 register(harness.pi);
 for (const handler of harness.sessionHandlers) await handler();
 const names = harness.registered.map((tool) => tool.name);
-if (names.length !== 50) throw new Error(\`Expected 50 tools, registered \${names.length}.\`);
+if (names.length !== 51) throw new Error(\`Expected 51 tools, registered \${names.length}.\`);
 if (!names.includes('linear')) throw new Error('linear was not registered.');
 const linearActive = harness.activeTools().filter((name) => name === 'linear' || name.startsWith('linear_'));
-if (linearActive.join(',') !== 'linear') throw new Error(\`Active Linear tools: \${linearActive.join(', ')}\`);
+if (linearActive.join(',') !== 'linear,linear_get_result') throw new Error(\`Active Linear tools: \${linearActive.join(', ')}\`);
 if (!harness.commands.has('linear-auth') || !harness.commands.has('linear-settings')) {
   throw new Error('Expected /linear-auth and /linear-settings.');
 }
 
 const api = harness.registered.find((tool) => tool.name === 'linear');
+const resultTool = harness.registered.find((tool) => tool.name === 'linear_get_result');
 const typed = harness.registered.find((tool) => tool.name === 'linear_get_issue');
+if (!resultTool || typeof resultTool.renderCall !== 'function' || typeof resultTool.renderResult !== 'function') {
+  throw new Error('Direct result tool or its renderers are missing.');
+}
 if (typed.promptSnippet || typed.promptGuidelines) throw new Error('Typed tools must omit active-only prompt metadata.');
 const help = await api.execute('call-1', { operation: 'help', variables: { operation: 'get_issue' } }, undefined, undefined, { hasUI: false });
 if (JSON.stringify(help.details.loadedTools) !== JSON.stringify(['linear_get_issue'])) {
