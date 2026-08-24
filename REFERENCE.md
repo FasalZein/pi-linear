@@ -1,10 +1,10 @@
 # Linear API reference
 
-Version 0.9 of `pi-linear-lite` registers 51 tool surfaces: active `linear` and `linear_get_result`, plus 49 inactive typed tools. Loader-only `batch` adds no typed tool. The legacy loader `get_result` envelope remains compatible but is deprecated. The `linear` tool description publishes compact domain and operation-name discovery. For an ordinary operation, send exact help to the loader, then call the activated `linear_<operation>` tool with direct arguments. The loader also accepts raw GraphQL through `query`, plus optional top-level `workspace`, `sink`, and `telemetry` fields. Only `"telemetry": "always"` is valid. Typed tools do not accept this diagnostic field.
+Version 0.9 of `pi-linear-lite` registers 52 tool surfaces: active `linear` and `linear_get_result`, deferred `linear_graphql`, plus 49 inactive typed tools. Loader-only `batch` adds no typed tool. The legacy loader `get_result` envelope and raw `query` route remain compatible but are deprecated. The `linear` tool publishes compact discovery. For an ordinary operation, send exact help, then call the activated `linear_<operation>` tool with direct arguments. For raw GraphQL, send exact `graphql` help, then call `linear_graphql` with required `query` and optional `variables`, `workspace`, `sink`, or `telemetry`. Only `"telemetry": "always"` is valid.
 
 ## Help protocol
 
-Help is optional. This request returns the accepted domains and examples for the two narrower help forms:
+Help is optional. This request returns the accepted domains plus exact-operation, GraphQL, batch, and result-retrieval help links:
 
 ```json
 { "operation": "help" }
@@ -198,7 +198,7 @@ The named operation `switch_workspace` changes the active stored workspace. `/li
 
 ## Raw GraphQL and mutation safety
 
-Use `query` only when no named operation covers the work. Select only required fields. Add a small `first:` value to every connection. Include `pageInfo { hasNextPage endCursor }` when another page can matter.
+Use exact `graphql` help to activate `linear_graphql`. Call `linear_graphql` only when no named operation covers the work. Select only required fields. Add a small `first:` value to every connection. Include `pageInfo { hasNextPage endCursor }` when another page can matter.
 
 ```json
 {

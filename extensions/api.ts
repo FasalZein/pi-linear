@@ -1,6 +1,7 @@
 import { StringEnum } from '@earendil-works/pi-ai';
 import { defineTool } from '@earendil-works/pi-coding-agent';
-import { Type } from 'typebox';
+import { Type, type TSchema } from 'typebox';
+import { Compile } from 'typebox/compile';
 import { Kind, parse, type FragmentDefinitionNode, type SelectionSetNode } from 'graphql';
 import {
   DOMAINS,
@@ -29,9 +30,11 @@ import {
   renderLinearApiResult,
   renderLinearGetResultCall,
   renderLinearGetResultResult,
+  renderLinearGraphqlCall,
+  renderLinearGraphqlResult,
 } from './renderers';
 import { typedToolName } from './tool-names';
-import { exceptionalToolDefinitions } from './exceptional-tools';
+import { LINEAR_GRAPHQL_HELP, exceptionalToolDefinitions } from './exceptional-tools';
 import type { MutationMode } from './safety';
 import { LINEAR_TOOL_DESCRIPTION } from './generated/operation-catalog';
 import { batchHelp, executeBatch } from './batch';
@@ -122,9 +125,9 @@ export function resolveRequest(params: {
  */
 export type ToolActivator = (toolNames: string[]) => string[];
 
-function activate(activator: ToolActivator | undefined, operationNames: string[]): JsonObject {
+function activate(activator: ToolActivator | undefined, toolNames: string[]): JsonObject {
   if (!activator) return {};
-  const added = activator(operationNames.map(typedToolName));
+  const added = activator(toolNames);
   return added.length ? { loadedTools: added } : {};
 }
 
@@ -135,6 +138,8 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
       domains: DEFINITION_DOMAINS,
       domainHelp: { operation: 'help', variables: { domain: 'issues' } },
       operationHelp: { operation: 'help', variables: { operation: 'get_issue' } },
+      graphqlHelp: { operation: 'help', variables: { operation: 'graphql' } },
+      batchHelp: { operation: 'help', variables: { operation: 'batch' } },
       resultHelp: { operation: 'help', variables: { operation: 'get_result' } },
     };
   }
@@ -153,6 +158,7 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
     };
   }
   if (typeof operationName === 'string') {
+    if (operationName === 'graphql') return { ...activate(activator, ['linear_graphql']), ...LINEAR_GRAPHQL_HELP };
     if (operationName === 'batch') return batchHelp();
     if (operationName === 'get_result') return GET_RESULT_HELP;
     const operation = getOperation(operationName);
@@ -163,7 +169,7 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
         : [],
     );
     return {
-      ...activate(activator, [operation.name]),
+      ...activate(activator, [typedToolName(operation.name)]),
       name: operation.name,
       domain: operation.domain,
       purpose: operation.purpose,
@@ -188,6 +194,22 @@ function toolResult(details: JsonObject, secrets: readonly string[] = []) {
 
 async function retrieveResult(variables: unknown, secrets: readonly string[]) {
   return toolResult(await getResult(variables), secrets);
+}
+
+function directSchemaGuard(toolName: string, schema: TSchema) {
+  let validator: ReturnType<typeof Compile> | undefined;
+  return (params: unknown): void => {
+    validator ??= Compile(schema);
+    if (validator.Check(params)) return;
+    const problems = [...validator.Errors(params)]
+      .slice(0, 3)
+      .map((error) => {
+        const path = 'path' in error && typeof error.path === 'string' ? error.path : '';
+        return path ? `${path}: ${error.message}` : error.message;
+      })
+      .join('; ');
+    throw new Error(`Invalid arguments for "${toolName}": ${problems}.`);
+  };
 }
 
 export function linearGetResultTool(definition = exceptionalToolDefinitions[0]) {
@@ -237,6 +259,58 @@ function assertRawResultPointersRepresentable(query: string): void {
   }
 }
 
+async function executeRawGraphql(
+  query: string,
+  variables: JsonObject,
+  call: ReturnType<typeof linearCallContext>,
+): Promise<JsonObject> {
+  assertRawResultPointersRepresentable(query);
+  return executeRawQuery(query, variables, call);
+}
+
+export function linearGraphqlTool(
+  mode: MutationMode = 'allowlist',
+  definition = exceptionalToolDefinitions[1],
+) {
+  if (definition.renderer !== 'linearGraphql') {
+    throw new Error(`Linear tool configuration error: unknown exceptional renderer ${definition.renderer}.`);
+  }
+  const assertSchema = directSchemaGuard(definition.name, definition.parameters);
+  return defineTool({
+    name: definition.name,
+    label: 'Linear GraphQL',
+    description: definition.purpose,
+    parameters: definition.parameters,
+    prepareArguments: (args: unknown) => {
+      try {
+        assertSchema(args);
+        return args as any;
+      } catch (error) {
+        throw redactError(error, activeSecrets());
+      }
+    },
+    renderCall: renderLinearGraphqlCall,
+    renderResult: renderLinearGraphqlResult,
+    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+      if (signal?.aborted) throw new Error('Request cancelled.');
+      try {
+        assertSchema(params);
+      } catch (error) {
+        throw redactError(error, activeSecrets());
+      }
+      const secrets = [...activeSecrets()];
+      return withRedactedErrors(async () => {
+        const call = linearCallContext(mode, signal, ctx, {
+          workspace: params.workspace,
+          sink: params.sink,
+          telemetryMode: telemetryMode(params.telemetry),
+        });
+        return toolResult(await executeRawGraphql(params.query, params.variables ?? {}, call), secrets);
+      }, secrets);
+    },
+  });
+}
+
 function discoveryOnlyError(operationName: string): Error {
   try {
     const operation = getOperation(operationName);
@@ -257,8 +331,8 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
     label: 'Linear API',
     description: LINEAR_TOOL_DESCRIPTION,
     parameters: Type.Object({
-      operation: Type.Optional(Type.String({ description: 'Use help to discover typed tools, or call loader-only batch. Legacy get_result is deprecated; call linear_get_result with direct arguments.' })),
-      query: Type.Optional(Type.String({ description: 'Raw GraphQL escape hatch.' })),
+      operation: Type.Optional(Type.String({ description: 'Use help to discover typed tools, activate linear_graphql, or call loader-only batch. Legacy get_result is deprecated; call linear_get_result with direct arguments.' })),
+      query: Type.Optional(Type.String({ description: 'Deprecated raw GraphQL route. Use exact graphql help, then call linear_graphql directly.' })),
       variables: Type.Optional(Type.Record(Type.String(), Type.Any())),
       workspace: Type.Optional(Type.String({ description: 'Stored workspace name, or default/active for normal credential selection.' })),
       sink: Type.Optional(StringEnum(
@@ -318,12 +392,7 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
           ), secrets);
         }
 
-        assertRawResultPointersRepresentable(request.query);
-        return toolResult(await executeRawQuery(
-          request.query,
-          params.variables ?? {},
-          call,
-        ), secrets);
+        return toolResult(await executeRawGraphql(request.query, params.variables ?? {}, call), secrets);
       }, secrets);
     },
   });

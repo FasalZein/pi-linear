@@ -261,11 +261,21 @@
       "deferred": false,
       "schemaSource": "linearGetResultParameters",
       "renderer": "linearGetResult"
+    },
+    {
+      "name": "linear_graphql",
+      "helpName": "graphql",
+      "purpose": "Execute a caller-supplied Linear GraphQL document.",
+      "initialActive": false,
+      "deferred": true,
+      "schemaSource": "linearGraphqlParameters",
+      "renderer": "linearGraphql"
     }
   ],
   "allowedTools": [
     "linear",
     "linear_get_result",
+    "linear_graphql",
     "linear_list_comments",
     "linear_create_comment",
     "linear_update_comment",

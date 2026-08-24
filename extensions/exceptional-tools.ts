@@ -1,5 +1,35 @@
+import { StringEnum } from '@earendil-works/pi-ai';
 import { Type } from 'typebox';
 import { GET_RESULT_PURPOSE } from './result-handles';
+
+export const LINEAR_GRAPHQL_PURPOSE = 'Execute a caller-supplied Linear GraphQL document.';
+
+export const linearGraphqlParameters = Type.Object({
+  query: Type.String({ description: 'GraphQL document to execute.' }),
+  variables: Type.Optional(Type.Record(Type.String(), Type.Any(), { description: 'GraphQL variables.' })),
+  workspace: Type.Optional(Type.String({ description: 'Stored workspace name, or default/active for normal credential selection.' })),
+  sink: Type.Optional(StringEnum(
+    ['inline', 'artifact'] as const,
+    { description: 'Choose inline output or an artifact file.' },
+  )),
+  telemetry: Type.Optional(StringEnum(
+    ['always'] as const,
+    { description: 'Explicitly include rate-limit diagnostics.' },
+  )),
+}, { additionalProperties: false });
+
+export const LINEAR_GRAPHQL_HELP = {
+  name: 'graphql',
+  purpose: LINEAR_GRAPHQL_PURPOSE,
+  parameters: [
+    { name: 'query', type: 'string', required: true },
+    { name: 'variables', type: 'Record<string, unknown>', required: false },
+    { name: 'workspace', type: 'string', required: false },
+    { name: 'sink', type: '"inline" | "artifact"', required: false },
+    { name: 'telemetry', type: '"always"', required: false },
+  ],
+  example: { query: 'query Viewer { viewer { id name } }', variables: {} },
+} as const;
 
 export const linearGetResultParameters = Type.Object({
   handle: Type.String({ minLength: 1, description: 'Opaque Linear result handle.' }),
@@ -21,6 +51,16 @@ export const exceptionalToolDefinitions = [
     schemaSource: 'linearGetResultParameters',
     renderer: 'linearGetResult',
     parameters: linearGetResultParameters,
+  },
+  {
+    name: 'linear_graphql',
+    helpName: 'graphql',
+    purpose: LINEAR_GRAPHQL_PURPOSE,
+    initialActive: false,
+    deferred: true,
+    schemaSource: 'linearGraphqlParameters',
+    renderer: 'linearGraphql',
+    parameters: linearGraphqlParameters,
   },
 ] as const;
 
