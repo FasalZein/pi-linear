@@ -1,6 +1,7 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { CanonicalOperation } from "./canonical-schema";
 import type { ResultView } from "./selections";
+import type { MutationMode } from "./safety";
 
 export type OperationDomain =
 	| "issues"
@@ -124,6 +125,7 @@ export type LinearOperation = {
 	executeLocal?: (
 		variables: Record<string, unknown>,
 		ctx: ExtensionContext,
+		mode: MutationMode,
 	) => Promise<Record<string, unknown>>;
 	/** Required whenever `executeLocal` is set. */
 	localResult?: LocalResultExpectation;

@@ -11,6 +11,8 @@ import {
 } from './client';
 import { linearApiTool, linearBatchTool, linearGetResultTool, linearGraphqlTool } from './api';
 import { exceptionalToolDefinitions } from './exceptional-tools';
+import { assertLocalWriteAllowed } from './local-write-policy';
+import { redactText } from './redact';
 import { typedLinearTools, typedToolNames } from './typed-tools';
 import type { MutationMode } from './safety';
 import { registerLinearSettings } from './settings';
@@ -29,6 +31,7 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
       const [rawCommand = '', ...rest] = args.trim().split(/\s+/);
       const command = rawCommand.toLowerCase();
       const suppliedName = text(rest.join(' '));
+      if (['add', 'remove', 'switch', 'prefer'].includes(command)) assertLocalWriteAllowed(mode);
 
       if (command === 'add') {
         const name = suppliedName ?? text(await ctx.ui.input('Workspace name', 'my-workspace'));
@@ -36,9 +39,9 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
         const apiKey = text(await ctx.ui.input('Linear API key', 'lin_api_...'));
         if (!apiKey) return ctx.ui.notify('No API key provided', 'warning');
         const before = await readCredentials();
-        await addWorkspace(name, apiKey);
+        await addWorkspace(name, apiKey, mode);
         if (Object.keys(before.workspaces).length && (await ctx.ui.confirm('Switch workspace', `Switch to "${name}" now?`))) {
-          await switchWorkspace(name);
+          await switchWorkspace(name, mode);
         }
         ctx.ui.notify(`Workspace "${name}" saved`, 'info');
         return;
@@ -49,8 +52,8 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
         const names = listWorkspaceNames(creds);
         const selected = suppliedName ?? text(await ctx.ui.select('Select workspace to remove', names));
         if (!selected) return ctx.ui.notify('No workspace selected', 'warning');
-        if (!creds.workspaces[selected]) return ctx.ui.notify(`Workspace "${selected}" not found`, 'warning');
-        await removeWorkspace(selected);
+        if (!creds.workspaces[selected]) return ctx.ui.notify(`Workspace "${redactText(selected)}" not found`, 'warning');
+        await removeWorkspace(selected, mode);
         ctx.ui.notify(`Removed workspace "${selected}"`, 'info');
         return;
       }
@@ -60,7 +63,7 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
         const selected = suppliedName ?? text(await ctx.ui.select('Select workspace', listWorkspaceNames(creds)));
         if (!selected) return ctx.ui.notify('No workspace selected', 'warning');
         try {
-          await switchWorkspace(selected);
+          await switchWorkspace(selected, mode);
           ctx.ui.notify(`Active workspace: ${selected}`, 'info');
         } catch (error) {
           ctx.ui.notify(error instanceof Error ? error.message : String(error), 'warning');
@@ -72,7 +75,7 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
         if (suppliedName !== 'workspace' && suppliedName !== 'env') {
           return ctx.ui.notify('Usage: /linear-auth prefer [workspace|env]', 'warning');
         }
-        await setAuthPreference(suppliedName);
+        await setAuthPreference(suppliedName, mode);
         ctx.ui.notify(`Auth preference: ${suppliedName}`, 'info');
         return;
       }

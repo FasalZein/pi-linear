@@ -127,11 +127,11 @@ describe('workspace management', () => {
     expect(creds.activeWorkspace).toBe('b');
   });
 
-  it('switchWorkspace sets auth preference back to workspace', async () => {
+  it('switchWorkspace preserves auth preference', async () => {
     await addWorkspace('a', 'key-a');
     await setAuthPreference('env');
     const creds = await switchWorkspace('a');
-    expect(creds.authPreference).toBe('workspace');
+    expect(creds.authPreference).toBe('env');
   });
 
   it('switchWorkspace throws for unknown workspace', async () => {

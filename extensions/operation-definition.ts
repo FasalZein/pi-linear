@@ -254,10 +254,10 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
     } : {}),
     ...(compatibility.localResult ? { localResult: compatibility.localResult } : {}),
     ...(compatibility.executeLocal ? {
-      executeLocal: async (variables, ctx) => {
+      executeLocal: async (variables, ctx, mode) => {
         assertRequirementBranches(compatibility.branches, variables);
         compatibility.semanticValidateVariables?.(variables);
-        return compatibility.executeLocal!(variables, ctx);
+        return compatibility.executeLocal!(variables, ctx, mode);
       },
     } : {}),
   };

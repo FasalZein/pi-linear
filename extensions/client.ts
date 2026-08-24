@@ -1,9 +1,12 @@
 import type { ExtensionContext } from '@earendil-works/pi-coding-agent';
 import { promises as fs } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { Kind, parse, type FragmentDefinitionNode, type SelectionSetNode } from 'graphql';
-import { redactDeep, redactText } from './redact';
+import { assertLocalWriteAllowed } from './local-write-policy';
+import { redactDeep, redactError, redactText } from './redact';
+import type { MutationMode } from './safety';
 
 const LINEAR_GRAPHQL_ENDPOINT = 'https://api.linear.app/graphql';
 
@@ -33,6 +36,7 @@ export type WorkspaceCredentials = {
   activeWorkspace: string | null;
   authPreference: AuthPreference;
   workspaces: Record<string, { apiKey: string }>;
+  [key: string]: unknown;
 };
 
 function asString(value: unknown): string | undefined {
@@ -50,67 +54,126 @@ export function getCredentialFilePath(): string {
   return path.join(piDir, 'extensions', 'linear', 'credentials.json');
 }
 
+function invalidCredentialFile(): never {
+  throw new Error('Invalid Linear credential file. Repair or remove it before changing stored credentials.');
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
 export async function readCredentials(): Promise<WorkspaceCredentials> {
+  let source: string;
   try {
-    const parsed = JSON.parse(await fs.readFile(getCredentialFilePath(), 'utf8')) as Record<
-      string,
-      unknown
-    >;
-    if (!parsed.workspaces || typeof parsed.workspaces !== 'object') return emptyCredentials();
+    source = await fs.readFile(getCredentialFilePath(), 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return emptyCredentials();
+    throw redactError(error);
+  }
 
-    const workspaces: WorkspaceCredentials['workspaces'] = {};
-    for (const [name, entry] of Object.entries(parsed.workspaces)) {
-      const apiKey = asString((entry as { apiKey?: unknown } | null)?.apiKey);
-      if (apiKey) workspaces[name] = { apiKey };
-    }
-
-    return {
-      activeWorkspace: typeof parsed.activeWorkspace === 'string' ? parsed.activeWorkspace : null,
-      authPreference: parsed.authPreference === 'env' ? 'env' : 'workspace',
-      workspaces,
-    };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(source);
   } catch {
-    return emptyCredentials();
+    invalidCredentialFile();
+  }
+  if (!isRecord(parsed) || !isRecord(parsed.workspaces)) invalidCredentialFile();
+  if (parsed.activeWorkspace !== undefined && parsed.activeWorkspace !== null && typeof parsed.activeWorkspace !== 'string') {
+    invalidCredentialFile();
+  }
+  if (parsed.authPreference !== undefined && parsed.authPreference !== 'workspace' && parsed.authPreference !== 'env') {
+    invalidCredentialFile();
+  }
+
+  const workspaces: WorkspaceCredentials['workspaces'] = {};
+  for (const [name, entry] of Object.entries(parsed.workspaces)) {
+    if (!isRecord(entry)) invalidCredentialFile();
+    const apiKey = asString(entry.apiKey);
+    if (!apiKey) invalidCredentialFile();
+    workspaces[name] = { apiKey };
+  }
+
+  return {
+    ...parsed,
+    activeWorkspace: typeof parsed.activeWorkspace === 'string' ? parsed.activeWorkspace : null,
+    authPreference: parsed.authPreference === 'env' ? 'env' : 'workspace',
+    workspaces,
+  };
+}
+
+export async function writeCredentials(
+  creds: WorkspaceCredentials,
+  mode: MutationMode = 'allowlist',
+): Promise<void> {
+  assertLocalWriteAllowed(mode);
+  const filePath = getCredentialFilePath();
+  const directory = path.dirname(filePath);
+  const temporaryPath = path.join(directory, `.credentials-${process.pid}-${randomUUID()}.tmp`);
+  await fs.mkdir(directory, { recursive: true });
+  try {
+    const handle = await fs.open(temporaryPath, 'wx', 0o600);
+    try {
+      await handle.writeFile(JSON.stringify(creds, null, 2));
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+    await fs.rename(temporaryPath, filePath);
+  } catch (error) {
+    await fs.rm(temporaryPath, { force: true }).catch(() => undefined);
+    throw redactError(error);
   }
 }
 
-export async function writeCredentials(creds: WorkspaceCredentials): Promise<void> {
-  const filePath = getCredentialFilePath();
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, JSON.stringify(creds, null, 2), { mode: 0o600 });
-  await fs.chmod(filePath, 0o600).catch(() => undefined);
-}
-
-export async function addWorkspace(name: string, apiKey: string): Promise<WorkspaceCredentials> {
+async function mutateCredentials(
+  mode: MutationMode,
+  mutate: (creds: WorkspaceCredentials) => void,
+): Promise<WorkspaceCredentials> {
+  assertLocalWriteAllowed(mode);
   const creds = await readCredentials();
-  creds.workspaces[name] = { apiKey };
-  creds.activeWorkspace ??= name;
-  await writeCredentials(creds);
+  mutate(creds);
+  await writeCredentials(creds, mode);
   return creds;
 }
 
-export async function removeWorkspace(name: string): Promise<WorkspaceCredentials> {
-  const creds = await readCredentials();
-  delete creds.workspaces[name];
-  if (creds.activeWorkspace === name) creds.activeWorkspace = Object.keys(creds.workspaces)[0] ?? null;
-  await writeCredentials(creds);
-  return creds;
+export async function addWorkspace(
+  name: string,
+  apiKey: string,
+  mode: MutationMode = 'allowlist',
+): Promise<WorkspaceCredentials> {
+  return mutateCredentials(mode, (creds) => {
+    creds.workspaces[name] = { apiKey };
+    creds.activeWorkspace ??= name;
+  });
 }
 
-export async function switchWorkspace(name: string): Promise<WorkspaceCredentials> {
-  const creds = await readCredentials();
-  if (!creds.workspaces[name]) throw new Error(`Workspace "${name}" does not exist.`);
-  creds.activeWorkspace = name;
-  creds.authPreference = 'workspace';
-  await writeCredentials(creds);
-  return creds;
+export async function removeWorkspace(
+  name: string,
+  mode: MutationMode = 'allowlist',
+): Promise<WorkspaceCredentials> {
+  return mutateCredentials(mode, (creds) => {
+    delete creds.workspaces[name];
+    if (creds.activeWorkspace === name) creds.activeWorkspace = Object.keys(creds.workspaces)[0] ?? null;
+  });
 }
 
-export async function setAuthPreference(preference: AuthPreference): Promise<WorkspaceCredentials> {
-  const creds = await readCredentials();
-  creds.authPreference = preference;
-  await writeCredentials(creds);
-  return creds;
+export async function switchWorkspace(
+  name: string,
+  mode: MutationMode = 'allowlist',
+): Promise<WorkspaceCredentials> {
+  return mutateCredentials(mode, (creds) => {
+    if (!creds.workspaces[name]) throw new Error(`Workspace "${redactText(name)}" does not exist.`);
+    creds.activeWorkspace = name;
+  });
+}
+
+export async function setAuthPreference(
+  preference: AuthPreference,
+  mode: MutationMode = 'allowlist',
+): Promise<WorkspaceCredentials> {
+  return mutateCredentials(mode, (creds) => {
+    creds.authPreference = preference;
+  });
 }
 
 export function listWorkspaceNames(creds: WorkspaceCredentials): string[] {
@@ -123,7 +186,7 @@ export function getActiveWorkspaceName(creds: WorkspaceCredentials): string | nu
 
 export async function resolveApiKey(
   ctx: ExtensionContext,
-  options?: { promptIfMissing?: boolean; workspace?: string },
+  options?: { promptIfMissing?: boolean; workspace?: string; mode?: MutationMode },
 ): Promise<{ apiKey?: string; source: 'env' | 'workspace' | 'none' }> {
   const creds = await readCredentials();
   const workspaceAlias = options?.workspace === 'default' || options?.workspace === 'active';
@@ -154,7 +217,7 @@ export async function resolveApiKey(
       const name = asString(await ctx.ui.input('Workspace name', 'my-workspace'));
       const key = name ? asString(await ctx.ui.input('Linear API key', 'lin_api_...')) : undefined;
       if (name && key) {
-        await addWorkspace(name, key);
+        await addWorkspace(name, key, options?.mode ?? 'allowlist');
         ctx.ui.notify(`Workspace "${name}" saved and set as active`, 'info');
         return { apiKey: key, source: 'workspace' };
       }

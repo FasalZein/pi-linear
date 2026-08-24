@@ -309,7 +309,7 @@ export async function networkExecutionContext(
   transport: LinearTransport = fetch,
   telemetry: LinearRateLimitSnapshot[] = [],
 ): Promise<LinearNetworkContext> {
-  const credential = await resolveApiKey(call.pi, { workspace: call.workspace });
+  const credential = await resolveApiKey(call.pi, { workspace: call.workspace, mode: call.mode });
   if (!credential.apiKey || credential.source === 'none') {
     throw new Error('Missing Linear API key. Set LINEAR_API_KEY or run /linear-auth.');
   }
@@ -452,7 +452,7 @@ async function executeOperationWithContext(
   return withRedactedErrors(async () => {
     if (operation.executeLocal) {
       secrets.push(...activeSecrets());
-      const localResult = await operation.executeLocal(options.variables, call.pi);
+      const localResult = await operation.executeLocal(options.variables, call.pi, call.mode);
       validateLocalResult(operation.name, localResult, operation.localResult);
       return redactDeep(localResult, secrets);
     }

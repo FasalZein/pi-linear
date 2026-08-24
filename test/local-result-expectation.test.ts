@@ -120,6 +120,24 @@ describe('public surfaces', () => {
     expect(result.details).toEqual({ active: 'second' });
   });
 
+  it('rejects a workspace switch under the readonly entry mode before changing the file', async () => {
+    const readonlyTool = typedLinearTools('readonly').find(({ name }) => name === 'linear_switch_workspace')!;
+    const before = await readFile(join(agentDirectory, 'extensions/linear/credentials.json'));
+
+    await expect(execute(readonlyTool, { name: 'second' })).rejects.toThrow('read-only mode');
+
+    expect(await readFile(join(agentDirectory, 'extensions/linear/credentials.json'))).toEqual(before);
+  });
+
+  it('lets LINEAR_READONLY=1 override the normal typed entry mode', async () => {
+    process.env.LINEAR_READONLY = '1';
+    const before = await readFile(join(agentDirectory, 'extensions/linear/credentials.json'));
+
+    await expect(execute(typed.get('linear_switch_workspace')!, { name: 'second' })).rejects.toThrow('read-only mode');
+
+    expect(await readFile(join(agentDirectory, 'extensions/linear/credentials.json'))).toEqual(before);
+  });
+
   it('rejects an unknown workspace with the stored-workspace error', async () => {
     await expect(execute(typed.get('linear_switch_workspace')!, { name: 'missing' }))
       .rejects.toThrow('Workspace "missing" does not exist.');

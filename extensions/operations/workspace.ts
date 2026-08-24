@@ -78,8 +78,8 @@ export const workspaceSwitch: readonly OperationDefinition[] = ([
 		example: { operation: "switch_workspace", variables: { name: "work" } },
 		document: "query SwitchWorkspaceLocal { viewer { id } }",
 		localResult: { requiredStringPaths: ["active"] },
-		async executeLocal(v) {
-			const updated = await switchWorkspace(String(v.name));
+		async executeLocal(v, _ctx, mode) {
+			const updated = await switchWorkspace(String(v.name), mode);
 			return { active: updated.activeWorkspace };
 		},
 	},
