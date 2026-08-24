@@ -27,29 +27,33 @@ export function assertNamedInputAllowed(value: unknown, path = 'variables'): voi
   visit(value, path);
 }
 
-function mutationFields(document: DocumentNode): string[] {
+function analyzeMutations(document: DocumentNode): { hasMutation: boolean; fields: string[] } {
   const fragments = new Map(
     document.definitions
       .filter((definition) => definition.kind === Kind.FRAGMENT_DEFINITION)
       .map((fragment) => [fragment.name.value, fragment.selectionSet]),
   );
+  const visitedFragments = new Set<string>();
   const fields = new Set<string>();
   const visit = (selectionSet: SelectionSetNode) => {
     for (const selection of selectionSet.selections) {
       if (selection.kind === Kind.FIELD) fields.add(selection.name.value);
       else if (selection.kind === Kind.INLINE_FRAGMENT) visit(selection.selectionSet);
-      else {
+      else if (!visitedFragments.has(selection.name.value)) {
+        visitedFragments.add(selection.name.value);
         const fragment = fragments.get(selection.name.value);
         if (fragment) visit(fragment);
       }
     }
   };
+  let hasMutation = false;
   for (const definition of document.definitions) {
     if (definition.kind === Kind.OPERATION_DEFINITION && definition.operation === 'mutation') {
+      hasMutation = true;
       visit(definition.selectionSet);
     }
   }
-  return [...fields];
+  return { hasMutation, fields: [...fields] };
 }
 
 export function assertMutationAllowed(
@@ -57,8 +61,8 @@ export function assertMutationAllowed(
   mode: MutationMode,
   namedMutationRoots?: readonly string[],
 ): void {
-  const fields = mutationFields(parse(query));
-  if (!fields.length) return;
+  const { hasMutation, fields } = analyzeMutations(parse(query));
+  if (!hasMutation) return;
 
   const effectiveMode = process.env.LINEAR_READONLY === '1' ? 'readonly' : mode;
   if (effectiveMode === 'readonly') throw new Error('Linear mutations are disabled by read-only mode.');
@@ -80,5 +84,5 @@ export function assertMutationAllowed(
 }
 
 export function getMutationFields(query: string): string[] {
-  return mutationFields(parse(query));
+  return analyzeMutations(parse(query)).fields;
 }

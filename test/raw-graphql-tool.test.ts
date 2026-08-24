@@ -117,11 +117,41 @@ describe('direct raw GraphQL tool', () => {
     ['malformed document', { query: 'query {' }, /Syntax Error/],
     ['unrepresentable alias', { query: `query { ${'a'.repeat(60_000)}: viewer { id } }` }, /alias|represent/i],
     ['raw mutation gate', { query: 'mutation { issueArchive(id: "x") { success } }' }, /Raw Linear mutations are disabled/],
+    [
+      'cyclic raw mutation gate',
+      { query: 'mutation { ...Cycle } fragment Cycle on Mutation { issueArchive(id: "x") { success } ...Cycle }' },
+      /Raw Linear mutations are disabled/,
+    ],
   ])('preserves %s before credentials and network', async (_name, args, message) => {
     delete process.env.LINEAR_API_KEY;
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
     await expect(execute(linearGraphqlTool() as any, args)).rejects.toThrow(message);
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects a cyclic mutation in read-only mode before credentials and network', async () => {
+    delete process.env.LINEAR_API_KEY;
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(execute(linearGraphqlTool('readonly') as any, {
+      query: 'mutation { ...First } fragment First on Mutation { ...Second } fragment Second on Mutation { issueUpdate(id: "x", input: {}) { success } ...First }',
+    })).rejects.toThrow('Linear mutations are disabled by read-only mode.');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('preserves LINEAR_MUTATIONS=all after cycle-safe local analysis', async () => {
+    process.env.LINEAR_API_KEY = 'test-key';
+    process.env.LINEAR_MUTATIONS = 'all';
+    const fetch = vi.fn(async () => new Response(JSON.stringify({
+      data: { issueUpdate: { success: true } },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(execute(linearGraphqlTool() as any, {
+      query: 'mutation { ...Cycle } fragment Cycle on Mutation { issueUpdate(id: "x", input: {}) { success } ...Cycle }',
+    })).resolves.toMatchObject({ details: { data: { issueUpdate: { success: true } } } });
+    expect(fetch).toHaveBeenCalledOnce();
   });
 });

@@ -44,6 +44,30 @@ describe('mutation detection and gating', () => {
     expect(getMutationFields('mutation { ...Change } fragment Change on Mutation { commentCreate(input: {}) { success } }')).toEqual(['commentCreate']);
   });
 
+  it('terminates self-referencing and mutually referencing fragments', () => {
+    expect(getMutationFields('mutation { ...Cycle } fragment Cycle on Mutation { ...Cycle }')).toEqual([]);
+    expect(getMutationFields(`
+      mutation { ...First }
+      fragment First on Mutation { ...Second }
+      fragment Second on Mutation { ...First }
+    `)).toEqual([]);
+  });
+
+  it('collects a mutation root once when a fragment cycle reaches it', () => {
+    expect(getMutationFields(`
+      mutation { ...First }
+      fragment First on Mutation { issueUpdate(id: "x", input: {}) { success } ...Second }
+      fragment Second on Mutation { ...First }
+    `)).toEqual(['issueUpdate']);
+  });
+
+  it('does not treat a fieldless mutation fragment cycle as a read', () => {
+    expect(() => assertMutationAllowed(
+      'mutation { ...Cycle } fragment Cycle on Mutation { ...Cycle }',
+      'allowlist',
+    )).toThrow('Raw Linear mutations are disabled. Set LINEAR_MUTATIONS=all to allow raw mutations.');
+  });
+
   it('allows only safe roots declared by a named operation', () => {
     expect(() => assertMutationAllowed(
       'mutation { issueCreate(input: {}) { success } }',
