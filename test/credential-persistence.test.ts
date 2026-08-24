@@ -1,5 +1,6 @@
+import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
-import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { access, chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -50,6 +51,71 @@ afterEach(async () => {
   vi.restoreAllMocks();
   process.env = { ...originalEnvironment };
   await rm(agentDirectory, { recursive: true, force: true });
+});
+
+describe('inter-process credential transactions', () => {
+  it('persists every concurrent successful workspace addition', async () => {
+    const worker = join(process.cwd(), 'node_modules/vite-node/vite-node.mjs');
+    const helper = join(process.cwd(), 'test/helpers/credential-worker.ts');
+    const startFile = join(agentDirectory, 'start');
+    const names = Array.from({ length: 20 }, (_, index) => `workspace-${index}`);
+    const children = names.map((name, index) => {
+      const readyFile = join(agentDirectory, `ready-${index}`);
+      const child = spawn(process.execPath, [worker, helper, agentDirectory, name, readyFile, startFile], {
+        cwd: process.cwd(),
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      let stderr = '';
+      child.stderr.on('data', (chunk) => { stderr += chunk; });
+      return {
+        readyFile,
+        exited: new Promise<void>((resolve, reject) => child.once('exit', (code) => {
+          if (code === 0) resolve();
+          else reject(new Error(`Credential worker exited ${code}: ${stderr}`));
+        })),
+      };
+    });
+
+    while (true) {
+      const ready = await Promise.all(children.map(({ readyFile }) => access(readyFile).then(() => true, () => false)));
+      if (ready.every(Boolean)) break;
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    }
+    await writeFile(startFile, 'start');
+    await Promise.all(children.map(({ exited }) => exited));
+
+    expect(Object.keys((await readCredentials()).workspaces).sort()).toEqual(names.sort());
+  }, 30_000);
+});
+
+describe('credential lock safety', () => {
+  it('recovers a lock only after its recorded process is gone', async () => {
+    const file = await put(credentials());
+    const lock = `${file}.lock`;
+    const child = spawn(process.execPath, ['-e', '']);
+    const deadPid = child.pid!;
+    await new Promise<void>((resolve) => child.once('exit', () => resolve()));
+    await mkdir(lock, { mode: 0o700 });
+    await writeFile(join(lock, 'owner.json'), JSON.stringify({ pid: deadPid, token: 'dead-owner' }), { mode: 0o600 });
+
+    await addWorkspace('third', 'lin_api_third_secret_123456789');
+
+    expect((await readCredentials()).workspaces.third).toEqual({ apiKey: 'lin_api_third_secret_123456789' });
+    await expect(access(lock)).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('rejects a symbolic-link lock without writing through it', async () => {
+    const file = await put(credentials());
+    const before = await readFile(file);
+    const outside = join(agentDirectory, 'outside');
+    await mkdir(outside);
+    await symlink(outside, `${file}.lock`, 'dir');
+
+    await expect(addWorkspace('third', 'lin_api_third_secret_123456789')).rejects.toThrow();
+
+    expect(await readFile(file)).toEqual(before);
+    expect(await readdir(outside)).toEqual([]);
+  });
 });
 
 describe('fail-closed credential mutation', () => {
@@ -201,6 +267,49 @@ function commandHarness(mode: 'allowlist' | 'readonly') {
   registerLinearExtension(pi, mode);
   return { run: (args: string) => command.handler(args, { hasUI: true, ui }), ui };
 }
+
+describe('/linear-auth workspace display redaction', () => {
+  it('redacts token-shaped and exact-secret names without changing selected workspaces', async () => {
+    const tokenName = 'lin_api_workspace_name_secret_123456789';
+    const unknownName = 'unknown-workspace-secret-123456789';
+    const addedUnknownName = 'another-unknown-workspace-secret-123456789';
+    await put(credentials({
+      activeWorkspace: tokenName,
+      workspaces: {
+        [tokenName]: { apiKey: 'safe-key-token' },
+        [unknownName]: { apiKey: unknownName },
+      },
+    }));
+    const harness = commandHarness('allowlist');
+
+    await harness.run('status');
+    harness.ui.select.mockImplementationOnce(async (_title, labels: string[]) => labels[1]);
+    await harness.run('switch');
+    expect((await readCredentials()).activeWorkspace).toBe(unknownName);
+
+    harness.ui.select.mockImplementationOnce(async (_title, labels: string[]) => labels[0]);
+    await harness.run('remove');
+    expect((await readCredentials()).workspaces[tokenName]).toBeUndefined();
+
+    harness.ui.input.mockResolvedValueOnce('safe-key-added');
+    harness.ui.confirm.mockResolvedValueOnce(false);
+    await harness.run(`add ${tokenName}`);
+    expect((await readCredentials()).workspaces[tokenName]).toEqual({ apiKey: 'safe-key-added' });
+
+    harness.ui.input.mockResolvedValueOnce(addedUnknownName);
+    harness.ui.confirm.mockResolvedValueOnce(false);
+    await harness.run(`add ${addedUnknownName}`);
+    expect((await readCredentials()).workspaces[addedUnknownName]).toEqual({ apiKey: addedUnknownName });
+
+    const displayed = [
+      ...harness.ui.notify.mock.calls.map(([message]) => message),
+      ...harness.ui.select.mock.calls.flatMap(([, labels]) => labels),
+      ...harness.ui.confirm.mock.calls.flatMap(([title, message]) => [title, message]),
+    ].join('\n');
+    expect(displayed).toContain('[REDACTED]');
+    for (const secret of [tokenName, unknownName, addedUnknownName]) expect(displayed).not.toContain(secret);
+  });
+});
 
 describe('/linear-auth read-only command boundary', () => {
   it.each(['add third', 'remove first', 'switch second', 'prefer workspace'])('rejects %s before changing credentials', async (args) => {

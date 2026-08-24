@@ -62,21 +62,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-export async function readCredentials(): Promise<WorkspaceCredentials> {
-  let source: string;
-  try {
-    source = await fs.readFile(getCredentialFilePath(), 'utf8');
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return emptyCredentials();
-    throw redactError(error);
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(source);
-  } catch {
-    invalidCredentialFile();
-  }
+function normalizeCredentials(parsed: unknown): WorkspaceCredentials {
   if (!isRecord(parsed) || !isRecord(parsed.workspaces)) invalidCredentialFile();
   if (parsed.activeWorkspace !== undefined && parsed.activeWorkspace !== null && typeof parsed.activeWorkspace !== 'string') {
     invalidCredentialFile();
@@ -101,15 +87,147 @@ export async function readCredentials(): Promise<WorkspaceCredentials> {
   };
 }
 
-export async function writeCredentials(
-  creds: WorkspaceCredentials,
-  mode: MutationMode = 'allowlist',
-): Promise<void> {
-  assertLocalWriteAllowed(mode);
+export async function readCredentials(): Promise<WorkspaceCredentials> {
+  let source: string;
+  try {
+    source = await fs.readFile(getCredentialFilePath(), 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return emptyCredentials();
+    throw redactError(error);
+  }
+
+  try {
+    return normalizeCredentials(JSON.parse(source));
+  } catch (error) {
+    if (error instanceof SyntaxError) invalidCredentialFile();
+    throw error;
+  }
+}
+
+type CredentialLockOwner = { pid: number; token: string };
+
+function invalidCredentialLock(): never {
+  throw new Error('Invalid Linear credential lock. Repair or remove it before changing stored credentials.');
+}
+
+async function readCredentialLockOwner(lockPath: string): Promise<CredentialLockOwner> {
+  const lockStat = await fs.lstat(lockPath).catch((error) => {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+    throw error;
+  });
+  if (!lockStat) throw Object.assign(new Error('Credential lock changed.'), { code: 'ENOENT' });
+  if (!lockStat.isDirectory() || lockStat.isSymbolicLink()) invalidCredentialLock();
+  const changed = async (): Promise<never> => {
+    const current = await fs.lstat(lockPath).catch(() => undefined);
+    if (!current || current.dev !== lockStat.dev || current.ino !== lockStat.ino) {
+      throw Object.assign(new Error('Credential lock changed.'), { code: 'ENOENT' });
+    }
+    invalidCredentialLock();
+  };
+  const ownerPath = path.join(lockPath, 'owner.json');
+  const ownerStat = await fs.lstat(ownerPath).catch(() => undefined);
+  if (!ownerStat) return changed();
+  if (!ownerStat.isFile() || ownerStat.isSymbolicLink()) invalidCredentialLock();
+  let owner: unknown;
+  try {
+    owner = JSON.parse(await fs.readFile(ownerPath, 'utf8'));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return changed();
+    invalidCredentialLock();
+  }
+  const current = await fs.lstat(lockPath).catch(() => undefined);
+  if (!current || current.dev !== lockStat.dev || current.ino !== lockStat.ino) {
+    throw Object.assign(new Error('Credential lock changed.'), { code: 'ENOENT' });
+  }
+  if (!isRecord(owner) || !Number.isSafeInteger(owner.pid) || Number(owner.pid) <= 0 || typeof owner.token !== 'string') {
+    invalidCredentialLock();
+  }
+  return { pid: Number(owner.pid), token: owner.token };
+}
+
+function ownerProcessIsGone(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return false;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ESRCH') return true;
+    if ((error as NodeJS.ErrnoException).code === 'EPERM') return false;
+    throw error;
+  }
+}
+
+async function moveAndRemoveCredentialLock(lockPath: string, expected: CredentialLockOwner): Promise<void> {
+  const movedPath = `${lockPath}.remove-${process.pid}-${randomUUID()}`;
+  await fs.rename(lockPath, movedPath);
+  const moved = await readCredentialLockOwner(movedPath);
+  if (moved.pid !== expected.pid || moved.token !== expected.token) invalidCredentialLock();
+  await fs.rm(movedPath, { recursive: true });
+}
+
+async function recoverCredentialLock(lockPath: string, expected: CredentialLockOwner): Promise<void> {
+  const recoveryPath = path.join(lockPath, 'recovery.json');
+  const recovery = { pid: process.pid, token: randomUUID() };
+  try {
+    await fs.writeFile(recoveryPath, JSON.stringify(recovery), { flag: 'wx', mode: 0o600 });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    return;
+  }
+  const current = await readCredentialLockOwner(lockPath);
+  if (current.pid !== expected.pid || current.token !== expected.token || !ownerProcessIsGone(current.pid)) {
+    await fs.rm(recoveryPath, { force: true });
+    return;
+  }
+  await moveAndRemoveCredentialLock(lockPath, expected);
+}
+
+async function withCredentialLock<T>(work: () => Promise<T>): Promise<T> {
+  const filePath = getCredentialFilePath();
+  const directory = path.dirname(filePath);
+  const lockPath = `${filePath}.lock`;
+  const owner = { pid: process.pid, token: randomUUID() };
+  await fs.mkdir(directory, { recursive: true });
+
+  while (true) {
+    const candidate = `${lockPath}-${owner.pid}-${randomUUID()}`;
+    try {
+      await fs.mkdir(candidate, { mode: 0o700 });
+      await fs.writeFile(path.join(candidate, 'owner.json'), JSON.stringify(owner), { flag: 'wx', mode: 0o600 });
+      await fs.rename(candidate, lockPath);
+      break;
+    } catch (error) {
+      await fs.rm(candidate, { recursive: true, force: true }).catch(() => undefined);
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== 'EEXIST' && code !== 'ENOTEMPTY') throw redactError(error);
+      let existing: CredentialLockOwner;
+      try {
+        existing = await readCredentialLockOwner(lockPath);
+      } catch (readError) {
+        if ((readError as NodeJS.ErrnoException).code === 'ENOENT') continue;
+        throw redactError(readError);
+      }
+      if (ownerProcessIsGone(existing.pid)) {
+        await recoverCredentialLock(lockPath, existing);
+        continue;
+      }
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    }
+  }
+
+  try {
+    return await work();
+  } finally {
+    const current = await readCredentialLockOwner(lockPath);
+    if (current.pid !== owner.pid || current.token !== owner.token) invalidCredentialLock();
+    await moveAndRemoveCredentialLock(lockPath, owner);
+  }
+}
+
+async function writeCredentialsUnlocked(creds: WorkspaceCredentials): Promise<void> {
   const filePath = getCredentialFilePath();
   const directory = path.dirname(filePath);
   const temporaryPath = path.join(directory, `.credentials-${process.pid}-${randomUUID()}.tmp`);
-  await fs.mkdir(directory, { recursive: true });
   try {
     const handle = await fs.open(temporaryPath, 'wx', 0o600);
     try {
@@ -125,15 +243,26 @@ export async function writeCredentials(
   }
 }
 
+export async function writeCredentials(
+  creds: WorkspaceCredentials,
+  mode: MutationMode = 'allowlist',
+): Promise<void> {
+  assertLocalWriteAllowed(mode);
+  await withCredentialLock(() => writeCredentialsUnlocked(normalizeCredentials(structuredClone(creds))));
+}
+
 async function mutateCredentials(
   mode: MutationMode,
   mutate: (creds: WorkspaceCredentials) => void,
 ): Promise<WorkspaceCredentials> {
   assertLocalWriteAllowed(mode);
-  const creds = await readCredentials();
-  mutate(creds);
-  await writeCredentials(creds, mode);
-  return creds;
+  return withCredentialLock(async () => {
+    const creds = structuredClone(await readCredentials());
+    mutate(creds);
+    const validated = normalizeCredentials(creds);
+    await writeCredentialsUnlocked(validated);
+    return validated;
+  });
 }
 
 export async function addWorkspace(

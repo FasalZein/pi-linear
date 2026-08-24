@@ -9,6 +9,7 @@ import {
   setAuthPreference,
   switchWorkspace,
 } from './client';
+import { activeSecrets } from './active-secrets';
 import { linearApiTool, linearBatchTool, linearGetResultTool, linearGraphqlTool } from './api';
 import { exceptionalToolDefinitions } from './exceptional-tools';
 import { assertLocalWriteAllowed } from './local-write-policy';
@@ -23,6 +24,10 @@ function text(value: unknown): string | undefined {
   return trimmed || undefined;
 }
 
+function displayWorkspace(name: string): string {
+  return redactText(name, activeSecrets());
+}
+
 export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = 'allowlist') {
   registerLinearSettings(pi);
   pi.registerCommand('linear-auth', {
@@ -33,6 +38,13 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
       const suppliedName = text(rest.join(' '));
       if (['add', 'remove', 'switch', 'prefer'].includes(command)) assertLocalWriteAllowed(mode);
 
+      const selectWorkspace = async (title: string, names: string[]): Promise<string | undefined> => {
+        const labels = names.map((name, index) => `${index + 1}. ${displayWorkspace(name)}`);
+        const selectedLabel = text(await ctx.ui.select(title, labels));
+        const selectedIndex = selectedLabel ? labels.indexOf(selectedLabel) : -1;
+        return selectedIndex < 0 ? undefined : names[selectedIndex];
+      };
+
       if (command === 'add') {
         const name = suppliedName ?? text(await ctx.ui.input('Workspace name', 'my-workspace'));
         if (!name) return ctx.ui.notify('No workspace name provided', 'warning');
@@ -40,33 +52,36 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
         if (!apiKey) return ctx.ui.notify('No API key provided', 'warning');
         const before = await readCredentials();
         await addWorkspace(name, apiKey, mode);
-        if (Object.keys(before.workspaces).length && (await ctx.ui.confirm('Switch workspace', `Switch to "${name}" now?`))) {
+        const displayedName = displayWorkspace(name);
+        if (Object.keys(before.workspaces).length && (await ctx.ui.confirm('Switch workspace', `Switch to "${displayedName}" now?`))) {
           await switchWorkspace(name, mode);
         }
-        ctx.ui.notify(`Workspace "${name}" saved`, 'info');
+        ctx.ui.notify(`Workspace "${displayedName}" saved`, 'info');
         return;
       }
 
       if (command === 'remove') {
         const creds = await readCredentials();
         const names = listWorkspaceNames(creds);
-        const selected = suppliedName ?? text(await ctx.ui.select('Select workspace to remove', names));
+        const selected = suppliedName ?? await selectWorkspace('Select workspace to remove', names);
         if (!selected) return ctx.ui.notify('No workspace selected', 'warning');
-        if (!creds.workspaces[selected]) return ctx.ui.notify(`Workspace "${redactText(selected)}" not found`, 'warning');
+        const displayedName = displayWorkspace(selected);
+        if (!creds.workspaces[selected]) return ctx.ui.notify(`Workspace "${displayedName}" not found`, 'warning');
         await removeWorkspace(selected, mode);
-        ctx.ui.notify(`Removed workspace "${selected}"`, 'info');
+        ctx.ui.notify(`Removed workspace "${displayedName}"`, 'info');
         return;
       }
 
       if (command === 'switch') {
         const creds = await readCredentials();
-        const selected = suppliedName ?? text(await ctx.ui.select('Select workspace', listWorkspaceNames(creds)));
+        const selected = suppliedName ?? await selectWorkspace('Select workspace', listWorkspaceNames(creds));
         if (!selected) return ctx.ui.notify('No workspace selected', 'warning');
         try {
           await switchWorkspace(selected, mode);
-          ctx.ui.notify(`Active workspace: ${selected}`, 'info');
+          ctx.ui.notify(`Active workspace: ${displayWorkspace(selected)}`, 'info');
         } catch (error) {
-          ctx.ui.notify(error instanceof Error ? error.message : String(error), 'warning');
+          const message = error instanceof Error ? error.message : String(error);
+          ctx.ui.notify(redactText(message, activeSecrets()), 'warning');
         }
         return;
       }
@@ -88,8 +103,8 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
         ctx.ui.notify(
           [
             `Auth preference: ${creds.authPreference}`,
-            `Auth source: ${source === 'workspace' ? `workspace: ${active}` : source === 'env' ? 'env: LINEAR_API_KEY' : 'none'}`,
-            names.length ? `Workspaces: ${names.map((name) => name === active ? `${name} (active)` : name).join(', ')}` : 'No workspaces configured',
+            `Auth source: ${source === 'workspace' ? `workspace: ${active ? displayWorkspace(active) : 'none'}` : source === 'env' ? 'env: LINEAR_API_KEY' : 'none'}`,
+            names.length ? `Workspaces: ${names.map((name) => name === active ? `${displayWorkspace(name)} (active)` : displayWorkspace(name)).join(', ')}` : 'No workspaces configured',
           ].join('\n'),
           source === 'none' ? 'warning' : 'info',
         );
