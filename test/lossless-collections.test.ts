@@ -47,25 +47,22 @@ async function storedEnvelope(result: Awaited<ReturnType<typeof routeLinearResul
 }
 
 describe('lossless collection routing', () => {
-  it('maintains the 80-row reproduction and recovers every returned row and field', async () => {
-    await artifactRoot();
-    const nodes = rows(80);
+  it('keeps a modest summary collection immediately usable by default', async () => {
+    const nodes = rows(50, 80);
     const pageInfo = { hasNextPage: true, hasPreviousPage: false, startCursor: 'server-start', endCursor: 'server-end' };
-    const result = await routeLinearResult(
-      { issues: { nodes, pageInfo, totalCount: 913 } },
-      { label: 'list_issues', category: 'collection' },
-    );
+    const data = { issues: { nodes, pageInfo, totalCount: 913 } };
+    const result = await routeLinearResult(data, { label: 'list_issues', category: 'collection' });
 
     expect(result).toMatchObject({
-      handle: expect.stringMatching(/^linear-result:v1:[0-9a-f-]+$/),
+      data,
       meta: {
         truncations: [],
         stringsClipped: 0,
-        routing: { requestedSink: 'auto', actualSink: 'artifact', reason: 'spill-threshold', inlineComplete: false },
+        routing: { requestedSink: 'auto', actualSink: 'inline', inlineComplete: true },
       },
     });
-    const stored = await storedEnvelope(result);
-    expect(stored.data.issues).toEqual({ nodes, pageInfo, totalCount: 913 });
+    expect(result).not.toHaveProperty('handle');
+    expect(Buffer.byteLength(JSON.stringify(result), 'utf8')).toBe(9_592);
   });
 
   it('externalizes auto collections at the configured byte threshold', async () => {
@@ -80,7 +77,7 @@ describe('lossless collection routing', () => {
     expect((await storedEnvelope(result)).data).toEqual(data);
   });
 
-  it('keeps forced inline collections complete above 8 KB and below Pi boundary', async () => {
+  it('keeps forced inline collections complete below Pi boundary', async () => {
     const nodes = rows(110, 20);
     const result = await routeLinearResult(
       { issues: { nodes, pageInfo: { hasNextPage: true, endCursor: 'linear-cursor' }, totalCount: 110 } },

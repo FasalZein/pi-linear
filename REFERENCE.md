@@ -184,7 +184,7 @@ Call `linear_search_issues` with direct arguments:
 
 ## Result routing
 
-Named singular reads stay complete inline when their serialized result fits Pi's 50KB or 2,000-line custom-tool boundary. Collections, batches, and raw GraphQL results at or above 8KB automatically route to `${PI_ARTIFACT_PROJECT_ROOT:-$HOME/.pi/artifacts}/linear/raw/`. This routing is cardinality-aware: it preserves every returned entity and every caller key.
+Complete results stay inline by default when their serialized result fits Pi's 50KB or 2,000-line custom-tool boundary. Results beyond that boundary automatically route to `${PI_ARTIFACT_PROJECT_ROOT:-$HOME/.pi/artifacts}/linear/raw/`. This routing preserves every returned entity and every caller key.
 
 The returned digest includes a canonical opaque `handle`, full `bytes`, a compact `index`, `meta`, and a legacy compatibility `path`. The artifact contains the complete redacted JSON. Retrieve it through `linear_get_result({"handle":"linear-result:v1:<UUID>"})`. Do not use arbitrary file-reading or shell tools. The compatibility path exists only for older integrations.
 
@@ -194,7 +194,7 @@ Use `"sink": "artifact"` to force an artifact. Use `"sink": "inline"` to prefer 
 
 Raw GraphQL returns usable partial data with all path-scoped errors instead of discarding successful siblings. Every batch caller key appears exactly once across `data`, `errors`, and `skipped`. A failed key has at most one error record. Its first `path` and `message` remain stable. Multiple path errors add `causes`. Usable failed data appears in `partial`. A batch artifact stores and recovers the complete `{ "data": {}, "errors": [], "skipped": [], "meta": {} }` envelope.
 
-Set `LINEAR_SPILL_BYTES` to change the automatic spill threshold for collection, batch, and raw GraphQL routing.
+Set `LINEAR_SPILL_BYTES` only to apply an explicit lower automatic spill threshold to collection, batch, and raw GraphQL routing.
 
 ## Rate-limit telemetry
 

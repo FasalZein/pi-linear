@@ -37,7 +37,6 @@ import { assertMutationAllowed, assertNamedInputAllowed, getMutationFields, type
 export const NODE_CAP = 100;
 export const STRING_CAP = 2_000;
 export const RESULT_BUDGET = 50 * 1024;
-export const AUTO_SPILL_BYTES = 8 * 1024;
 
 export type JsonObject = Record<string, unknown>;
 export type Truncation = { path: string; kept: number; endCursor?: string };
@@ -67,9 +66,9 @@ export type ResultMeta = {
   };
 };
 
-function spillThreshold(): number {
+function spillThreshold(): number | undefined {
   const configured = Number(process.env.LINEAR_SPILL_BYTES);
-  return Number.isFinite(configured) && configured > 0 ? configured : AUTO_SPILL_BYTES;
+  return Number.isFinite(configured) && configured > 0 ? configured : undefined;
 }
 
 function artifactIndex(data: JsonObject): string[] {
@@ -199,7 +198,10 @@ export async function routeLinearEnvelope<T extends JsonObject>(
   const serialized = JSON.stringify(complete);
   const bytes = Buffer.byteLength(serialized, 'utf8');
   const exceedsBoundary = !withinToolBoundary(serialized);
-  const spillForPolicy = options.category !== 'singular' && bytes >= spillThreshold();
+  const configuredSpillThreshold = spillThreshold();
+  const spillForPolicy = configuredSpillThreshold !== undefined
+    && options.category !== 'singular'
+    && bytes >= configuredSpillThreshold;
   const spill = requestedSink === 'artifact'
     || exceedsBoundary
     || (requestedSink === 'auto' && spillForPolicy);

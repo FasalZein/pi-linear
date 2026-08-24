@@ -4,7 +4,6 @@ import { join } from 'node:path';
 import { Kind, parse, type SelectionSetNode } from 'graphql';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  AUTO_SPILL_BYTES,
   NODE_CAP,
   RESULT_BUDGET,
   STRING_CAP,
@@ -480,24 +479,22 @@ describe('compactLinearResult compatibility', () => {
 });
 
 describe('result routing', () => {
-  it('auto-spills results above the default threshold', async () => {
-    expect(AUTO_SPILL_BYTES).toBe(8 * 1024);
-    await artifactRoot();
-    const result = await routeLinearResult({ body: 'x'.repeat(AUTO_SPILL_BYTES) }, { label: 'query', category: 'composite' });
+  it('keeps an evidence-sized raw result inline by default', async () => {
+    const result = await routeLinearResult(
+      { body: 'x'.repeat(9_511) },
+      { label: 'query', category: 'composite' },
+    );
 
-    expect(result).toMatchObject({
-      handle: expect.stringMatching(/^linear-result:v1:[0-9a-f-]+$/),
-      bytes: expect.any(Number),
-      path: expect.stringMatching(/\/linear\/raw\/[0-9a-f-]+\.json$/),
-    });
-    expect(result).not.toHaveProperty('data');
+    expect(result).toHaveProperty('data');
+    expect(result).not.toHaveProperty('path');
+    expect(Buffer.byteLength(JSON.stringify(result), 'utf8')).toBe(9_655);
   });
 
   it('honors forced artifact and inline sinks', async () => {
     await artifactRoot();
     const forcedArtifact = await routeLinearResult({ ok: true }, { label: 'query', category: 'composite', sink: 'artifact' });
     const forcedInline = await routeLinearResult(
-      { body: 'x'.repeat(AUTO_SPILL_BYTES + 1) },
+      { body: 'x'.repeat(9_500) },
       { label: 'query', category: 'composite', sink: 'inline' },
     );
 

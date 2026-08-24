@@ -423,6 +423,10 @@ describe('generated products', () => {
     const reviewerCounterexample = 'The direct tools `linear_batch`, `linear_graphql`, and typed `linear_*` do not accept telemetry. Use top-level `telemetry: "always"` on the loader instead. Deprecated loader routes retain top-level telemetry for compatibility.';
     expect(() => assertDirectTelemetryGuidance(reviewerCounterexample, reviewerCounterexample)).toThrow();
     expect(`${reference}\n${changelog}`).not.toMatch(LOADER_ONLY_TELEMETRY);
+    const routingDocs = `${readme}\n${reference}\n${adr}`;
+    expect(routingDocs).not.toMatch(/\b8\s?KB\b|8\s*\*\s*1024|\b8192\b/i);
+    expect(routingDocs).toContain("Pi's 50KB or 2,000-line custom-tool boundary");
+    expect(routingDocs).toContain('`LINEAR_SPILL_BYTES`');
     expect(published).not.toMatch(/\bTTL\b/i);
     expect(published).not.toMatch(/registers? (?:a )?typed `linear_get_result`/i);
     expect(published).not.toContain('linear-auditor.md');

@@ -9,6 +9,7 @@ import { syncAllowlistFile } from '../scripts/generate';
 const roots: string[] = [];
 const originalArtifactRoot = process.env.PI_ARTIFACT_PROJECT_ROOT;
 const originalApiKey = process.env.LINEAR_API_KEY;
+const originalSpillBytes = process.env.LINEAR_SPILL_BYTES;
 
 function toolsFromAgent(source: string): string[] {
   const tools = source.match(/^tools:\s*(.*)$/m)?.[1];
@@ -53,6 +54,8 @@ afterEach(async () => {
   else process.env.PI_ARTIFACT_PROJECT_ROOT = originalArtifactRoot;
   if (originalApiKey === undefined) delete process.env.LINEAR_API_KEY;
   else process.env.LINEAR_API_KEY = originalApiKey;
+  if (originalSpillBytes === undefined) delete process.env.LINEAR_SPILL_BYTES;
+  else process.env.LINEAR_SPILL_BYTES = originalSpillBytes;
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
@@ -62,6 +65,7 @@ describe('restricted Linear agent recovery', () => {
     roots.push(root);
     process.env.PI_ARTIFACT_PROJECT_ROOT = root;
     process.env.LINEAR_API_KEY = 'test-key';
+    process.env.LINEAR_SPILL_BYTES = '100';
 
     const agentPath = join(root, 'linear.md');
     await writeFile(agentPath, '---\nname: linear\ntools: all, read, bash, exec, linear_old\nmode: background\n---\n\nRestricted agent.\n\n## Tool surface\n\nOld.\n\n## Query discipline\n\nOld.\n\n## Job 1 — Recover\n\nKeep.\n');

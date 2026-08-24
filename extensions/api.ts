@@ -48,7 +48,6 @@ import {
 } from './result-handles';
 
 export {
-  AUTO_SPILL_BYTES,
   NODE_CAP,
   RESULT_BUDGET,
   STRING_CAP,
