@@ -99,8 +99,15 @@ describe('result handles', () => {
       },
     });
 
+    const storedEnvelope = JSON.parse(await readFile(stored.path, 'utf8'));
+    expect(storedEnvelope.meta.routing).toEqual({
+      requestedSink: 'artifact', actualSink: 'artifact', reason: 'requested', inlineComplete: false,
+    });
+    expect(stored.bytes).toBe(Buffer.byteLength(JSON.stringify(storedEnvelope), 'utf8'));
+
     const rootResult = await get(stored.handle);
-    expect(rootResult.details.data.value).toEqual(JSON.parse(await readFile(stored.path, 'utf8')));
+    expect(rootResult.details.data.value).toEqual(storedEnvelope);
+    expect(rootResult.details.data.value.meta.routing).toEqual(storedEnvelope.meta.routing);
     expect(rootResult.details.meta.retrieval).toEqual({
       handle: stored.handle, path: '', complete: true,
     });
@@ -111,6 +118,17 @@ describe('result handles', () => {
       meta: { retrieval: { handle: stored.handle, path: '/data/document/title', complete: true } },
     });
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('routes twenty concurrent first-use artifacts without creation races', async () => {
+    await artifactRoot();
+    const results = await Promise.allSettled(
+      Array.from({ length: 20 }, (_, index) => artifact({ index })),
+    );
+
+    expect(results.filter(({ status }) => status === 'fulfilled')).toHaveLength(20);
+    expect(results.filter(({ status }) => status === 'rejected')).toEqual([]);
+    expect(new Set(results.map((result) => result.status === 'fulfilled' && result.value.handle)).size).toBe(20);
   });
 
   it('keeps direct and legacy retrieval equal across valid and invalid fixtures without network access', async () => {

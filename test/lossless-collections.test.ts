@@ -74,7 +74,13 @@ describe('lossless collection routing', () => {
 
     const result = await routeLinearResult(data, { label: 'list_issues', category: 'collection' });
     expect(result).toMatchObject({ meta: { routing: { actualSink: 'artifact', reason: 'spill-threshold' } } });
-    expect((await storedEnvelope(result)).data).toEqual(data);
+    const stored = await storedEnvelope(result);
+    expect(stored.data).toEqual(data);
+    expect(stored.meta.routing).toEqual({
+      requestedSink: 'auto', actualSink: 'artifact', reason: 'spill-threshold', inlineComplete: false,
+    });
+    if (!('bytes' in result)) throw new Error('Expected an externalized result.');
+    expect(result.bytes).toBe(Buffer.byteLength(JSON.stringify(stored), 'utf8'));
   });
 
   it('keeps forced inline collections complete below Pi boundary', async () => {
@@ -126,7 +132,11 @@ describe('lossless collection routing', () => {
     });
     const stored = await storedEnvelope(result);
     expect(stored.data.issues.nodes).toEqual(nodes);
+    expect(stored.meta.routing).toEqual({
+      requestedSink: 'inline', actualSink: 'artifact', reason: 'tool-output-boundary', inlineComplete: false,
+    });
     if (!('handle' in result)) throw new Error('Expected an externalized result.');
+    expect(result.bytes).toBe(Buffer.byteLength(JSON.stringify(stored), 'utf8'));
     expect(result.meta.resultBudget?.omissions?.[0]?.handle).toBe(result.handle);
     expect(result.meta.routing?.externalized?.[0]?.handle).toBe(result.handle);
   });

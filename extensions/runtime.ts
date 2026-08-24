@@ -187,7 +187,7 @@ export async function routeLinearEnvelope<T extends JsonObject>(
     throw new Error(`Linear ${options.label} result envelope is missing metadata.`);
   }
   const requestedSink = options.sink ?? 'auto';
-  const complete = {
+  const inlineEnvelope = {
     ...envelope,
     meta: {
       ...(existingMeta as JsonObject),
@@ -195,29 +195,39 @@ export async function routeLinearEnvelope<T extends JsonObject>(
       routing: { requestedSink, actualSink: 'inline', inlineComplete: true },
     },
   } as T;
-  const serialized = JSON.stringify(complete);
-  const bytes = Buffer.byteLength(serialized, 'utf8');
-  const exceedsBoundary = !withinToolBoundary(serialized);
+  const inlineSerialized = JSON.stringify(inlineEnvelope);
+  const inlineBytes = Buffer.byteLength(inlineSerialized, 'utf8');
+  const exceedsBoundary = !withinToolBoundary(inlineSerialized);
   const configuredSpillThreshold = spillThreshold();
   const spillForPolicy = configuredSpillThreshold !== undefined
     && options.category !== 'singular'
-    && bytes >= configuredSpillThreshold;
+    && inlineBytes >= configuredSpillThreshold;
   const spill = requestedSink === 'artifact'
     || exceedsBoundary
     || (requestedSink === 'auto' && spillForPolicy);
 
-  if (!spill) return complete;
+  if (!spill) return inlineEnvelope;
 
-  const directory = await resolveTrustedResultDirectory(true);
-  const uuid = randomUUID();
-  const handle = resultHandle(uuid);
-  await writeResultArtifact(directory, uuid, serialized);
-  const path = join(resultArtifactRoot(), `${uuid}.json`);
   const reason = requestedSink === 'artifact'
     ? 'requested'
     : exceedsBoundary
       ? 'tool-output-boundary'
       : 'spill-threshold';
+  const storedEnvelope = {
+    ...envelope,
+    meta: {
+      ...(existingMeta as JsonObject),
+      ...(warning ? { rateLimit: warning } : {}),
+      routing: { requestedSink, actualSink: 'artifact', reason, inlineComplete: false },
+    },
+  } as T;
+  const serialized = JSON.stringify(storedEnvelope);
+  const bytes = Buffer.byteLength(serialized, 'utf8');
+  const directory = await resolveTrustedResultDirectory(true);
+  const uuid = randomUUID();
+  const handle = resultHandle(uuid);
+  await writeResultArtifact(directory, uuid, serialized);
+  const path = join(resultArtifactRoot(), `${uuid}.json`);
   const data = envelope.data;
   const base: ArtifactResult = {
     handle,

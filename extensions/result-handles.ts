@@ -56,7 +56,11 @@ export async function resolveTrustedResultDirectory(create: boolean): Promise<st
       if (metadata.isSymbolicLink() || !metadata.isDirectory()) throw new Error(INVALID_DIRECTORY);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT' || !create) throw error;
-      await mkdir(lexical);
+      try {
+        await mkdir(lexical);
+      } catch (creationError) {
+        if ((creationError as NodeJS.ErrnoException).code !== 'EEXIST') throw creationError;
+      }
       const metadata = await lstat(lexical);
       if (metadata.isSymbolicLink() || !metadata.isDirectory()) throw new Error(INVALID_DIRECTORY);
     }
