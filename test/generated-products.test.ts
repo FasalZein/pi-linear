@@ -254,19 +254,20 @@ describe('generated products', () => {
     });
   });
 
-  it('keeps the loader description compact and publishes every name in the generated catalog', () => {
+  it('publishes all 49 operation names and every special help name in the compact loader description', () => {
     const description = (linearApiTool() as any).description as string;
+    expect(description).toContain('Discovery help only.');
+    expect(description).toContain('Exact help loads linear_<name>');
+    expect(description).toContain('linear_get_result is active');
     expect(description).not.toContain('{ "operation": "<name>", "variables": { … } }');
-    expect(description).toContain('{ "operation": "help", "variables": { "operation": "<name>" } }');
-    expect(description).toContain('Use linear only for discovery');
-    expect(description).toContain('Execute work only through the exact underscore tool name');
-    expect(description).toContain('Exact graphql help loads linear_graphql');
-    expect(description).toContain('Exact batch help loads linear_batch');
+    expect(description).not.toContain('linear get_result');
 
-    for (const { name, purpose } of operationDefinitions) {
-      expect(description).not.toContain(name);
-      expect(description).not.toContain(purpose);
-    }
+    const operationsLine = description.match(/^operations:([a-z0-9_,]+)$/m)?.[1];
+    const specialLine = description.match(/^special:([a-z0-9_,]+)$/m)?.[1];
+    expect(operationDefinitions).toHaveLength(49);
+    expect(operationsLine?.split(',')).toHaveLength(49);
+    expect(operationsLine?.split(',')).toEqual(operationDefinitions.map(({ name }) => name));
+    expect(specialLine?.split(',')).toEqual(['graphql', 'batch', 'get_result']);
 
     const published = new Map([...LINEAR_OPERATION_CATALOG.matchAll(/^([a-z]+): ([a-z0-9_, ]+)$/gm)]
       .map((match) => [match[1]!, match[2]!.split(', ')]));
@@ -389,7 +390,8 @@ describe('generated products', () => {
     expect(manifest.allowedTools).toContain('linear_get_result');
     expect(manifest.allowedTools).toContain('linear_graphql');
     expect(manifest.allowedTools).toContain('linear_batch');
-    expect((linearApiTool() as any).description).toContain('Exact get_result help returns its direct parameter card');
+    expect((linearApiTool() as any).description).toContain('linear_get_result is active');
+    expect((linearApiTool() as any).description).toContain('special:graphql,batch,get_result');
     expect((linearApiTool() as any).description).not.toMatch(/linear (?:get_result|batch)/);
   });
 

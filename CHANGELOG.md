@@ -6,7 +6,7 @@
 - Added deferred direct `linear_graphql`. Exact `graphql` help activates it.
 - Added direct `linear_get_result` as an initially active exceptional tool. Exact `get_result` help returns its direct parameter card without activation.
 - Made `linear` discovery-only. It requires `operation: "help"` and accepts only root, domain, or exact help. Removed named, raw GraphQL, batch, and result-retrieval execution routes. Removed shapes fail locally with guidance to `linear_<operation>`, `linear_graphql`, `linear_batch`, or `linear_get_result`.
-- Reduced the initial active schema (`linear` plus `linear_get_result`) to 1,737 bytes from the measured 2,122-byte pre-Design-B baseline.
+- Kept the generated 49-operation catalog in the model-facing discovery description and reduced the initial active schema (`linear` plus `linear_get_result`) to 2,068 bytes from the measured 2,122-byte pre-Design-B baseline.
 - Added `delete_issue_relation`, the only named delete operation. It requires exact relation, source issue, target issue, and relation-type guards, verifies them with one preflight read, and deletes only after an exact match under normal named mutation authority. Generic batch can fold this guard into its read phase before one ordinary mutation.
 - Normalized guarded relation preflight and delete failures to stable operation-specific errors that expose no supplied UUID or active credential.
 - Added batch transport: compatible reads share one aliased query, one ordinary mutation runs after the read gate, and independent issue creates use `issueBatchCreate`.

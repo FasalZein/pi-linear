@@ -143,7 +143,8 @@ describe('batch help and catalog', () => {
   it('publishes a discovery-only loader and a direct batch telemetry override', () => {
     const loader = linearApiTool() as any;
     const direct = linearBatchTool() as any;
-    expect(loader.description).toContain('Exact batch help loads linear_batch');
+    expect(loader.description).toContain('Exact help loads linear_<name>');
+    expect(loader.description).toContain('special:graphql,batch,get_result');
     expect(Object.keys(loader.parameters.properties)).toEqual(['operation', 'variables']);
     expect(JSON.stringify(direct.parameters)).toContain('telemetry');
   });

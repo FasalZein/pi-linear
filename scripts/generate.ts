@@ -23,7 +23,7 @@ const readmePath = resolve(root, 'README.md');
 const referencePath = resolve(root, 'REFERENCE.md');
 const START = '<!-- BEGIN GENERATED LINEAR OPERATIONS -->';
 const END = '<!-- END GENERATED LINEAR OPERATIONS -->';
-const LINEAR_TOOL_USAGE = 'Use linear only for discovery. It requires operation: "help". Send { "operation": "help" } for root help, { "operation": "help", "variables": { "domain": "issues" } } for domain help, or { "operation": "help", "variables": { "operation": "<name>" } } for exact help. Exact named help loads linear_<name>. Exact graphql help loads linear_graphql. Exact batch help loads linear_batch. Exact get_result help returns its direct parameter card; linear_get_result is already active. Execute work only through the exact underscore tool name.';
+const LINEAR_TOOL_USAGE = 'Discovery help only. Exact help loads linear_<name>; linear_get_result is active.';
 
 export const generatedFiles = [manifestPath, contractsPath, catalogPath, readmePath, referencePath] as const;
 
@@ -99,8 +99,15 @@ export function operationCatalogText(): string {
   ].join('\n');
 }
 
+function modelOperationCatalogText(): string {
+  return [
+    `operations:${operationDefinitions.map(({ name }) => name).join(',')}`,
+    'special:graphql,batch,get_result',
+  ].join('\n');
+}
+
 export function linearToolDescription(): string {
-  return LINEAR_TOOL_USAGE;
+  return `${LINEAR_TOOL_USAGE}\n${modelOperationCatalogText()}`;
 }
 
 function catalogModule(): string {

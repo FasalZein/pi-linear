@@ -207,7 +207,9 @@ describe('runtime discovery', () => {
 
   it('keeps the description compact and bootstraps exact help', () => {
     const tool = linearApiTool() as any;
-    expect(tool.description).toContain('{ "operation": "help", "variables": { "operation": "<name>" } }');
+    expect(tool.description).toContain('Discovery help only. Exact help loads linear_<name>');
+    expect(tool.description).toMatch(/^operations:.*\bget_issue\b/m);
+    expect(tool.description).toContain('special:graphql,batch,get_result');
     expect(tool.description).not.toContain('REFERENCE.md');
     expect(tool.description).not.toContain('/REFERENCE');
     expect(tool.description).not.toContain('get_issue(');

@@ -396,7 +396,8 @@ describe('result handles', () => {
     const operationGuidance = loader.parameters.properties.operation.description;
     expect(operationGuidance).toBe('Discover operations and activate an exact direct tool.');
     expect(operationGuidance).not.toContain('linear get_result');
-    expect(loader.description).toContain('Exact get_result help returns its direct parameter card');
+    expect(loader.description).toContain('linear_get_result is active');
+    expect(loader.description).toContain('special:graphql,batch,get_result');
     expect(typedToolNames()).not.toContain('linear_get_result');
   });
 });
