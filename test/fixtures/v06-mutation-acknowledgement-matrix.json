@@ -276,115 +276,115 @@
   "update_document": [
     {
       "required": [
-        "documentId",
+        "document",
         "title"
       ],
-      "target": "documentId"
+      "target": "document"
     },
     {
       "required": [
-        "documentId",
+        "document",
         "content"
       ],
-      "target": "documentId"
+      "target": "document"
     },
     {
       "required": [
-        "documentId",
+        "document",
         "icon"
       ],
-      "target": "documentId"
+      "target": "document"
     },
     {
       "required": [
-        "documentId",
+        "document",
         "color"
       ],
-      "target": "documentId"
+      "target": "document"
     },
     {
       "required": [
-        "documentId",
+        "document",
         "issueId"
       ],
-      "target": "documentId"
+      "target": "document"
     },
     {
       "required": [
-        "documentId",
+        "document",
         "teamId"
       ],
-      "target": "documentId"
+      "target": "document"
     },
     {
       "required": [
-        "documentId",
+        "document",
         "projectId"
       ],
-      "target": "documentId"
+      "target": "document"
     },
     {
       "required": [
-        "documentId",
+        "document",
         "initiativeId"
       ],
-      "target": "documentId"
+      "target": "document"
     },
     {
       "required": [
-        "documentId",
+        "document",
         "cycleId"
       ],
-      "target": "documentId"
+      "target": "document"
     },
     {
       "required": [
-        "documentId",
+        "document",
         "releaseId"
       ],
-      "target": "documentId"
+      "target": "document"
     },
     {
       "required": [
-        "documentId",
+        "document",
         "resourceFolderId"
       ],
-      "target": "documentId"
+      "target": "document"
     },
     {
       "required": [
-        "documentId",
+        "document",
         "lastAppliedTemplateId"
       ],
-      "target": "documentId"
+      "target": "document"
     },
     {
       "required": [
-        "documentId",
+        "document",
         "ownerId"
       ],
-      "target": "documentId"
+      "target": "document"
     },
     {
       "required": [
-        "documentId",
+        "document",
         "subscriberIds"
       ],
-      "target": "documentId"
+      "target": "document"
     },
     {
       "required": [
-        "documentId",
+        "document",
         "sortOrder"
       ],
-      "target": "documentId"
+      "target": "document"
     },
     {
       "required": [
-        "documentId",
+        "document",
         "hiddenAt"
       ],
-      "target": "documentId"
+      "target": "document"
     }
   ],
   "create_issue_label": [

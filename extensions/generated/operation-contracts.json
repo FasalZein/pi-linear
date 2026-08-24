@@ -4984,7 +4984,11 @@
         "sortOrder",
         "hiddenAt"
       ],
-      "action": "update"
+      "action": "update",
+      "targetFields": [
+        "document",
+        "documentId"
+      ]
     }
   },
   {

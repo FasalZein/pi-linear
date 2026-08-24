@@ -316,6 +316,7 @@ export const documents: readonly OperationDefinition[] = ([
 				]
 			]
 		},
+		renderTargetFields: ["document", "documentId"],
 		domain: "documents",
 		purpose: "Update a document.",
 		root: "documentUpdate",
