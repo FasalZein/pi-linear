@@ -72,6 +72,22 @@ describe('deterministic fake-server smoke command', () => {
         expect(report.runtime.listGet.filter((entry: any) => entry.status === 'passed')).toHaveLength(8);
         expect(report.runtime.listGet.filter((entry: any) => entry.status === 'skipped:list empty')).toHaveLength(1);
         expect(report.runtime.listGet.filter((entry: any) => entry.status === 'skipped:no valid get input exists')).toHaveLength(6);
+        expect(report.runtime.requests).toMatchObject({
+          total: report.runtime.requests.query,
+          mutation: 0,
+        });
+        expect(report.runtime.requests.documents[0]).toMatchObject({
+          operationType: 'query', operationName: 'IntrospectionQuery',
+        });
+        expect(report.runtime.requests.documents).toHaveLength(report.runtime.requests.total);
+        expect(report.runtime.requests.documents.every((request: any) =>
+          request.operationType === 'query' && /^[0-9a-f]{64}$/.test(request.documentSha256))).toBe(true);
+        const proof = JSON.stringify(report.runtime.requests);
+        expect(proof).not.toContain('variables');
+        expect(proof).not.toContain('headers');
+        expect(proof).not.toContain('fake_active_secret');
+        expect(proof).not.toContain('server_secret');
+        expect(proof).not.toContain('private-record');
         expect((await readdir(root)).filter((name) => name.startsWith('pi-linear-readonly-'))).toEqual([]);
       }
 

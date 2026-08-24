@@ -1,7 +1,8 @@
 import { readFile } from 'node:fs/promises';
-import { buildSchema } from 'graphql';
+import { buildSchema, parse } from 'graphql';
 import { describe, expect, it, vi } from 'vitest';
 import { runtimePackageDocuments } from '../extensions/package-documents';
+import { operations } from '../extensions/operations';
 import { recordingTransport, requestEvidence } from '../scripts/request-recorder';
 import {
   sha256,
@@ -31,17 +32,54 @@ describe('package GraphQL document authority', () => {
     expect(generated.documents.map(({ id, sourceClass, document }) => ({ id, sourceClass, document }))).toEqual(runtime);
     expect(new Set(generated.documents.map(({ id }) => id)).size).toBe(generated.documents.length);
     expect(generated.documents.map(({ id }) => id)).toEqual(expect.arrayContaining([
+      'operation.search_issues.summary',
+      'operation.search_issues.full',
+      'operation.search_issues.exact-summary',
+      'operation.search_issues.exact-full',
+      'operation.save_project.create',
+      'operation.save_project.update',
       'transaction.issue-batch-create',
+      'lookup.issue',
+      'lookup.team.id',
+      'lookup.team.key',
+      'lookup.state.id',
+      'lookup.state.name',
       'lookup.state.team-id',
       'lookup.state.team-key',
       'lookup.user.viewer',
+      'lookup.user.id',
+      'lookup.user.identity',
+      'lookup.document.id',
+      'lookup.document.title',
+      'lookup.issue-relation',
       'batch.merged.all-reads',
       'introspection.readonly-schema',
     ]));
     expect(generated.exclusions).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'caller.linear_graphql' }),
       expect.objectContaining({ id: 'local.SwitchWorkspaceLocal' }),
+      expect.objectContaining({ id: 'local.linear_get_result' }),
     ]));
+    for (const descriptor of generated.documents) {
+      expect(() => parse(descriptor.document), descriptor.id).not.toThrow();
+      expect(descriptor.sha256, descriptor.id).toBe(sha256(descriptor.document));
+    }
+    const transaction = generated.documents.find(({ id }) => id === 'transaction.issue-batch-create')!;
+    expect(transaction.document).toContain('IssueBatchCreateInput!');
+    expect(transaction.document).toContain('issueBatchCreate(input: $input)');
+    expect(transaction.document).toContain('success');
+    expect(transaction.document).toContain('issues {');
+    expect(transaction.document).toContain('labels(first: 50)');
+  });
+
+  it('keeps identifier-shaped search runtime documents in the inventory', async () => {
+    const source = JSON.parse(await readFile(inventoryUrl, 'utf8')) as PackageGraphQLInventory;
+    for (const view of ['summary', 'full'] as const) {
+      const plan = await operations.search_issues!.plan!({ term: 'AEO-1', view });
+      expect(plan.finish({}).variant?.document).toBe(
+        source.documents.find(({ id }) => id === `operation.search_issues.exact-${view}`)?.document,
+      );
+    }
   });
 
   it('keeps authenticated validator and capture consumers independent from runtime authorities', async () => {
@@ -64,16 +102,21 @@ describe('package GraphQL document authority', () => {
 });
 
 describe('transport request recorder', () => {
-  it('records the first request and preserves the delegated response', async () => {
-    const response = new Response(JSON.stringify({ data: { ok: true } }), { status: 200 });
+  it('records the first request and preserves only compact request proof', async () => {
+    const response = new Response(JSON.stringify({ data: { privateRecord: 'not-recorded-response' } }), { status: 200 });
     const delegate = vi.fn(async () => response);
     const evidence = requestEvidence();
     await expect(recordingTransport(delegate, evidence)('https://api.linear.app/graphql', {
-      method: 'POST', body: JSON.stringify({ query: 'query First { viewer { id } }', variables: { secret: 'not-recorded' } }),
+      method: 'POST',
+      headers: { Authorization: 'Bearer not-recorded-credential', 'X-Private': 'not-recorded-header' },
+      body: JSON.stringify({ query: 'query First { viewer { id } }', variables: { secret: 'not-recorded-variable' } }),
     })).resolves.toBe(response);
     expect(delegate).toHaveBeenCalledTimes(1);
     expect(evidence).toMatchObject({ total: 1, query: 1, mutation: 0 });
-    expect(JSON.stringify(evidence)).not.toContain('not-recorded');
+    const durableProof = JSON.stringify(evidence);
+    for (const secret of ['not-recorded-variable', 'not-recorded-credential', 'not-recorded-header', 'not-recorded-response']) {
+      expect(durableProof).not.toContain(secret);
+    }
   });
 
   it('records and rejects a mutation before transport', async () => {
@@ -84,6 +127,17 @@ describe('transport request recorder', () => {
     })).rejects.toThrow('mutation request rejected before network transmission');
     expect(delegate).not.toHaveBeenCalled();
     expect(evidence).toMatchObject({ total: 1, query: 0, mutation: 1 });
+  });
+
+  it('rejects subscriptions before transport and does not count them as queries', async () => {
+    const delegate = vi.fn();
+    const evidence = requestEvidence();
+    await expect(recordingTransport(delegate, evidence)('https://api.linear.app/graphql', {
+      method: 'POST', body: JSON.stringify({ query: 'subscription Stop { thingChanged { id } }' }),
+    })).rejects.toThrow('subscription request rejected before network transmission');
+    expect(delegate).not.toHaveBeenCalled();
+    expect(evidence).toMatchObject({ total: 1, query: 0, mutation: 0 });
+    expect(evidence.documents[0]?.operationType).toBe('subscription');
   });
 
   it('preserves top-level network and cancellation failures', async () => {

@@ -28,7 +28,6 @@ async function serializedBody(input: RequestInfo | URL, init?: RequestInit): Pro
 export function recordingTransport(
   delegate: LinearTransport,
   evidence: RequestEvidence,
-  rejectMutations = true,
 ): LinearTransport {
   return async (input, init) => {
     const body = JSON.parse(await serializedBody(input, init)) as { query?: unknown };
@@ -45,10 +44,14 @@ export function recordingTransport(
       documentSha256: sha256(body.query),
     } satisfies RecordedRequest;
     evidence.total++;
-    evidence[operationType === 'mutation' ? 'mutation' : 'query']++;
+    if (operationType === 'query') evidence.query++;
+    if (operationType === 'mutation') evidence.mutation++;
     evidence.documents.push(record);
-    if (rejectMutations && operationType === 'mutation') {
+    if (operationType === 'mutation') {
       throw new Error('request-recorder: mutation request rejected before network transmission');
+    }
+    if (operationType === 'subscription') {
+      throw new Error('request-recorder: subscription request rejected before network transmission');
     }
     return delegate(input, init);
   };
@@ -56,8 +59,8 @@ export function recordingTransport(
 
 export function assertReadOnlyEvidence(evidence: RequestEvidence): void {
   if (evidence.mutation !== 0) throw new Error(`request-recorder: expected zero mutation requests, actual ${evidence.mutation}`);
-  if (evidence.total !== evidence.query) {
-    throw new Error(`request-recorder: expected total ${evidence.total} to equal query ${evidence.query}`);
+  if (evidence.total !== evidence.query || evidence.total !== evidence.documents.length) {
+    throw new Error(`request-recorder: expected total ${evidence.total} to equal query ${evidence.query} and documents ${evidence.documents.length}`);
   }
   if (evidence.documents.some(({ operationType, documentSha256 }) =>
     !operationType || !/^[0-9a-f]{64}$/.test(documentSha256))) {

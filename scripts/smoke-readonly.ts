@@ -337,21 +337,7 @@ export async function runReadonlySmoke(): Promise<JsonObject> {
 
 try {
   const summary = await runReadonlySmoke();
-  const runtime = summary.runtime as JsonObject;
-  const requests = runtime.requests as JsonObject;
-  process.stdout.write(`READONLY SMOKE PASS: ${JSON.stringify({
-    status: summary.status,
-    schema: summary.schema,
-    runtime: {
-      activation: runtime.activation,
-      zeroArgumentReads: runtime.zeroArgumentReads,
-      followedCursors: runtime.followedCursors,
-      getIssueIdentity: runtime.getIssueIdentity,
-      missingReference: runtime.missingReference,
-      redaction: runtime.redaction,
-      requests: { total: requests.total, query: requests.query, mutation: requests.mutation },
-    },
-  })}\n`);
+  process.stdout.write(`READONLY SMOKE PASS: ${JSON.stringify(summary)}\n`);
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
   process.stderr.write(`READONLY SMOKE FAIL: ${redactText(message)}\n`);
