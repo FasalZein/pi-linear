@@ -68,5 +68,14 @@ describe('fallback provider route', () => {
     expect(hasNativeOnlyMarker(openaiPayload)).toBe(false);
     expect(anthropicPayload.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear', 'linear_get_result', 'linear_get_issue']);
     expect(openaiPayload.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear', 'linear_get_result', 'linear_get_issue']);
+    const anthropicGuidance = anthropicPayload.tools.find((tool: { name: string }) => tool.name === 'linear')
+      ?.input_schema.properties.operation.description;
+    const openaiGuidance = openaiPayload.tools.find((tool: { name: string }) => tool.name === 'linear')
+      ?.parameters.properties.operation.description;
+    for (const guidance of [anthropicGuidance, openaiGuidance]) {
+      expect(guidance).toContain('Legacy get_result is deprecated');
+      expect(guidance).toContain('call linear_get_result with direct arguments');
+      expect(guidance).not.toContain('loader-only batch and get_result');
+    }
   });
 });

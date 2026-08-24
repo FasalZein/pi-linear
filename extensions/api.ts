@@ -257,7 +257,7 @@ export function linearApiTool(mode: MutationMode = 'allowlist', activator?: Tool
     label: 'Linear API',
     description: LINEAR_TOOL_DESCRIPTION,
     parameters: Type.Object({
-      operation: Type.Optional(Type.String({ description: 'Use help to discover typed tools, or call loader-only batch and get_result.' })),
+      operation: Type.Optional(Type.String({ description: 'Use help to discover typed tools, or call loader-only batch. Legacy get_result is deprecated; call linear_get_result with direct arguments.' })),
       query: Type.Optional(Type.String({ description: 'Raw GraphQL escape hatch.' })),
       variables: Type.Optional(Type.Record(Type.String(), Type.Any())),
       workspace: Type.Optional(Type.String({ description: 'Stored workspace name, or default/active for normal credential selection.' })),

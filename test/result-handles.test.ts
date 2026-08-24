@@ -390,16 +390,20 @@ describe('result handles', () => {
         { name: 'offset', type: 'Int', required: false },
       ],
       example: {
-        operation: 'get_result',
-        variables: {
-          handle: 'linear-result:v1:550e8400-e29b-41d4-a716-446655440000',
-          path: '/data/document/content',
-          offset: 0,
-        },
+        handle: 'linear-result:v1:550e8400-e29b-41d4-a716-446655440000',
+        path: '/data/document/content',
+        offset: 0,
       },
     });
     expect(card.details).not.toHaveProperty('loadedTools');
-    expect((linearApiTool() as any).description).toContain('loader: batch, get_result');
+    expect(card.details.example).not.toHaveProperty('operation');
+    expect(card.details.example).not.toHaveProperty('variables');
+    const loader = linearApiTool() as any;
+    const operationGuidance = loader.parameters.properties.operation.description;
+    expect(operationGuidance).toContain('Legacy get_result is deprecated');
+    expect(operationGuidance).toContain('call linear_get_result with direct arguments');
+    expect(operationGuidance).not.toContain('loader-only batch and get_result');
+    expect(loader.description).toContain('loader: batch, get_result');
     expect(typedToolNames()).not.toContain('linear_get_result');
   });
 });

@@ -24,12 +24,9 @@ export const GET_RESULT_HELP = {
     { name: 'offset', type: 'Int', required: false },
   ],
   example: {
-    operation: 'get_result',
-    variables: {
-      handle: EXAMPLE_HANDLE,
-      path: '/data/document/content',
-      offset: 0,
-    },
+    handle: EXAMPLE_HANDLE,
+    path: '/data/document/content',
+    offset: 0,
   },
 } as const;
 
