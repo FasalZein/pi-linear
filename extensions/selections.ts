@@ -24,7 +24,7 @@ export type ResultView = "summary" | "full";
 export type ResultViewEntity = "issue" | "project" | "document";
 
 const PAGE_INFO = `pageInfo { hasNextPage hasPreviousPage startCursor endCursor }`;
-const ISSUE_LABELS = `labels(first: 50) { nodes { id name } }`;
+const ISSUE_LABELS = `labels(first: 50) { nodes { id name } pageInfo { hasNextPage endCursor } }`;
 const ISSUE_SUMMARY = `
   id identifier title url
 `;
@@ -53,8 +53,8 @@ const PROJECT_SUMMARY = `
 const PROJECT_FULL = `
   id name description color icon state priority slugId startDate targetDate completedAt
   canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url
-  teams(first: 10) { nodes { id key name } }
-  lead { id name email } members(first: 10) { nodes { id name email } } status { id name }
+  teams(first: 10) { nodes { id key name } pageInfo { hasNextPage endCursor } }
+  lead { id name email } members(first: 10) { nodes { id name email } pageInfo { hasNextPage endCursor } } status { id name }
   content
 `;
 const PROJECT_LABEL = `
@@ -110,7 +110,7 @@ const SELECTIONS: Record<ProjectionEntity, Record<ProjectionView, string>> = {
   projectLabel: { list: PROJECT_LABEL, detail: PROJECT_LABEL },
   projectRelation: { list: PROJECT_RELATION, detail: PROJECT_RELATION },
   team: {
-    list: `${TEAM} states(first: 50) { nodes { id name type } }`,
+    list: `${TEAM} states(first: 50) { nodes { id name type } pageInfo { hasNextPage endCursor } }`,
     detail: TEAM,
   },
   user: { list: USER, detail: USER },

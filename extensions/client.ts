@@ -680,9 +680,10 @@ export function assertNamedNodeMatches(
     }
     return;
   }
-  if (typeof node.slugId === 'string') {
-    if (node.slugId.toLowerCase() !== reference.toLowerCase()) {
-      throw new Error(`Linear ${kind} resolver returned mismatched slug "${node.slugId}" for "${reference}".`);
-    }
+  if (typeof node.slugId !== 'string') {
+    throw new Error(`Linear ${kind} resolver did not include slug identity proof for "${reference}".`);
+  }
+  if (node.slugId.toLowerCase() !== reference.toLowerCase()) {
+    throw new Error(`Linear ${kind} resolver returned mismatched slug "${node.slugId}" for "${reference}".`);
   }
 }

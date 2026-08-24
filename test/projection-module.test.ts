@@ -36,7 +36,7 @@ const BASELINE: Record<ProjectionEntity, Record<ProjectionView, string>> = {
   state { id name type }
   team { id key name }
   assignee { id name email }
-  labels(first: 50) { nodes { id name } }
+  labels(first: 50) { nodes { id name } pageInfo { hasNextPage endCursor } }
   project { id name }
   parent { id identifier title }
   cycle { id name number }
@@ -68,8 +68,8 @@ const BASELINE: Record<ProjectionEntity, Record<ProjectionView, string>> = {
 		detail: `
   id name description color icon state priority slugId startDate targetDate completedAt
   canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url
-  teams(first: 10) { nodes { id key name } }
-  lead { id name email } members(first: 10) { nodes { id name email } } status { id name }
+  teams(first: 10) { nodes { id key name } pageInfo { hasNextPage endCursor } }
+  lead { id name email } members(first: 10) { nodes { id name email } pageInfo { hasNextPage endCursor } } status { id name }
   content
 `,
 	},
@@ -137,7 +137,7 @@ const BASELINE: Record<ProjectionEntity, Record<ProjectionView, string>> = {
 `,
 	},
 	team: {
-		list: "id key name description color icon private createdAt updatedAt states(first: 50) { nodes { id name type } }",
+		list: "id key name description color icon private createdAt updatedAt states(first: 50) { nodes { id name type } pageInfo { hasNextPage endCursor } }",
 		detail: "id key name description color icon private createdAt updatedAt",
 	},
 	user: {
@@ -200,6 +200,21 @@ describe("projection hides field selection syntax", () => {
 		}
 	});
 
+	it("exposes server page state for every bounded nested connection", () => {
+		expect(projection("issue", "detail")).toContain(
+			"labels(first: 50) { nodes { id name } pageInfo { hasNextPage endCursor } }",
+		);
+		expect(projection("project", "detail")).toContain(
+			"teams(first: 10) { nodes { id key name } pageInfo { hasNextPage endCursor } }",
+		);
+		expect(projection("project", "detail")).toContain(
+			"members(first: 10) { nodes { id name email } pageInfo { hasNextPage endCursor } }",
+		);
+		expect(projection("team", "list")).toContain(
+			"states(first: 50) { nodes { id name type } pageInfo { hasNextPage endCursor } }",
+		);
+	});
+
 	it("does not introduce extra list/detail field splits", () => {
 		for (const entity of SAME_FOR_BOTH_VIEWS) {
 			expect(projection(entity, "list")).toBe(projection(entity, "detail"));
@@ -223,7 +238,7 @@ describe("projection hides field selection syntax", () => {
 		expect(projection("document", "list")).not.toContain("content");
 		expect(projection("document", "detail")).toContain("content");
 		expect(projection("team", "list")).toBe(
-			`${projection("team", "detail")} states(first: 50) { nodes { id name type } }`,
+			`${projection("team", "detail")} states(first: 50) { nodes { id name type } pageInfo { hasNextPage endCursor } }`,
 		);
 	});
 

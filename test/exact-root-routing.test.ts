@@ -79,14 +79,23 @@ describe('identifier-shaped search_issues uses the exact issue root', () => {
   });
 });
 
-describe('project, cycle, and document slug reads use singular roots', () => {
+describe('exact project, cycle, and document reads', () => {
   it('reads a project slug with one GetProject request', async () => {
     const { requests } = graphqlStub((query, variables) => {
       expect(query).toContain('query GetProject');
       expect(query).toContain('project(id: $id)');
+      expect(query).toContain('slugId');
       expect(query).not.toContain('projects(first:');
       expect(variables).toEqual({ id: 'pi-linear' });
-      return { project: { id: PROJECT_ID, name: 'Pi Linear', slugId: 'pi-linear' } };
+      return {
+        project: {
+          id: PROJECT_ID,
+          name: 'Pi Linear',
+          slugId: 'pi-linear',
+          teams: { nodes: [], pageInfo: { hasNextPage: true, endCursor: 'team-cursor' } },
+          members: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+        },
+      };
     });
 
     const result = await execute({ operation: 'get_project', variables: { project: 'pi-linear' } });
@@ -97,25 +106,44 @@ describe('project, cycle, and document slug reads use singular roots', () => {
       resolvedId: PROJECT_ID,
       name: 'Pi Linear',
     });
+    expect(result.details.data.project.teams.pageInfo).toEqual({
+      hasNextPage: true,
+      endCursor: 'team-cursor',
+    });
+    expect(result.details.data.project.members.pageInfo).toEqual({
+      hasNextPage: false,
+      endCursor: null,
+    });
   });
 
-  it('reads a cycle slug with one GetCycle request', async () => {
+  it('resolves a hyphenated cycle exact name before reading its UUID', async () => {
     const { requests } = graphqlStub((query, variables) => {
+      if (query.includes('ResolveNamedEntityByName')) {
+        expect(query).toContain('cycles(first:');
+        expect(variables).toEqual({ name: 'Cycle-12' });
+        return { cycles: { nodes: [{ id: CYCLE_ID, name: 'Cycle-12' }] } };
+      }
       expect(query).toContain('query GetCycle');
       expect(query).toContain('cycle(id: $id)');
-      expect(query).not.toContain('cycles(first:');
-      expect(variables).toEqual({ id: 'eng-12' });
-      return { cycle: { id: CYCLE_ID, name: 'Cycle 12' } };
+      expect(query).not.toContain('slugId');
+      expect(variables).toEqual({ id: CYCLE_ID });
+      return { cycle: { id: CYCLE_ID, name: 'Cycle-12' } };
     });
 
-    await execute({ operation: 'get_cycle', variables: { cycle: 'eng-12' } });
-    expect(requests).toHaveLength(1);
+    const result = await execute({ operation: 'get_cycle', variables: { cycle: 'Cycle-12' } });
+    expect(requests).toHaveLength(2);
+    expect(result.details.resolution.target).toEqual({
+      requested: 'Cycle-12',
+      resolvedId: CYCLE_ID,
+      name: 'Cycle-12',
+    });
   });
 
   it('reads a document slug with one GetDocument request', async () => {
     const { requests } = graphqlStub((query, variables) => {
       expect(query).toContain('query GetDocument');
       expect(query).toContain('document(id: $id)');
+      expect(query).toContain('slugId');
       expect(query).not.toContain('documents(first:');
       expect(variables).toEqual({ id: 'planning-notes' });
       return { document: { id: DOCUMENT_ID, title: 'Planning notes', slugId: 'planning-notes' } };
@@ -190,11 +218,24 @@ describe('project, cycle, and document slug reads use singular roots', () => {
     ]);
   });
 
-  it('rejects a mismatched project slug without a second request', async () => {
+  it.each([
+    ['project', 'get_project', 'project', 'pi-linear', PROJECT_ID],
+    ['document', 'get_document', 'document', 'planning-notes', DOCUMENT_ID],
+  ] as const)('rejects a %s slug response without identity proof', async (_kind, operation, field, reference, id) => {
+    const { requests } = graphqlStub(() => ({ [field]: { id, name: 'Name', title: 'Title' } }));
+    await expect(execute({ operation, variables: { [field]: reference } }))
+      .rejects.toThrow('did not include slug identity proof');
+    expect(requests).toHaveLength(1);
+  });
+
+  it.each([
+    ['project', 'get_project', 'project', 'pi-linear', PROJECT_ID],
+    ['document', 'get_document', 'document', 'planning-notes', DOCUMENT_ID],
+  ] as const)('rejects a mismatched %s slug without a second request', async (_kind, operation, field, reference, id) => {
     const { requests } = graphqlStub(() => ({
-      project: { id: PROJECT_ID, name: 'Other', slugId: 'other-project' },
+      [field]: { id, name: 'Other', title: 'Other', slugId: 'other-slug' },
     }));
-    await expect(execute({ operation: 'get_project', variables: { project: 'pi-linear' } }))
+    await expect(execute({ operation, variables: { [field]: reference } }))
       .rejects.toThrow('mismatched slug');
     expect(requests).toHaveLength(1);
   });
@@ -203,6 +244,17 @@ describe('project, cycle, and document slug reads use singular roots', () => {
     graphqlStub(() => ({ project: { id: OTHER_ID, name: 'Pi Linear', slugId: 'pi-linear' } }));
     await expect(execute({ operation: 'get_project', variables: { project: PROJECT_ID } }))
       .rejects.toThrow('mismatched id');
+  });
+
+  it('rejects a mismatched cycle UUID without slug proof', async () => {
+    const { requests } = graphqlStub((query) => {
+      expect(query).toContain('query GetCycle');
+      expect(query).not.toContain('slugId');
+      return { cycle: { id: OTHER_ID, name: 'Cycle 12' } };
+    });
+    await expect(execute({ operation: 'get_cycle', variables: { cycle: CYCLE_ID } }))
+      .rejects.toThrow('mismatched id');
+    expect(requests).toHaveLength(1);
   });
 });
 
@@ -219,7 +271,7 @@ describe('mutations do not infer slug identifiers', () => {
 
     await execute({
       operation: 'update_document',
-      variables: { documentId: 'planning-notes', title: 'Updated notes' },
+      variables: { document: 'planning-notes', title: 'Updated notes' },
     });
 
     expect(requests[0]!.query).toContain('ResolveDocumentByTitle');

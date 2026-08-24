@@ -1,4 +1,3 @@
-import { isLinearUrlSlug } from "../client";
 import { namedEntityLookup, pureQueryPlan, teamLookup } from "../operation-plan";
 import { projection } from "../selections";
 import {
@@ -113,7 +112,7 @@ export const cycles: readonly OperationDefinition[] = ([
 		plan(v) {
 			const requested = String(v.cycle ?? v.id);
 			const reference = requested.trim();
-			if (isUuid(reference) || isLinearUrlSlug(reference)) {
+			if (isUuid(reference)) {
 				return pureQueryPlan({
 					variables: { id: reference },
 					exactNamed: { requested: reference, path: "cycle", kind: "cycle" },
