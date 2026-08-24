@@ -689,10 +689,13 @@ function renderLinearResult(
     const message = resultErrorMessage(result);
     let recovery = errorRecovery(
       message,
-      API_TOOL,
+      directGraphql ? 'linear_graphql' : API_TOOL,
       operation ? spec.noun : 'operation',
       !operation && !!asString(args.query),
     );
+    if (directGraphql && !recovery.includes('linear_graphql')) {
+      recovery = `${recovery} Then call linear_graphql again.`;
+    }
     if (operation && recovery.startsWith(`Open the ${API_TOOL} parameter card`)) {
       recovery = `Send { "operation": "help", "variables": { "operation": "${operation.name}" } } for the parameter card.`;
     }

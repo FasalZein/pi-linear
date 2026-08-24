@@ -271,6 +271,34 @@ describe('direct result rendering', () => {
     expect(text).not.toContain('operation: "get_result"');
   });
 
+  it.each([
+    ['missing variable', 'Linear GraphQL error: Variable "$id" of required type "ID!" was not provided.'],
+    ['invalid field', 'Linear GraphQL error: Cannot query field "unknownField" on type "Issue".'],
+    ['generic failure', 'Unexpected direct GraphQL failure.'],
+  ])('names linear_graphql in %s recovery guidance', (_case, error) => {
+    const args = { query: 'query { viewer { id } }' };
+    const text = block(renderLinearGraphqlResult(
+      result({ error }),
+      { expanded: false, isPartial: false },
+      theme,
+      { args, isError: true } as any,
+    ));
+    expect(text).toContain('call linear_graphql again');
+    expect(text).not.toContain('call linear again');
+  });
+
+  it('keeps legacy raw error recovery on linear', () => {
+    const args = { query: 'query { viewer { id } }' };
+    const text = block(renderLinearApiResult(
+      result({ error: 'Linear GraphQL error: Variable "$id" of required type "ID!" was not provided.' }),
+      { expanded: false, isPartial: false },
+      theme,
+      { args, isError: true } as any,
+    ));
+    expect(text).toContain('call linear again');
+    expect(text).not.toContain('linear_graphql');
+  });
+
   it('uses the dedicated direct GraphQL renderer while preserving raw rendering', () => {
     const args = { query: 'query { viewer { id } }', sink: 'inline' };
     expect(block(renderLinearGraphqlCall(args, theme))).toContain('linear_graphql');
