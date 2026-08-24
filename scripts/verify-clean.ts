@@ -24,6 +24,7 @@ await generate(true);
 run('npm', ['run', 'test:schema-bytes']);
 
 const manifest = JSON.parse(await readFile(join(root, 'extensions/generated/linear-tools.manifest.json'), 'utf8')) as {
+  discoveryTool?: { name: string; requiredOperation: string; variableForms: string[] };
   initialActiveTools: string[];
   schemaVersion: number;
   lazyTools: Array<{ name: string }>;
@@ -32,6 +33,9 @@ const manifest = JSON.parse(await readFile(join(root, 'extensions/generated/line
 };
 const lazyNames = operationDefinitions.map(({ toolName }) => toolName);
 if (manifest.schemaVersion !== 2) throw new Error('Manifest schemaVersion must be 2.');
+if (JSON.stringify(manifest.discoveryTool) !== JSON.stringify({ name: 'linear', requiredOperation: 'help', variableForms: ['domain', 'operation'] })) {
+  throw new Error('Manifest discoveryTool must declare the strict linear help contract.');
+}
 if (manifest.initialActiveTools.join(',') !== 'linear,linear_get_result') {
   throw new Error('Manifest initialActiveTools must be exactly linear and linear_get_result.');
 }

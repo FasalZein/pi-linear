@@ -147,23 +147,15 @@ describe('default view and expand override', () => {
     expect(human).toContain('show full JSON');
   });
 
-  it('applies the same inverse on linear', async () => {
+  it('applies the same inverse on linear discovery help', async () => {
     await saveResultPreference('Full JSON');
-    const json = text(renderLinearApiResult(
-      result(details),
-      { expanded: false, isPartial: false },
-      theme,
-      { args: { operation: 'get_issue' } } as any,
-    ));
+    const help = { name: 'get_issue', purpose: 'Get one issue.', parameters: [{ name: 'issue', type: 'IssueReference', required: true }] };
+    const args = { operation: 'help', variables: { operation: 'get_issue' } };
+    const json = text(renderLinearApiResult(result(help), { expanded: false, isPartial: false }, theme, { args } as any));
     expect(json).toContain('Full JSON response');
 
-    const human = text(renderLinearApiResult(
-      result(details),
-      { expanded: true, isPartial: false },
-      theme,
-      { args: { operation: 'get_issue' } } as any,
-    ));
-    expect(human).toContain('✓ Loaded AEO-258');
+    const human = text(renderLinearApiResult(result(help), { expanded: true, isPartial: false }, theme, { args } as any));
+    expect(human).toContain('✓ get_issue');
   });
 });
 

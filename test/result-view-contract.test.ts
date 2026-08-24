@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { linearApiTool } from '../extensions/api';
+import { linearGraphqlTool } from '../extensions/api';
 import { getOperation, operations } from '../extensions/operations';
 import { operationRenderers, SUMMARY_VIEW_NOTICE } from '../extensions/renderers';
 import { compactLinearResult, executeOperation, RESULT_BUDGET } from '../extensions/runtime';
@@ -180,7 +180,7 @@ describe('public summary and full views', () => {
     const requests = capturedRequests();
     await run('list_issues');
     const named = requests.splice(0);
-    await (linearApiTool() as any).execute(
+    await (linearGraphqlTool() as any).execute(
       'call-1',
       { query: operations.list_issues!.document, variables: { first: 20 } },
       undefined,

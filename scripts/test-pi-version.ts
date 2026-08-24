@@ -106,6 +106,12 @@ const resultTool = harness.registered.find((tool) => tool.name === 'linear_get_r
 const graphqlTool = harness.registered.find((tool) => tool.name === 'linear_graphql');
 const batchTool = harness.registered.find((tool) => tool.name === 'linear_batch');
 const typed = harness.registered.find((tool) => tool.name === 'linear_get_issue');
+if (api.parameters.properties.operation.const !== 'help' || Object.keys(api.parameters.properties).join(',') !== 'operation,variables') {
+  throw new Error('linear schema is not discovery-only.');
+}
+if (JSON.stringify([api.label, resultTool?.label, graphqlTool?.label, batchTool?.label, typed?.label]) !== JSON.stringify([
+  'Linear', 'Linear get result', 'Linear GraphQL', 'Linear batch', 'Linear get issue',
+])) throw new Error('Wire names and human labels drifted.');
 if (!resultTool || typeof resultTool.renderCall !== 'function' || typeof resultTool.renderResult !== 'function') {
   throw new Error('Direct result tool or its renderers are missing.');
 }
@@ -116,6 +122,12 @@ if (!batchTool || typeof batchTool.renderCall !== 'function' || typeof batchTool
   throw new Error('Direct batch tool or its renderers are missing.');
 }
 if (typed.promptSnippet || typed.promptGuidelines) throw new Error('Typed tools must omit active-only prompt metadata.');
+try {
+  await api.execute('removed-route', { operation: 'get_issue', variables: { issue: 'AEO-258' } }, undefined, undefined, { hasUI: false });
+  throw new Error('linear accepted removed named execution.');
+} catch (error) {
+  if (!String(error.message || error).includes('linear_get_issue')) throw error;
+}
 const help = await api.execute('call-1', { operation: 'help', variables: { operation: 'get_issue' } }, undefined, undefined, { hasUI: false });
 if (JSON.stringify(help.details.loadedTools) !== JSON.stringify(['linear_get_issue'])) {
   throw new Error(\`Exact help did not activate linear_get_issue: \${JSON.stringify(help.details.loadedTools)}\`);

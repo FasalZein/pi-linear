@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { linearApiTool, resolveRequest } from '../extensions/api';
+import { linearBatchTool, resolveRequest } from '../extensions/api';
 import { linearErrorTelemetry } from '../extensions/client';
 import { operations } from '../extensions/operations';
 import { SAFE_NAMED_MUTATION_ROOTS } from '../extensions/safety';
@@ -20,14 +20,14 @@ const originalReadonly = process.env.LINEAR_READONLY;
 
 function execute(input: Record<string, any>, mode: 'allowlist' | 'readonly' = 'allowlist') {
   if (input.operation === 'batch') {
-    return (linearApiTool(mode) as any).execute('call', input, undefined, undefined, { hasUI: false });
+    return (linearBatchTool(mode) as any).execute('call', input.variables, undefined, undefined, { hasUI: false });
   }
   return executeTyped(input.operation, input.variables, { mode });
 }
 
 function executeWithSignal(input: Record<string, any>, signal: AbortSignal) {
   if (input.operation === 'batch') {
-    return (linearApiTool('allowlist') as any).execute('call', input, signal, undefined, { hasUI: false });
+    return (linearBatchTool('allowlist') as any).execute('call', input.variables, signal, undefined, { hasUI: false });
   }
   return executeTyped(input.operation, input.variables, { signal });
 }
@@ -209,7 +209,7 @@ describe('delete_issue_relation strict guarded delete', () => {
     return execute({
       operation: 'batch',
       variables: {
-        reads,
+        ...(reads.length ? { reads } : {}),
         mutations: [{ key: 'remove', operation: 'delete_issue_relation', variables }],
       },
     });

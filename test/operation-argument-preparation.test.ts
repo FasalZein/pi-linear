@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { linearApiTool, resolveRequest } from "../extensions/api";
+import { linearBatchTool, resolveRequest } from "../extensions/api";
 import { operations } from "../extensions/operations";
 import { isolateLinearCredentials } from "./helpers/credentials";
 import { prepareOperation } from "./helpers/operation-plan";
@@ -81,11 +81,11 @@ describe("loader create_issue compatibility", () => {
 			return { [alias]: { nodes: [{ id: INITIATIVE_ID, key: "AEO" }] } };
 		});
 		try {
-			const result = await (linearApiTool() as any).execute(
-				"call", { operation: "batch", variables: { mutations: [{
+			const result = await (linearBatchTool() as any).execute(
+				"call", { mutations: [{
 					operation: "create_issue",
 					variables: { title: "T", team: "AEO", input: { projectId: PROJECT_ID, labelIds: [MILESTONE_ID] } },
-				}] } }, undefined, undefined, { hasUI: false },
+				}] }, undefined, undefined, { hasUI: false },
 			);
 			expect(requests).toHaveLength(2);
 			expect(result.details.data.create_issue.issueCreate.issue.identifier).toBe("AEO-9");

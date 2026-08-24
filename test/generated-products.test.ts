@@ -5,8 +5,9 @@ import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { contractProjection, generatedFiles, renderGeneratedFiles, staleGeneratedFiles, syncAllowlistFile } from '../scripts/generate';
-import { helpResult, linearApiTool } from '../extensions/api';
+import { helpResult, linearApiTool, linearBatchTool, linearGetResultTool, linearGraphqlTool } from '../extensions/api';
 import manifest from '../extensions/generated/linear-tools.manifest.json';
+import { LINEAR_OPERATION_CATALOG } from '../extensions/generated/operation-catalog';
 import contracts from '../extensions/generated/operation-contracts.json';
 import schemaBaseline from './fixtures/design-b-s3-1-schema-baseline.json';
 import { DOMAINS, operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
@@ -23,8 +24,8 @@ function assertDirectTelemetryGuidance(referenceSection: string, changelogEntry:
   expect(referenceSection).toMatch(REFERENCE_DIRECT_TELEMETRY);
   expect(changelogEntry).toMatch(CHANGELOG_DIRECT_TELEMETRY);
   expect(`${referenceSection}\n${changelogEntry}`).not.toMatch(LOADER_ONLY_TELEMETRY);
-  expect(referenceSection).toContain('deprecated loader routes still accept top-level telemetry for compatibility');
-  expect(changelogEntry).toContain('Deprecated loader routes retain top-level telemetry for compatibility');
+  expect(referenceSection).not.toMatch(/loader routes?.*telemetry/i);
+  expect(changelogEntry).not.toMatch(/loader routes?.*telemetry/i);
 }
 
 async function treeDigest(root: string): Promise<string> {
@@ -253,16 +254,22 @@ describe('generated products', () => {
     });
   });
 
-  it('publishes every operation name once under its authoritative domain', () => {
+  it('publishes all 49 operation names and every special help name in the compact loader description', () => {
     const description = (linearApiTool() as any).description as string;
+    expect(description).toContain('Discovery help only.');
+    expect(description).toContain('Exact help loads linear_<name>');
+    expect(description).toContain('linear_get_result is active');
     expect(description).not.toContain('{ "operation": "<name>", "variables": { … } }');
-    expect(description).toContain('{ "operation": "help", "variables": { "operation": "<name>" } }');
-    expect(description).toContain('ordinary named operations do not execute through linear');
-    expect(description).toContain('Call activated tools with direct arguments');
-    expect(description).toContain('Exact graphql help loads linear_graphql');
-    expect(description).toContain('Exact batch help loads linear_batch');
+    expect(description).not.toContain('linear get_result');
 
-    const published = new Map([...description.matchAll(/^([a-z]+): ([a-z0-9_, ]+)$/gm)]
+    const operationsLine = description.match(/^operations:([a-z0-9_,]+)$/m)?.[1];
+    const specialLine = description.match(/^special:([a-z0-9_,]+)$/m)?.[1];
+    expect(operationDefinitions).toHaveLength(49);
+    expect(operationsLine?.split(',')).toHaveLength(49);
+    expect(operationsLine?.split(',')).toEqual(operationDefinitions.map(({ name }) => name));
+    expect(specialLine?.split(',')).toEqual(['graphql', 'batch', 'get_result']);
+
+    const published = new Map([...LINEAR_OPERATION_CATALOG.matchAll(/^([a-z]+): ([a-z0-9_, ]+)$/gm)]
       .map((match) => [match[1]!, match[2]!.split(', ')]));
     const expectedDomains = DOMAINS.filter((domain) => operationDefinitions.some((definition) => definition.domain === domain));
     expect([...published.keys()]).toEqual([...expectedDomains, 'special']);
@@ -274,7 +281,7 @@ describe('generated products', () => {
     expect(published.get('special')).toEqual(['graphql', 'batch', 'get_result']);
     expect([...published.values()].flat().filter((name) => !['graphql', 'batch', 'get_result'].includes(name)).sort())
       .toEqual(operationDefinitions.map(({ name }) => name).sort());
-    for (const { purpose } of operationDefinitions) expect(description).not.toContain(purpose);
+    expect(LINEAR_OPERATION_CATALOG).toContain('special: graphql, batch, get_result');
   });
 
   it('keeps every exact help card sufficient to call and load its typed tool', () => {
@@ -306,6 +313,7 @@ describe('generated products', () => {
 
   it('publishes one deployable manifest entry for each canonical and exceptional tool', () => {
     expect(manifest.schemaVersion).toBe(2);
+    expect(manifest.discoveryTool).toEqual({ name: 'linear', requiredOperation: 'help', variableForms: ['domain', 'operation'] });
     expect(manifest.initialActiveTools).toEqual(['linear', 'linear_get_result']);
     expect(manifest.lazyTools).toEqual(operationDefinitions.map(({ name, toolName, domain }) => ({
       name: toolName, operation: name, domain,
@@ -355,6 +363,24 @@ describe('generated products', () => {
     expect(createHash('sha256').update(contractBytes).digest('hex')).toBe(schemaBaseline.operationContractsSha256);
   });
 
+  it('separates exact underscore wire names from human labels and unprefixed help values', () => {
+    const tools = [
+      linearApiTool() as any,
+      linearGetResultTool() as any,
+      linearGraphqlTool() as any,
+      linearBatchTool() as any,
+      ...typedLinearTools().filter(({ name }) => name === 'linear_get_issue'),
+    ];
+    expect(tools.map(({ name }) => name)).toEqual([
+      'linear', 'linear_get_result', 'linear_graphql', 'linear_batch', 'linear_get_issue',
+    ]);
+    expect(tools.map(({ label }) => label)).toEqual([
+      'Linear', 'Linear get result', 'Linear GraphQL', 'Linear batch', 'Linear get issue',
+    ]);
+    expect(helpResult({ operation: 'get_issue' })).toMatchObject({ name: 'get_issue' });
+    expect(JSON.stringify(tools.map(({ name }) => name))).not.toMatch(/linear (?:get issue|get_result|batch|graphql)/i);
+  });
+
   it('keeps 49 typed tools byte-stable and adds one direct exceptional result tool', () => {
     expect(operationDefinitions).toHaveLength(49);
     expect(typedLinearTools()).toHaveLength(49);
@@ -364,7 +390,9 @@ describe('generated products', () => {
     expect(manifest.allowedTools).toContain('linear_get_result');
     expect(manifest.allowedTools).toContain('linear_graphql');
     expect(manifest.allowedTools).toContain('linear_batch');
-    expect((linearApiTool() as any).description).toContain('The linear get_result, raw query, and batch execution routes are deprecated');
+    expect((linearApiTool() as any).description).toContain('linear_get_result is active');
+    expect((linearApiTool() as any).description).toContain('special:graphql,batch,get_result');
+    expect((linearApiTool() as any).description).not.toMatch(/linear (?:get_result|batch)/);
   });
 
   it('ships the complete restricted lossless contract in public documentation', async () => {

@@ -23,7 +23,7 @@ const readmePath = resolve(root, 'README.md');
 const referencePath = resolve(root, 'REFERENCE.md');
 const START = '<!-- BEGIN GENERATED LINEAR OPERATIONS -->';
 const END = '<!-- END GENERATED LINEAR OPERATIONS -->';
-const LINEAR_TOOL_USAGE = 'Discover Linear operations by domain or exact name. { "operation": "help", "variables": { "domain": "issues" } } lists names. { "operation": "help", "variables": { "operation": "<name>" } } returns purpose, exact parameters, accepted branches, and direct arguments, then loads linear_<name>. Exact graphql help loads linear_graphql. Exact batch help loads linear_batch. Call activated tools with direct arguments; ordinary named operations do not execute through linear. Use linear_get_result for stored results. The linear get_result, raw query, and batch execution routes are deprecated.';
+const LINEAR_TOOL_USAGE = 'Discovery help only. Exact help loads linear_<name>; linear_get_result is active.';
 
 export const generatedFiles = [manifestPath, contractsPath, catalogPath, readmePath, referencePath] as const;
 
@@ -37,6 +37,7 @@ function manifest() {
   return {
     schemaVersion: 2,
     package: '@tothemoon/pi-linear-lite',
+    discoveryTool: { name: 'linear', requiredOperation: 'help', variableForms: ['domain', 'operation'] },
     initialActiveTools: ['linear', ...exceptionalTools.filter(({ initialActive }) => initialActive).map(({ name }) => name)],
     lazyTools,
     exceptionalTools,
@@ -98,8 +99,15 @@ export function operationCatalogText(): string {
   ].join('\n');
 }
 
+function modelOperationCatalogText(): string {
+  return [
+    `operations:${operationDefinitions.map(({ name }) => name).join(',')}`,
+    'special:graphql,batch,get_result',
+  ].join('\n');
+}
+
 export function linearToolDescription(): string {
-  return `${LINEAR_TOOL_USAGE}\n${operationCatalogText()}`;
+  return `${LINEAR_TOOL_USAGE}\n${modelOperationCatalogText()}`;
 }
 
 function catalogModule(): string {
@@ -146,7 +154,7 @@ function referenceCatalog(): string {
     '{ "issue": "AEO-258" }',
     '```',
     '',
-    '### Discovery, direct exceptional tools, and retained compatibility envelopes',
+    '### Discovery and direct exceptional tools',
     '',
     '```json',
     '{ "operation": "help" }',
@@ -154,6 +162,16 @@ function referenceCatalog(): string {
     '',
     '```json',
     '{ "operation": "help", "variables": { "domain": "issues" } }',
+    '```',
+    '',
+    '```json',
+    '{ "operation": "help", "variables": { "operation": "graphql" } }',
+    '```',
+    '',
+    'Then call `linear_graphql` with direct arguments:',
+    '',
+    '```json',
+    '{ "query": "query { viewer { id } }", "variables": {} }',
     '```',
     '',
     '```json',
@@ -171,10 +189,14 @@ function referenceCatalog(): string {
     '```',
     '',
     '```json',
-    '{ "handle": "linear-result:v1:550e8400-e29b-41d4-a716-446655440000", "path": "", "offset": 0 }',
+    '{ "operation": "help", "variables": { "operation": "get_result" } }',
     '```',
     '',
-    'Call the direct `linear_get_result` tool with that object. Legacy `linear` batch and `get_result` envelopes remain compatible but are deprecated.',
+    'This returns the direct parameter card without activation. Call the already-active `linear_get_result` tool:',
+    '',
+    '```json',
+    '{ "handle": "linear-result:v1:550e8400-e29b-41d4-a716-446655440000", "path": "", "offset": 0 }',
+    '```',
   ].join('\n');
 }
 

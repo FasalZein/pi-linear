@@ -93,9 +93,24 @@ try {
   if (!registered.some(({ name }) => name === 'linear_get_result')) throw new Error('Extracted package did not register direct linear_get_result.');
   if (!registered.some(({ name }) => name === 'linear_graphql')) throw new Error('Extracted package did not register direct linear_graphql.');
   if (!registered.some(({ name }) => name === 'linear_batch')) throw new Error('Extracted package did not register direct linear_batch.');
-  const manifest = JSON.parse(await readFile(join(packageRoot, 'extensions/generated/linear-tools.manifest.json'), 'utf8')) as { allowedTools: string[] };
+  const manifest = JSON.parse(await readFile(join(packageRoot, 'extensions/generated/linear-tools.manifest.json'), 'utf8')) as {
+    allowedTools: string[];
+    discoveryTool?: { name: string; requiredOperation: string; variableForms: string[] };
+  };
   if (manifest.allowedTools.length !== 53 || !manifest.allowedTools.includes('linear_get_result') || !manifest.allowedTools.includes('linear_graphql') || !manifest.allowedTools.includes('linear_batch')) {
     throw new Error('Extracted package manifest does not contain the exact 53-tool surface.');
+  }
+  if (JSON.stringify(manifest.discoveryTool) !== JSON.stringify({ name: 'linear', requiredOperation: 'help', variableForms: ['domain', 'operation'] })) {
+    throw new Error('Extracted package manifest does not declare the discovery-only linear contract.');
+  }
+  const loader = registered.find(({ name }) => name === 'linear');
+  if (loader?.parameters?.properties?.operation?.const !== 'help' || Object.keys(loader.parameters.properties).join(',') !== 'operation,variables') {
+    throw new Error('Extracted package linear schema is not discovery-only.');
+  }
+  const labels = ['linear', 'linear_get_result', 'linear_graphql', 'linear_batch', 'linear_get_issue']
+    .map((name) => registered.find((tool) => tool.name === name)?.label);
+  if (labels.join(',') !== 'Linear,Linear get result,Linear GraphQL,Linear batch,Linear get issue') {
+    throw new Error(`Extracted package wire names and labels drifted: ${labels.join(', ')}`);
   }
   const readme = await readFile(join(packageRoot, 'README.md'), 'utf8');
   if (!readme.includes('53 tool surfaces') || readme.includes('linear-auditor.md')) {

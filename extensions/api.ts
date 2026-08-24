@@ -17,7 +17,6 @@ import {
 } from './operations';
 import {
   assertOperationAllowed,
-  executeOperationInContext,
   executeRawQuery,
   linearCallContext,
   type JsonObject,
@@ -163,7 +162,12 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
     if (operationName === 'graphql') return { ...activate(activator, ['linear_graphql']), ...LINEAR_GRAPHQL_HELP };
     if (operationName === 'batch') return { ...activate(activator, ['linear_batch']), ...LINEAR_BATCH_HELP };
     if (operationName === 'get_result') return GET_RESULT_HELP;
-    const operation = getOperation(operationName);
+    let operation: LinearOperation;
+    try {
+      operation = getOperation(operationName);
+    } catch {
+      throw new Error('Unknown Linear operation. Send { "operation": "help" }.');
+    }
     const canonical = operation.canonical;
     const alwaysRequired = new Set(
       canonical.branches.length
@@ -363,89 +367,60 @@ export function linearBatchTool(
   });
 }
 
-function discoveryOnlyError(operationName: string): Error {
-  try {
-    const operation = getOperation(operationName);
-    const toolName = typedToolName(operation.name);
-    return new Error(
-      `Named operation "${operationName}" cannot run through linear. `
-      + `Send { "operation": "help", "variables": { "operation": "${operation.name}" } } to load ${toolName}, `
-      + `then call ${toolName} with the operation variables directly.`,
-    );
-  } catch {
-    return new Error('Unknown Linear operation. Send { "operation": "help" }.');
+function removedLoaderRouteError(params: unknown): Error | undefined {
+  if (!params || typeof params !== 'object' || Array.isArray(params)) return undefined;
+  const request = params as Record<string, unknown>;
+  if (Object.prototype.hasOwnProperty.call(request, 'query')) {
+    return new Error('Raw GraphQL cannot run through linear. Call linear_graphql with direct arguments.');
   }
+  if (request.operation === 'batch') {
+    return new Error('Batch execution cannot run through linear. Call linear_batch with direct arguments.');
+  }
+  if (request.operation === 'get_result') {
+    return new Error('Result retrieval cannot run through linear. Call linear_get_result with direct arguments.');
+  }
+  if (request.operation === 'help' || request.operation === undefined) return undefined;
+  if (typeof request.operation === 'string') {
+    try {
+      const toolName = typedToolName(getOperation(request.operation).name);
+      return new Error(`Named operations cannot run through linear. Call ${toolName} with direct arguments.`);
+    } catch {
+      return new Error('The linear tool accepts discovery help only. Send { "operation": "help" }.');
+    }
+  }
+  return undefined;
 }
 
-export function linearApiTool(mode: MutationMode = 'allowlist', activator?: ToolActivator) {
+export function linearApiTool(_mode: MutationMode = 'allowlist', activator?: ToolActivator) {
+  const parameters = Type.Object({
+    operation: Type.Literal('help', { description: 'Discover operations and activate an exact direct tool.' }),
+    variables: Type.Optional(Type.Union([
+      Type.Object({ domain: StringEnum(DEFINITION_DOMAINS) }, { additionalProperties: false }),
+      Type.Object({ operation: Type.String() }, { additionalProperties: false }),
+    ])),
+  }, { additionalProperties: false });
+  const assertSchema = directSchemaGuard('linear', parameters);
+  const assertArguments = (params: unknown) => {
+    const compatibilityError = removedLoaderRouteError(params);
+    if (compatibilityError) throw compatibilityError;
+    assertSchema(params);
+  };
+
   return defineTool({
     name: 'linear',
-    label: 'Linear API',
+    label: 'Linear',
     description: LINEAR_TOOL_DESCRIPTION,
-    parameters: Type.Object({
-      operation: Type.Optional(Type.String({ description: 'Use help to discover typed tools or activate linear_graphql and linear_batch. Legacy batch and get_result are deprecated; call linear_batch or linear_get_result with direct arguments.' })),
-      query: Type.Optional(Type.String({ description: 'Deprecated raw GraphQL route. Use exact graphql help, then call linear_graphql directly.' })),
-      variables: Type.Optional(Type.Record(Type.String(), Type.Any())),
-      workspace: Type.Optional(Type.String({ description: 'Stored workspace name, or default/active for normal credential selection.' })),
-      sink: Type.Optional(StringEnum(
-        ['inline', 'artifact'] as const,
-        { description: 'Choose inline output or an artifact file.' },
-      )),
-      telemetry: Type.Optional(StringEnum(
-        ['always'] as const,
-        { description: 'Explicitly include rate-limit diagnostics.' },
-      )),
-    }),
+    parameters,
+    prepareArguments: (args: unknown) => {
+      assertArguments(args);
+      return args as any;
+    },
     renderCall: renderLinearApiCall,
     renderResult: renderLinearApiResult,
-    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+    async execute(_toolCallId, params, signal) {
       if (signal?.aborted) throw new Error('Request cancelled.');
-      if (params.operation && !params.query && !['help', 'batch', 'get_result'].includes(params.operation)) {
-        throw discoveryOnlyError(params.operation);
-      }
-      const explicitTelemetry = telemetryMode(params.telemetry);
-      // Collected before any output path, including the help early return: an active key
-      // in an unknown format is only removable as an exact value.
-      const secrets: string[] = [...activeSecrets()];
-      return withRedactedErrors(async () => {
-        const call = linearCallContext(mode, signal, ctx, {
-          workspace: params.workspace,
-          sink: params.sink,
-          telemetryMode: explicitTelemetry,
-        });
-        if (params.operation === 'help' && !params.query) {
-          return toolResult(helpResult(params.variables, activator), secrets);
-        }
-        if (params.operation === 'batch' && !params.query) {
-          return toolResult(await executeBatch(
-            {
-              variables: params.variables,
-              workspace: params.workspace,
-              sink: params.sink,
-              telemetryMode: explicitTelemetry,
-            },
-            mode,
-            ctx,
-            signal,
-          ), secrets);
-        }
-        if (params.operation === 'get_result' && !params.query) {
-          if (params.sink !== undefined) throw new Error('get_result does not accept sink.');
-          if (params.workspace !== undefined) throw new Error('get_result does not accept workspace.');
-          return retrieveResult(params.variables, secrets);
-        }
-
-        const request = resolveRequest(params, mode);
-        if (request.named) {
-          return toolResult(await executeOperationInContext(
-            request.operation,
-            { variables: params.variables ?? {} },
-            call,
-          ), secrets);
-        }
-
-        return toolResult(await executeRawGraphql(request.query, params.variables ?? {}, call), secrets);
-      }, secrets);
+      assertArguments(params);
+      return toolResult(helpResult(params.variables, activator));
     },
   });
 }

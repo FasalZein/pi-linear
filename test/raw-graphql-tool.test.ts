@@ -83,7 +83,7 @@ describe('direct raw GraphQL tool', () => {
       .toEqual(['linear', 'linear_get_result', 'linear_graphql']);
   });
 
-  it('sends equal direct and legacy reads and returns equal routed details', async () => {
+  it('executes the direct raw read with unchanged routing', async () => {
     process.env.LINEAR_API_KEY = 'test-key';
     const requests: Array<{ query: string; variables: Record<string, unknown>; authorization: string | null }> = [];
     const fetch = vi.fn(async (_url: string, init: RequestInit) => {
@@ -106,13 +106,11 @@ describe('direct raw GraphQL tool', () => {
     };
 
     const direct = await execute(linearGraphqlTool() as any, args);
-    const legacy = await execute(linearApiTool() as any, args);
 
     expect(requests).toEqual([
       { query: args.query, variables: args.variables, authorization: 'test-key' },
-      { query: args.query, variables: args.variables, authorization: 'test-key' },
     ]);
-    expect(direct.details).toEqual(legacy.details);
+    expect(direct.details).toMatchObject({ data: { me: { id: 'user-1', name: 'Ada' } } });
   });
 
   it.each([

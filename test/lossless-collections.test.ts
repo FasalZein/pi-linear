@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { linearApiTool, routeLinearResult } from '../extensions/api';
+import { linearGraphqlTool, routeLinearResult } from '../extensions/api';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
 
@@ -184,7 +184,7 @@ describe('raw and typed collection parity', () => {
       json: async () => ({ data: { issues: { nodes, pageInfo: { hasNextPage: true, endCursor: 'server-next' }, totalCount: 301 } } }),
     })));
 
-    const raw = await (linearApiTool() as any).execute(
+    const raw = await (linearGraphqlTool() as any).execute(
       'loader-call',
       { query: 'query { issues { nodes { id title } pageInfo { hasNextPage endCursor } totalCount } }' },
       undefined,

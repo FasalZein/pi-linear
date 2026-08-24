@@ -95,7 +95,7 @@ describe('multiline tool arguments stay in one row', () => {
     expect(typed[0]).not.toContain('secret123456789');
 
     const api = renderLinearApiCall(
-      { operation: 'update_comment', variables: { id: COMMENT_ID, body: `${token}\nnext line` } },
+      { operation: 'help', variables: { operation: token } },
       theme,
     ).render(120);
     expectOneRowWithinWidth(api, 120);

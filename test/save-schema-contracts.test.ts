@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { validateToolArguments } from '@earendil-works/pi-ai';
 import { convertTools } from '../node_modules/@earendil-works/pi-ai/dist/api/google-shared.js';
 import { makeStrictJsonSchema, resolveJsonSchemaStrictSampling } from '../node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.js';
-import { linearApiTool } from '../extensions/api';
+import { linearGraphqlTool } from '../extensions/api';
 import { operations } from '../extensions/operations';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
@@ -315,8 +315,8 @@ describe('portable string enums', () => {
     expect(list.properties.sort.items.properties.order.enum).toEqual(['Ascending', 'Descending']);
     expect(JSON.stringify(list)).not.toContain('"const"');
 
-    const api = linearApiTool() as any;
-    expect(api.parameters.properties.sink.enum).toEqual(['inline', 'artifact']);
-    expect(JSON.stringify(api.parameters.properties.sink)).not.toContain('"const"');
+    const graphql = linearGraphqlTool() as any;
+    expect(graphql.parameters.properties.sink.enum).toEqual(['inline', 'artifact']);
+    expect(JSON.stringify(graphql.parameters.properties.sink)).not.toContain('"const"');
   });
 });

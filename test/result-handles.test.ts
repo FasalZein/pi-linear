@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, readdir, rename, rm, symlink, writeFile } fro
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { linearApiTool, linearGetResultTool, routeLinearResult } from '../extensions/api';
+import { linearApiTool, linearGetResultTool, linearGraphqlTool, routeLinearResult } from '../extensions/api';
 import { typedToolNames } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
 
@@ -20,7 +20,11 @@ async function artifactRoot(): Promise<string> {
 }
 
 function execute(params: Record<string, unknown>) {
-  return (linearApiTool() as any).execute('call-1', params, undefined, undefined, { hasUI: false });
+  const tool = params.query ? linearGraphqlTool() : params.operation === 'get_result' ? linearGetResultTool() : linearApiTool();
+  const direct = params.operation === 'get_result'
+    ? { ...(params.variables as Record<string, unknown>), ...Object.fromEntries(Object.entries(params).filter(([key]) => !['operation', 'variables'].includes(key))) }
+    : params;
+  return (tool as any).execute('call-1', direct, undefined, undefined, { hasUI: false });
 }
 
 function executeDirect(params: Record<string, unknown>) {
@@ -51,17 +55,7 @@ async function writeEnvelope(root: string, uuid: string, content: string): Promi
 async function get(handle: string, path = '', offset?: number) {
   const variables: Record<string, unknown> = { handle, ...(path ? { path } : {}) };
   if (offset !== undefined) variables.offset = offset;
-  const [legacy, direct] = await Promise.allSettled([
-    execute({ operation: 'get_result', variables }),
-    executeDirect(variables),
-  ]);
-  expect(direct.status).toBe(legacy.status);
-  if (legacy.status === 'rejected') {
-    expect((direct as PromiseRejectedResult).reason?.message).toBe(legacy.reason?.message);
-    throw legacy.reason;
-  }
-  expect((direct as PromiseFulfilledResult<unknown>).value).toEqual(legacy.value);
-  return legacy.value;
+  return executeDirect(variables);
 }
 
 afterEach(async () => {
@@ -246,11 +240,11 @@ describe('result handles', () => {
       await expect(get(stored.handle, '/data/value', offset)).rejects.toThrow('Invalid result offset');
     }
     await expect(execute({ operation: 'get_result', variables: { handle: stored.handle, filename: stored.path } }))
-      .rejects.toThrow('unknown filename');
+      .rejects.toThrow(/Invalid parameters for "get_result"/);
     await expect(execute({ operation: 'get_result', variables: { handle: stored.handle }, sink: 'artifact' }))
-      .rejects.toThrow('does not accept sink');
+      .rejects.toThrow(/Invalid parameters for "get_result"/);
     await expect(execute({ operation: 'get_result', variables: { handle: stored.handle }, workspace: 'default' }))
-      .rejects.toThrow('does not accept workspace');
+      .rejects.toThrow(/Invalid parameters for "get_result"/);
   });
 
   it('rejects traversal, path, URI, malformed, alternate, and missing handles safely', async () => {
@@ -400,10 +394,10 @@ describe('result handles', () => {
     expect(card.details.example).not.toHaveProperty('variables');
     const loader = linearApiTool() as any;
     const operationGuidance = loader.parameters.properties.operation.description;
-    expect(operationGuidance).toContain('Legacy batch and get_result are deprecated');
-    expect(operationGuidance).toContain('linear_batch or linear_get_result with direct arguments');
-    expect(operationGuidance).not.toContain('loader-only batch and get_result');
-    expect(loader.description).toContain('special: graphql, batch, get_result');
+    expect(operationGuidance).toBe('Discover operations and activate an exact direct tool.');
+    expect(operationGuidance).not.toContain('linear get_result');
+    expect(loader.description).toContain('linear_get_result is active');
+    expect(loader.description).toContain('special:graphql,batch,get_result');
     expect(typedToolNames()).not.toContain('linear_get_result');
   });
 });

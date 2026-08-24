@@ -1,10 +1,10 @@
 # Linear API reference
 
-Version 0.9 of `pi-linear-lite` registers 53 tool surfaces: active `linear` and `linear_get_result`, deferred `linear_graphql` and `linear_batch`, plus 49 inactive typed tools. Legacy loader batch, `get_result`, and raw `query` routes remain compatible but are deprecated. The `linear` tool publishes compact discovery. For an ordinary operation, send exact help, then call the activated `linear_<operation>` tool with direct arguments. Send exact `graphql` or `batch` help before calling the matching direct exceptional tool. Only `"telemetry": "always"` is valid.
+Version 0.9 of `pi-linear-lite` registers 53 tool surfaces: active `linear` and `linear_get_result`, deferred `linear_graphql` and `linear_batch`, plus 49 inactive typed tools. The `linear` tool accepts discovery help only. For an ordinary operation, send exact help, then call the activated `linear_<operation>` tool with direct arguments. Send exact `graphql` or `batch` help before calling `linear_graphql` or `linear_batch`. Exact `get_result` help returns a parameter card without activation because `linear_get_result` is already active. Callable tool names always use underscores.
 
 ## Help protocol
 
-Help is optional. This request returns the accepted domains plus exact-operation, GraphQL, batch, and result-retrieval help links:
+Every `linear` call requires `operation: "help"`. This request returns the accepted domains plus exact-operation, GraphQL, batch, and result-retrieval help links:
 
 ```json
 { "operation": "help" }
@@ -95,7 +95,7 @@ Then call `linear_get_issue`:
 { "issue": "AEO-258" }
 ```
 
-### Discovery, direct exceptional tools, and retained compatibility envelopes
+### Discovery and direct exceptional tools
 
 ```json
 { "operation": "help" }
@@ -103,6 +103,16 @@ Then call `linear_get_issue`:
 
 ```json
 { "operation": "help", "variables": { "domain": "issues" } }
+```
+
+```json
+{ "operation": "help", "variables": { "operation": "graphql" } }
+```
+
+Then call `linear_graphql` with direct arguments:
+
+```json
+{ "query": "query { viewer { id } }", "variables": {} }
 ```
 
 ```json
@@ -120,10 +130,14 @@ Then call `linear_batch` with direct arguments:
 ```
 
 ```json
-{ "handle": "linear-result:v1:550e8400-e29b-41d4-a716-446655440000", "path": "", "offset": 0 }
+{ "operation": "help", "variables": { "operation": "get_result" } }
 ```
 
-Call the direct `linear_get_result` tool with that object. Legacy `linear` batch and `get_result` envelopes remain compatible but are deprecated.
+This returns the direct parameter card without activation. Call the already-active `linear_get_result` tool:
+
+```json
+{ "handle": "linear-result:v1:550e8400-e29b-41d4-a716-446655440000", "path": "", "offset": 0 }
+```
 <!-- END GENERATED LINEAR OPERATIONS -->
 
 A batch can combine independent reads with one guarded `delete_issue_relation`. Its read request includes the exact relation preflight. The delete request runs only after every guard matches and the read-error gate passes.
@@ -188,7 +202,7 @@ The extension captures Linear's request, endpoint-request, complexity, reset, en
 
 A result adds one compact `meta.rateLimit` object only when another similar call may exhaust a budget. The request or endpoint scope warns when its remaining count is at most one. The complexity scope warns when its remaining budget is at most the current response's `X-Complexity`. The object contains only received header values, triggered scopes, response attempt identity, and the retry count. Batch responses also identify the read or mutation phase. Artifact routing and `get_result` preserve this object.
 
-For an explicit diagnostic measurement, set top-level `"telemetry": "always"` on the exact direct tool that performs the request: `linear_batch` for batch work, `linear_graphql` for raw GraphQL, or the applicable typed `linear_*` tool for named work. This override includes the same redacted object for healthy responses. Healthy output uses `"scopes": []`; it does not claim exhaustion. The deprecated loader routes still accept top-level telemetry for compatibility. Routine calls must omit it.
+For an explicit diagnostic measurement, set top-level `"telemetry": "always"` on the exact direct tool that performs the request: `linear_batch` for batch work, `linear_graphql` for raw GraphQL, or the applicable typed `linear_*` tool for named work. This override includes the same redacted object for healthy responses. Healthy output uses `"scopes": []`; it does not claim exhaustion. Routine calls must omit it.
 
 HTTP 429 responses keep one automatic retry. For `searchIssues` and `semanticSearch` query reads, a documented GraphQL `RATELIMITED` HTTP 400 response also gets one retry. An explicit `Retry-After` value takes priority. Otherwise, an exhausted endpoint budget uses its endpoint reset time. Other GraphQL validation errors and mutation-body `RATELIMITED` responses do not add retries. Thrown HTTP and GraphQL errors keep redacted telemetry in a non-enumerable internal `linearTelemetry` field without changing the error message.
 

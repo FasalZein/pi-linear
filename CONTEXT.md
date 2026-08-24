@@ -21,12 +21,12 @@ The parameter names, types, and example for one operation.
 _Avoid_: Tool schema
 
 **Loader**:
-The always-available tool that carries the operation catalog and runs any operation.
-_Avoid_: Router, dispatcher
+The always-available `linear` discovery tool. It returns root, domain, or exact help and activates deferred direct tools.
+_Avoid_: Router, dispatcher, execution tool
 
-**Typed tool**:
-A tool that exposes one canonical operation with the parameters of that operation.
-_Avoid_: Operation wrapper
+**Direct tool**:
+A callable underscore identifier that executes one named or exceptional operation, such as `linear_get_issue` or `linear_graphql`.
+_Avoid_: Space-form tool name, unprefixed operation name
 
 **Activation**:
 The step that makes one typed tool available to the caller. It removes no other tool.

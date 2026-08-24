@@ -93,7 +93,8 @@ describe('restricted Linear agent recovery', () => {
     expect(harness.registered.map(({ name }) => name)).toContain('linear_batch');
     expect(harness.active()).toEqual(['write', 'linear', 'linear_get_result']);
 
-    const externalized = await execute(harness.tool('linear'), {
+    await execute(harness.tool('linear'), { operation: 'help', variables: { operation: 'graphql' } });
+    const externalized = await execute(harness.tool('linear_graphql'), {
       query: 'query RestrictedRecovery { issues { nodes { id title description } pageInfo { hasNextPage endCursor } } }',
       variables: {},
     });
@@ -108,6 +109,6 @@ describe('restricted Linear agent recovery', () => {
     expect(recovered.details.data.value).toEqual(JSON.parse(await readFile(externalized.details.path, 'utf8')));
     expect(recovered.details.data.value.data).toEqual(source);
     expect(fetch).toHaveBeenCalledOnce();
-    expect(harness.active()).toEqual(['write', 'linear', 'linear_get_result']);
+    expect(harness.active()).toEqual(['write', 'linear', 'linear_get_result', 'linear_graphql']);
   });
 });
