@@ -9,7 +9,7 @@ import {
   setAuthPreference,
   switchWorkspace,
 } from './client';
-import { linearApiTool, linearGetResultTool, linearGraphqlTool } from './api';
+import { linearApiTool, linearBatchTool, linearGetResultTool, linearGraphqlTool } from './api';
 import { exceptionalToolDefinitions } from './exceptional-tools';
 import { typedLinearTools, typedToolNames } from './typed-tools';
 import type { MutationMode } from './safety';
@@ -133,6 +133,7 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
   const exceptionalTools = exceptionalToolDefinitions.map((definition) => {
     if (definition.name === 'linear_get_result') return linearGetResultTool(definition);
     if (definition.name === 'linear_graphql') return linearGraphqlTool(mode, definition);
+    if (definition.name === 'linear_batch') return linearBatchTool(mode, definition);
     throw new Error('Linear tool configuration error: no runtime for exceptional tool.');
   });
   for (const tool of exceptionalTools) pi.registerTool(tool);

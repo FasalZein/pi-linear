@@ -608,6 +608,65 @@ function rawGraphqlBlock(theme: Theme, result: AgentToolResult<any>, notes: stri
   return new LinearBlockComponent([...lines, '', wrapped(theme.fg('dim', jsonHint()))]);
 }
 
+function batchOperations(value: unknown): string {
+  if (!Array.isArray(value)) return '(none)';
+  const names = value.map((entry) => asString(asRecord(entry)?.operation)).filter((name): name is string => !!name);
+  return names.length ? names.join(', ') : '(none)';
+}
+
+export function renderLinearBatchCall(args: any, theme: Theme): LinearBlockComponent {
+  const params = asRecord(args) ?? {};
+  const flat = Array.isArray(params.operations);
+  const lines = [
+    `${theme.fg('toolTitle', theme.bold('linear_batch'))} ${theme.fg('accent', flat ? 'flat' : 'phased')}`,
+  ];
+  if (flat) lines.push(theme.fg('dim', `  operations: ${batchOperations(params.operations)}`));
+  else {
+    if (Array.isArray(params.reads)) lines.push(theme.fg('dim', `  reads: ${batchOperations(params.reads)}`));
+    if (Array.isArray(params.mutations)) lines.push(theme.fg('dim', `  mutations: ${batchOperations(params.mutations)}`));
+  }
+  return new LinearBlockComponent(lines);
+}
+
+export function renderLinearBatchResult(
+  result: AgentToolResult<any>,
+  options: ToolRenderResultOptions,
+  theme: Theme,
+  context: LinearRenderContext,
+): Text | LinearBlockComponent {
+  if (options.isPartial) return new Text(theme.fg('warning', 'Running batch…'), 0, 0);
+  if (context.isError) {
+    const message = resultErrorMessage(result);
+    let recovery = errorRecovery(message, 'linear_batch', 'batch');
+    if (!recovery.includes('linear_batch')) recovery = `${recovery} Then call linear_batch again.`;
+    return renderErrorResult(result, theme, recovery);
+  }
+  if (shouldShowJson(options, context)) return expandedJson(result, theme);
+
+  const digest = digestResult(result, []);
+  if (digest.kind === 'spill') return new LinearBlockComponent(spillBlock(theme, digest));
+
+  const details = asRecord(result.details) ?? {};
+  const data = asRecord(details.data) ?? {};
+  const errors = Array.isArray(details.errors) ? details.errors : [];
+  const skipped = Array.isArray(details.skipped) ? details.skipped.filter((key): key is string => typeof key === 'string') : [];
+  const failed = [...new Set(errors.map((entry) => asString(asRecord(entry)?.key)).filter((key): key is string => !!key))];
+  const requests = asRecord(asRecord(details.meta)?.requests) ?? {};
+  const readRequests = typeof requests.read === 'number' ? requests.read : 0;
+  const mutationRequests = typeof requests.mutation === 'number' ? requests.mutation : 0;
+  const labels = (label: string, keys: readonly string[]) => `${label}: ${keys.length ? keys.join(', ') : '(none)'}`;
+  return new LinearBlockComponent([
+    '',
+    theme.fg('success', '✓ Batch complete'),
+    wrapped(theme.fg('success', labels('Completed', Object.keys(data))), 2),
+    wrapped(theme.fg('error', labels('Failed', failed)), 2),
+    wrapped(theme.fg('warning', labels('Skipped', skipped)), 2),
+    wrapped(theme.fg('dim', `Requests: ${readRequests} read, ${mutationRequests} mutation`), 2),
+    '',
+    wrapped(theme.fg('dim', jsonHint())),
+  ]);
+}
+
 export function renderLinearGetResultCall(args: any, theme: Theme): LinearBlockComponent {
   return renderToolCall('linear_get_result', (args ?? {}) as ToolArgs, theme, ['handle', 'path', 'offset']);
 }

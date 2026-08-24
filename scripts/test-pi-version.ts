@@ -93,7 +93,7 @@ const harness = createPi();
 register(harness.pi);
 for (const handler of harness.sessionHandlers) await handler();
 const names = harness.registered.map((tool) => tool.name);
-if (names.length !== 52) throw new Error(\`Expected 52 tools, registered \${names.length}.\`);
+if (names.length !== 53) throw new Error(\`Expected 53 tools, registered \${names.length}.\`);
 if (!names.includes('linear')) throw new Error('linear was not registered.');
 const linearActive = harness.activeTools().filter((name) => name === 'linear' || name.startsWith('linear_'));
 if (linearActive.join(',') !== 'linear,linear_get_result') throw new Error(\`Active Linear tools: \${linearActive.join(', ')}\`);
@@ -104,12 +104,16 @@ if (!harness.commands.has('linear-auth') || !harness.commands.has('linear-settin
 const api = harness.registered.find((tool) => tool.name === 'linear');
 const resultTool = harness.registered.find((tool) => tool.name === 'linear_get_result');
 const graphqlTool = harness.registered.find((tool) => tool.name === 'linear_graphql');
+const batchTool = harness.registered.find((tool) => tool.name === 'linear_batch');
 const typed = harness.registered.find((tool) => tool.name === 'linear_get_issue');
 if (!resultTool || typeof resultTool.renderCall !== 'function' || typeof resultTool.renderResult !== 'function') {
   throw new Error('Direct result tool or its renderers are missing.');
 }
 if (!graphqlTool || typeof graphqlTool.renderCall !== 'function' || typeof graphqlTool.renderResult !== 'function') {
   throw new Error('Direct GraphQL tool or its renderers are missing.');
+}
+if (!batchTool || typeof batchTool.renderCall !== 'function' || typeof batchTool.renderResult !== 'function') {
+  throw new Error('Direct batch tool or its renderers are missing.');
 }
 if (typed.promptSnippet || typed.promptGuidelines) throw new Error('Typed tools must omit active-only prompt metadata.');
 const help = await api.execute('call-1', { operation: 'help', variables: { operation: 'get_issue' } }, undefined, undefined, { hasUI: false });

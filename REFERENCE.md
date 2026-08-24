@@ -1,6 +1,6 @@
 # Linear API reference
 
-Version 0.9 of `pi-linear-lite` registers 52 tool surfaces: active `linear` and `linear_get_result`, deferred `linear_graphql`, plus 49 inactive typed tools. Loader-only `batch` adds no typed tool. The legacy loader `get_result` envelope and raw `query` route remain compatible but are deprecated. The `linear` tool publishes compact discovery. For an ordinary operation, send exact help, then call the activated `linear_<operation>` tool with direct arguments. For raw GraphQL, send exact `graphql` help, then call `linear_graphql` with required `query` and optional `variables`, `workspace`, `sink`, or `telemetry`. Only `"telemetry": "always"` is valid.
+Version 0.9 of `pi-linear-lite` registers 53 tool surfaces: active `linear` and `linear_get_result`, deferred `linear_graphql` and `linear_batch`, plus 49 inactive typed tools. Legacy loader batch, `get_result`, and raw `query` routes remain compatible but are deprecated. The `linear` tool publishes compact discovery. For an ordinary operation, send exact help, then call the activated `linear_<operation>` tool with direct arguments. Send exact `graphql` or `batch` help before calling the matching direct exceptional tool. Only `"telemetry": "always"` is valid.
 
 ## Help protocol
 
@@ -95,7 +95,7 @@ Then call `linear_get_issue`:
 { "issue": "AEO-258" }
 ```
 
-### Discovery, direct result retrieval, and retained compatibility envelopes
+### Discovery, direct exceptional tools, and retained compatibility envelopes
 
 ```json
 { "operation": "help" }
@@ -106,18 +106,24 @@ Then call `linear_get_issue`:
 ```
 
 ```json
-{ "operation": "batch", "variables": { "operations": [{ "operation": "get_issue", "variables": { "issue": "AEO-258" } }] } }
+{ "operation": "help", "variables": { "operation": "batch" } }
+```
+
+Then call `linear_batch` with direct arguments:
+
+```json
+{ "operations": [{ "key": "issue", "operation": "get_issue", "variables": { "issue": "AEO-258" } }] }
 ```
 
 ```json
-{ "operation": "batch", "variables": { "reads": [{ "operation": "get_issue", "variables": { "issue": "AEO-258" } }], "mutations": [{ "operation": "delete_issue_relation", "variables": { "relationId": "33333333-3333-4333-8333-333333333333", "issueId": "11111111-1111-4111-8111-111111111111", "relatedIssueId": "22222222-2222-4222-8222-222222222222", "type": "related" } }] } }
+{ "reads": [{ "key": "issue", "operation": "get_issue", "variables": { "issue": "AEO-258" } }], "mutations": [{ "key": "delete", "operation": "delete_issue_relation", "variables": { "relationId": "33333333-3333-4333-8333-333333333333", "issueId": "11111111-1111-4111-8111-111111111111", "relatedIssueId": "22222222-2222-4222-8222-222222222222", "type": "related" } }] }
 ```
 
 ```json
 { "handle": "linear-result:v1:550e8400-e29b-41d4-a716-446655440000", "path": "", "offset": 0 }
 ```
 
-Call the direct `linear_get_result` tool with that object. The legacy `linear` `get_result` envelope remains compatible but is deprecated.
+Call the direct `linear_get_result` tool with that object. Legacy `linear` batch and `get_result` envelopes remain compatible but are deprecated.
 <!-- END GENERATED LINEAR OPERATIONS -->
 
 A batch can combine independent reads with one guarded `delete_issue_relation`. Its read request includes the exact relation preflight. The delete request runs only after every guard matches and the read-error gate passes.

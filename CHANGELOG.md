@@ -2,12 +2,13 @@
 
 ## 0.9.0
 
+- Added deferred direct `linear_batch`. Exact `batch` help activates it. Direct calls use canonical `key`; the legacy loader batch route and `name` label remain compatible but are deprecated.
 - Added deferred direct `linear_graphql`. Exact `graphql` help activates it. The legacy loader raw `query` route remains compatible but is deprecated.
 - Added direct `linear_get_result` as an initially active exceptional tool. Kept the legacy loader `get_result` route compatible but deprecated.
-- Made `linear` discovery-only for ordinary operations. Exact help now returns schema-valid direct arguments for the activated `linear_<operation>` tool. Loader execution remains available only for `batch`, `get_result`, and raw GraphQL.
+- Made `linear` discovery-only for ordinary operations. Exact help now returns schema-valid direct arguments for the activated tool. Loader execution remains available only as deprecated compatibility for batch, `get_result`, and raw GraphQL.
 - Added `delete_issue_relation`, the only named delete operation. It requires exact relation, source issue, target issue, and relation-type guards, verifies them with one preflight read, and deletes only after an exact match under normal named mutation authority. Generic batch can fold this guard into its read phase before one ordinary mutation.
 - Normalized guarded relation preflight and delete failures to stable operation-specific errors that expose no supplied UUID or active credential.
-- Added the loader-only batch transport: compatible reads share one aliased query, one ordinary mutation runs after the read gate, and independent issue creates use `issueBatchCreate`.
+- Added batch transport: compatible reads share one aliased query, one ordinary mutation runs after the read gate, and independent issue creates use `issueBatchCreate`.
 - Added internal telemetry for every documented Linear rate-limit header. By default, results show compact `meta.rateLimit` details only near exhaustion. Loader calls with top-level `telemetry: "always"` are the explicit diagnostic exception. Search reads retry one documented GraphQL `RATELIMITED` 400 response.
 - Architecture references: [`ADR 0006`](./docs/adr/0006-publish-the-operation-catalog.md) publishes the catalog. [`ADR 0003`](./docs/adr/0003-result-routing.md) defines lossless routing. [`ADR 0007`](./docs/adr/0007-shape-results-and-batch-transport-by-phase.md) records result views, exact roots, and phased batch transport.
 

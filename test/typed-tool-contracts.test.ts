@@ -77,11 +77,12 @@ describe('typed tool registration', () => {
   it('registers linear, direct result retrieval, and one typed tool per catalog operation', () => {
     const harness = setup();
     const names = harness.registered.map((tool) => tool.name);
-    expect(names.filter((name) => !['linear', 'linear_get_result', 'linear_graphql'].includes(name)).sort())
+    expect(names.filter((name) => !['linear', 'linear_get_result', 'linear_graphql', 'linear_batch'].includes(name)).sort())
       .toEqual([...typedToolNames()].sort());
     expect(names).toContain('linear');
     expect(names).toContain('linear_get_result');
     expect(names).toContain('linear_graphql');
+    expect(names).toContain('linear_batch');
     expect(typedToolNames()).toHaveLength(49);
   });
 

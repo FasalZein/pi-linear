@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { linearApiTool, resolveRequest } from '../extensions/api';
 import { assertBatchAccounting, batchHelp } from '../extensions/batch';
+import { LINEAR_BATCH_HELP } from '../extensions/exceptional-tools';
 import { operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
 import type { MutationMode } from '../extensions/safety';
 import { typedLinearTools } from '../extensions/typed-tools';
@@ -106,38 +107,24 @@ describe('batch help and catalog', () => {
     vi.stubGlobal('fetch', fetch);
     const result = await execute({ operation: 'help', variables: { operation: 'batch' } });
     expect(fetch).not.toHaveBeenCalled();
-    expect(result.details.name).toBe('batch');
+    expect(result.details).toMatchObject(LINEAR_BATCH_HELP);
     expect(result.details.loadedTools).toBeUndefined();
-    expect(result.details.parameters).toEqual(
-      expect.arrayContaining([
-        { name: 'operations', type: '{ key?, operation, variables }[]', required: false },
-        { name: 'reads', type: '{ key?, operation, variables }[]', required: false },
-        { name: 'mutations', type: '{ key?, operation, variables }[]', required: false },
-      ]),
-    );
-    expect(result.details.entry).toMatch(/keys are optional caller labels/i);
-    expect(result.details.entry).toMatch(/runtime assigns/i);
-    expect(result.details.entry).not.toMatch(/GraphQL alias/i);
-    expect(result.details.example.variables).toEqual({
-      operations: [{ operation: 'get_issue', variables: { issue: 'AEO-258' } }],
-    });
-    expect(result.details.phasedExample.variables).toMatchObject({
-      reads: [{ operation: 'get_issue', variables: { issue: 'AEO-258' } }],
-      mutations: [{ operation: 'delete_issue_relation' }],
-    });
   });
 
   it('validates every nested entry in every published batch example against its real operation contract', async () => {
     const reference = await readFile('REFERENCE.md', 'utf8');
-    const documented = [...reference.matchAll(/```json\n([^`]*?"operation": "batch"[^`]*?)\n```/g)]
-      .map((match) => JSON.parse(match[1]!));
-    const help = batchHelp();
-    const examples = [help.example, help.phasedExample, ...documented] as Array<{
-      variables: { operations?: Array<{ operation: string; variables: Record<string, unknown> }>; reads?: Array<{ operation: string; variables: Record<string, unknown> }>; mutations?: Array<{ operation: string; variables: Record<string, unknown> }> };
+    const documented = [...reference.matchAll(/```json\n([^`]*?(?:"operations"|"reads")[^`]*?)\n```/g)]
+      .map((match) => JSON.parse(match[1]!))
+      .filter((example) => 'operations' in example || 'reads' in example);
+    const help = batchHelp() as any;
+    const examples = [LINEAR_BATCH_HELP.flatExample, LINEAR_BATCH_HELP.phasedExample, help.example.variables, help.phasedExample.variables, ...documented] as Array<{
+      operations?: Array<{ operation: string; variables: Record<string, unknown> }>;
+      reads?: Array<{ operation: string; variables: Record<string, unknown> }>;
+      mutations?: Array<{ operation: string; variables: Record<string, unknown> }>;
     }>;
-    expect(examples).toHaveLength(4);
+    expect(examples.length).toBeGreaterThanOrEqual(6);
     for (const example of examples) {
-      for (const entry of [...(example.variables.operations ?? []), ...(example.variables.reads ?? []), ...(example.variables.mutations ?? [])]) {
+      for (const entry of [...(example.operations ?? []), ...(example.reads ?? []), ...(example.mutations ?? [])]) {
         expect(() => resolveRequest({ operation: entry.operation, variables: entry.variables }), entry.operation).not.toThrow();
       }
     }
@@ -145,7 +132,7 @@ describe('batch help and catalog', () => {
 
   it('publishes batch and the loader-only telemetry override', () => {
     const tool = linearApiTool() as any;
-    expect(tool.description).toContain('loader: batch, get_result');
+    expect(tool.description).toContain('special: graphql, batch, get_result');
     expect(Object.keys(tool.parameters.properties).sort()).toEqual(['operation', 'query', 'sink', 'telemetry', 'variables', 'workspace']);
   });
 });

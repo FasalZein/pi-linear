@@ -249,18 +249,19 @@ describe('generated products', () => {
     expect(description).toContain('ordinary named operations do not execute through linear');
     expect(description).toContain('Call activated tools with direct arguments');
     expect(description).toContain('Exact graphql help loads linear_graphql');
+    expect(description).toContain('Exact batch help loads linear_batch');
 
     const published = new Map([...description.matchAll(/^([a-z]+): ([a-z0-9_, ]+)$/gm)]
       .map((match) => [match[1]!, match[2]!.split(', ')]));
     const expectedDomains = DOMAINS.filter((domain) => operationDefinitions.some((definition) => definition.domain === domain));
-    expect([...published.keys()]).toEqual([...expectedDomains, 'loader']);
+    expect([...published.keys()]).toEqual([...expectedDomains, 'special']);
     for (const domain of expectedDomains) {
       expect(published.get(domain)).toEqual(operationDefinitions
         .filter((definition) => definition.domain === domain)
         .map(({ name }) => name));
     }
-    expect(published.get('loader')).toEqual(['batch', 'get_result']);
-    expect([...published.values()].flat().filter((name) => name !== 'batch' && name !== 'get_result').sort())
+    expect(published.get('special')).toEqual(['graphql', 'batch', 'get_result']);
+    expect([...published.values()].flat().filter((name) => !['graphql', 'batch', 'get_result'].includes(name)).sort())
       .toEqual(operationDefinitions.map(({ name }) => name).sort());
     for (const { purpose } of operationDefinitions) expect(description).not.toContain(purpose);
   });
@@ -347,11 +348,12 @@ describe('generated products', () => {
     expect(operationDefinitions).toHaveLength(49);
     expect(typedLinearTools()).toHaveLength(49);
     expect(manifest.lazyTools.map(({ name }) => name)).toEqual(typedNames);
-    expect(expectedNames).toHaveLength(52);
-    expect(manifest.allowedTools).toHaveLength(52);
+    expect(expectedNames).toHaveLength(53);
+    expect(manifest.allowedTools).toHaveLength(53);
     expect(manifest.allowedTools).toContain('linear_get_result');
     expect(manifest.allowedTools).toContain('linear_graphql');
-    expect((linearApiTool() as any).description).toContain('The linear get_result and raw query routes are deprecated');
+    expect(manifest.allowedTools).toContain('linear_batch');
+    expect((linearApiTool() as any).description).toContain('The linear get_result, raw query, and batch execution routes are deprecated');
   });
 
   it('ships the complete restricted lossless contract in public documentation', async () => {
@@ -367,7 +369,7 @@ describe('generated products', () => {
       'cardinality-aware', 'get_result', 'path-scoped errors', 'sink:inline',
       'legacy compatibility path', 'exactly `write` plus',
     ]) expect(published).toContain(claim);
-    expect(readme).toContain('52 tool surfaces');
+    expect(readme).toContain('53 tool surfaces');
     expect(readme).toContain('published across all 49 tools');
     expect(readme).toContain(`generated ${manifest.allowedTools.length} Linear tool names`);
     expect(readme).toContain('The guarded `linear_delete_issue_relation` tool is the only delete tool.');

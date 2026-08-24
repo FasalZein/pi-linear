@@ -48,6 +48,12 @@ if (directGraphql !== fixture.directGraphql?.current) {
   console.error(`directGraphql: expected current ${fixture.directGraphql?.current ?? 'missing'} bytes`);
   failed = true;
 }
+const directBatch = schemaBytes(['linear_batch']);
+console.log(`directBatch: v0.9 current ${directBatch} bytes`);
+if (directBatch !== fixture.directBatch?.current) {
+  console.error(`directBatch: expected current ${fixture.directBatch?.current ?? 'missing'} bytes`);
+  failed = true;
+}
 for (const [name, additions] of scenarios) {
   active = [...new Set([...initialActive, ...additions])];
   const current = schemaBytes(active);

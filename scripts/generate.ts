@@ -23,7 +23,7 @@ const readmePath = resolve(root, 'README.md');
 const referencePath = resolve(root, 'REFERENCE.md');
 const START = '<!-- BEGIN GENERATED LINEAR OPERATIONS -->';
 const END = '<!-- END GENERATED LINEAR OPERATIONS -->';
-const LINEAR_TOOL_USAGE = 'Discover Linear operations by domain or exact name. { "operation": "help", "variables": { "domain": "issues" } } lists names. { "operation": "help", "variables": { "operation": "<name>" } } returns purpose, exact parameters, accepted branches, and direct arguments, then loads linear_<name>. Exact graphql help loads linear_graphql for direct raw GraphQL. Call activated tools with direct arguments; ordinary named operations do not execute through linear. Use linear_get_result for stored results. The linear get_result and raw query routes are deprecated. batch remains loader-only.';
+const LINEAR_TOOL_USAGE = 'Discover Linear operations by domain or exact name. { "operation": "help", "variables": { "domain": "issues" } } lists names. { "operation": "help", "variables": { "operation": "<name>" } } returns purpose, exact parameters, accepted branches, and direct arguments, then loads linear_<name>. Exact graphql help loads linear_graphql. Exact batch help loads linear_batch. Call activated tools with direct arguments; ordinary named operations do not execute through linear. Use linear_get_result for stored results. The linear get_result, raw query, and batch execution routes are deprecated.';
 
 export const generatedFiles = [manifestPath, contractsPath, catalogPath, readmePath, referencePath] as const;
 
@@ -94,7 +94,7 @@ export function operationCatalogText(): string {
       domain,
       names: operationDefinitions.filter((definition) => definition.domain === domain).map(({ name }) => name),
     })).filter(({ names }) => names.length).map(({ domain, names }) => `${domain}: ${names.join(', ')}`),
-    'loader: batch, get_result',
+    'special: graphql, batch, get_result',
   ].join('\n');
 }
 
@@ -116,7 +116,7 @@ function replaceGeneratedSection(source: string, body: string): string {
 function readmeCatalog(): string {
   const product = manifest();
   const names = product.allowedTools.map((name) => `\`${name}\``).join(', ');
-  return `## Generated tool inventory\n\nThe package registers ${product.allowedTools.length} tools. \`linear\` and \`linear_get_result\` start active. \`linear_graphql\` and typed tools load on demand.\n\n${names}`;
+  return `## Generated tool inventory\n\nThe package registers ${product.allowedTools.length} tools. \`linear\` and \`linear_get_result\` start active. \`linear_graphql\`, \`linear_batch\`, and typed tools load on demand.\n\n${names}`;
 }
 
 function referenceCatalog(): string {
@@ -146,7 +146,7 @@ function referenceCatalog(): string {
     '{ "issue": "AEO-258" }',
     '```',
     '',
-    '### Discovery, direct result retrieval, and retained compatibility envelopes',
+    '### Discovery, direct exceptional tools, and retained compatibility envelopes',
     '',
     '```json',
     '{ "operation": "help" }',
@@ -157,18 +157,24 @@ function referenceCatalog(): string {
     '```',
     '',
     '```json',
-    '{ "operation": "batch", "variables": { "operations": [{ "operation": "get_issue", "variables": { "issue": "AEO-258" } }] } }',
+    '{ "operation": "help", "variables": { "operation": "batch" } }',
+    '```',
+    '',
+    'Then call `linear_batch` with direct arguments:',
+    '',
+    '```json',
+    '{ "operations": [{ "key": "issue", "operation": "get_issue", "variables": { "issue": "AEO-258" } }] }',
     '```',
     '',
     '```json',
-    '{ "operation": "batch", "variables": { "reads": [{ "operation": "get_issue", "variables": { "issue": "AEO-258" } }], "mutations": [{ "operation": "delete_issue_relation", "variables": { "relationId": "33333333-3333-4333-8333-333333333333", "issueId": "11111111-1111-4111-8111-111111111111", "relatedIssueId": "22222222-2222-4222-8222-222222222222", "type": "related" } }] } }',
+    '{ "reads": [{ "key": "issue", "operation": "get_issue", "variables": { "issue": "AEO-258" } }], "mutations": [{ "key": "delete", "operation": "delete_issue_relation", "variables": { "relationId": "33333333-3333-4333-8333-333333333333", "issueId": "11111111-1111-4111-8111-111111111111", "relatedIssueId": "22222222-2222-4222-8222-222222222222", "type": "related" } }] }',
     '```',
     '',
     '```json',
     '{ "handle": "linear-result:v1:550e8400-e29b-41d4-a716-446655440000", "path": "", "offset": 0 }',
     '```',
     '',
-    'Call the direct `linear_get_result` tool with that object. The legacy `linear` `get_result` envelope remains compatible but is deprecated.',
+    'Call the direct `linear_get_result` tool with that object. Legacy `linear` batch and `get_result` envelopes remain compatible but are deprecated.',
   ].join('\n');
 }
 

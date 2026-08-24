@@ -28,16 +28,20 @@ describe('native OpenAI route', () => {
       operation: 'help', variables: { operation: 'graphql' },
     });
     expect(help.details.loadedTools).toEqual(['linear_graphql']);
-    const context = activationContext(harness, help.details.loadedTools);
+    const batchHelp = await execute(harness.tool('linear'), {
+      operation: 'help', variables: { operation: 'batch' },
+    });
+    expect(batchHelp.details.loadedTools).toEqual(['linear_batch']);
+    const context = activationContext(harness, [...help.details.loadedTools, ...batchHelp.details.loadedTools]);
 
     const firstParty = await captureOpenAI(NATIVE_OPENAI_MODEL, context);
     expect(harness.activeTools().filter((name) => name === 'linear' || name.startsWith('linear_'))).toEqual([
-      'linear', 'linear_get_result', 'linear_graphql',
+      'linear', 'linear_get_result', 'linear_graphql', 'linear_batch',
     ]);
     expect(firstParty.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear', 'linear_get_result']);
     const additional = firstParty.input.filter((item: { type: string }) => item.type === 'additional_tools');
     expect(additional).toHaveLength(1);
-    expect(additional[0].tools.map((tool: { name: string; defer_loading?: boolean }) => tool.name)).toEqual(['linear_graphql']);
+    expect(additional[0].tools.map((tool: { name: string; defer_loading?: boolean }) => tool.name)).toEqual(['linear_graphql', 'linear_batch']);
 
     const searchModel = {
       ...NATIVE_OPENAI_MODEL,
@@ -52,7 +56,10 @@ describe('native OpenAI route', () => {
     expect(output.tools.map((tool: { name: string; defer_loading?: boolean }) => ({
       name: tool.name,
       defer_loading: tool.defer_loading,
-    }))).toEqual([{ name: 'linear_graphql', defer_loading: true }]);
+    }))).toEqual([
+      { name: 'linear_graphql', defer_loading: true },
+      { name: 'linear_batch', defer_loading: true },
+    ]);
 
     expect(() => harness.tool('linear_create_comment').prepareArguments({})).toThrow(
       /Invalid arguments for "linear_create_comment"/,

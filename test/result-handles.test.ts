@@ -400,10 +400,10 @@ describe('result handles', () => {
     expect(card.details.example).not.toHaveProperty('variables');
     const loader = linearApiTool() as any;
     const operationGuidance = loader.parameters.properties.operation.description;
-    expect(operationGuidance).toContain('Legacy get_result is deprecated');
-    expect(operationGuidance).toContain('call linear_get_result with direct arguments');
+    expect(operationGuidance).toContain('Legacy batch and get_result are deprecated');
+    expect(operationGuidance).toContain('linear_batch or linear_get_result with direct arguments');
     expect(operationGuidance).not.toContain('loader-only batch and get_result');
-    expect(loader.description).toContain('loader: batch, get_result');
+    expect(loader.description).toContain('special: graphql, batch, get_result');
     expect(typedToolNames()).not.toContain('linear_get_result');
   });
 });

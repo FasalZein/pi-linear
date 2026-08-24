@@ -87,9 +87,10 @@ describe('restricted Linear agent recovery', () => {
     vi.stubGlobal('fetch', fetch);
 
     const harness = policyHarness(allowed);
-    expect(harness.registered).toHaveLength(52);
+    expect(harness.registered).toHaveLength(53);
     expect(harness.registered.map(({ name }) => name)).toContain('linear_get_result');
     expect(harness.registered.map(({ name }) => name)).toContain('linear_graphql');
+    expect(harness.registered.map(({ name }) => name)).toContain('linear_batch');
     expect(harness.active()).toEqual(['write', 'linear', 'linear_get_result']);
 
     const externalized = await execute(harness.tool('linear'), {
