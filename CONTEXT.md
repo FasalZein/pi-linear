@@ -99,6 +99,24 @@ _Avoid_: Mutation roots, broad capability
 **Read-only entry**:
 An extension mode that permits reads and rejects all mutations.
 
+**Credential store**:
+The module that resolves, changes, and lists secrets from Linear credentials.
+
+**Credential document**:
+The private on-disk document that stores Workspace credentials, Workspace selection, and Auth preference.
+
+**Credential lock**:
+The private cross-process lock that serializes Credential document changes and recovers after an owner process ends.
+
+**Auth preference**:
+The saved order for default credential resolution. It selects Workspace-first or environment-first resolution.
+
+**Auth source**:
+The source selected for one resolved credential. It is `workspace`, `env`, or `none`.
+
+**Active secrets**:
+The unique environment and saved Workspace credential values used for synchronous redaction.
+
 **Workspace**:
 A named Linear account and credential selection.
 

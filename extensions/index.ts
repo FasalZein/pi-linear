@@ -1,15 +1,6 @@
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
-import {
-  addWorkspace,
-  getActiveWorkspaceName,
-  listWorkspaceNames,
-  readCredentials,
-  removeWorkspace,
-  resolveApiKey,
-  setAuthPreference,
-  switchWorkspace,
-} from './client';
 import { activeSecrets } from './active-secrets';
+import { credentialStore } from './credential-store';
 import { linearApiTool, linearBatchTool, linearGetResultTool, linearGraphqlTool } from './api';
 import { exceptionalToolDefinitions } from './exceptional-tools';
 import { assertLocalWriteAllowed } from './local-write-policy';
@@ -50,34 +41,33 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
         if (!name) return ctx.ui.notify('No workspace name provided', 'warning');
         const apiKey = text(await ctx.ui.input('Linear API key', 'lin_api_...'));
         if (!apiKey) return ctx.ui.notify('No API key provided', 'warning');
-        const before = await readCredentials();
-        await addWorkspace(name, apiKey, mode);
+        const before = (await credentialStore.resolve()).snapshot;
+        await credentialStore.change({ type: 'add', name, apiKey }, mode);
         const displayedName = displayWorkspace(name);
-        if (Object.keys(before.workspaces).length && (await ctx.ui.confirm('Switch workspace', `Switch to "${displayedName}" now?`))) {
-          await switchWorkspace(name, mode);
+        if (before.workspaces.length && (await ctx.ui.confirm('Switch workspace', `Switch to "${displayedName}" now?`))) {
+          await credentialStore.change({ type: 'switch', name }, mode);
         }
         ctx.ui.notify(`Workspace "${displayedName}" saved`, 'info');
         return;
       }
 
       if (command === 'remove') {
-        const creds = await readCredentials();
-        const names = listWorkspaceNames(creds);
-        const selected = suppliedName ?? await selectWorkspace('Select workspace to remove', names);
+        const names = (await credentialStore.resolve()).snapshot.workspaces;
+        const selected = suppliedName ?? await selectWorkspace('Select workspace to remove', [...names]);
         if (!selected) return ctx.ui.notify('No workspace selected', 'warning');
         const displayedName = displayWorkspace(selected);
-        if (!creds.workspaces[selected]) return ctx.ui.notify(`Workspace "${displayedName}" not found`, 'warning');
-        await removeWorkspace(selected, mode);
+        if (!names.includes(selected)) return ctx.ui.notify(`Workspace "${displayedName}" not found`, 'warning');
+        await credentialStore.change({ type: 'remove', name: selected }, mode);
         ctx.ui.notify(`Removed workspace "${displayedName}"`, 'info');
         return;
       }
 
       if (command === 'switch') {
-        const creds = await readCredentials();
-        const selected = suppliedName ?? await selectWorkspace('Select workspace', listWorkspaceNames(creds));
+        const names = (await credentialStore.resolve()).snapshot.workspaces;
+        const selected = suppliedName ?? await selectWorkspace('Select workspace', [...names]);
         if (!selected) return ctx.ui.notify('No workspace selected', 'warning');
         try {
-          await switchWorkspace(selected, mode);
+          await credentialStore.change({ type: 'switch', name: selected }, mode);
           ctx.ui.notify(`Active workspace: ${displayWorkspace(selected)}`, 'info');
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
@@ -90,19 +80,17 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
         if (suppliedName !== 'workspace' && suppliedName !== 'env') {
           return ctx.ui.notify('Usage: /linear-auth prefer [workspace|env]', 'warning');
         }
-        await setAuthPreference(suppliedName, mode);
+        await credentialStore.change({ type: 'prefer', preference: suppliedName }, mode);
         ctx.ui.notify(`Auth preference: ${suppliedName}`, 'info');
         return;
       }
 
       if (command === '' || command === 'status') {
-        const creds = await readCredentials();
-        const active = getActiveWorkspaceName(creds);
-        const { source } = await resolveApiKey(ctx, { promptIfMissing: false });
-        const names = listWorkspaceNames(creds);
+        const { source, snapshot } = await credentialStore.resolve();
+        const { activeWorkspace: active, authPreference, workspaces: names } = snapshot;
         ctx.ui.notify(
           [
-            `Auth preference: ${creds.authPreference}`,
+            `Auth preference: ${authPreference}`,
             `Auth source: ${source === 'workspace' ? `workspace: ${active ? displayWorkspace(active) : 'none'}` : source === 'env' ? 'env: LINEAR_API_KEY' : 'none'}`,
             names.length ? `Workspaces: ${names.map((name) => name === active ? `${displayWorkspace(name)} (active)` : displayWorkspace(name)).join(', ')}` : 'No workspaces configured',
           ].join('\n'),

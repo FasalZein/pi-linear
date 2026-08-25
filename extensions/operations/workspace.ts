@@ -1,4 +1,4 @@
-import { switchWorkspace } from "../client";
+import { credentialStore } from "../credential-store";
 import { projection } from "../selections";
 import { p } from "../operation-types";
 import type {
@@ -79,7 +79,7 @@ export const workspaceSwitch: readonly OperationDefinition[] = ([
 		document: "query SwitchWorkspaceLocal { viewer { id } }",
 		localResult: { requiredStringPaths: ["active"] },
 		async executeLocal(v, _ctx, mode) {
-			const updated = await switchWorkspace(String(v.name), mode);
+			const updated = await credentialStore.change({ type: "switch", name: String(v.name) }, mode);
 			return { active: updated.activeWorkspace };
 		},
 	},

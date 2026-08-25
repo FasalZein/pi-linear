@@ -1,5 +1,5 @@
 import { access, writeFile } from 'node:fs/promises';
-import { addWorkspace } from '../../extensions/client';
+import { credentialStore } from '../../extensions/credential-store';
 
 const [agentDirectory, name, readyFile, startFile] = process.argv.slice(2);
 if (!agentDirectory || !name || !readyFile || !startFile) throw new Error('Missing credential worker argument.');
@@ -14,4 +14,4 @@ while (true) {
     await new Promise<void>((resolve) => setImmediate(resolve));
   }
 }
-await addWorkspace(name, `unknown-key-${name}`);
+await credentialStore.change({ type: 'add', name, apiKey: `unknown-key-${name}` }, 'allowlist');

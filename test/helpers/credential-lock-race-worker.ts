@@ -66,5 +66,8 @@ fs.rename = (async (source: any, destination: any) => {
   }
 }) as typeof fs.rename;
 
-const { addWorkspace } = await import('../../extensions/client');
-await addWorkspace(workspace, `lin_api_${workspace}_secret_123456789`);
+const { credentialStore } = await import('../../extensions/credential-store');
+await credentialStore.change(
+  { type: 'add', name: workspace, apiKey: `lin_api_${workspace}_secret_123456789` },
+  'allowlist',
+);
