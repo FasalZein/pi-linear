@@ -151,16 +151,34 @@ export function readCredentialSecrets(): string[] {
   const secrets = new Set<string>();
   const env = asString(process.env.LINEAR_API_KEY);
   if (env) secrets.add(env);
+
+  let source: string;
   try {
-    const parsed = JSON.parse(readFileSync(credentialFilePath(), 'utf8')) as Record<string, unknown>;
-    if (!isRecord(parsed.workspaces)) return [...secrets];
-    for (const entry of Object.values(parsed.workspaces)) {
-      if (!isRecord(entry)) continue;
-      const apiKey = asString(entry.apiKey);
-      if (apiKey) secrets.add(apiKey);
-    }
+    source = readFileSync(credentialFilePath(), 'utf8');
   } catch {
-    // Active secrets must remain available when the Credential document cannot be read.
+    return [...secrets];
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(source);
+  } catch {
+    for (const match of source.matchAll(/"apiKey"\s*:\s*("(?:\\u[0-9a-fA-F]{4}|\\["\\/bfnrt]|[^"\\])*")/g)) {
+      try {
+        const apiKey = asString(JSON.parse(match[1]));
+        if (apiKey) secrets.add(apiKey);
+      } catch {
+        // A complete-looking token can still contain JSON-invalid control characters.
+      }
+    }
+    return [...secrets];
+  }
+
+  if (!isRecord(parsed) || !isRecord(parsed.workspaces)) return [...secrets];
+  for (const entry of Object.values(parsed.workspaces)) {
+    if (!isRecord(entry)) continue;
+    const apiKey = asString(entry.apiKey);
+    if (apiKey) secrets.add(apiKey);
   }
   return [...secrets];
 }

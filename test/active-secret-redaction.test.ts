@@ -105,4 +105,22 @@ describe('call rows redact unknown-format active secrets', () => {
     expect(rendered).not.toContain(ENV_SECRET);
     expect(rendered).toContain(REDACTED);
   });
+
+  it('redacts a complete apiKey recovered from a damaged Credential document', async () => {
+    const recovered = 'recovered-unknown-format-secret-0003';
+    delete process.env.LINEAR_API_KEY;
+    await writeFile(
+      join(agentDirectory, 'extensions', 'linear', 'credentials.json'),
+      `{"workspaces":{"work":{"apiKey":"${recovered}"}},broken`,
+    );
+    const theme: any = { fg: (_name: string, text: string) => text, bold: (text: string) => text };
+
+    const rendered = renderLinearApiCall(
+      { operation: 'help', variables: { operation: recovered } },
+      theme,
+    ).render(200).join('\n');
+
+    expect(rendered).not.toContain(recovered);
+    expect(rendered).toContain(REDACTED);
+  });
 });

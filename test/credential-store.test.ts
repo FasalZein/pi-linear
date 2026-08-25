@@ -238,15 +238,86 @@ describe('Credential store Active secrets', () => {
     expect(result).toEqual(['shared-key', 'second-key']);
   });
 
-  it('never throws and returns only the environment key for damaged, missing, and unreadable documents', async () => {
+  it('recovers complete closed apiKey strings from damaged JSON in first-seen order', async () => {
+    await put('{"apiKey":" first-key ","broken":[,"apiKey" : "second-key","apiKey":"first-key"}');
+
+    expect(credentialStore.secrets()).toEqual(['first-key', 'second-key']);
+  });
+
+  it('parses recovered escapes with JSON string rules', async () => {
+    await put(String.raw`{"apiKey":" line\nquote:\" slash:\/ unicode:\u0061 backslash:\\ "},broken`);
+
+    expect(credentialStore.secrets()).toEqual(['line\nquote:" slash:/ unicode:a backslash:\\']);
+  });
+
+  it.each([
+    ['unclosed string', '{"apiKey":"partial-secret'],
+    ['incomplete escape', '{"apiKey":"partial-secret' + '\\'],
+    ['incomplete unicode escape', '{"apiKey":"partial-secret\\u123'],
+    ['single-quoted value', `{"apiKey":'single-secret',broken`],
+    ['unquoted value', '{"apiKey":unquoted-secret,broken'],
+    ['alternate property name', '{"api_key":"alternate-secret",broken'],
+    ['case-changed property name', '{"apikey":"alternate-secret",broken'],
+    ['unrelated string', '{"name":"unrelated-secret",broken'],
+    ['arbitrary text', 'arbitrary-secret text without a JSON property'],
+  ])('ignores %s in damaged JSON', async (_name, source) => {
+    await put(source);
+
+    expect(credentialStore.secrets()).toEqual([]);
+  });
+
+  it('keeps valid JSON structured and skips invalid or unrelated siblings', async () => {
+    await put({
+      workspaces: {
+        first: { apiKey: 'first-key' },
+        invalidEntry: 'not-an-entry',
+        invalidKey: { apiKey: 42 },
+        unrelated: { secret: 'unrelated-key' },
+      },
+      apiKey: 'top-level-key',
+      sibling: { apiKey: 'sibling-key' },
+    });
+
+    expect(credentialStore.secrets()).toEqual(['first-key']);
+  });
+
+  it('puts the environment key first and trims, removes empty values, and deduplicates recovered keys', async () => {
+    process.env.LINEAR_API_KEY = ' shared-key ';
+    await put('{"apiKey":" ","apiKey":"second-key","bad":,"apiKey":" shared-key ","apiKey":"third-key"}');
+
+    expect(credentialStore.secrets()).toEqual(['shared-key', 'second-key', 'third-key']);
+  });
+
+  it('never throws for damaged, missing, and unreadable documents', async () => {
     process.env.LINEAR_API_KEY = 'env-key';
     const file = await put('{"workspaces":{"work":{"apiKey":"saved-key"}},broken');
-    expect(credentialStore.secrets()).toEqual(['env-key']);
+    expect(credentialStore.secrets()).toEqual(['env-key', 'saved-key']);
 
     await rm(file);
     expect(credentialStore.secrets()).toEqual(['env-key']);
 
     await mkdir(file);
     expect(credentialStore.secrets()).toEqual(['env-key']);
+  });
+
+  it('keeps resolve and change fail-closed on recovered damaged-file values without changing bytes', async () => {
+    const secret = 'recovered-unknown-secret-123456789';
+    const file = await put(`{"workspaces":{"first":{"apiKey":"${secret}"}},broken`);
+    const before = await readFile(file);
+    const expected = 'Invalid Linear credential file. Repair or remove it before changing stored credentials.';
+
+    const resolveError = await credentialStore.resolve().then(() => undefined, (error: Error) => error);
+    expect(resolveError).toBeInstanceOf(Error);
+    expect(resolveError?.message).toBe(expected);
+    expect(resolveError?.message).not.toContain(secret);
+    expect(await readFile(file)).toEqual(before);
+
+    const changeError = await credentialStore.change({ type: 'remove', name: 'first' }, 'allowlist')
+      .then(() => undefined, (error: Error) => error);
+    expect(changeError).toBeInstanceOf(Error);
+    expect(changeError?.message).toBe(expected);
+    expect(changeError?.message).not.toContain(secret);
+    expect(await readFile(file)).toEqual(before);
+    expect(await readdir(join(agentDirectory, 'extensions', 'linear'))).toEqual(['credentials.json']);
   });
 });
