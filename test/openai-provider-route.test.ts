@@ -50,6 +50,7 @@ describe('native OpenAI route', () => {
     const search = await captureOpenAI(searchModel, context);
     const call = search.input.find((item: { type: string }) => item.type === 'tool_search_call');
     const output = search.input.find((item: { type: string }) => item.type === 'tool_search_output');
+    if (!call || !output) throw new Error('The tool-search route emitted no tool_search_call and tool_search_output pair.');
     expect(call.status).toBe('completed');
     expect(call.execution).toBe('client');
     expect(output.status).toBe('completed');

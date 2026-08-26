@@ -75,15 +75,6 @@ export type ProviderPayloadInputItem = {
   execution?: string;
   tools: ProviderPayloadTool[];
 };
-/**
- * The input list of an OpenAI Responses request. A lookup returns the item itself: the route
- * tests read items they assert are present, so a missing item must raise where it is read.
- */
-export interface ProviderPayloadInput extends Array<ProviderPayloadInputItem> {
-  find(
-    predicate: (item: ProviderPayloadInputItem, index: number, items: ProviderPayloadInputItem[]) => unknown,
-  ): ProviderPayloadInputItem;
-}
 export type ProviderPayloadContentBlock = {
   type: string;
   content?: string | ProviderPayloadContentBlock[];
@@ -95,7 +86,7 @@ export type ProviderPayloadMessage = {
 /** The captured provider request payload, limited to what the route tests inspect. */
 export type ProviderPayload = {
   tools: ProviderPayloadTool[];
-  input: ProviderPayloadInput;
+  input: ProviderPayloadInputItem[];
   messages: ProviderPayloadMessage[];
 };
 
