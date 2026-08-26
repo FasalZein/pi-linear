@@ -373,7 +373,12 @@ function compilePlanLookup(entryKey: string, lookup: LookupPlan): CompiledLookup
 }
 
 export function compileLookupDocument(key: string, lookup: LookupPlan): string {
-  const resolved = new Proxy({}, { get: () => ({ id: '00000000-0000-4000-8000-000000000000' }) });
+  const resolved = Object.fromEntries(
+    (lookup.dependsOn ?? []).map((dependency) => [
+      dependency,
+      { id: '00000000-0000-4000-8000-000000000000' },
+    ]),
+  );
   return print(compilePlanLookup(key, {
     ...lookup,
     variables: () => lookup.variables(resolved),

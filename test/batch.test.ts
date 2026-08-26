@@ -3,13 +3,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { linearApiTool, linearBatchTool, linearGetResultTool, resolveRequest } from '../extensions/api';
-import { assertBatchAccounting, batchHelp } from '../extensions/batch';
+import { assertBatchAccounting, batchHelp, compileLookupDocument } from '../extensions/batch';
 import { LINEAR_BATCH_HELP } from '../extensions/exceptional-tools';
 import { operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
 import type { MutationMode } from '../extensions/safety';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
 import type { CompatibilityObject, CompatibilityValue } from '../extensions/operation-types';
+import { stateLookup } from '../extensions/operation-plan';
 
 isolateLinearCredentials();
 
@@ -528,6 +529,13 @@ describe('batch read phase', () => {
 });
 
 describe('pure mutation operation plans', () => {
+  it('compiles dependent lookup documents with declared dependency placeholders', () => {
+    const document = compileLookupDocument('update_issue', stateLookup('state', 'Todo', 'team'));
+
+    expect(document).toContain('_lookup_update_issue_state_teamId: ID!');
+    expect(document).toContain('workflowStates');
+  });
+
   it('plans every named mutation deterministically without transport, timers, or random ids', async () => {
     const fetch = vi.fn();
     const timer = vi.spyOn(globalThis, 'setTimeout');
