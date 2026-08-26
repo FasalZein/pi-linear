@@ -10,7 +10,7 @@ import {
   getOperationDefinition,
   operationDefinitions,
   operationsForDomain,
-  parameterShapes,
+  parameterVariants,
   operations,
   type LinearOperation,
   type OperationDomain,
@@ -70,7 +70,7 @@ function validateVariables(
   requestedName: string,
   variables: Record<string, unknown>,
 ): void {
-  const shapes = parameterShapes(operation, requestedName);
+  const shapes = parameterVariants(operation, requestedName);
   const valid = new Set(shapes.flatMap((shape) => shape.map(({ name }) => name)));
   const validShape = shapes.find((shape) => {
     const shapeKeys = new Set(shape.map(({ name }) => name));

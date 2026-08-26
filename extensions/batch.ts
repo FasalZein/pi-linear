@@ -23,7 +23,7 @@ import {
   formatInvocation,
   getOperation,
   getOperationDefinition,
-  parameterShapes,
+  parameterVariants,
   type LinearOperation,
 } from './operations';
 import type {
@@ -88,7 +88,7 @@ function validateVariables(
   requestedName: string,
   variables: Record<string, unknown>,
 ): void {
-  const shapes = parameterShapes(operation, requestedName);
+  const shapes = parameterVariants(operation, requestedName);
   const valid = new Set(shapes.flatMap((shape) => shape.map(({ name }) => name)));
   const validShape = shapes.find((shape) => {
     const shapeKeys = new Set(shape.map(({ name }) => name));

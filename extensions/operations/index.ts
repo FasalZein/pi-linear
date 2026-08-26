@@ -138,7 +138,7 @@ export function formatInvocation(value: CompatibilityValue): string {
 			.join(", ")} }`;
 	return JSON.stringify(value);
 }
-export function parameterShapes(
+export function parameterVariants(
 	operation: LinearOperation,
 	requestedName: string,
 ): readonly (readonly OperationParameter[])[] {
