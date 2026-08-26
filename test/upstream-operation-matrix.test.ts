@@ -372,7 +372,7 @@ const BRANCH_AND_LEGACY_FIXTURES: Fixture[] = [
 		{
 			first: 10,
 			filter: { priority: { eq: 1 } },
-			sort: [{ priority: "Ascending" }],
+			sort: [{ priority: { order: "Ascending" } }],
 		},
 		false,
 	),

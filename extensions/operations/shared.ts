@@ -243,8 +243,13 @@ export function linearSort(value: unknown): unknown[] | undefined {
 	return value.map((clause) => {
 		if (!clause || typeof clause !== "object" || Array.isArray(clause)) return clause;
 		const { key, order } = clause as { key?: unknown; order?: unknown };
-		if (typeof key !== "string") return clause;
-		return { [key]: compactObject({ order }) };
+		if (typeof key === "string") return { [key]: compactObject({ order }) };
+		const entries = Object.entries(clause);
+		if (entries.length !== 1) return clause;
+		const [field, legacyOrder] = entries[0]!;
+		return legacyOrder === "Ascending" || legacyOrder === "Descending"
+			? { [field]: { order: legacyOrder } }
+			: clause;
 	});
 }
 
@@ -614,4 +619,3 @@ export function addSaveOperation(config: {
 		},
 	});
 }
-

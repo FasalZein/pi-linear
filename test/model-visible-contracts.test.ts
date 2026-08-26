@@ -60,6 +60,14 @@ describe('model-visible deferred operation contracts', () => {
     expectLinearInput(prepared.variables.sort, '[ProjectSortInput!]');
   });
 
+  it('maps the legacy batch sort shorthand to Linear GraphQL input', async () => {
+    const prepared = await prepareOperation(operations.list_issues!, {
+      sort: [{ priority: 'Ascending' }],
+    });
+    expect(prepared.variables.sort).toEqual([{ priority: { order: 'Ascending' } }]);
+    expectLinearInput(prepared.variables.sort, '[IssueSortInput!]');
+  });
+
   it.each([
     ['create_project', 'save_project'],
     ['update_project', 'save_project'],
