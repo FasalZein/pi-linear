@@ -3,6 +3,12 @@ import { join } from 'node:path';
 import { parse, type IntrospectionQuery, type OperationDefinitionNode } from 'graphql';
 import { registerLinearExtension } from '../extensions/index';
 import { linearGraphQL, resolveApiKey } from '../extensions/client';
+import { parseJsonObject, type JsonObject, type JsonValue, type UnparsedJson } from '../extensions/json';
+import {
+  isCompatibilityBoolean,
+  isCompatibilityObject,
+  isCompatibilityString,
+} from '../extensions/operation-types';
 import { assertReadOnlyEvidence, recordingTransport, requestEvidence, type RequestEvidence } from './request-recorder';
 import { operations, type LinearOperation } from '../extensions/operations';
 import { redactText } from '../extensions/redact';
@@ -15,21 +21,89 @@ import {
 } from './readonly-schema';
 import { assertNoCredentialLeak } from './smoke-safety';
 
-type ToolResult = { details?: Record<string, unknown> };
-type JsonObject = Record<string, unknown>;
-type Tool = { name: string; execute: (...args: any[]) => Promise<ToolResult> };
+type SmokeTool = {
+  name: string;
+  execute: (
+    toolCallId: string,
+    params: JsonObject,
+    signal: undefined,
+    onUpdate: undefined,
+    ctx: ReturnType<typeof fakeContext>,
+  ) => Promise<UnparsedJson>;
+};
+
+type SmokeToolResult = {
+  details: JsonObject | undefined;
+};
+
+type InlineSmokeResult = {
+  source: 'inline';
+  data: JsonObject;
+};
+
+type ArtifactSmokeResult = {
+  source: 'artifact';
+  path: string;
+  handle: string;
+  data: JsonObject;
+};
+
+type SmokeExecutionResult = InlineSmokeResult | ArtifactSmokeResult;
+
+type SmokePageInfo = {
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+  startCursor: string | null;
+  endCursor: string | null;
+};
+
+type SmokeConnection = {
+  nodes: readonly JsonValue[];
+  pageInfo: SmokePageInfo;
+};
+
+type ListGetStatus = 'passed' | 'skipped:list empty' | 'skipped:no valid get input exists';
+
+type ListGetProof = {
+  list: string;
+  get?: string;
+  status: ListGetStatus;
+};
+
+type SmokeSummary = {
+  status: 'pass';
+  schema: {
+    queryRoots: number;
+    mutationRoots: number;
+    inputTypes: number;
+    enums: number;
+    namedObjects: number;
+    digest: string;
+  };
+  runtime: {
+    activation: 'passed';
+    zeroArgumentReads: number;
+    followedCursors: number;
+    listGet: ListGetProof[];
+    getIssueIdentity: 'passed';
+    missingReference: 'passed';
+    mutationRequests: number;
+    redaction: 'passed';
+    requests: RequestEvidence;
+  };
+};
 
 const ISSUE_REFERENCE = 'AEO-258';
 const MISSING_ISSUE_ID = '00000000-0000-4000-8000-000000000000';
 const KNOWN_TOKEN = 'lin_api_known_smoke_token_1234567890';
 const PAGE_INFO_FIELDS = ['endCursor', 'hasNextPage', 'hasPreviousPage', 'startCursor'];
 const ZERO_ARGUMENT_READS = [
-  'list_comments', 'list_views', 'list_cycles', 'list_documents', 'list_initiatives',
+  'list_comments', 'list_cycles', 'list_documents', 'list_initiatives',
   'list_issue_labels', 'list_issue_relations', 'list_issue_statuses', 'list_issues',
   'list_milestones', 'list_project_labels', 'list_project_relations', 'list_projects',
-  'list_teams', 'list_users',
-].sort();
-const LIST_GET: Record<string, { get: string; parameter: string; root: string } | undefined> = {
+  'list_teams', 'list_users', 'list_views',
+] as const;
+const LIST_GET = {
   list_comments: undefined,
   list_views: { get: 'get_view', parameter: 'id', root: 'customView' },
   list_cycles: { get: 'get_cycle', parameter: 'cycle', root: 'cycle' },
@@ -45,7 +119,7 @@ const LIST_GET: Record<string, { get: string; parameter: string; root: string } 
   list_projects: { get: 'get_project', parameter: 'project', root: 'project' },
   list_teams: { get: 'get_team', parameter: 'team', root: 'team' },
   list_users: { get: 'get_user', parameter: 'user', root: 'user' },
-};
+} as const;
 
 function fakeContext() {
   return {
@@ -68,26 +142,32 @@ async function smokeApiKey(): Promise<string> {
   }
 }
 
-function data(details: Record<string, unknown> | undefined): JsonObject {
+function inlineData(details: JsonObject | undefined): JsonObject {
   const value = details?.data;
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('smoke.runtime: inline data object is missing');
-  return value as JsonObject;
+  if (!isCompatibilityObject(value)) throw new Error('smoke.runtime: inline data object is missing');
+  return value;
 }
 
-async function executionData(details: Record<string, unknown> | undefined): Promise<JsonObject> {
-  if (details?.data && typeof details.data === 'object' && !Array.isArray(details.data)) return data(details);
+async function smokeExecutionResult(details: JsonObject | undefined): Promise<SmokeExecutionResult> {
+  if (isCompatibilityObject(details?.data)) return { source: 'inline', data: details.data };
   const path = details?.path;
   const handle = details?.handle;
-  if (typeof path !== 'string' || typeof handle !== 'string') return data(details);
-  const recovered = JSON.parse(await readFile(path, 'utf8')) as Record<string, unknown>;
-  return data(recovered);
+  if (!isCompatibilityString(path) || !isCompatibilityString(handle)) {
+    return { source: 'inline', data: inlineData(details) };
+  }
+  return {
+    source: 'artifact',
+    path,
+    handle,
+    data: inlineData(parseJsonObject(JSON.parse(await readFile(path, 'utf8')))),
+  };
 }
 
-function entityId(details: Record<string, unknown> | undefined, root: string): string {
-  const entity = data(details)[root];
-  if (!entity || typeof entity !== 'object' || Array.isArray(entity)) throw new Error(`smoke.runtime: ${root} entity is missing`);
-  const id = (entity as JsonObject).id;
-  if (typeof id !== 'string' || !id) throw new Error(`smoke.runtime: ${root}.id is missing`);
+function entityId(details: JsonObject | undefined, root: string): string {
+  const entity = inlineData(details)[root];
+  if (!isCompatibilityObject(entity)) throw new Error(`smoke.runtime: ${root} entity is missing`);
+  const id = entity.id;
+  if (!isCompatibilityString(id) || !id) throw new Error(`smoke.runtime: ${root}.id is missing`);
   return id;
 }
 
@@ -100,39 +180,54 @@ function rootName(operation: LinearOperation): string {
   return field.name.value;
 }
 
-function connection(details: Record<string, unknown> | undefined, root: string) {
-  const value = data(details)[root];
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`smoke.pagination: ${root} connection is missing`);
-  const nodes = (value as JsonObject).nodes;
-  const pageInfo = (value as JsonObject).pageInfo;
-  if (!Array.isArray(nodes) || !pageInfo || typeof pageInfo !== 'object' || Array.isArray(pageInfo)) {
-    throw new Error(`smoke.pagination: ${root} nodes or pageInfo is missing; fields ${JSON.stringify(Object.keys(value as JsonObject).sort())}`);
+function smokeCursor(value: JsonValue | undefined, root: string, field: string): string | null {
+  if (value === null) return null;
+  if (isCompatibilityString(value)) return value;
+  throw new Error(`smoke.pagination: ${root}.pageInfo.${field} is invalid`);
+}
+
+function connection(details: JsonObject | undefined, root: string): SmokeConnection {
+  const value = inlineData(details)[root];
+  if (!isCompatibilityObject(value)) throw new Error(`smoke.pagination: ${root} connection is missing`);
+  const nodes = value.nodes;
+  const pageInfo = value.pageInfo;
+  if (!Array.isArray(nodes) || !isCompatibilityObject(pageInfo)) {
+    throw new Error(`smoke.pagination: ${root} nodes or pageInfo is missing; fields ${JSON.stringify(Object.keys(value).sort())}`);
   }
-  const page = pageInfo as JsonObject;
-  const fields = Object.keys(page).sort();
+  const fields = Object.keys(pageInfo).sort();
   if (JSON.stringify(fields) !== JSON.stringify(PAGE_INFO_FIELDS)) {
     throw new Error(`smoke.pagination: ${root}.pageInfo fields expected ${JSON.stringify(PAGE_INFO_FIELDS)}, actual ${JSON.stringify(fields)}`);
   }
-  if (typeof page.hasNextPage !== 'boolean' || typeof page.hasPreviousPage !== 'boolean') {
+  const hasNextPage = pageInfo.hasNextPage;
+  const hasPreviousPage = pageInfo.hasPreviousPage;
+  if (!isCompatibilityBoolean(hasNextPage) || !isCompatibilityBoolean(hasPreviousPage)) {
     throw new Error(`smoke.pagination: ${root}.pageInfo booleans are invalid`);
   }
-  for (const cursor of ['startCursor', 'endCursor']) {
-    if (page[cursor] !== null && typeof page[cursor] !== 'string') throw new Error(`smoke.pagination: ${root}.pageInfo.${cursor} is invalid`);
-  }
-  return { nodes, pageInfo: page as { hasNextPage: boolean; hasPreviousPage: boolean; startCursor: string | null; endCursor: string | null } };
+  return {
+    nodes,
+    pageInfo: {
+      hasNextPage,
+      hasPreviousPage,
+      startCursor: smokeCursor(pageInfo.startCursor, root, 'startCursor'),
+      endCursor: smokeCursor(pageInfo.endCursor, root, 'endCursor'),
+    },
+  };
 }
 
-async function executeTool(tool: Tool, params: Record<string, unknown>): Promise<ToolResult> {
-  return await tool.execute('readonly-smoke', params, undefined, undefined, fakeContext());
+async function executeTool(tool: SmokeTool, params: JsonObject): Promise<SmokeToolResult> {
+  const parsed = parseJsonObject(await tool.execute('readonly-smoke', params, undefined, undefined, fakeContext()));
+  if (parsed === undefined) throw new Error('smoke.runtime: tool result object is missing');
+  const details = parsed.details;
+  return { details: isCompatibilityObject(details) ? details : undefined };
 }
 
 function extensionHarness() {
-  const tools = new Map<string, Tool>();
+  const tools = new Map<string, SmokeTool>();
   let active: string[] = [];
   let start: () => void = () => undefined;
   const pi = {
     registerCommand: () => undefined,
-    registerTool: (tool: Tool) => { tools.set(tool.name, tool); active.push(tool.name); },
+    registerTool: (tool: SmokeTool) => { tools.set(tool.name, tool); active.push(tool.name); },
     getActiveTools: () => [...active],
     getAllTools: () => [...tools.values()],
     setActiveTools: (names: string[]) => { active = [...names]; },
@@ -152,7 +247,7 @@ function zeroArgumentReads(): LinearOperation[] {
   return reads.sort((left, right) => left.name.localeCompare(right.name));
 }
 
-async function writeSummary(summary: JsonObject, apiKey: string): Promise<void> {
+async function writeSummary(summary: SmokeSummary, apiKey: string): Promise<void> {
   assertNoCredentialLeak(summary, apiKey);
   const root = process.env.PI_ARTIFACT_PROJECT_ROOT;
   if (!root) throw new Error('smoke.cleanup: isolated artifact root is unavailable');
@@ -160,7 +255,7 @@ async function writeSummary(summary: JsonObject, apiKey: string): Promise<void> 
   await writeFile(join(root, 'readonly-smoke-summary.json'), JSON.stringify(summary, null, 2));
 }
 
-async function runAuthenticatedSmoke(apiKey: string, requests: RequestEvidence): Promise<JsonObject> {
+async function runAuthenticatedSmoke(apiKey: string, requests: RequestEvidence): Promise<SmokeSummary> {
   const [fixtureSource, scopeSource, sourceQuery] = await Promise.all([
     readFile(new URL('./fixtures/readonly-schema-contract.json', import.meta.url), 'utf8'),
     readFile(new URL('./fixtures/readonly-schema-scope.json', import.meta.url), 'utf8'),
@@ -196,7 +291,7 @@ async function runAuthenticatedSmoke(apiKey: string, requests: RequestEvidence):
     throw new Error('smoke.runtime: get_issue identity differed across direct surfaces');
   }
 
-  const listResults = new Map<string, { nodes: unknown[]; root: string }>();
+  const listResults = new Map<string, { nodes: readonly JsonValue[]; root: string }>();
   let followedCursors = 0;
   for (const operation of zeroArgumentReads()) {
     const typedTool = harness.tool(`linear_${operation.name}`);
@@ -204,7 +299,7 @@ async function runAuthenticatedSmoke(apiKey: string, requests: RequestEvidence):
     const zeroArgumentResult = await executeTool(typedTool, {});
     assertNoCredentialLeak(zeroArgumentResult, apiKey);
     const root = rootName(operation);
-    const zeroArgumentData = await executionData(zeroArgumentResult.details);
+    const zeroArgumentData = (await smokeExecutionResult(zeroArgumentResult.details)).data;
     assertNoCredentialLeak(zeroArgumentData, apiKey);
     if (!(root in zeroArgumentData)) throw new Error(`smoke.runtime: ${operation.name} root is missing`);
 
@@ -221,7 +316,7 @@ async function runAuthenticatedSmoke(apiKey: string, requests: RequestEvidence):
     }
   }
 
-  const pairResults: Array<{ list: string; get?: string; status: string }> = [];
+  const pairResults: ListGetProof[] = [];
   for (const list of ZERO_ARGUMENT_READS) {
     const pair = LIST_GET[list];
     const listed = listResults.get(list)!;
@@ -230,12 +325,12 @@ async function runAuthenticatedSmoke(apiKey: string, requests: RequestEvidence):
       continue;
     }
     const first = listed.nodes[0];
-    if (!first || typeof first !== 'object' || Array.isArray(first)) {
+    if (!isCompatibilityObject(first)) {
       pairResults.push({ list, get: pair.get, status: 'skipped:list empty' });
       continue;
     }
-    const id = (first as JsonObject).id;
-    if (typeof id !== 'string' || !id) {
+    const id = first.id;
+    if (!isCompatibilityString(id) || !id) {
       pairResults.push({ list, get: pair.get, status: 'skipped:no valid get input exists' });
       continue;
     }
@@ -283,7 +378,7 @@ async function runAuthenticatedSmoke(apiKey: string, requests: RequestEvidence):
   assertReadOnlyEvidence(requests);
 
   assertNoCredentialLeak({ pairResults, knownTokenProbe: redactText(KNOWN_TOKEN, [apiKey]) }, apiKey);
-  const summary = {
+  const summary: SmokeSummary = {
     status: 'pass',
     schema: {
       queryRoots: scope.roots.Query.length,
@@ -316,7 +411,7 @@ function safeFailure(message: string, apiKey: string): string {
     : 'smoke.runtime: authenticated read-only probe failed safely';
 }
 
-export async function runReadonlySmoke(): Promise<JsonObject> {
+export async function runReadonlySmoke(): Promise<SmokeSummary> {
   if (process.env.LINEAR_READONLY !== '1') throw new Error('smoke.readonly: LINEAR_READONLY=1 is required before authentication or network access');
   const apiKey = await smokeApiKey();
   const previousApiKey = process.env.LINEAR_API_KEY;
