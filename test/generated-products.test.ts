@@ -349,7 +349,8 @@ describe('generated products', () => {
   it('publishes direct typed calls instead of rejected ordinary loader envelopes', async () => {
     const readme = await readFile('README.md', 'utf8');
     const reference = await readFile('REFERENCE.md', 'utf8');
-    expect(readme).toContain('Then call `linear_get_issue` with direct arguments');
+    expect(readme).toContain('Call `linear_get_issue` with:');
+    expect(readme).toContain('The `linear` tool never runs an operation.');
     expect(readme).not.toContain('Call an operation directly');
     expect(reference).toContain('then call the activated `linear_<operation>` tool with direct arguments');
     expect(reference).not.toContain('| First call |');
@@ -401,7 +402,7 @@ describe('generated products', () => {
     expect((linearApiTool() as any).description).not.toMatch(/linear (?:get_result|batch)/);
   });
 
-  it('ships the complete restricted lossless contract in public documentation', async () => {
+  it('ships the public safety and lossless result contract', async () => {
     const [readme, reference, context, adr, changelog] = await Promise.all([
       readFile('README.md', 'utf8'),
       readFile('REFERENCE.md', 'utf8'),
@@ -412,12 +413,11 @@ describe('generated products', () => {
     const published = [readme, reference, context, adr, changelog].join('\n');
     for (const claim of [
       'cardinality-aware', 'get_result', 'path-scoped errors', 'sink:inline',
-      'legacy compatibility path', 'exactly `write` plus',
+      'legacy compatibility path',
     ]) expect(published).toContain(claim);
-    expect(readme).toContain('53 tool surfaces');
-    expect(readme).toContain('published across all 49 tools');
-    expect(readme).toContain(`generated ${manifest.allowedTools.length} Linear tool names`);
-    expect(readme).toContain('The guarded `linear_delete_issue_relation` tool is the only delete tool.');
+    expect(readme).toContain('49 typed operation tools');
+    expect(readme).toContain(`The package registers ${manifest.allowedTools.length} tools.`);
+    expect(readme).toContain('`delete_issue_relation` is the only delete operation.');
     expect(readme).not.toContain('Delete, archive, and unarchive tools do not exist.');
     expect(reference).toContain('49 inactive typed tools');
     expect(reference).toContain(`does not duplicate ${manifest.lazyTools.length} full schemas`);

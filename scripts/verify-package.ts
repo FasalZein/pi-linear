@@ -177,7 +177,7 @@ try {
     throw new Error(`Extracted package wire names and labels drifted: ${labels.join(', ')}`);
   }
   const readme = await readFile(join(packageRoot, 'README.md'), 'utf8');
-  if (!readme.includes('53 tool surfaces') || readme.includes('linear-auditor.md')) {
+  if (!readme.includes('The package registers 53 tools.') || readme.includes('linear-auditor.md')) {
     throw new Error('Extracted package documentation does not contain the current restricted-agent contract.');
   }
   const linearActive = active.filter((name) => name === 'linear' || name.startsWith('linear_'));
