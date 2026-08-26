@@ -2,13 +2,11 @@ import { teamLookup } from "../operation-plan";
 import { projection } from "../selections";
 import { p } from "../operation-types";
 import type {
-	LinearOperation,
 	OperationSource,
 	OperationDefinition,
 } from "../operation-types";
 import { defineOperation } from "../operation-definition";
 import {
-	filter,
 	getDocument,
 	workspaceEmpty,
 	listOperation,
@@ -93,5 +91,5 @@ export const teams: readonly OperationDefinition[] = ([
 		},
 	},
 ] satisfies OperationSource[]).map((operation) =>
-	defineOperation(operation as LinearOperation),
+	defineOperation(operation),
 );

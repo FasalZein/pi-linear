@@ -2,13 +2,14 @@ import { buildSchema, coerceInputValue, parseType, typeFromAST, type GraphQLInpu
 import { describe, expect, it } from 'vitest';
 import { helpResult } from '../extensions/api';
 import { operations } from '../extensions/operations';
+import type { GraphQLResultData } from '../extensions/operation-types';
 import { typedLinearTools } from '../extensions/typed-tools';
 import type { ReadonlySchemaFixture } from '../scripts/readonly-schema';
 import { prepareOperation } from './helpers/operation-plan';
 // The validator Pi runs on every tool call, imported from the agent runtime itself.
 import { validateToolArguments } from '../node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/utils/validation.js';
 
-const fixture = (await import('../scripts/fixtures/readonly-schema-contract.json')).default as unknown as ReadonlySchemaFixture;
+const fixture = (await import('../scripts/fixtures/readonly-schema-contract.json')).default as ReadonlySchemaFixture;
 const builtIns = new Set(['String', 'Int', 'Float', 'Boolean', 'ID']);
 const schema = buildSchema([
   ...Object.keys(fixture.scalars).filter((name) => !builtIns.has(name)).map((name) => `scalar ${name}`),
@@ -20,7 +21,7 @@ const schema = buildSchema([
 ].join('\n'));
 const tools = new Map(typedLinearTools().map((tool) => [tool.name, tool]));
 
-function expectLinearInput(value: unknown, type: string) {
+function expectLinearInput(value: GraphQLResultData[string] | null, type: string) {
   const errors: string[] = [];
   const graphQLType = typeFromAST(schema, parseType(type)) as GraphQLInputType | undefined;
   expect(graphQLType, type).toBeDefined();
@@ -46,7 +47,7 @@ describe('model-visible deferred operation contracts', () => {
 
     const prepared = await prepareOperation(operations[name]!, args);
     expect(prepared.variables.sort).toEqual([{ [key]: { order: 'Descending' } }]);
-    expectLinearInput(prepared.variables.sort, `[${inputType}!]`);
+    expectLinearInput(prepared.variables.sort ?? null, `[${inputType}!]`);
   });
 
   it('preserves sort clause order and maps omitted order to an empty nested object', async () => {
@@ -57,7 +58,7 @@ describe('model-visible deferred operation contracts', () => {
       { updatedAt: { order: 'Descending' } },
       { createdAt: {} },
     ]);
-    expectLinearInput(prepared.variables.sort, '[ProjectSortInput!]');
+    expectLinearInput(prepared.variables.sort ?? null, '[ProjectSortInput!]');
   });
 
   it('maps the legacy batch sort shorthand to Linear GraphQL input', async () => {
@@ -65,7 +66,7 @@ describe('model-visible deferred operation contracts', () => {
       sort: [{ priority: 'Ascending' }],
     });
     expect(prepared.variables.sort).toEqual([{ priority: { order: 'Ascending' } }]);
-    expectLinearInput(prepared.variables.sort, '[IssueSortInput!]');
+    expectLinearInput(prepared.variables.sort ?? null, '[IssueSortInput!]');
   });
 
   it.each([

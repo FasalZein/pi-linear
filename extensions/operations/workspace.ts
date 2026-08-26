@@ -2,13 +2,11 @@ import { credentialStore } from "../credential-store";
 import { projection } from "../selections";
 import { p } from "../operation-types";
 import type {
-	LinearOperation,
 	OperationSource,
 	OperationDefinition,
 } from "../operation-types";
 import { defineOperation } from "../operation-definition";
 import {
-	filter,
 	workspaceEmpty,
 	listOperation,
 } from "./shared";
@@ -46,7 +44,7 @@ export const issueStatuses: readonly OperationDefinition[] = ([
 		aliases: ["list_workflow_states"],
 	}),
 ] satisfies OperationSource[]).map((operation) =>
-	defineOperation(operation as LinearOperation),
+	defineOperation(operation),
 );
 
 export const workspaceSwitch: readonly OperationDefinition[] = ([
@@ -84,5 +82,5 @@ export const workspaceSwitch: readonly OperationDefinition[] = ([
 		},
 	},
 ] satisfies OperationSource[]).map((operation) =>
-	defineOperation(operation as LinearOperation),
+	defineOperation(operation),
 );

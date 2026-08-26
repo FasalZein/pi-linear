@@ -7,17 +7,21 @@ import {
 } from "../selections";
 import {
 	compactObject,
+	isCompatibilityObject,
+	isCompatibilityString,
 	mergedInput,
 	p,
 	paginationVariables,
+	type CompatibilityObject,
+	type CompatibilityValue,
 	type GraphQLDocumentVariant,
-	type LinearOperation,
 	type OperationPreparation,
 	type OperationSource,
 	type OperationEmptyState,
-	type OperationDefinition,
 	type OperationDomain,
 	type OperationParameter,
+	type PaginationMetadata,
+	type ParsedOperationPlanFactory,
 } from "../operation-types";
 import type { CanonicalOperation } from "../canonical-schema";
 import { defineOperation } from "../operation-definition";
@@ -97,32 +101,30 @@ export function issueTarget(requested: string, issue: ResolvedIssue) {
 	return { requested, resolvedId: issue.id, identifier: issue.identifier };
 }
 export function issueReference(
-	variables: Record<string, unknown>,
+	variables: CompatibilityObject,
 	key = "issue",
 ): string {
 	const value = variables[key] ?? variables[`${key}Id`];
-	if (typeof value === "string") return value;
+	if (isCompatibilityString(value)) return value;
 	if (
 		key === "issue" &&
-		typeof variables.teamKey === "string" &&
+		isCompatibilityString(variables.teamKey) &&
 		variables.number !== undefined
 	) {
 		return `${variables.teamKey}-${variables.number}`;
 	}
 	return "";
 }
-export function isUuid(value: unknown): value is string {
+export function isUuid(value: CompatibilityValue | undefined): value is string {
 	return (
-		typeof value === "string" &&
+		isCompatibilityString(value) &&
 		/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
 			value,
 		)
 	);
 }
-export function object(value: unknown): Record<string, unknown> | undefined {
-	return value && typeof value === "object" && !Array.isArray(value)
-		? (value as Record<string, unknown>)
-		: undefined;
+export function object(value: CompatibilityValue | undefined): CompatibilityObject | undefined {
+	return isCompatibilityObject(value) ? value : undefined;
 }
 export function listQueryDocument(
 	name: string,
@@ -155,7 +157,7 @@ export function getDocument(name: string, root: string, selection: string) {
 export const resultViewParam = p("view", "ResultView");
 
 export function applyResultView(
-	variables: Record<string, unknown>,
+	variables: CompatibilityObject,
 	defaultView: ResultView,
 	prepared: OperationPreparation,
 	documents: Record<ResultView, string>,
@@ -180,10 +182,10 @@ export function withGetResultView(
 	queryName: string,
 	defaultView: ResultView = "full",
 ): OperationSource {
-	const documents: Record<ResultView, string> = {
+	const documents = {
 		summary: getDocument(queryName, root, projection(entity, "list")),
 		full: getDocument(queryName, root, projection(entity, "detail")),
-	};
+	} satisfies Record<ResultView, string>;
 	const innerPlan = source.plan;
 	return {
 		...source,
@@ -227,8 +229,7 @@ function mutationVariant(
 	entityPath: string,
 	when?: "create" | "update",
 ): GraphQLDocumentVariant {
-	return {
-		...(when ? { when } : {}),
+	const variant: GraphQLDocumentVariant = {
 		document,
 		root,
 		mutationResult: {
@@ -237,13 +238,16 @@ function mutationVariant(
 			requiredEntityPaths: [entityPath],
 		},
 	};
+	if (when) variant.when = when;
+	return variant;
 }
-export function linearSort(value: unknown): unknown[] | undefined {
+export function linearSort(value: CompatibilityValue | undefined): CompatibilityValue[] | undefined {
 	if (!Array.isArray(value)) return undefined;
 	return value.map((clause) => {
-		if (!clause || typeof clause !== "object" || Array.isArray(clause)) return clause;
-		const { key, order } = clause as { key?: unknown; order?: unknown };
-		if (typeof key === "string") return { [key]: compactObject({ order }) };
+		if (!isCompatibilityObject(clause)) return clause;
+		const key = clause.key;
+		const order = clause.order;
+		if (isCompatibilityString(key)) return { [key]: compactObject({ order }) };
 		const entries = Object.entries(clause);
 		if (entries.length !== 1) return clause;
 		const [field, legacyOrder] = entries[0]!;
@@ -256,24 +260,27 @@ export function linearSort(value: unknown): unknown[] | undefined {
 export function listPrepare(
 	defaultPageSize: number,
 	extra?: (
-		variables: Record<string, unknown>,
-	) => Promise<Record<string, unknown>> | Record<string, unknown>,
-): NonNullable<LinearOperation["plan"]> {
-	return async (variables) => pureQueryPlan({
-		variables: compactObject({
-			...paginationVariables(variables, defaultPageSize),
-			filter: object(variables.filter),
-			sort: linearSort(variables.sort),
-			...(extra ? await extra(variables) : {}),
-		}),
-	});
+		variables: CompatibilityObject,
+	) => Promise<CompatibilityObject> | CompatibilityObject,
+): ParsedOperationPlanFactory {
+	return async (variables) => {
+		const extraVariables = extra ? await extra(variables) : undefined;
+		return pureQueryPlan({
+			variables: compactObject({
+				...paginationVariables(variables, defaultPageSize),
+				filter: object(variables.filter),
+				sort: linearSort(variables.sort),
+				...extraVariables,
+			}),
+		});
+	};
 }
-function plainInputPlan(omitted: readonly string[] = []): NonNullable<LinearOperation["plan"]> {
+function plainInputPlan(omitted: readonly string[] = []): ParsedOperationPlanFactory {
 	return (variables) => pureMutationPlan({
 		variables: { input: mergedInput(variables, omitted) },
 	});
 }
-function updateInputPlan(idKey = "id", omitted: readonly string[] = []): NonNullable<LinearOperation["plan"]> {
+function updateInputPlan(idKey = "id", omitted: readonly string[] = []): ParsedOperationPlanFactory {
 	return (variables) => {
 		const update = mergedInput(variables, [idKey, ...omitted]);
 		if (!Object.keys(update).length)
@@ -300,10 +307,12 @@ export function workspaceEmpty(
 /** Per-operation authority carried by every source definition. */
 type OperationSourceExtras = Pick<
 	OperationSource,
-	"compatibilityBranches"
-> & Pick<
-	LinearOperation,
-	"canonicalExample" | "semanticException" | "renderKind" | "renderTargetFields" | "renderEmpty"
+	| "compatibilityBranches"
+	| "canonicalExample"
+	| "semanticException"
+	| "renderKind"
+	| "renderTargetFields"
+	| "renderEmpty"
 >;
 
 function sourceExtras(config: OperationSourceExtras): OperationSourceExtras {
@@ -332,12 +341,12 @@ export function listOperation(config: {
 	extras?: string;
 	extraArgs?: string;
 	totalCount?: boolean;
-	plan?: LinearOperation["plan"];
+	plan?: ParsedOperationPlanFactory;
 	aliases?: readonly string[];
-	example?: Record<string, unknown>;
-	resolverPaths?: Record<string, string>;
+	example?: CompatibilityObject;
+	resolverPaths?: Readonly<{ [name: string]: string }>;
 	acceptedParameters?: readonly OperationParameter[];
-	validateVariables?: LinearOperation["validateVariables"];
+	validateVariables?: OperationSource["validateVariables"];
 	resultView?: { entity: ResultViewEntity; defaultView: ResultView };
 	inventoryDocuments?: readonly { id: string; document: string }[];
 } & OperationSourceExtras): OperationSource {
@@ -365,7 +374,17 @@ export function listOperation(config: {
 	const innerPlan = config.plan ?? listPrepare(config.pageSize);
 	const innerValidate = config.validateVariables;
 	const defaultView = config.resultView?.defaultView;
-	return {
+	const inventoryDocuments = [
+		...(documents ? (["summary", "full"] as const).map((id) => ({ id, document: documents[id] })) : []),
+		...(config.inventoryDocuments ?? []),
+	];
+	const paginationMetadata: PaginationMetadata = {
+		defaultPageSize: config.pageSize,
+	};
+	if (config.filterType) paginationMetadata.filterType = config.filterType;
+	if (config.sortType) paginationMetadata.sortType = config.sortType;
+	if (config.sortKeys) paginationMetadata.sortKeys = config.sortKeys;
+	const source: OperationSource = {
 		...sourceExtras(config),
 		name: config.name,
 		resultCategory: "collection",
@@ -385,32 +404,9 @@ export function listOperation(config: {
 			...(config.sortType ? [sort] : []),
 			...(config.resultView ? [resultViewParam] : []),
 		],
-		acceptedParameters: config.acceptedParameters
-			? config.resultView
-				? [...config.acceptedParameters, resultViewParam]
-				: config.acceptedParameters
-			: undefined,
 		example: { operation: config.name, variables: config.example ?? {} },
 		document,
-		...((documents || config.inventoryDocuments) ? {
-			inventoryDocuments: [
-				...(documents ? (["summary", "full"] as const).map((id) => ({ id, document: documents[id] })) : []),
-				...(config.inventoryDocuments ?? []),
-			],
-		} : {}),
-		pagination: {
-			defaultPageSize: config.pageSize,
-			...(config.filterType ? { filterType: config.filterType } : {}),
-			...(config.sortType ? { sortType: config.sortType } : {}),
-			...(config.sortKeys ? { sortKeys: config.sortKeys } : {}),
-		},
-		resolverPaths: config.resolverPaths,
-		validateVariables: innerValidate
-			? (variables) => {
-					if (defaultView) parseResultView(variables.view, defaultView);
-					innerValidate(variables);
-			  }
-			: innerValidate,
+		pagination: paginationMetadata,
 		plan: documents && defaultView
 			? async (variables) => {
 					const plan = await innerPlan(variables);
@@ -426,6 +422,20 @@ export function listOperation(config: {
 			  }
 			: innerPlan,
 	};
+	if (config.acceptedParameters) {
+		source.acceptedParameters = config.resultView
+			? [...config.acceptedParameters, resultViewParam]
+			: config.acceptedParameters;
+	}
+	if (inventoryDocuments.length) source.inventoryDocuments = inventoryDocuments;
+	if (config.resolverPaths) source.resolverPaths = config.resolverPaths;
+	if (innerValidate) {
+		source.validateVariables = (variables) => {
+			if (defaultView) parseResultView(variables.view, defaultView);
+			innerValidate(variables);
+		};
+	}
+	return source;
 }
 export function simpleMutation(config: {
 	name: string;
@@ -437,14 +447,14 @@ export function simpleMutation(config: {
 	selection: string;
 	parameters: readonly OperationParameter[];
 	acceptedParameters?: readonly OperationParameter[];
-	example: Record<string, unknown>;
+	example: CompatibilityObject;
 	idKey?: string;
-	plan?: LinearOperation["plan"];
+	plan?: ParsedOperationPlanFactory;
 	aliases?: readonly string[];
-	legacyParameters?: LinearOperation["legacyParameters"];
-	aliasParameters?: LinearOperation["aliasParameters"];
-	resolverPaths?: Record<string, string>;
-	validateVariables?: LinearOperation["validateVariables"];
+	legacyParameters?: OperationSource["legacyParameters"];
+	aliasParameters?: OperationSource["aliasParameters"];
+	resolverPaths?: Readonly<{ [name: string]: string }>;
+	validateVariables?: OperationSource["validateVariables"];
 	document?: string;
 } & OperationSourceExtras): OperationSource {
 	const document =
@@ -495,8 +505,8 @@ export function addSaveOperation(config: {
 	createType: string;
 	updateType: string;
 	parameters: readonly OperationParameter[];
-	example: Record<string, unknown>;
-	resolverPaths?: Record<string, string>;
+	example: CompatibilityObject;
+	resolverPaths?: Readonly<{ [name: string]: string }>;
 } & OperationSourceExtras) {
 	const entityPath = config.entity[0]!.toLowerCase() + config.entity.slice(1);
 	const baseCreateDocument = mutationDocument(
@@ -528,18 +538,18 @@ export function addSaveOperation(config: {
 	const updateVariant = mutationVariant(updateDocument, config.updateRoot, entityPath, "update");
 	// Requirement branches own save mode, required content, and forbidden fields.
 	// This named exception checks non-empty and value-type semantics only.
-	const validateSaveSemantics = (v: Record<string, unknown>) => {
+	const validateSaveSemantics = (v: CompatibilityObject) => {
 		const reference = v[config.idKey];
-		const update = typeof reference === "string" && reference.length > 0;
+		const update = isCompatibilityString(reference) && reference.length > 0;
 		if (update) return;
 		const prepared = mergedInput(v, [config.idKey]);
-		if (typeof prepared.name !== "string" || !prepared.name.trim())
+		if (!isCompatibilityString(prepared.name) || !prepared.name.trim())
 			throw new Error(
 				`${config.entity} name is required for ${config.createRoot} (name).`,
 			);
 		if (
 			config.name === "save_milestone" &&
-			typeof prepared.projectId !== "string"
+			!isCompatibilityString(prepared.projectId)
 		)
 			throw new Error("projectId is required for projectMilestoneCreate.");
 		if (
@@ -580,12 +590,12 @@ export function addSaveOperation(config: {
 		plan(v) {
 			validateSaveSemantics(v);
 			const reference = v[config.idKey];
-			const update = typeof reference === "string" && reference.length > 0;
+			const update = isCompatibilityString(reference) && reference.length > 0;
 			const prepared = mergedInput(v, [config.idKey]);
-			const projectReference = config.name === "save_milestone" && typeof prepared.projectId === "string"
+			const projectReference = config.name === "save_milestone" && isCompatibilityString(prepared.projectId)
 				? prepared.projectId
 				: undefined;
-			const issueReferenceValue = config.name === "save_project" && typeof prepared.convertedFromIssueId === "string"
+			const issueReferenceValue = config.name === "save_project" && isCompatibilityString(prepared.convertedFromIssueId)
 				? prepared.convertedFromIssueId
 				: undefined;
 			return {
@@ -603,11 +613,14 @@ export function addSaveOperation(config: {
 					if (issue) prepared.convertedFromIssueId = issue.id;
 					const slackChannelName = config.name === "save_project" ? prepared.slackChannelName : undefined;
 					if (config.name === "save_project") delete prepared.slackChannelName;
+					const createVariables: CompatibilityObject = slackChannelName === undefined
+						? { input: prepared }
+						: { input: prepared, slackChannelName };
 					return {
 						variant: update ? updateVariant : createVariant,
 						variables: update
 							? { id: target?.id, input: prepared }
-							: { input: prepared, ...(slackChannelName === undefined ? {} : { slackChannelName }) },
+							: createVariables,
 						resolution: compactObject({
 							target: target ? { requested: reference, resolvedId: target.id, name: target.name } : undefined,
 							project: project ? { requested: projectReference, resolvedId: project.id, name: project.name } : undefined,

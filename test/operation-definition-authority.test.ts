@@ -11,14 +11,14 @@ import {
   projectCompatibilityOperation,
 } from '../extensions/operations';
 import { requirementBranchMatches } from '../extensions/operation-definition';
-import type { RequirementBranch } from '../extensions/operation-types';
+import type { OperationDefinition, RequirementBranch } from '../extensions/operation-types';
 import { typedLinearTools } from '../extensions/typed-tools';
 
 // Static renderer fixture updated for canonical invocation fields. Tests never generate it during verification.
 const RENDERER_FIXTURE = JSON.parse(readFileSync(
   new URL('./fixtures/v06-renderer-metadata.json', import.meta.url),
   'utf8',
-)) as Record<string, unknown>;
+)) as { readonly [name: string]: OperationDefinition['render'] };
 
 const CREATE_ISSUE_BRANCH_FIXTURE: readonly RequirementBranch[] = [
   {

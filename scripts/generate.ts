@@ -32,8 +32,6 @@ const LINEAR_TOOL_USAGE = 'Discovery help only. Exact help loads linear_<name>; 
 
 export const generatedFiles = [manifestPath, contractsPath, catalogPath, packageDocumentsPath, readmePath, referencePath] as const;
 
-const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
-
 function manifest() {
   const lazyTools = operationDefinitions.map(({ toolName: name, name: operation, domain }) => ({ name, operation, domain }));
   const exceptionalTools = exceptionalToolDefinitions.map(({
@@ -237,10 +235,10 @@ export async function renderGeneratedFiles(): Promise<Record<string, string>> {
     introspection: await readFile(introspectionPath, 'utf8'),
   };
   return {
-    [manifestPath]: json(manifest()),
-    [contractsPath]: json(contracts()),
+    [manifestPath]: `${JSON.stringify(manifest(), null, 2)}\n`,
+    [contractsPath]: `${JSON.stringify(contracts(), null, 2)}\n`,
     [catalogPath]: catalogModule(),
-    [packageDocumentsPath]: json(packageDocumentInventory(base.introspection)),
+    [packageDocumentsPath]: `${JSON.stringify(packageDocumentInventory(base.introspection), null, 2)}\n`,
     [readmePath]: replaceGeneratedSection(base.readme, readmeCatalog()),
     [referencePath]: replaceGeneratedSection(base.reference, referenceCatalog()),
   };

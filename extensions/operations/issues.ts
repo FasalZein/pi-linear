@@ -12,13 +12,14 @@ import { parseResultView, projection } from "../selections";
 import { issueLookup, namedEntityLookup, pureQueryPlan, stateLookup, stateLookupForTeamReference, teamLookup, userLookup } from "../operation-plan";
 import {
 	compactObject,
+	isCompatibilityString,
 	mergeFilters,
 	mergedInput,
 	p,
 	paginationVariables,
 } from "../operation-types";
 import type {
-	LinearOperation,
+	CompatibilityObject,
 	OperationPlan,
 	OperationPreparation,
 	OperationSource,
@@ -113,7 +114,7 @@ const issueUpdateFields = [
 	"trashed",
 ].map((name) => p(name));
 
-function createIssueRefs(v: Record<string, unknown>) {
+function createIssueRefs(v: CompatibilityObject) {
 	const input = mergedInput(v, [
 		"parent",
 		"team",
@@ -132,7 +133,7 @@ function createIssueRefs(v: Record<string, unknown>) {
 		teamRef: v.team ?? v.teamKey ?? input.teamId,
 		stateRef: v.state ?? input.stateId,
 		userRef: v.assignee ?? input.assigneeId,
-		projectRef: typeof projectRef === "string" && !isUuid(projectRef) ? projectRef : undefined,
+		projectRef: isCompatibilityString(projectRef) && !isUuid(projectRef) ? projectRef : undefined,
 	};
 }
 
@@ -145,7 +146,7 @@ type CreateIssueLookups = {
 };
 
 function applyCreateIssueLookups(
-	v: Record<string, unknown>,
+	v: CompatibilityObject,
 	resolved: CreateIssueLookups,
 ): OperationPreparation {
 	const { input, parentRef, teamRef, stateRef, userRef, projectRef } = createIssueRefs(v);
@@ -188,7 +189,7 @@ function applyCreateIssueLookups(
 		if (!project) throw new Error(`Linear project "${projectRef}" was not found.`);
 		input.projectId = project.id;
 	}
-	if (typeof input.title !== "string" || !input.title.trim()) {
+	if (!isCompatibilityString(input.title) || !input.title.trim()) {
 		throw new Error("Issue title is required for issueCreate (title).");
 	}
 	return {
@@ -213,7 +214,7 @@ function applyCreateIssueLookups(
 	};
 }
 
-function createIssuePlan(v: Record<string, unknown>): OperationPlan {
+function createIssuePlan(v: CompatibilityObject): OperationPlan {
 	const { parentRef, teamRef, stateRef, userRef, projectRef } = createIssueRefs(v);
 	return {
 		kind: "mutation",
@@ -221,9 +222,9 @@ function createIssuePlan(v: Record<string, unknown>): OperationPlan {
 			...(parentRef ? [issueLookup("parent", String(parentRef))] : []),
 			...(teamRef ? [teamLookup("team", String(teamRef))] : []),
 			...(stateRef
-				? [typeof stateRef === "string" && !isUuid(stateRef) && teamRef
+				? [isCompatibilityString(stateRef) && !isUuid(stateRef) && teamRef
 					? stateLookupForTeamReference("state", stateRef, String(teamRef))
-					: stateLookup("state", String(stateRef), typeof stateRef === "string" && !isUuid(stateRef) && parentRef ? "parent" : undefined, (value) => (value as { teamId: string }).teamId)]
+					: stateLookup("state", String(stateRef), isCompatibilityString(stateRef) && !isUuid(stateRef) && parentRef ? "parent" : undefined, (value) => (value as { teamId: string }).teamId)]
 				: []),
 			...(userRef ? [userLookup("assignee", String(userRef))] : []),
 			...(projectRef ? [namedEntityLookup("project", "project", projectRef)] : []),
@@ -232,7 +233,7 @@ function createIssuePlan(v: Record<string, unknown>): OperationPlan {
 	};
 }
 
-function updateIssuePlan(v: Record<string, unknown>): OperationPlan {
+function updateIssuePlan(v: CompatibilityObject): OperationPlan {
 	const ref = requireIssueReference(issueReference(v));
 	const input = mergedInput(v, ["issue", "issueId", "state", "assignee", "parent"]);
 	if (v.assignee === null) input.assigneeId = null;
@@ -241,7 +242,7 @@ function updateIssuePlan(v: Record<string, unknown>): OperationPlan {
 	const stateRef = v.state ?? input.stateId;
 	const parentRef = v.parent ?? input.parentId;
 	const userRef = v.assignee ?? input.assigneeId;
-	const stateNeedsTeam = typeof stateRef === "string" && stateRef.trim() !== "" && !isUuid(stateRef);
+	const stateNeedsTeam = isCompatibilityString(stateRef) && stateRef.trim() !== "" && !isUuid(stateRef);
 	const needsIssue = Boolean(parentRef) || Boolean(stateRef && !teamRef);
 	return {
 		kind: "mutation",
@@ -361,7 +362,7 @@ export const issues: readonly OperationDefinition[] = ([
 			if (variables.issues !== undefined) parseIssueReferenceSet(variables.issues);
 			const state = variables.state ?? variables.stateName;
 			if (state === undefined) return;
-			if (typeof state !== "string" || !state.trim()) {
+			if (!isCompatibilityString(state) || !state.trim()) {
 				throw new Error(
 					'state must be a non-empty UUID, or an exact state name with team. For cross-team calls, use { "assignee": "me", "stateType": "started" }',
 				);
@@ -566,7 +567,7 @@ export const issues: readonly OperationDefinition[] = ([
 			const raw = object(variables.input) ?? {};
 			const projectSources = [variables.project, variables.projectId, raw.projectId].filter((value) => value !== undefined);
 			if (projectSources.length > 1) throw new Error("project, projectId, and input.projectId conflict; send exactly one");
-			if (variables.project !== undefined && (typeof variables.project !== "string" || !variables.project.trim())) {
+			if (variables.project !== undefined && (!isCompatibilityString(variables.project) || !variables.project.trim())) {
 				throw new Error("project must be an exact non-empty project name or UUID");
 			}
 			for (const projectId of [variables.projectId, raw.projectId].filter((value) => value !== undefined)) {
@@ -580,7 +581,7 @@ export const issues: readonly OperationDefinition[] = ([
 				}
 			}
 			const title = variables.title ?? raw.title;
-			if (typeof title !== "string" || !title.trim()) {
+			if (!isCompatibilityString(title) || !title.trim()) {
 				throw new Error(
 					"title is required in canonical fields or nested input",
 				);
@@ -592,7 +593,7 @@ export const issues: readonly OperationDefinition[] = ([
 				variables.parent ??
 				raw.teamId ??
 				raw.parentId;
-			if (typeof teamOrParent !== "string" || !teamOrParent.trim()) {
+			if (!isCompatibilityString(teamOrParent) || !teamOrParent.trim()) {
 				throw new Error(
 					"team or parent is required in canonical fields or nested input",
 				);
@@ -881,7 +882,7 @@ export const issues: readonly OperationDefinition[] = ([
 		extras: "$term: String! $includeComments: Boolean $teamId: String",
 		extraArgs: "term: $term includeComments: $includeComments teamId: $teamId",
 		plan: (v) => {
-			const term = typeof v.term === "string" ? v.term.trim() : "";
+			const term = isCompatibilityString(v.term) ? v.term.trim() : "";
 			if (isIssueIdentifier(term)) {
 				const view = parseResultView(v.view, "summary");
 				return pureQueryPlan({
@@ -908,5 +909,5 @@ export const issues: readonly OperationDefinition[] = ([
 		},
 	}),
 ] satisfies OperationSource[]).map((operation) =>
-	defineOperation(operation as LinearOperation),
+	defineOperation(operation),
 );

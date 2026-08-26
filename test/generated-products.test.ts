@@ -184,11 +184,12 @@ describe('generated products', () => {
         label: runtime.label,
         description: runtime.description,
         parameters: runtime.parameters,
-        ...('constrainedSampling' in runtime
-          ? { constrainedSampling: runtime.constrainedSampling }
-          : {}),
       };
-      expect(generated.get(operationName), runtime.name).toEqual(metadata);
+      expect(generated.get(operationName), runtime.name).toEqual(
+        'constrainedSampling' in runtime
+          ? { ...metadata, constrainedSampling: runtime.constrainedSampling }
+          : metadata,
+      );
     }
     expect(generated).toHaveLength(49);
   });
@@ -294,7 +295,7 @@ describe('generated products', () => {
       const operation = projectCompatibilityOperation(definition);
       const alwaysRequired = Object.keys(operation.canonical.fields)
         .filter((name) => operation.canonical.branches.every((branch) => branch.includes(name)));
-      expect(result, definition.name).toEqual({
+      const expected = {
         loadedTools: [definition.toolName],
         name: definition.name,
         domain: definition.domain,
@@ -305,9 +306,13 @@ describe('generated products', () => {
           required: alwaysRequired.includes(name),
         })),
         requirements: operation.canonical.branches,
-        ...(operation.pagination ? { pagination: { defaultPageSize: operation.pagination.defaultPageSize } } : {}),
         example: definition.canonical.example,
-      });
+      };
+      expect(result, definition.name).toEqual(
+        operation.pagination
+          ? { ...expected, pagination: { defaultPageSize: operation.pagination.defaultPageSize } }
+          : expected,
+      );
       expect(loaded, definition.name).toEqual([definition.toolName]);
     }
   });

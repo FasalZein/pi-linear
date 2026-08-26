@@ -5,6 +5,7 @@ import { convertTools } from '../node_modules/@earendil-works/pi-ai/dist/api/goo
 import { resolveJsonSchemaStrictSampling } from '../node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.js';
 import { resolveRequest } from '../extensions/api';
 import { operations } from '../extensions/operations';
+import type { CompatibilityObject, CompatibilityValue } from '../extensions/operation-types';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { LIVE_COMMENT_SCHEMA_2026_08_19 } from './fixtures/comment-schema';
 import { isolateLinearCredentials } from './helpers/credentials';
@@ -30,7 +31,11 @@ const TARGETS = [
   ['parentId', TARGET_ID],
 ] as const;
 
-function schemaAccepts(tool: typeof create, args: Record<string, unknown>): boolean {
+function compatibilityField(values: CompatibilityObject, field: string): CompatibilityValue | undefined {
+  return values[field];
+}
+
+function schemaAccepts(tool: typeof create, args: CompatibilityObject): boolean {
   try {
     validateToolArguments(tool as any, { id: 'call-1', name: tool.name, arguments: args } as any);
     return true;
@@ -39,7 +44,7 @@ function schemaAccepts(tool: typeof create, args: Record<string, unknown>): bool
   }
 }
 
-function rawAccepts(tool: typeof create, args: Record<string, unknown>): boolean {
+function rawAccepts(tool: typeof create, args: CompatibilityObject): boolean {
   try {
     tool.prepareArguments!(args);
     return true;
@@ -48,7 +53,7 @@ function rawAccepts(tool: typeof create, args: Record<string, unknown>): boolean
   }
 }
 
-async function prepare(name: 'create_comment' | 'update_comment', variables: Record<string, unknown>) {
+async function prepare(name: 'create_comment' | 'update_comment', variables: CompatibilityObject) {
   return prepareOperation(operations[name]!, variables);
 }
 
@@ -86,11 +91,11 @@ describe('canonical comment schemas', () => {
   });
 
   it('requires update id plus one current safe field', () => {
-    const fields: Record<string, unknown> = {
+    const fields = {
       body: 'Text',
       bodyData: { type: 'doc' },
       quotedText: 'quote',
-    };
+    } satisfies CompatibilityObject;
     for (const [field, value] of Object.entries(fields)) {
       expect(rawAccepts(update, { id: 'comment-id', [field]: value }), field).toBe(true);
     }
@@ -153,7 +158,7 @@ describe('comment compatibility validation and preparation', () => {
   });
 
   it('keeps every live input field in raw compatibility and gates non-canonical fields', () => {
-    const createValues: Record<string, unknown> = {
+    const createValues = {
       id: TARGET_ID,
       body: 'Text',
       bodyData: { type: 'doc' },
@@ -172,19 +177,19 @@ describe('comment compatibility validation and preparation', () => {
       createOnSyncedSlackThread: true,
       quotedText: 'quote',
       subscriberIds: [TARGET_ID],
-    };
+    } satisfies CompatibilityObject;
     const targetFields = new Set<string>(TARGETS.map(([field]) => field === 'issue' ? 'issueId' : field));
     for (const field of Object.keys(LIVE_COMMENT_SCHEMA_2026_08_19.inputs.CommentCreateInput)) {
-      const input: Record<string, unknown> = targetFields.has(field)
-        ? { [field]: createValues[field], body: 'Text' }
+      const input: CompatibilityObject = targetFields.has(field)
+        ? { [field]: compatibilityField(createValues, field), body: 'Text' }
         : field === 'bodyData'
           ? { issueId: 'AEO-258', bodyData: createValues.bodyData }
-          : { issueId: 'AEO-258', body: 'Text', [field]: createValues[field] };
+          : { issueId: 'AEO-258', body: 'Text', [field]: compatibilityField(createValues, field) };
       if (field === 'displayIconUrl') input.createAsUser = 'Linear Importer';
       expect(() => resolveRequest({ operation: 'create_comment', variables: { input } }), field).not.toThrow();
     }
 
-    const updateValues: Record<string, unknown> = {
+    const updateValues = {
       body: 'Text',
       bodyData: { type: 'doc' },
       resolvingUserId: TARGET_ID,
@@ -192,21 +197,21 @@ describe('comment compatibility validation and preparation', () => {
       quotedText: 'quote',
       subscriberIds: [TARGET_ID],
       doNotSubscribeToIssue: true,
-    };
+    } satisfies CompatibilityObject;
     for (const field of Object.keys(LIVE_COMMENT_SCHEMA_2026_08_19.inputs.CommentUpdateInput)) {
       expect(() => resolveRequest({
-        operation: 'update_comment', variables: { id: 'comment-id', input: { [field]: updateValues[field] } },
+        operation: 'update_comment', variables: { id: 'comment-id', input: { [field]: compatibilityField(updateValues, field) } },
       }), field).not.toThrow();
     }
 
     for (const field of ['createAsUser', 'displayIconUrl', 'subscriberIds']) {
       expect(() => resolveRequest({
-        operation: 'create_comment', variables: { issue: 'AEO-258', body: 'Text', [field]: createValues[field] },
+        operation: 'create_comment', variables: { issue: 'AEO-258', body: 'Text', [field]: compatibilityField(createValues, field) },
       })).toThrow();
     }
     for (const field of ['resolvingUserId', 'resolvingCommentId', 'subscriberIds', 'doNotSubscribeToIssue', 'resolved']) {
       expect(() => resolveRequest({
-        operation: 'update_comment', variables: { id: 'comment-id', [field]: updateValues[field] ?? true },
+        operation: 'update_comment', variables: { id: 'comment-id', [field]: compatibilityField(updateValues, field) ?? true },
       })).toThrow();
     }
     expect(() => resolveRequest({

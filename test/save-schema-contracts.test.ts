@@ -4,6 +4,7 @@ import { convertTools } from '../node_modules/@earendil-works/pi-ai/dist/api/goo
 import { makeStrictJsonSchema, resolveJsonSchemaStrictSampling } from '../node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.js';
 import { linearGraphqlTool } from '../extensions/api';
 import { operations } from '../extensions/operations';
+import type { CompatibilityObject } from '../extensions/operation-types';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
 import { prepareOperation } from './helpers/operation-plan';
@@ -13,7 +14,7 @@ isolateLinearCredentials();
 const UUID = '11111111-1111-4111-8111-111111111111';
 const tools = new Map(typedLinearTools().map((tool) => [tool.name, tool]));
 
-function accepts(toolName: string, args: Record<string, unknown>): boolean {
+function accepts(toolName: string, args: CompatibilityObject): boolean {
   const tool = tools.get(toolName)!;
   try {
     validateToolArguments(tool as any, { id: 'call-1', name: toolName, arguments: args } as any);
@@ -23,7 +24,7 @@ function accepts(toolName: string, args: Record<string, unknown>): boolean {
   }
 }
 
-function strictAccepts(toolName: string, args: Record<string, unknown>): boolean {
+function strictAccepts(toolName: string, args: CompatibilityObject): boolean {
   try {
     tools.get(toolName)!.prepareArguments!(args);
     return true;
@@ -32,7 +33,7 @@ function strictAccepts(toolName: string, args: Record<string, unknown>): boolean
   }
 }
 
-function execute(toolName: string, args: Record<string, unknown>) {
+function execute(toolName: string, args: CompatibilityObject) {
   return tools.get(toolName)!.execute('call-1', args as never, undefined, undefined, { hasUI: false } as any);
 }
 
@@ -104,7 +105,7 @@ describe('closed create and update save schemas', () => {
     process.env.LINEAR_API_KEY = 'test-key';
     const identity = Object.fromEntries(Object.entries(entry.update).slice(0, 1));
     const rejected = [identity, entry.createOnly, entry.missingCreate, entry.invalidCreate]
-      .filter((args): args is Record<string, unknown> => Boolean(args));
+      .filter((args): args is CompatibilityObject => Boolean(args));
 
     for (const args of rejected) {
       await expect(execute(entry.tool, args)).rejects.toThrow(/^Invalid (parameters|arguments)/);
@@ -128,7 +129,7 @@ describe('closed create and update save schemas', () => {
   });
 
   it('publishes the dated live field union on one closed root object', () => {
-    const expected: Record<string, readonly string[]> = {
+    const expected = {
       linear_save_initiative: ['initiativeId', 'name', 'description', 'content', 'icon', 'color', 'status', 'targetDate', 'targetDateResolution', 'ownerId', 'leadTeamId', 'sortOrder', 'prioritySortOrder', 'priority', 'labelIds', 'id', 'customIdentifier', 'frequencyResolution', 'updateReminderFrequency', 'updateReminderFrequencyInWeeks', 'updateRemindersDay', 'updateRemindersHour', 'workspace'],
       linear_save_milestone: ['milestoneId', 'name', 'projectId', 'description', 'descriptionData', 'targetDate', 'sortOrder', 'id', 'workspace'],
       linear_save_project: ['projectId', 'name', 'teamIds', 'description', 'content', 'icon', 'color', 'priority', 'startDate', 'startDateResolution', 'targetDate', 'targetDateResolution', 'statusId', 'leadId', 'leadTeamId', 'memberIds', 'labelIds', 'convertedFromIssueId', 'lastAppliedTemplateId', 'sortOrder', 'prioritySortOrder', 'canceledAt', 'completedAt', 'projectUpdateRemindersPausedUntilAt', 'slackIssueComments', 'slackIssueStatuses', 'slackNewIssue', 'slackChannelName', 'templateId', 'useDefaultTemplate', 'id', 'frequencyResolution', 'updateReminderFrequency', 'updateReminderFrequencyInWeeks', 'updateRemindersDay', 'updateRemindersHour', 'workspace'],
@@ -171,7 +172,7 @@ describe('mode-specific field ownership', () => {
   });
 
   it('publishes exact dated document and label fields without unsupported extras', () => {
-    const expected: Record<string, string[]> = {
+    const expected = {
       linear_create_document: ['title', 'content', 'icon', 'color', 'issueId', 'teamId', 'projectId', 'initiativeId', 'cycleId', 'releaseId', 'resourceFolderId', 'lastAppliedTemplateId', 'ownerId', 'subscriberIds', 'sortOrder', 'id', 'workspace'],
       linear_update_document: ['document', 'title', 'content', 'icon', 'color', 'issueId', 'teamId', 'projectId', 'initiativeId', 'cycleId', 'releaseId', 'resourceFolderId', 'lastAppliedTemplateId', 'ownerId', 'subscriberIds', 'sortOrder', 'hiddenAt', 'workspace'],
       linear_create_issue_label: ['name', 'team', 'description', 'color', 'isGroup', 'parentId', 'retiredAt', 'replaceTeamLabels', 'id', 'workspace'],
@@ -213,7 +214,7 @@ describe('mode-specific field ownership', () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
     process.env.LINEAR_API_KEY = 'test-key';
-    const rejected: Array<[string, Record<string, unknown>]> = [
+    const rejected: Array<[string, CompatibilityObject]> = [
       ['linear_save_initiative', { name: 'I', customIdentifier: 'PLAT' }],
       ['linear_save_initiative', { name: 'I', health: 'onTrack' }],
       ['linear_save_project', { name: 'P', teamIds: [UUID], resources: [] }],
@@ -245,7 +246,7 @@ describe('mode-specific field ownership', () => {
       });
     });
     vi.stubGlobal('fetch', fetch);
-    const prepare = (operation: string, variables: Record<string, unknown>) =>
+    const prepare = (operation: string, variables: CompatibilityObject) =>
       prepareOperation(operations[operation]!, variables);
 
     expect((await prepare('save_initiative', { name: 'I', leadTeamId: UUID, prioritySortOrder: 1.5, priority: 2, labelIds: [UUID], targetDate: null })).variables).toEqual({ input: { name: 'I', leadTeamId: UUID, prioritySortOrder: 1.5, priority: 2, labelIds: [UUID], targetDate: null } });
@@ -258,7 +259,7 @@ describe('mode-specific field ownership', () => {
   });
 
   it('adds every dated live field to named operation metadata', () => {
-    const expected: Record<string, string[]> = {
+    const expected = {
       save_initiative: ['leadTeamId', 'prioritySortOrder', 'priority', 'labelIds', 'customIdentifier'],
       save_project: ['leadTeamId'],
       create_document: ['ownerId'],

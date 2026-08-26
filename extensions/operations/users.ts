@@ -2,15 +2,12 @@ import { userLookup } from "../operation-plan";
 import { projection } from "../selections";
 import { p } from "../operation-types";
 import type {
-	LinearOperation,
 	OperationSource,
 	OperationDefinition,
 } from "../operation-types";
 import { defineOperation } from "../operation-definition";
 import {
 	USER_SORT_KEYS,
-	filter,
-	sort,
 	getDocument,
 	listPrepare,
 	workspaceEmpty,
@@ -104,5 +101,5 @@ export const users: readonly OperationDefinition[] = ([
 		},
 	},
 ] satisfies OperationSource[]).map((operation) =>
-	defineOperation(operation as LinearOperation),
+	defineOperation(operation),
 );

@@ -3,16 +3,12 @@ import { namedEntityLookup, pureQueryPlan } from "../operation-plan";
 import { projection } from "../selections";
 import { p } from "../operation-types";
 import type {
-	LinearOperation,
 	OperationSource,
 	OperationDefinition,
 } from "../operation-types";
 import { defineOperation } from "../operation-definition";
 import {
 	PROJECT_SORT_KEYS,
-	input,
-	filter,
-	sort,
 	isUuid,
 	getDocument,
 	workspaceEmpty,
@@ -108,7 +104,7 @@ export const projectReads: readonly OperationDefinition[] = ([
 		},
 	}, "project", "project", "GetProject"),
 ] satisfies OperationSource[]).map((operation) =>
-	defineOperation(operation as LinearOperation),
+	defineOperation(operation),
 );
 
 export const projectSaves: readonly OperationDefinition[] = [

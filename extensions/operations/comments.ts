@@ -2,20 +2,20 @@ import { projection } from "../selections";
 import { issueLookup, pureMutationPlan } from "../operation-plan";
 import {
 	compactObject,
+	isCompatibilityString,
 	mergeFilters,
 	mergedInput,
 	p,
 	paginationVariables,
 } from "../operation-types";
 import type {
-	LinearOperation,
+	CompatibilityObject,
 	OperationSource,
 	OperationDefinition,
 } from "../operation-types";
 import { defineOperation } from "../operation-definition";
 import {
 	input,
-	filter,
 	issueTarget,
 	issueReference,
 	object,
@@ -63,14 +63,14 @@ const commentUpdateInput = [
 	p("skipEditedAt", "Boolean"),
 ];
 
-function has(value: Record<string, unknown>, key: string): boolean {
+function has(value: CompatibilityObject, key: string): boolean {
 	return Object.prototype.hasOwnProperty.call(value, key) && value[key] !== undefined;
 }
 
 function commentInputObject(
-	variables: Record<string, unknown>,
+	variables: CompatibilityObject,
 	allowed: readonly string[],
-): Record<string, unknown> {
+): CompatibilityObject {
 	if (!has(variables, "input")) return {};
 	const raw = object(variables.input);
 	if (!raw) throw new Error("input must be an object");
@@ -79,9 +79,9 @@ function commentInputObject(
 	return raw;
 }
 
-function assertCommentBodyData(sources: readonly Record<string, unknown>[]): void {
+function assertCommentBodyData(sources: readonly CompatibilityObject[]): void {
 	for (const source of sources) {
-		if (has(source, "body") && (typeof source.body !== "string" || !source.body.length))
+		if (has(source, "body") && (!isCompatibilityString(source.body) || !source.body.length))
 			throw new Error("body must be non-empty text");
 		if (has(source, "bodyData") && !object(source.bodyData))
 			throw new Error("bodyData must be a JSON object");
@@ -89,13 +89,13 @@ function assertCommentBodyData(sources: readonly Record<string, unknown>[]): voi
 }
 
 // Branch metadata owns comment target/content requirements. This exception checks value semantics only.
-function validateCommentCreateSemantics(variables: Record<string, unknown>): void {
+function validateCommentCreateSemantics(variables: CompatibilityObject): void {
 	const raw = commentInputObject(variables, COMMENT_CREATE_INPUT_FIELDS);
 	assertCommentBodyData([variables, raw]);
 }
 
 // Branch metadata owns the required update set. This exception checks value semantics only.
-function validateCommentUpdateSemantics(variables: Record<string, unknown>): void {
+function validateCommentUpdateSemantics(variables: CompatibilityObject): void {
 	const raw = commentInputObject(variables, COMMENT_UPDATE_INPUT_FIELDS);
 	assertCommentBodyData([variables, raw]);
 }
@@ -406,5 +406,5 @@ export const comments: readonly OperationDefinition[] = ([
 		},
 	}),
 ] satisfies OperationSource[]).map((operation) =>
-	defineOperation(operation as LinearOperation),
+	defineOperation(operation),
 );

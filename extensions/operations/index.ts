@@ -1,4 +1,5 @@
 import type {
+	CompatibilityValue,
 	LinearOperation,
 	OperationDefinition,
 	OperationDomain,
@@ -9,6 +10,7 @@ export type {
 	OperationDomain,
 	OperationParameter,
 } from "../operation-types";
+import { isCompatibilityObject } from "../operation-types";
 import { projectCompatibilityOperation } from "../operation-definition";
 export { projectCompatibilityOperation };
 import { comments } from "./comments";
@@ -124,13 +126,14 @@ export function operationSignature(operation: LinearOperation): string {
 		.map(([name, type]) => `${name}${operation.canonical.branches.every((branch) => branch.includes(name)) ? "" : "?"}: ${type}`)
 		.join(", ")})`;
 }
-export function formatInvocation(value: unknown): string {
+export function formatInvocation(value: CompatibilityValue): string {
 	if (Array.isArray(value))
 		return `[${value.map(formatInvocation).join(", ")}]`;
-	if (value && typeof value === "object")
-		return `{ ${Object.entries(value as Record<string, unknown>)
+	if (isCompatibilityObject(value))
+		return `{ ${Object.entries(value)
+			.filter(([, entry]) => entry !== undefined)
 			.map(
-				([key, entry]) => `${JSON.stringify(key)}: ${formatInvocation(entry)}`,
+				([key, entry]) => `${JSON.stringify(key)}: ${formatInvocation(entry ?? null)}`,
 			)
 			.join(", ")} }`;
 	return JSON.stringify(value);
@@ -144,24 +147,24 @@ export function parameterShapes(
 			.filter((parameter) => parameter.required)
 			.map(({ name }) => name),
 	);
-	const canonicalShape = (
+	const canonicalCard = (
 		operation.acceptedParameters ?? operation.parameters
 	).map((parameter) => ({
 		...parameter,
 		required: required.has(parameter.name),
 	}));
-	const aliasShape = operation.aliasParameters?.[requestedName];
-	if (aliasShape) return [canonicalShape, aliasShape];
-	const legacyShapes = (operation.legacyParameters ?? []).map((shape) => {
-		if (shape.length !== 1 || shape[0]?.name !== "input" || !shape[0].required)
-			return shape;
+	const aliasCard = operation.aliasParameters?.[requestedName];
+	if (aliasCard) return [canonicalCard, aliasCard];
+	const legacyCards = (operation.legacyParameters ?? []).map((card) => {
+		if (card.length !== 1 || card[0]?.name !== "input" || !card[0].required)
+			return card;
 		const accepted = operation.acceptedParameters ?? operation.parameters;
 		return accepted.map((parameter) => ({
 			...parameter,
 			required: parameter.name === "input",
 		}));
 	});
-	return [canonicalShape, ...legacyShapes];
+	return [canonicalCard, ...legacyCards];
 }
 export function operationsForDomain(
 	domain: OperationDomain,

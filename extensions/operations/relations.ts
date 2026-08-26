@@ -1,11 +1,12 @@
 import { projection } from "../selections";
 import { issueLookup, issueRelationLookup } from "../operation-plan";
 import {
+	isCompatibilityString,
 	mergedInput,
 	p,
 } from "../operation-types";
 import type {
-	LinearOperation,
+	CompatibilityObject,
 	OperationPreparation,
 	OperationSource,
 	OperationDefinition,
@@ -46,7 +47,7 @@ type GuardedIssueRelation = {
 };
 
 function guardedDeletePreparation(
-	variables: Record<string, unknown>,
+	variables: CompatibilityObject,
 	relation: GuardedIssueRelation,
 ): OperationPreparation {
 	const relationId = String(variables.relationId);
@@ -238,8 +239,8 @@ export const issueRelations: readonly OperationDefinition[] = ([
 		},
 		plan(v) {
 			const input = mergedInput(v, ["id"]);
-			const issueRef = typeof input.issueId === "string" ? input.issueId : undefined;
-			const relatedRef = typeof input.relatedIssueId === "string" ? input.relatedIssueId : undefined;
+			const issueRef = isCompatibilityString(input.issueId) ? input.issueId : undefined;
+			const relatedRef = isCompatibilityString(input.relatedIssueId) ? input.relatedIssueId : undefined;
 			return {
 				kind: "mutation",
 				lookups: [
@@ -252,7 +253,10 @@ export const issueRelations: readonly OperationDefinition[] = ([
 					if (issue) input.issueId = issue.id;
 					if (related) input.relatedIssueId = related.id;
 					if (!Object.keys(input).length) throw new Error("No update fields were provided.");
-					return { variables: { id: v.id, input }, resolution: { ...(issue && issueRef ? { issueId: issueTarget(issueRef, issue) } : {}), ...(related && relatedRef ? { relatedIssueId: issueTarget(relatedRef, related) } : {}) } };
+					const resolution: CompatibilityObject = {};
+					if (issue && issueRef) resolution.issueId = issueTarget(issueRef, issue);
+					if (related && relatedRef) resolution.relatedIssueId = issueTarget(relatedRef, related);
+					return { variables: { id: v.id, input }, resolution };
 				},
 			};
 		},
@@ -295,10 +299,13 @@ export const issueRelations: readonly OperationDefinition[] = ([
 		renderTargetFields: ["relationId", "issueId", "relatedIssueId", "type"],
 		semanticException: "All delete guards must be exact UUIDs and the relation type must be closed.",
 		validateVariables(variables) {
-			for (const name of ["relationId", "issueId", "relatedIssueId"])
-				if (typeof variables[name] !== "string" || !UUID.test(variables[name]))
+			for (const name of ["relationId", "issueId", "relatedIssueId"]) {
+				const value = variables[name];
+				if (!isCompatibilityString(value) || !UUID.test(value))
 					throw new Error(`Invalid ${name}: expected a UUID.`);
-			if (typeof variables.type !== "string" || !ISSUE_RELATION_TYPES.has(variables.type))
+			}
+			const relationType = variables.type;
+			if (!isCompatibilityString(relationType) || !ISSUE_RELATION_TYPES.has(relationType))
 				throw new Error("Invalid type: expected blocks, duplicate, related, or similar.");
 		},
 		plan(variables) {
@@ -312,7 +319,7 @@ export const issueRelations: readonly OperationDefinition[] = ([
 		},
 	},
 ] satisfies OperationSource[]).map((operation) =>
-	defineOperation(operation as LinearOperation),
+	defineOperation(operation),
 );
 
 export const projectRelations: readonly OperationDefinition[] = ([
@@ -478,5 +485,5 @@ export const projectRelations: readonly OperationDefinition[] = ([
 		idKey: "id",
 	}),
 ] satisfies OperationSource[]).map((operation) =>
-	defineOperation(operation as LinearOperation),
+	defineOperation(operation),
 );

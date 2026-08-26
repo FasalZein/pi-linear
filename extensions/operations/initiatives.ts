@@ -2,16 +2,12 @@ import { namedEntityLookup } from "../operation-plan";
 import { projection } from "../selections";
 import { p } from "../operation-types";
 import type {
-	LinearOperation,
 	OperationSource,
 	OperationDefinition,
 } from "../operation-types";
 import { defineOperation } from "../operation-definition";
 import {
 	INITIATIVE_SORT_KEYS,
-	input,
-	filter,
-	sort,
 	getDocument,
 	workspaceEmpty,
 	listOperation,
@@ -97,7 +93,7 @@ export const initiativeReads: readonly OperationDefinition[] = ([
 		},
 	},
 ] satisfies OperationSource[]).map((operation) =>
-	defineOperation(operation as LinearOperation),
+	defineOperation(operation),
 );
 
 export const initiativeSaves: readonly OperationDefinition[] = [

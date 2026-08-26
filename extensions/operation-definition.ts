@@ -1,13 +1,24 @@
 import { Kind, parse } from 'graphql';
 import type {
+  CompatibilityObject,
+  CompatibilityValue,
   GraphQLDocumentVariant,
   LinearOperation,
+  OperationCompatibilityDefinition,
   OperationDefinition,
   OperationDocumentDefinition,
+  OperationPlanFactory,
+  OperationSource,
+  ParsedOperationPlanFactory,
   RequirementBranch,
+  UnparsedCompatibilityVariables,
+} from './operation-types';
+import {
+  isCompatibilityObject,
+  parseCompatibilityObject,
 } from './operation-types';
 
-function actionAndEntity(name: string): { action: string; entity: string } {
+function actionAndEntity(name: string) {
   const [action, ...parts] = name.split('_');
   return { action: action ?? name, entity: parts.join('_') || name };
 }
@@ -41,29 +52,42 @@ function documentDefinition(
   if (kind === 'query' && declared?.mutationResult) {
     throw new Error(`Query ${root.name.value} cannot declare a mutation result expectation.`);
   }
-  return {
-    ...(declared?.when ? { when: declared.when } : {}),
-    document,
-    root: declared?.root ?? root.name.value,
-    kind,
-    ...(declared?.mutationResult ? { mutationResult: declared.mutationResult } : {}),
-  };
+  const rootName = declared?.root ?? root.name.value;
+  if (declared?.when && declared.mutationResult) {
+    return {
+      when: declared.when,
+      document,
+      root: rootName,
+      kind,
+      mutationResult: declared.mutationResult,
+    };
+  }
+  if (declared?.when) {
+    return { when: declared.when, document, root: rootName, kind };
+  }
+  if (declared?.mutationResult) {
+    return { document, root: rootName, kind, mutationResult: declared.mutationResult };
+  }
+  return { document, root: rootName, kind };
 }
 
-function pathPresent(value: Record<string, unknown>, path: string): boolean {
+function pathPresent(value: CompatibilityObject, path: string): boolean {
   const parts = path.split('.');
-  let current: unknown = value;
+  let current: CompatibilityValue = value;
   for (const part of parts) {
-    if (!current || typeof current !== 'object' || Array.isArray(current)
-      || !Object.prototype.hasOwnProperty.call(current, part)) return false;
-    current = (current as Record<string, unknown>)[part];
+    if (!isCompatibilityObject(current) || !Object.prototype.hasOwnProperty.call(current, part)) {
+      return false;
+    }
+    const next: CompatibilityValue | undefined = current[part];
+    if (next === undefined) return false;
+    current = next;
   }
-  return current !== undefined;
+  return true;
 }
 
 export function requirementBranchMatches(
   branch: RequirementBranch,
-  variables: Record<string, unknown>,
+  variables: CompatibilityObject,
 ): boolean {
   if (!branch.all.every((path) => pathPresent(variables, path))) return false;
   if (branch.atLeastOneOf && !branch.atLeastOneOf.some((path) => pathPresent(variables, path))) return false;
@@ -74,7 +98,7 @@ export function requirementBranchMatches(
 
 export function assertRequirementBranches(
   branches: readonly RequirementBranch[],
-  variables: Record<string, unknown>,
+  variables: CompatibilityObject,
 ): void {
   if (branches.some((branch) => requirementBranchMatches(branch, variables))) return;
   const mode = branches.find(({ mode: branchMode, all }) =>
@@ -101,7 +125,7 @@ export function assertRequirementBranches(
 
 function assertProjectedBranches(
   definition: OperationDefinition,
-  variables: Record<string, unknown>,
+  variables: CompatibilityObject,
 ): void {
   const compatibilityFields = new Set(
     (definition.compatibility.acceptedFields ?? definition.compatibility.fields).map(({ name }) => name),
@@ -112,8 +136,21 @@ function assertProjectedBranches(
   assertRequirementBranches(definition.compatibility.branches, variables);
 }
 
+function assignOptional<T extends object, K extends keyof T>(
+  target: T,
+  key: K,
+  value: T[K] | undefined,
+): void {
+  if (value !== undefined) target[key] = value;
+}
+
+
+function parseThenPlan(plan: ParsedOperationPlanFactory): OperationPlanFactory {
+  return async (variables) => plan(parseCompatibilityObject(variables));
+}
+
 /** Project the runtime definition from one authored source operation. */
-export function defineOperation(operation: LinearOperation): OperationDefinition {
+export function defineOperation(operation: OperationSource): OperationDefinition {
   const branches = operation.compatibilityBranches;
   if (!branches) throw new Error(`Missing compatibility branches for "${operation.name}".`);
   const { action } = actionAndEntity(operation.name);
@@ -151,38 +188,76 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
     required: canonical.branches.length > 0
       && canonical.branches.every((branch) => branch.includes(name)),
   }));
-  return {
+  const compatibility: OperationCompatibilityDefinition = {
+    operationAliases: operation.aliases,
+    fields: operation.parameters,
+    branches,
+    example: operation.example,
+    document: operation.document,
+  };
+  assignOptional(compatibility, 'acceptedFields', operation.acceptedParameters);
+  assignOptional(compatibility, 'legacyBranches', operation.legacyParameters);
+  assignOptional(compatibility, 'aliasFields', operation.aliasParameters);
+  assignOptional(compatibility, 'inventoryDocuments', operation.inventoryDocuments);
+  assignOptional(compatibility, 'pagination', operation.pagination);
+  assignOptional(compatibility, 'resolverPaths', operation.resolverPaths);
+  if (requiresVariables) compatibility.requiresVariables = true;
+  if (operation.validateVariables) {
+    compatibility.semanticException = operation.semanticException
+      ?? (() => { throw new Error(`Unnamed semantic validation exception for "${operation.name}".`); })();
+    compatibility.semanticValidateVariables = operation.validateVariables;
+  }
+  assignOptional(compatibility, 'plan', operation.plan);
+  assignOptional(compatibility, 'executeLocal', operation.executeLocal);
+  assignOptional(compatibility, 'localResult', operation.localResult);
+
+  const canonicalBranches = canonical.branches.map((all) => ({ all }));
+  const canonicalExample = operation.canonicalExample ?? operation.example.variables;
+  const canonicalVariants = canonical.variants?.map((variant) => ({
+    fields: variant.fields,
+    branches: variant.branches.map((all) => ({ all })),
+  }));
+  const canonicalProjection: OperationDefinition['canonical'] = canonical.exclusiveBranches
+    ? canonicalVariants
+      ? {
+          fields: canonicalFields,
+          branches: canonicalBranches,
+          exclusiveBranches: true,
+          variants: canonicalVariants,
+          strictRawArguments: true,
+          example: canonicalExample,
+        }
+      : {
+          fields: canonicalFields,
+          branches: canonicalBranches,
+          exclusiveBranches: true,
+          strictRawArguments: true,
+          example: canonicalExample,
+        }
+    : canonicalVariants
+      ? {
+          fields: canonicalFields,
+          branches: canonicalBranches,
+          variants: canonicalVariants,
+          strictRawArguments: true,
+          example: canonicalExample,
+        }
+      : {
+          fields: canonicalFields,
+          branches: canonicalBranches,
+          strictRawArguments: true,
+          example: canonicalExample,
+        };
+
+  const definition: OperationDefinition = {
     name: operation.name,
     toolName: `linear_${operation.name}`,
     domain: operation.domain,
     purpose: operation.purpose,
     kind,
-    compatibility: {
-      operationAliases: operation.aliases,
-      fields: operation.parameters,
-      branches,
-      ...(operation.acceptedParameters ? { acceptedFields: operation.acceptedParameters } : {}),
-      ...(operation.legacyParameters ? { legacyBranches: operation.legacyParameters } : {}),
-      ...(operation.aliasParameters ? { aliasFields: operation.aliasParameters } : {}),
-      example: operation.example,
-      document: operation.document,
-      ...(operation.inventoryDocuments ? { inventoryDocuments: operation.inventoryDocuments } : {}),
-      ...(operation.pagination ? { pagination: operation.pagination } : {}),
-      ...(operation.resolverPaths ? { resolverPaths: operation.resolverPaths } : {}),
-      ...(requiresVariables ? { requiresVariables: true } : {}),
-      ...(operation.validateVariables ? {
-        semanticException: operation.semanticException
-          ?? (() => { throw new Error(`Unnamed semantic validation exception for "${operation.name}".`); })(),
-        semanticValidateVariables: operation.validateVariables,
-      } : {}),
-      ...(operation.plan ? { plan: operation.plan } : {}),
-      ...(operation.executeLocal ? { executeLocal: operation.executeLocal } : {}),
-      ...(operation.localResult ? { localResult: operation.localResult } : {}),
-    },
-    ...(documents ? { graphql: { documents } } : {}),
+    compatibility,
     preparation: {
       resolverPaths: operation.resolverPaths ?? {},
-      ...(operation.plan ? { plan: operation.plan } : {}),
     },
     safety: {
       namedInputPolicy: operation.namedInputPolicy ?? 'non-destructive',
@@ -193,29 +268,40 @@ export function defineOperation(operation: LinearOperation): OperationDefinition
       renderKind: entityKind,
       dataPaths: documents?.map(({ root }) => root)
         ?? [...(operation.localResult?.requiredStringPaths ?? [])],
-      ...(operation.localResult ? { local: operation.localResult } : {}),
     },
     render: {
       entityKind,
       callFields: canonicalFields.map(({ name }) => name),
       action,
-      ...(renderTargetFields ? { targetFields: renderTargetFields } : {}),
-      ...(renderEmpty ? { empty: renderEmpty } : {}),
     },
-    canonical: {
-      fields: canonicalFields,
-      branches: canonical.branches.map((all) => ({ all })),
-      ...(canonical.exclusiveBranches ? { exclusiveBranches: true } : {}),
-      ...(canonical.variants ? {
-        variants: canonical.variants.map((variant) => ({
-          fields: variant.fields,
-          branches: variant.branches.map((all) => ({ all })),
-        })),
-      } : {}),
-      strictRawArguments: true,
-      example: operation.canonicalExample ?? operation.example.variables,
-    },
+    canonical: canonicalProjection,
   };
+  if (documents) definition.graphql = { documents };
+  if (operation.plan) definition.preparation.plan = parseThenPlan(operation.plan);
+  assignOptional(definition.result, 'local', operation.localResult);
+  assignOptional(definition.render, 'targetFields', renderTargetFields);
+  assignOptional(definition.render, 'empty', renderEmpty);
+  return definition;
+}
+
+function canonicalVariants(definition: OperationDefinition) {
+  const variants = definition.canonical.variants;
+  if (!variants) return undefined;
+  return variants.map((variant) => ({
+    fields: variant.fields,
+    branches: variant.branches.map(({ all }) => all),
+  }));
+}
+
+function projectedCanonicalVariants(definition: OperationDefinition): LinearOperation['canonical']['variants'] {
+  const variants = canonicalVariants(definition);
+  if (!variants) return undefined;
+  const first = variants[0];
+  const second = variants[1];
+  if (variants.length !== 2 || first === undefined || second === undefined) {
+    throw new Error(`Canonical variants for "${definition.name}" must be a pair.`);
+  }
+  return [first, second];
 }
 
 const projections = new WeakMap<OperationDefinition, LinearOperation>();
@@ -228,54 +314,54 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
   const variants = definition.graphql?.documents
     .filter(({ kind }) => kind === 'mutation')
     .map(({ kind: _kind, ...variant }) => variant);
+  const canonical: LinearOperation['canonical'] = {
+    fields: Object.fromEntries(definition.canonical.fields.map(({ name, type }) => [name, type])),
+    branches: definition.canonical.branches.map(({ all }) => all),
+  };
+  if (definition.canonical.exclusiveBranches) canonical.exclusiveBranches = true;
+  const projectedVariants = projectedCanonicalVariants(definition);
+  if (projectedVariants) canonical.variants = projectedVariants;
   const operation: LinearOperation = {
     name: definition.name,
     resultCategory: definition.result.category,
-    canonical: {
-      fields: Object.fromEntries(definition.canonical.fields.map(({ name, type }) => [name, type])),
-      branches: definition.canonical.branches.map(({ all }) => all),
-      ...(definition.canonical.exclusiveBranches ? { exclusiveBranches: true } : {}),
-      ...(definition.canonical.variants ? {
-        variants: definition.canonical.variants.map((variant) => ({
-          fields: variant.fields,
-          branches: variant.branches.map(({ all }) => all),
-        })) as unknown as NonNullable<LinearOperation['canonical']['variants']>,
-      } : {}),
-    },
+    canonical,
     aliases: compatibility.operationAliases,
     domain: definition.domain,
     purpose: definition.purpose,
     parameters: compatibility.fields,
-    ...(compatibility.acceptedFields ? { acceptedParameters: compatibility.acceptedFields } : {}),
-    ...(compatibility.legacyBranches ? { legacyParameters: compatibility.legacyBranches } : {}),
-    ...(compatibility.aliasFields ? { aliasParameters: compatibility.aliasFields } : {}),
     example: compatibility.example,
     document: compatibility.document,
-    ...(variants?.length ? { variants } : {}),
-    ...(compatibility.inventoryDocuments ? { inventoryDocuments: compatibility.inventoryDocuments } : {}),
-    ...(compatibility.pagination ? { pagination: compatibility.pagination } : {}),
-    ...(compatibility.resolverPaths ? { resolverPaths: compatibility.resolverPaths } : {}),
-    ...(compatibility.requiresVariables ? { requiresVariables: true } : {}),
-    validateVariables(variables) {
-      assertProjectedBranches(definition, variables);
-      compatibility.semanticValidateVariables?.(variables);
+    validateVariables(variables: UnparsedCompatibilityVariables) {
+      const parsed = parseCompatibilityObject(variables);
+      assertProjectedBranches(definition, parsed);
+      compatibility.semanticValidateVariables?.(parsed);
     },
-    ...(compatibility.plan ? {
-      plan: async (variables) => {
-        assertProjectedBranches(definition, variables);
-        compatibility.semanticValidateVariables?.(variables);
-        return compatibility.plan!(variables);
-      },
-    } : {}),
-    ...(compatibility.localResult ? { localResult: compatibility.localResult } : {}),
-    ...(compatibility.executeLocal ? {
-      executeLocal: async (variables, ctx, mode) => {
-        assertProjectedBranches(definition, variables);
-        compatibility.semanticValidateVariables?.(variables);
-        return compatibility.executeLocal!(variables, ctx, mode);
-      },
-    } : {}),
   };
+  assignOptional(operation, 'acceptedParameters', compatibility.acceptedFields);
+  assignOptional(operation, 'legacyParameters', compatibility.legacyBranches);
+  assignOptional(operation, 'aliasParameters', compatibility.aliasFields);
+  if (variants?.length) operation.variants = variants;
+  assignOptional(operation, 'inventoryDocuments', compatibility.inventoryDocuments);
+  assignOptional(operation, 'pagination', compatibility.pagination);
+  assignOptional(operation, 'resolverPaths', compatibility.resolverPaths);
+  if (compatibility.requiresVariables) operation.requiresVariables = true;
+  if (compatibility.plan) {
+    operation.plan = async (variables: UnparsedCompatibilityVariables) => {
+      const parsed = parseCompatibilityObject(variables);
+      assertProjectedBranches(definition, parsed);
+      compatibility.semanticValidateVariables?.(parsed);
+      return compatibility.plan!(parsed);
+    };
+  }
+  assignOptional(operation, 'localResult', compatibility.localResult);
+  if (compatibility.executeLocal) {
+    operation.executeLocal = async (variables, ctx, mode) => {
+      const parsed = parseCompatibilityObject(variables);
+      assertProjectedBranches(definition, parsed);
+      compatibility.semanticValidateVariables?.(parsed);
+      return compatibility.executeLocal!(parsed, ctx, mode);
+    };
+  }
   projections.set(definition, operation);
   return operation;
 }

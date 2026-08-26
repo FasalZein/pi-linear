@@ -2,13 +2,13 @@ import { projection } from "../selections";
 import { pureMutationPlan, teamLookup } from "../operation-plan";
 import {
 	compactObject,
+	isCompatibilityString,
 	mergeFilters,
 	mergedInput,
 	p,
 	paginationVariables,
 } from "../operation-types";
 import type {
-	LinearOperation,
 	OperationSource,
 	OperationDefinition,
 } from "../operation-types";
@@ -149,7 +149,7 @@ export const issueLabels: readonly OperationDefinition[] = ([
 		validateVariables(variables) {
 			if (
 				variables.input &&
-				typeof (variables.name ?? object(variables.input)?.name) !== "string"
+				!isCompatibilityString(variables.name ?? object(variables.input)?.name)
 			) {
 				throw new Error("canonical fields or nested input require name");
 			}
@@ -161,7 +161,7 @@ export const issueLabels: readonly OperationDefinition[] = ([
 			const input = mergedInput(v, ["team", "teamKey", "teamId", "replaceTeamLabels"]);
 			delete input.replaceTeamLabels;
 			const ref = v.team ?? v.teamKey ?? v.teamId ?? input.teamId;
-			if (typeof input.name !== "string" || !input.name.trim()) throw new Error("Issue label name is required (name).");
+			if (!isCompatibilityString(input.name) || !input.name.trim()) throw new Error("Issue label name is required (name).");
 			return {
 				kind: "mutation",
 				lookups: ref ? [teamLookup("team", String(ref))] : [],
@@ -258,7 +258,7 @@ export const issueLabels: readonly OperationDefinition[] = ([
 		},
 	}),
 ] satisfies OperationSource[]).map((operation) =>
-	defineOperation(operation as LinearOperation),
+	defineOperation(operation),
 );
 
 export const projectLabels: readonly OperationDefinition[] = ([
@@ -340,7 +340,7 @@ export const projectLabels: readonly OperationDefinition[] = ([
 		validateVariables(variables) {
 			if (
 				variables.input &&
-				typeof (variables.name ?? object(variables.input)?.name) !== "string"
+				!isCompatibilityString(variables.name ?? object(variables.input)?.name)
 			) {
 				throw new Error("canonical fields or nested input require name");
 			}
@@ -413,5 +413,5 @@ export const projectLabels: readonly OperationDefinition[] = ([
 		idKey: "id",
 	}),
 ] satisfies OperationSource[]).map((operation) =>
-	defineOperation(operation as LinearOperation),
+	defineOperation(operation),
 );

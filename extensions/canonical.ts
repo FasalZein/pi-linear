@@ -3,21 +3,32 @@ import { TYPED_EXCLUSIONS, type CanonicalOperation, type CanonicalVariant } from
 
 export { TYPED_EXCLUSIONS, type CanonicalOperation, type CanonicalVariant };
 
+function projectedVariantPair(
+  variants: readonly { fields: readonly string[]; branches: readonly { all: readonly string[] }[] }[],
+): [CanonicalVariant, CanonicalVariant] {
+  const projected = variants.map((variant) => ({
+    fields: variant.fields,
+    branches: variant.branches.map(({ all }) => all),
+  }));
+  const first = projected[0];
+  const second = projected[1];
+  if (projected.length !== 2 || first === undefined || second === undefined) {
+    throw new Error('Canonical variants must be a pair.');
+  }
+  return [first, second];
+}
+
 function projectedCanonical(name: string): CanonicalOperation {
   const definition = operationDefinitions.find((entry) => entry.name === name);
   if (!definition) throw new Error(`No canonical typed contract for operation "${name}".`);
   const canonical = definition.canonical;
-  return {
+  const projected: CanonicalOperation = {
     fields: Object.fromEntries(canonical.fields.map(({ name: field, type }) => [field, type])),
     branches: canonical.branches.map(({ all }) => all),
-    ...(canonical.exclusiveBranches ? { exclusiveBranches: true } : {}),
-    ...(canonical.variants ? {
-      variants: canonical.variants.map((variant) => ({
-        fields: variant.fields,
-        branches: variant.branches.map(({ all }) => all),
-      })) as unknown as [CanonicalVariant, CanonicalVariant],
-    } : {}),
   };
+  if (canonical.exclusiveBranches) projected.exclusiveBranches = true;
+  if (canonical.variants) projected.variants = projectedVariantPair(canonical.variants);
+  return projected;
 }
 
 /** Generated compatibility projection. OperationDefinition.canonical is the authority. */

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { resolveRequest } from '../extensions/api';
+import type { CompatibilityObject, CompatibilityValue } from '../extensions/operation-types';
 
 const UUID = '11111111-1111-4111-8111-111111111111';
 
@@ -8,22 +9,35 @@ type Field = { name: string; type: string; required: boolean };
 type RequestFixture = {
   operationName: string;
   requestedName: string;
-  shapes: Field[][];
+  cards: Field[][];
 };
 type AcceptanceFixture = {
   parent: string;
-  requests: RequestFixture[];
+  requests: Array<{
+    operationName: string;
+    requestedName: string;
+  } & { [key: string]: Field[][] | string }>;
   accepted: string;
   caseCount: number;
 };
 
-// Static compatibility output after the dispatch-usability aliases and conflict guards. This test does not use parameterShapes or branch projectors.
-const FIXTURE = JSON.parse(readFileSync(
+// Static compatibility output after the dispatch-usability aliases and conflict guards. This test does not use parameterCards or branch projectors.
+const RAW_FIXTURE = JSON.parse(readFileSync(
   new URL('./fixtures/v06-compatibility-acceptance.json', import.meta.url),
   'utf8',
 )) as AcceptanceFixture;
+const FIXTURE = {
+  parent: RAW_FIXTURE.parent,
+  accepted: RAW_FIXTURE.accepted,
+  caseCount: RAW_FIXTURE.caseCount,
+  requests: RAW_FIXTURE.requests.map((request) => ({
+    operationName: request.operationName,
+    requestedName: request.requestedName,
+    cards: Array.isArray(request['shapes']) ? request['shapes'] : [],
+  })),
+} satisfies { parent: string; accepted: string; caseCount: number; requests: RequestFixture[] };
 
-const INPUT_VALUES: Record<string, unknown> = {
+const INPUT_VALUES = {
   create_comment: { issueId: UUID, body: 'x' },
   update_comment: { body: 'x' },
   create_issue: { title: 'x', teamId: UUID },
@@ -32,8 +46,18 @@ const INPUT_VALUES: Record<string, unknown> = {
   create_project_label: { name: 'x' },
 };
 
-function fieldValue(operationName: string, name: string, type: string): unknown {
-  if (name === 'input') return INPUT_VALUES[operationName] ?? {};
+function inputValue(operationName: string): CompatibilityObject {
+  if (operationName === 'create_comment') return INPUT_VALUES.create_comment;
+  if (operationName === 'update_comment') return INPUT_VALUES.update_comment;
+  if (operationName === 'create_issue') return INPUT_VALUES.create_issue;
+  if (operationName === 'create_document') return INPUT_VALUES.create_document;
+  if (operationName === 'create_issue_label') return INPUT_VALUES.create_issue_label;
+  if (operationName === 'create_project_label') return INPUT_VALUES.create_project_label;
+  return {};
+}
+
+function fieldValue(operationName: string, name: string, type: string): CompatibilityValue {
+  if (name === 'input') return inputValue(operationName);
   if (name === 'bodyData' || /filter|preferences/i.test(name)) return {};
   if (type.startsWith('[')) return [UUID];
   if (/Float|Int|Priority/.test(type)) return 1;
@@ -44,15 +68,15 @@ function fieldValue(operationName: string, name: string, type: string): unknown 
   return UUID;
 }
 
-function representativeCases(operationName: string, shapes: Field[][]): Record<string, unknown>[] {
+function representativeCases(operationName: string, cards: Field[][]): CompatibilityObject[] {
   const seen = new Set<string>();
-  const cases: Record<string, unknown>[] = [];
-  for (const shape of shapes) {
-    const all = Object.fromEntries(shape.map((field) => [
+  const cases: CompatibilityObject[] = [];
+  for (const card of cards) {
+    const all = Object.fromEntries(card.map((field) => [
       field.name,
       fieldValue(operationName, field.name, field.type),
     ]));
-    const required = Object.fromEntries(shape.filter(({ required }) => required).map((field) => [
+    const required = Object.fromEntries(card.filter(({ required }) => required).map((field) => [
       field.name,
       fieldValue(operationName, field.name, field.type),
     ]));
@@ -60,14 +84,14 @@ function representativeCases(operationName: string, shapes: Field[][]): Record<s
       {},
       required,
       all,
-      ...shape.map((field) => ({
+      ...card.map((field) => ({
         [field.name]: fieldValue(operationName, field.name, field.type),
       })),
-      ...shape.map((field) => ({
+      ...card.map((field) => ({
         ...required,
         [field.name]: fieldValue(operationName, field.name, field.type),
       })),
-      ...shape.filter(({ required }) => required).map((field) =>
+      ...card.filter(({ required }) => required).map((field) =>
         Object.fromEntries(Object.entries(all).filter(([name]) => name !== field.name))),
     ];
     for (const variables of candidates) {
@@ -80,7 +104,7 @@ function representativeCases(operationName: string, shapes: Field[][]): Record<s
   return cases;
 }
 
-function accepts(operation: string, variables: Record<string, unknown>): boolean {
+function accepts(operation: string, variables: CompatibilityObject): boolean {
   try {
     resolveRequest({ operation, variables });
     return true;
@@ -97,8 +121,8 @@ describe('loader compatibility differential', () => {
 
     let actual = '';
     for (const request of FIXTURE.requests) {
-      expect(request.shapes.length, request.requestedName).toBeGreaterThan(0);
-      for (const variables of representativeCases(request.operationName, request.shapes)) {
+      expect(request.cards.length, request.requestedName).toBeGreaterThan(0);
+      for (const variables of representativeCases(request.operationName, request.cards)) {
         actual += accepts(request.requestedName, variables) ? '1' : '0';
       }
     }

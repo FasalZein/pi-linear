@@ -1,7 +1,90 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExecutionResult } from "graphql";
 import type { CanonicalOperation } from "./canonical-schema";
 import type { ResultView } from "./selections";
 import type { MutationMode } from "./safety";
+
+/** Parsed compatibility JSON owned by OperationDefinition. */
+export type CompatibilityValue =
+	| string
+	| number
+	| boolean
+	| null
+	| readonly CompatibilityValue[]
+	| CompatibilityObject;
+export type CompatibilityObject = {
+	[key: string]: CompatibilityValue | undefined;
+};
+/** Transport-supplied variables. Parse them at the Operation seam. */
+export type UnparsedCompatibilityVariables = {};
+/** GraphQL result maps that cross the operation-plan adapter. */
+export type GraphQLResultData = NonNullable<ExecutionResult["data"]>;
+
+const OBJECT_TAG = "[object Object]";
+const ARRAY_TAG = "[object Array]";
+const STRING_TAG = "[object String]";
+const NUMBER_TAG = "[object Number]";
+const BOOLEAN_TAG = "[object Boolean]";
+
+function typeTag(value: UnparsedCompatibilityVariables | CompatibilityValue | null | undefined): string {
+	return Object.prototype.toString.call(value);
+}
+
+export function isCompatibilityString(
+	value: CompatibilityValue | undefined,
+): value is string {
+	return typeTag(value) === STRING_TAG;
+}
+
+export function isCompatibilityNumber(
+	value: CompatibilityValue | undefined,
+): value is number {
+	return typeTag(value) === NUMBER_TAG;
+}
+
+export function isCompatibilityBoolean(
+	value: CompatibilityValue | undefined,
+): value is boolean {
+	return typeTag(value) === BOOLEAN_TAG;
+}
+
+export function isCompatibilityObject(
+	value: CompatibilityValue | undefined,
+): value is CompatibilityObject {
+	return typeTag(value) === OBJECT_TAG;
+}
+
+function parseCompatibilityValue(
+	value: UnparsedCompatibilityVariables | null,
+): CompatibilityValue {
+	if (value === null) return null;
+	const tag = typeTag(value);
+	if (tag === STRING_TAG) return value as string;
+	if (tag === NUMBER_TAG) return value as number;
+	if (tag === BOOLEAN_TAG) return value as boolean;
+	if (tag === ARRAY_TAG) {
+		const list = value as readonly (UnparsedCompatibilityVariables | null)[];
+		return list.map(parseCompatibilityValue);
+	}
+	if (tag === OBJECT_TAG) return parseCompatibilityObject(value);
+	throw new Error(`Unsupported compatibility value: ${tag}`);
+}
+
+/** Parse transport or GraphQL maps into the Operation compatibility object. */
+export function parseCompatibilityObject(
+	value: UnparsedCompatibilityVariables | GraphQLResultData,
+): CompatibilityObject {
+	if (typeTag(value) !== OBJECT_TAG) return {};
+	const parsed: CompatibilityObject = {};
+	for (const key of Object.keys(value)) {
+		const descriptor = Object.getOwnPropertyDescriptor(value, key);
+		if (descriptor === undefined || !("value" in descriptor)) continue;
+		const entry = descriptor.value as UnparsedCompatibilityVariables | null | undefined;
+		if (entry === undefined) continue;
+		parsed[key] = parseCompatibilityValue(entry);
+	}
+	return parsed;
+}
 
 export type OperationDomain =
 	| "issues"
@@ -24,7 +107,7 @@ export type OperationParameter = {
 };
 export type OperationExample = {
 	operation: string;
-	variables: Record<string, unknown>;
+	variables: CompatibilityObject;
 };
 export type MutationResultExpectation = {
 	successPath: string;
@@ -53,8 +136,8 @@ export type ExactNamedCheck = {
 export type ResultCategory = "singular" | "collection" | "local";
 export type NamedInputPolicy = "non-destructive" | "guarded-destructive";
 export type OperationPreparation = {
-	variables: Record<string, unknown>;
-	resolution?: Record<string, unknown>;
+	variables: GraphQLResultData;
+	resolution?: GraphQLResultData;
 	variant?: GraphQLDocumentVariant;
 	exactIssue?: ExactIssueCheck;
 	exactNamed?: ExactNamedCheck;
@@ -63,7 +146,7 @@ export type OperationPreparation = {
 	/** Phase label for the prepared network request after any preparation reads. */
 	telemetryPhase?: "read" | "mutation";
 	/** Compact result synthesized only after the upstream request passes its checks. */
-	acknowledgement?: Record<string, unknown>;
+	acknowledgement?: GraphQLResultData;
 	/** Dependent mutations fail instead of acknowledging a partial GraphQL response. */
 	requireNoGraphQLErrors?: boolean;
 	/** Stable external error for an upstream mutation failure. */
@@ -72,12 +155,12 @@ export type OperationPreparation = {
 export type LookupPlan = {
 	key: string;
 	dependsOn?: readonly string[];
-	document: (resolved: Readonly<Record<string, unknown>>) => string;
-	variables: (resolved: Readonly<Record<string, unknown>>) => Record<string, unknown>;
+	document: (resolved: GraphQLResultData) => string;
+	variables: (resolved: GraphQLResultData) => CompatibilityObject;
 	resolve: (
-		data: Record<string, unknown>,
-		resolved: Readonly<Record<string, unknown>>,
-	) => unknown;
+		data: GraphQLResultData,
+		resolved: GraphQLResultData,
+	) => GraphQLResultData;
 	/** Stable external error when the lookup request itself fails. */
 	failureMessage?: string;
 	/** Preserve an explicit phase label for guarded direct calls. */
@@ -86,10 +169,13 @@ export type LookupPlan = {
 export type OperationPlan = {
 	kind: "query" | "mutation";
 	lookups: readonly LookupPlan[];
-	finish: (resolved: Readonly<Record<string, unknown>>) => OperationPreparation;
+	finish: (resolved: GraphQLResultData) => OperationPreparation;
 };
+export type ParsedOperationPlanFactory = (
+	variables: CompatibilityObject,
+) => OperationPlan | Promise<OperationPlan>;
 export type OperationPlanFactory = (
-	variables: Record<string, unknown>,
+	variables: UnparsedCompatibilityVariables,
 ) => OperationPlan | Promise<OperationPlan>;
 
 export type PaginationMetadata = {
@@ -110,25 +196,25 @@ export type LinearOperation = {
 	parameters: readonly OperationParameter[];
 	acceptedParameters?: readonly OperationParameter[];
 	legacyParameters?: readonly (readonly OperationParameter[])[];
-	aliasParameters?: Readonly<Record<string, readonly OperationParameter[]>>;
+	aliasParameters?: Readonly<{ [name: string]: readonly OperationParameter[] }>;
 	example: OperationExample;
 	/** Direct typed-tool example override when compatibility variables are not schema-valid. */
-	canonicalExample?: Record<string, unknown>;
+	canonicalExample?: CompatibilityObject;
 	document: string;
 	variants?: readonly GraphQLDocumentVariant[];
 	/** Every finite document selected by this operation at runtime. */
 	inventoryDocuments?: readonly { id: string; document: string }[];
 	pagination?: PaginationMetadata;
-	resolverPaths?: Readonly<Record<string, string>>;
+	resolverPaths?: Readonly<{ [name: string]: string }>;
 	requiresVariables?: boolean;
-	validateVariables?: (variables: Record<string, unknown>) => void;
+	validateVariables?: (variables: UnparsedCompatibilityVariables) => void;
 	/** Pure operation planning for direct and batch execution. */
 	plan?: OperationPlanFactory;
 	executeLocal?: (
-		variables: Record<string, unknown>,
+		variables: UnparsedCompatibilityVariables,
 		ctx: ExtensionContext,
 		mode: MutationMode,
-	) => Promise<Record<string, unknown>>;
+	) => Promise<CompatibilityObject>;
 	/** Required whenever `executeLocal` is set. */
 	localResult?: LocalResultExpectation;
 	/**
@@ -146,8 +232,25 @@ export type LinearOperation = {
 };
 
 /** An authored operation: every per-operation decision is declared in one place. */
-export type OperationSource = LinearOperation & {
+export type OperationSource = Omit<
+	LinearOperation,
+	| "validateVariables"
+	| "plan"
+	| "executeLocal"
+	| "canonicalExample"
+	| "example"
+	| "compatibilityBranches"
+> & {
+	example: OperationExample;
+	canonicalExample?: CompatibilityObject;
 	compatibilityBranches: readonly RequirementBranch[];
+	validateVariables?: (variables: CompatibilityObject) => void;
+	plan?: ParsedOperationPlanFactory;
+	executeLocal?: (
+		variables: CompatibilityObject,
+		ctx: ExtensionContext,
+		mode: MutationMode,
+	) => Promise<CompatibilityObject>;
 };
 
 export type OperationKind = "query" | "mutation" | "local";
@@ -178,19 +281,19 @@ export type OperationCompatibilityDefinition = {
 	branches: readonly RequirementBranch[];
 	acceptedFields?: readonly OperationParameter[];
 	legacyBranches?: readonly (readonly OperationParameter[])[];
-	aliasFields?: Readonly<Record<string, readonly OperationParameter[]>>;
+	aliasFields?: Readonly<{ [name: string]: readonly OperationParameter[] }>;
 	example: OperationExample;
 	document: string;
 	inventoryDocuments?: readonly { id: string; document: string }[];
 	pagination?: PaginationMetadata;
-	resolverPaths?: Readonly<Record<string, string>>;
+	resolverPaths?: Readonly<{ [name: string]: string }>;
 	/** Derived compatibility flag retained for stable v0.4 diagnostics. */
 	requiresVariables?: boolean;
 	/** Named semantic exception for checks branches cannot express, such as non-empty text. */
 	semanticException?: string;
-	semanticValidateVariables?: LinearOperation["validateVariables"];
-	plan?: LinearOperation["plan"];
-	executeLocal?: LinearOperation["executeLocal"];
+	semanticValidateVariables?: (variables: CompatibilityObject) => void;
+	plan?: ParsedOperationPlanFactory;
+	executeLocal?: OperationSource["executeLocal"];
 	localResult?: LocalResultExpectation;
 };
 
@@ -203,8 +306,8 @@ export type OperationDefinition = {
 	compatibility: OperationCompatibilityDefinition;
 	graphql?: { documents: readonly OperationDocumentDefinition[] };
 	preparation: {
-		resolverPaths: Readonly<Record<string, string>>;
-		plan?: LinearOperation["plan"];
+		resolverPaths: Readonly<{ [name: string]: string }>;
+		plan?: OperationPlanFactory;
 	};
 	safety: {
 		namedInputPolicy: NamedInputPolicy;
@@ -233,7 +336,7 @@ export type OperationDefinition = {
 			branches: readonly RequirementBranch[];
 		}[];
 		strictRawArguments: true;
-		example: Record<string, unknown>;
+		example: CompatibilityObject;
 	};
 };
 
@@ -243,39 +346,32 @@ export const p = (
 	required = false,
 ): OperationParameter => ({ name, type, required });
 
-export function compactObject(
-	value: Record<string, unknown>,
-): Record<string, unknown> {
-	return Object.fromEntries(
-		Object.entries(value).filter(([, entry]) => entry !== undefined),
-	);
+export function compactObject(value: CompatibilityObject): CompatibilityObject {
+	const compacted: CompatibilityObject = {};
+	for (const [key, entry] of Object.entries(value)) {
+		if (entry !== undefined) compacted[key] = entry;
+	}
+	return compacted;
 }
 
 export function mergedInput(
-	variables: Record<string, unknown>,
+	variables: CompatibilityObject,
 	omitted: readonly string[],
-): Record<string, unknown> {
-	const raw =
-		variables.input &&
-		typeof variables.input === "object" &&
-		!Array.isArray(variables.input)
-			? (variables.input as Record<string, unknown>)
-			: {};
+): CompatibilityObject {
+	const raw = isCompatibilityObject(variables.input) ? variables.input : {};
 	const skip = new Set([...omitted, "input"]);
-	return {
-		...raw,
-		...compactObject(
-			Object.fromEntries(
-				Object.entries(variables).filter(([key]) => !skip.has(key)),
-			),
-		),
-	};
+	const merged: CompatibilityObject = { ...raw };
+	for (const [key, entry] of Object.entries(variables)) {
+		if (skip.has(key) || entry === undefined) continue;
+		merged[key] = entry;
+	}
+	return merged;
 }
 
 export function paginationVariables(
-	variables: Record<string, unknown>,
+	variables: CompatibilityObject,
 	defaultPageSize: number,
-): Record<string, unknown> {
+): CompatibilityObject {
 	const backward =
 		variables.before !== undefined || variables.last !== undefined;
 	const forward =
@@ -295,9 +391,9 @@ export function paginationVariables(
 }
 
 export function mergeFilters(
-	...filters: Array<Record<string, unknown> | undefined>
-): Record<string, unknown> | undefined {
-	const present = filters.filter((filter): filter is Record<string, unknown> =>
+	...filters: Array<CompatibilityObject | undefined>
+): CompatibilityObject | undefined {
+	const present = filters.filter((filter): filter is CompatibilityObject =>
 		Boolean(filter && Object.keys(filter).length),
 	);
 	if (!present.length) return undefined;

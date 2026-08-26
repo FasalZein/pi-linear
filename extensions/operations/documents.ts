@@ -2,11 +2,12 @@ import { isLinearUrlSlug } from "../client";
 import { projection } from "../selections";
 import { documentLookup, issueLookup, namedEntityLookup, pureQueryPlan, teamLookup } from "../operation-plan";
 import {
+	isCompatibilityString,
 	mergedInput,
 	p,
 } from "../operation-types";
 import type {
-	LinearOperation,
+	CompatibilityObject,
 	OperationSource,
 	OperationDefinition,
 } from "../operation-types";
@@ -14,8 +15,6 @@ import { defineOperation } from "../operation-definition";
 import {
 	DOCUMENT_SORT_KEYS,
 	input,
-	filter,
-	sort,
 	issueTarget,
 	object,
 	isUuid,
@@ -180,7 +179,7 @@ export const documents: readonly OperationDefinition[] = ([
 		validateVariables(variables) {
 			if (
 				variables.input &&
-				typeof (variables.title ?? object(variables.input)?.title) !== "string"
+				!isCompatibilityString(variables.title ?? object(variables.input)?.title)
 			) {
 				throw new Error("canonical fields or nested input require title");
 			}
@@ -192,9 +191,9 @@ export const documents: readonly OperationDefinition[] = ([
 		},
 		plan(v) {
 			const input = mergedInput(v, ["teamKey"]);
-			const issueRef = typeof input.issueId === "string" ? input.issueId : undefined;
+			const issueRef = isCompatibilityString(input.issueId) ? input.issueId : undefined;
 			const related = ["cycleId", "initiativeId", "issueId", "projectId", "releaseId", "resourceFolderId"]
-				.some((key) => typeof input[key] === "string" && input[key]);
+				.some((key) => isCompatibilityString(input[key]) && input[key]);
 			const teamRef = related ? undefined : v.teamKey ?? input.teamId;
 			return {
 				kind: "mutation",
@@ -208,13 +207,13 @@ export const documents: readonly OperationDefinition[] = ([
 					if (issue) input.issueId = issue.id;
 					if (related) delete input.teamId;
 					else if (team) input.teamId = team.id;
-					if (typeof input.title !== "string" || !input.title.trim()) throw new Error("Document title is required for documentCreate (title).");
+					if (!isCompatibilityString(input.title) || !input.title.trim()) throw new Error("Document title is required for documentCreate (title).");
+					const resolution: CompatibilityObject = {};
+					if (issue && issueRef) resolution.issue = issueTarget(issueRef, issue);
+					if (team) resolution.team = { requested: teamRef, resolvedId: team.id, key: team.key };
 					return {
 						variables: { input },
-						resolution: {
-							...(issue && issueRef ? { issue: issueTarget(issueRef, issue) } : {}),
-							...(team ? { team: { requested: teamRef, resolvedId: team.id, key: team.key } } : {}),
-						},
+						resolution,
 					};
 				},
 			};
@@ -357,9 +356,9 @@ export const documents: readonly OperationDefinition[] = ([
 		plan(v) {
 			const requested = String(v.document ?? v.documentId);
 			const input = mergedInput(v, ["document", "documentId", "teamKey"]);
-			const issueRef = typeof input.issueId === "string" ? input.issueId : undefined;
+			const issueRef = isCompatibilityString(input.issueId) ? input.issueId : undefined;
 			const related = ["cycleId", "initiativeId", "issueId", "projectId", "releaseId", "resourceFolderId"]
-				.some((key) => typeof input[key] === "string" && input[key]);
+				.some((key) => isCompatibilityString(input[key]) && input[key]);
 			const teamRef = related ? undefined : v.teamKey ?? input.teamId;
 			return {
 				kind: "mutation",
@@ -376,18 +375,19 @@ export const documents: readonly OperationDefinition[] = ([
 					if (related) delete input.teamId;
 					else if (team) input.teamId = team.id;
 					if (!Object.keys(input).length) throw new Error("No update fields were provided.");
+					const resolution: CompatibilityObject = {
+						target: { requested, resolvedId: document.id, title: document.name },
+					};
+					if (issue && issueRef) resolution.issue = issueTarget(issueRef, issue);
+					if (team) resolution.team = { requested: teamRef, resolvedId: team.id, key: team.key };
 					return {
 						variables: { id: document.id, input },
-						resolution: {
-							target: { requested, resolvedId: document.id, title: document.name },
-							...(issue && issueRef ? { issue: issueTarget(issueRef, issue) } : {}),
-							...(team ? { team: { requested: teamRef, resolvedId: team.id, key: team.key } } : {}),
-						},
+						resolution,
 					};
 				},
 			};
 		},
 	}),
 ] satisfies OperationSource[]).map((operation) =>
-	defineOperation(operation as LinearOperation),
+	defineOperation(operation),
 );

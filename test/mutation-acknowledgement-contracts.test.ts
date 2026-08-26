@@ -1,12 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { getOperation, operationDefinitions } from '../extensions/operations';
+import type { CompatibilityObject } from '../extensions/operation-types';
 import { operationRenderers } from '../extensions/renderers';
 
 const MATRIX = JSON.parse(readFileSync(
   new URL('./fixtures/v06-mutation-acknowledgement-matrix.json', import.meta.url),
   'utf8',
-)) as Record<string, Array<{ required: string[]; target: string }>>;
+)) as { readonly [name: string]: Array<{ required: string[]; target: string }> };
 
 const theme = {
   fg: (_role: string, text: string) => text,
@@ -18,7 +19,7 @@ const theme = {
 
 const definitions = operationDefinitions.filter((definition) => definition.safety.mutation);
 
-function render(operationName: string, root: string, args: Record<string, unknown>): string {
+function render(operationName: string, root: string, args: CompatibilityObject): string {
   const acknowledgement = operationName === 'delete_issue_relation' ? { deleted: true } : { success: true };
   const details = {
     data: { [root]: acknowledgement },

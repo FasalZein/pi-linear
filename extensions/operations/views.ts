@@ -5,14 +5,12 @@ import {
 	p,
 } from "../operation-types";
 import type {
-	LinearOperation,
 	OperationSource,
 	OperationDefinition,
 } from "../operation-types";
 import { defineOperation } from "../operation-definition";
 import {
 	input,
-	filter,
 	getDocument,
 	workspaceEmpty,
 	listOperation,
@@ -276,5 +274,5 @@ export const views: readonly OperationDefinition[] = ([
 		},
 	}),
 ] satisfies OperationSource[]).map((operation) =>
-	defineOperation(operation as LinearOperation),
+	defineOperation(operation),
 );

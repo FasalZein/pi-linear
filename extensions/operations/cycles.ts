@@ -7,14 +7,12 @@ import {
 	paginationVariables,
 } from "../operation-types";
 import type {
-	LinearOperation,
 	OperationSource,
 	OperationDefinition,
 } from "../operation-types";
 import { defineOperation } from "../operation-definition";
 import {
 	pagination,
-	input,
 	filter,
 	object,
 	isUuid,
@@ -280,5 +278,5 @@ export const cycles: readonly OperationDefinition[] = ([
 		idKey: "id",
 	}),
 ] satisfies OperationSource[]).map((operation) =>
-	defineOperation(operation as LinearOperation),
+	defineOperation(operation),
 );
