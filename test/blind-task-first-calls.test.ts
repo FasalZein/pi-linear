@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { executeTyped } from "./helpers/typed-execution";
+import type { JsonObject } from "../extensions/json";
 
 const ISSUE_ID = "11111111-1111-4111-8111-111111111111";
 const CHILD_ID = "22222222-2222-4222-8222-222222222222";
@@ -27,7 +28,7 @@ afterEach(async () => {
 	await rm(testAgentDir, { recursive: true, force: true });
 });
 
-function execute(params: { operation: string; variables?: Record<string, unknown> }) {
+function execute(params: { operation: string; variables?: JsonObject }) {
 	return executeTyped(params.operation, params.variables);
 }
 
@@ -36,68 +37,71 @@ describe("v0.4 blind-task first calls", () => {
 		process.env.LINEAR_API_KEY = "test-key";
 		const requests: Array<{
 			query: string;
-			variables: Record<string, unknown>;
+			variables: JsonObject;
 		}> = [];
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async (_url: string, init: RequestInit) => {
-				const request = JSON.parse(String(init.body));
+				const request: { query: string; variables: JsonObject } = JSON.parse(String(init.body));
 				requests.push(request);
 				const { query, variables } = request;
-				let data: Record<string, unknown>;
-				if (query.includes("ResolveIssueById")) {
-					const id = String(variables.id);
-					const child = id === CHILD_ID || /^AEO-300$/i.test(id);
-					data = {
-						issue: {
-							id: child ? CHILD_ID : ISSUE_ID,
-							identifier: child ? "AEO-300" : (/^AEO-\d+$/i.test(id) ? id.toUpperCase() : "AEO-258"),
-							team: { id: TEAM_ID, key: "AEO" },
-						},
-					};
-				} else if (query.includes("ResolveViewer"))
-					data = { viewer: { id: USER_ID, name: "Me" } };
-				else if (query.includes("ResolveStateByName"))
-					data = {
-						workflowStates: {
-							nodes: [{ id: STATE_ID, name: "Backlog", team: { id: TEAM_ID } }],
-						},
-					};
-				else if (query.includes("query ListIssues"))
-					data = { issues: { nodes: [], pageInfo: { hasNextPage: false } } };
-				else if (query.includes("mutation CreateComment"))
-					data = {
-						commentCreate: {
-							success: true,
-							comment: { id: "comment", body: "v0.4 blind trial" },
-						},
-					};
-				else if (query.includes("mutation CreateIssue"))
-					data = {
-						issueCreate: {
-							success: true,
+				const data = (() => {
+					if (query.includes("ResolveIssueById")) {
+						const id = String(variables.id);
+						const child = id === CHILD_ID || /^AEO-300$/i.test(id);
+						return {
 							issue: {
-								id: CHILD_ID,
-								identifier: "AEO-300",
+								id: child ? CHILD_ID : ISSUE_ID,
+								identifier: child ? "AEO-300" : (/^AEO-\d+$/i.test(id) ? id.toUpperCase() : "AEO-258"),
 								team: { id: TEAM_ID, key: "AEO" },
 							},
-						},
-					};
-				else if (query.includes("mutation UpdateIssue"))
-					data = {
-						issueUpdate: {
-							success: true,
-							issue: { id: CHILD_ID, identifier: "AEO-300" },
-						},
-					};
-				else
-					data = {
+						};
+					}
+					if (query.includes("ResolveViewer")) return { viewer: { id: USER_ID, name: "Me" } };
+					if (query.includes("ResolveStateByName")) {
+						return {
+							workflowStates: {
+								nodes: [{ id: STATE_ID, name: "Backlog", team: { id: TEAM_ID } }],
+							},
+						};
+					}
+					if (query.includes("query ListIssues")) return { issues: { nodes: [], pageInfo: { hasNextPage: false } } };
+					if (query.includes("mutation CreateComment")) {
+						return {
+							commentCreate: {
+								success: true,
+								comment: { id: "comment", body: "v0.4 blind trial" },
+							},
+						};
+					}
+					if (query.includes("mutation CreateIssue")) {
+						return {
+							issueCreate: {
+								success: true,
+								issue: {
+									id: CHILD_ID,
+									identifier: "AEO-300",
+									team: { id: TEAM_ID, key: "AEO" },
+								},
+							},
+						};
+					}
+					if (query.includes("mutation UpdateIssue")) {
+						return {
+							issueUpdate: {
+								success: true,
+								issue: { id: CHILD_ID, identifier: "AEO-300" },
+							},
+						};
+					}
+					return {
 						issue: {
 							id: ISSUE_ID,
 							identifier: "AEO-258",
 							team: { id: TEAM_ID, key: "AEO" },
 						},
 					};
+				})();
 				return {
 					ok: true,
 					status: 200,

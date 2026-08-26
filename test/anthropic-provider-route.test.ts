@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { rm } from 'node:fs/promises';
+import { parseJsonObject, type JsonObject, type JsonValue } from '../extensions/json';
+import { isCompatibilityObject } from '../extensions/operation-types';
 import {
   captureAnthropic,
   createLinearHarness,
@@ -19,16 +21,16 @@ afterEach(async () => {
   directory = undefined;
 });
 
-function flattenContent(payload: any): unknown[] {
-  const blocks: unknown[] = [];
-  const visit = (value: unknown) => {
-    if (!value || typeof value !== 'object') return;
+function flattenContent(payload: JsonObject): JsonObject[] {
+  const blocks: JsonObject[] = [];
+  const visit = (value: JsonValue | undefined): void => {
     if (Array.isArray(value)) {
       for (const item of value) visit(item);
       return;
     }
+    if (!isCompatibilityObject(value)) return;
     blocks.push(value);
-    visit((value as { content?: unknown }).content);
+    visit(value.content);
   };
   visit(payload.messages);
   return blocks;
@@ -48,24 +50,27 @@ describe('native Anthropic route', () => {
     });
     expect(batchHelp.details.loadedTools).toEqual(['linear_batch']);
 
-    const payload = await captureAnthropic(NATIVE_ANTHROPIC_MODEL, activationContext(harness, [...help.details.loadedTools, ...batchHelp.details.loadedTools]));
-    const tools = payload.tools as Array<{ name: string; defer_loading?: boolean; input_schema?: any }>;
+    const payload = parseJsonObject(await captureAnthropic(NATIVE_ANTHROPIC_MODEL, activationContext(harness, [...help.details.loadedTools, ...batchHelp.details.loadedTools]))) ?? {};
+    const tools = Array.isArray(payload.tools)
+      ? payload.tools.filter((tool): tool is JsonObject => isCompatibilityObject(tool))
+      : [];
     expect(harness.activeTools().filter((name) => name === 'linear' || name.startsWith('linear_'))).toEqual([
       'linear', 'linear_get_result', 'linear_graphql', 'linear_batch',
     ]);
     expect(tools.find((tool) => tool.name === 'linear')?.defer_loading).toBeUndefined();
     expect(tools.find((tool) => tool.name === 'linear_get_result')?.defer_loading).toBeUndefined();
     const deferred = tools.find((tool) => tool.name === 'linear_graphql');
+    const deferredSchema = isCompatibilityObject(deferred?.input_schema) ? deferred.input_schema : undefined;
     expect(deferred?.defer_loading).toBe(true);
-    expect(deferred?.input_schema?.type).toBe('object');
-    expect(deferred?.input_schema?.properties).toBeTypeOf('object');
+    expect(deferredSchema?.type).toBe('object');
+    expect(deferredSchema?.properties).toBeTypeOf('object');
     const deferredBatch = tools.find((tool) => tool.name === 'linear_batch');
     expect(deferredBatch?.defer_loading).toBe(true);
     expect(deferredBatch?.input_schema).toBeTypeOf('object');
     expect(() => harness.tool('linear_batch').prepareArguments({ operations: [{ operation: 'get_issue' }], reads: [{ operation: 'get_issue' }] }))
       .toThrow(/Invalid arguments for "linear_batch"/);
 
-    const references = flattenContent(payload).filter((block: any) => block?.type === 'tool_reference');
+    const references = flattenContent(payload).filter((block) => block.type === 'tool_reference');
     expect(references).toEqual([
       { type: 'tool_reference', tool_name: 'linear_graphql' },
       { type: 'tool_reference', tool_name: 'linear_batch' },

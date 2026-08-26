@@ -4,7 +4,7 @@ import { getOperationDefinition, type LinearOperation } from './operations';
 import { canonicalOperation } from './canonical';
 import { typedToolName } from './tool-names';
 
-const REFERENCE_HINTS: Record<string, string> = {
+const REFERENCE_HINTS = {
   IssueReference: 'Issue identifier such as ABC-123, or an issue UUID.',
   '[IssueReference!]': 'One or more issue identifiers such as ABC-123, or issue UUIDs.',
   TeamReference: 'Team key such as ABC, or a team UUID.',
@@ -39,7 +39,7 @@ const REFERENCE_HINTS: Record<string, string> = {
   JsonObject: 'Linear document JSON object.',
   Url: 'Absolute http(s) URL.',
   NullableDateTime: 'ISO 8601 date-time, or null to clear it.',
-};
+} satisfies Readonly<Record<string, string>>;
 
 const UUID_PATTERN = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$';
 const DATE_PATTERN = '^\\d{4}-\\d{2}-\\d{2}$';
@@ -68,7 +68,7 @@ const PREFERENCES = Type.Object(
 );
 
 // Sort keys, enums, and reminder vocabularies are the upstream 0.4.1 closed sets.
-const SORT_KEYS: Record<string, readonly string[]> = {
+const SORT_KEYS = {
   '[IssueSort!]': [
     'priority', 'estimate', 'title', 'label', 'slaStatus', 'createdAt',
     'updatedAt', 'completedAt', 'dueDate', 'accumulatedStateUpdatedAt', 'cycle', 'milestone',
@@ -86,9 +86,9 @@ const SORT_KEYS: Record<string, readonly string[]> = {
   ],
   '[UserSort!]': ['name', 'displayName'],
   '[DocumentSort!]': ['title', 'creator', 'project', 'createdAt', 'updatedAt'],
-};
+} satisfies Readonly<Record<string, readonly string[]>>;
 
-const ENUMS: Record<string, readonly string[]> = {
+const ENUMS = {
   SlaDayCountType: ['all', 'onlyBusinessDays'],
   DateResolutionType: ['month', 'quarter', 'halfYear', 'year'],
   FrequencyResolutionType: ['daily', 'weekly'],
@@ -99,7 +99,11 @@ const ENUMS: Record<string, readonly string[]> = {
   PaginationOrderBy: ['createdAt', 'updatedAt'],
   ResultView: ['summary', 'full'],
   IssueGrouping: ['assignee', 'status', 'priority', 'cycle', 'project', 'labels', 'none'],
-};
+} satisfies Readonly<Record<string, readonly string[]>>;
+
+function ownedValue<T>(owner: Readonly<Record<string, T>>, key: string): T | undefined {
+  return owner[key];
+}
 
 const sortItem = (keys: readonly string[]) => Type.Object(
   {
@@ -125,7 +129,7 @@ const SORT_ITEM = Type.Object(
  * vocabulary and validates it server-side.
  */
 function schemaFor(type: string): TSchema {
-  const description = REFERENCE_HINTS[type];
+  const description = ownedValue(REFERENCE_HINTS, type);
   const options = description ? { description } : {};
   switch (type) {
     case 'Int':
@@ -162,7 +166,7 @@ function schemaFor(type: string): TSchema {
     case '[IssueReference!]':
       return Type.Array(Type.String({ minLength: 1 }), { ...options, minItems: 1 });
     case 'Preferences':
-      return { ...PREFERENCES, ...options } as TSchema;
+      return description ? { ...PREFERENCES, description } : PREFERENCES;
     case '[ID!]':
       return Type.Array(Type.String({ minLength: 1 }), { ...options, minItems: 1 });
     case '[SortInput!]':
@@ -170,12 +174,13 @@ function schemaFor(type: string): TSchema {
     case 'Filter':
     case 'FilterData':
       return Type.Record(Type.String(), Type.Any(), { ...options, minProperties: 1 });
-    default:
-      if (SORT_KEYS[type]) {
-        return Type.Array(sortItem(SORT_KEYS[type]!), { ...options, minItems: 1 });
-      }
-      if (ENUMS[type]) return StringEnum(ENUMS[type]!, { description: description ?? `${type} value.` });
+    default: {
+      const sortKeys = ownedValue(SORT_KEYS, type);
+      if (sortKeys) return Type.Array(sortItem(sortKeys), { ...options, minItems: 1 });
+      const enumValues = ownedValue(ENUMS, type);
+      if (enumValues) return StringEnum(enumValues, { description: description ?? `${type} value.` });
       return Type.String({ ...options, minLength: 1 });
+    }
   }
 }
 
@@ -199,16 +204,19 @@ function objectSchema(
   );
   properties.workspace = WORKSPACE;
 
-  const options: Record<string, unknown> = { additionalProperties: false };
   if (branches.length === 1) {
-    if (branches[0]!.length) options.required = [...branches[0]!];
-  } else {
-    options[exclusive ? 'oneOf' : 'anyOf'] = branches.map((branch) => ({ required: [...branch] }));
+    const required = branches[0]!;
+    return Type.Object(properties, required.length
+      ? { additionalProperties: false, required: [...required] }
+      : { additionalProperties: false });
   }
-  return Type.Object(properties, options as any);
+  const requirements = branches.map((branch) => ({ required: [...branch] }));
+  return exclusive
+    ? Type.Object(properties, { additionalProperties: false, oneOf: requirements })
+    : Type.Object(properties, { additionalProperties: false, anyOf: requirements });
 }
 
-function forbiddenFields(fields: readonly string[]): Record<string, unknown> {
+function forbiddenFields(fields: readonly string[]) {
   return { not: { anyOf: fields.map((field) => ({ required: [field] })) } };
 }
 
@@ -257,7 +265,7 @@ export function parameterSchema(operation: LinearOperation) {
   return describePagination(Type.Object(properties, {
     additionalProperties: false,
     oneOf: [createClause, updateClause],
-  } as any), operation);
+  }), operation);
 }
 
 function toolDescription(operation: LinearOperation): string {
@@ -275,13 +283,14 @@ export type TypedToolMetadata = {
 /** Pure metadata projection shared by runtime registration and generation. */
 export function buildTypedToolMetadata(operation: LinearOperation): TypedToolMetadata {
   const contract = canonicalOperation(operation);
-  return {
+  const metadata: TypedToolMetadata = {
     name: typedToolName(operation.name),
     label: `Linear ${operation.name.replace(/_/g, ' ')}`,
     description: toolDescription(operation),
     parameters: parameterSchema(operation),
-    ...(contract.variants || contract.exclusiveBranches || Object.values(contract.fields).includes('JsonObject')
-      ? { constrainedSampling: false as const }
-      : {}),
   };
+  if (contract.variants || contract.exclusiveBranches || Object.values(contract.fields).includes('JsonObject')) {
+    metadata.constrainedSampling = false;
+  }
+  return metadata;
 }

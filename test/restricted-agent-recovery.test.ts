@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { registerLinearExtension } from '../extensions/index';
+import type { JsonObject } from '../extensions/json';
 import manifest from '../extensions/generated/linear-tools.manifest.json';
 import { syncAllowlistFile } from '../scripts/generate';
 
@@ -44,7 +45,7 @@ function policyHarness(allowed: readonly string[]) {
   };
 }
 
-async function execute(tool: any, params: Record<string, unknown>) {
+async function execute(tool: any, params: JsonObject) {
   return tool.execute('call-1', params, undefined, undefined, { hasUI: false });
 }
 

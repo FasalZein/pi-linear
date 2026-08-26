@@ -13,6 +13,8 @@ import { activeSecrets } from './active-secrets';
 import { redactError } from './redact';
 import { operationRenderers } from './renderers';
 import { typedToolName } from './tool-names';
+import { parseJsonObject, type UnparsedJson } from './json';
+import { isCompatibilityString } from './operation-types';
 import type { MutationMode } from './safety';
 import { buildTypedToolMetadata, requirementBranches } from './typed-tool-metadata';
 
@@ -65,13 +67,13 @@ function assertCanonicalOnly(operation: LinearOperation, variables: JsonObject):
  */
 function schemaGuard(operation: LinearOperation, schema: TSchema) {
   let validator: ReturnType<typeof Compile> | undefined;
-  return (params: unknown): void => {
+  return (params: UnparsedJson): void => {
     validator ??= Compile(schema);
     if (validator.Check(params)) return;
     const problems = [...validator.Errors(params)]
       .slice(0, 3)
       .map((error) => {
-        const path = 'path' in error && typeof error.path === 'string' ? error.path : '';
+        const path = 'path' in error ? String(error.path) : '';
         return path ? `${path}: ${error.message}` : error.message;
       })
       .join('; ');
@@ -79,9 +81,8 @@ function schemaGuard(operation: LinearOperation, schema: TSchema) {
   };
 }
 
-function operationVariables(args: unknown): JsonObject {
-  if (!args || typeof args !== 'object' || Array.isArray(args)) return {};
-  const { workspace: _workspace, ...variables } = args as JsonObject;
+function operationVariables(args: UnparsedJson): JsonObject {
+  const { workspace: _workspace, ...variables } = parseJsonObject(args) ?? {};
   return variables;
 }
 
@@ -96,20 +97,21 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
      * It applies the shared operation policy, then checks the raw arguments against the
      * published schema and returns the same object without changing any field.
      */
-    prepareArguments: (args: unknown) => {
+    prepareArguments: (args: UnparsedJson) => {
       try {
         assertOperationAllowed(operation, operationVariables(args), mode);
         assertSchema(args);
-        return args as any;
+        return args;
       } catch (error) {
         throw redactError(error, activeSecrets());
       }
     },
     renderCall: renderers.renderCall,
     renderResult: renderers.renderResult,
-    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+    async execute(_toolCallId, params: UnparsedJson, signal, _onUpdate, ctx) {
       if (signal?.aborted) throw new Error('Request cancelled.');
-      const { workspace, ...variables } = params as JsonObject;
+      const parsed = parseJsonObject(params) ?? {};
+      const { workspace, ...variables } = parsed;
       try {
         assertOperationAllowed(operation, variables, mode);
         assertCanonicalOnly(operation, variables);
@@ -120,7 +122,7 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
         throw redactError(error, activeSecrets());
       }
       const call = linearCallContext(mode, signal, ctx, {
-        workspace: typeof workspace === 'string' ? workspace : undefined,
+        workspace: isCompatibilityString(workspace) ? workspace : undefined,
       });
       const details = await executeOperationInContext(operation, { variables }, call);
       return { content: [{ type: 'text' as const, text: JSON.stringify(details) }], details };

@@ -2,24 +2,33 @@ import { describe, expect, it } from 'vitest';
 import { convertTools } from '../node_modules/@earendil-works/pi-ai/dist/api/google-shared.js';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { linearGetResultTool } from '../extensions/api';
+import { parseJsonObject, type JsonObject, type JsonValue } from '../extensions/json';
+import { isCompatibilityObject } from '../extensions/operation-types';
 
 const typedTools = typedLinearTools();
 const tools = [linearGetResultTool(), ...typedTools];
 
-function declarations(useParameters: boolean) {
-  const converted = convertTools(tools as any, useParameters, false);
-  return converted?.[0]?.functionDeclarations ?? [];
+function declarations(useParameters: boolean): JsonObject[] {
+  return (convertTools(tools as any, useParameters, false)?.[0]?.functionDeclarations ?? [])
+    .map((declaration) => parseJsonObject(declaration))
+    .filter((declaration): declaration is JsonObject => declaration !== undefined);
 }
 
-function walk(value: unknown, visit: (node: Record<string, unknown>) => void): void {
-  if (!value || typeof value !== 'object') return;
+function walk(value: JsonValue | undefined, visit: (node: JsonObject) => void): void {
   if (Array.isArray(value)) {
     for (const item of value) walk(item, visit);
     return;
   }
-  const node = value as Record<string, unknown>;
-  visit(node);
-  for (const child of Object.values(node)) walk(child, visit);
+  if (!isCompatibilityObject(value)) return;
+  visit(value);
+  for (const child of Object.values(value)) walk(child, visit);
+}
+
+function parameters(declaration: JsonObject): JsonObject {
+  const value = declaration.parametersJsonSchema ?? declaration.parameters;
+  const parsed = isCompatibilityObject(value) ? value : undefined;
+  if (!parsed) throw new Error(`Missing parameters for ${String(declaration.name)}.`);
+  return parsed;
 }
 
 describe('Google schema conversion', () => {
@@ -30,10 +39,10 @@ describe('Google schema conversion', () => {
       const converted = declarations(useParameters);
       expect(converted, `useParameters=${useParameters}`).toHaveLength(50);
       for (const declaration of converted) {
-        const parameters = (declaration.parametersJsonSchema ?? declaration.parameters) as Record<string, unknown>;
+        const schema = parameters(declaration);
         expect(declaration.name).toMatch(/^linear_/);
-        expect(parameters.type, String(declaration.name)).toBe('object');
-        expect(parameters.properties, String(declaration.name)).toBeTypeOf('object');
+        expect(schema.type, String(declaration.name)).toBe('object');
+        expect(schema.properties, String(declaration.name)).toBeTypeOf('object');
       }
     }
   });
@@ -42,24 +51,25 @@ describe('Google schema conversion', () => {
     const jsonSchema = declarations(false);
     const openApi = declarations(true);
     const list = jsonSchema.find((declaration) => declaration.name === 'linear_list_issues')!;
-    const listParameters = (list.parametersJsonSchema ?? list.parameters) as any;
-    expect(listParameters.properties.orderBy.enum).toEqual(['createdAt', 'updatedAt']);
+    const listProperties = parameters(list).properties;
+    expect(isCompatibilityObject(listProperties) && isCompatibilityObject(listProperties.orderBy)
+      ? listProperties.orderBy.enum
+      : undefined).toEqual(['createdAt', 'updatedAt']);
 
     for (const converted of [jsonSchema, openApi]) {
       const save = converted.find((declaration) => declaration.name === 'linear_save_project')!;
-      const parameters = (save.parametersJsonSchema ?? save.parameters) as any;
-      expect(parameters.type).toBe('object');
-      expect(parameters.properties.targetDate).toBeTruthy();
+      const saveParameters = parameters(save);
+      const properties = isCompatibilityObject(saveParameters.properties) ? saveParameters.properties : {};
+      expect(saveParameters.type).toBe('object');
+      expect(properties.targetDate).toBeTruthy();
       let nullable = false;
-      walk(parameters.properties.targetDate, (node) => {
-        if (node.type === 'null' || node.enum && Array.isArray(node.enum) && node.enum.includes(null)) nullable = true;
+      walk(properties.targetDate, (node) => {
+        if (node.type === 'null' || Array.isArray(node.enum) && node.enum.includes(null)) nullable = true;
         if (Array.isArray(node.type) && node.type.includes('null')) nullable = true;
-        if (Array.isArray(node.anyOf) || Array.isArray(node.oneOf)) {
-          const variants = [...(node.anyOf as unknown[] ?? []), ...(node.oneOf as unknown[] ?? [])];
-          if (variants.some((variant) => variant && typeof variant === 'object' && (variant as any).type === 'null')) {
-            nullable = true;
-          }
-        }
+        const variants = [node.anyOf, node.oneOf]
+          .filter((value): value is readonly JsonValue[] => Array.isArray(value))
+          .flat();
+        if (variants.some((variant) => isCompatibilityObject(variant) && variant.type === 'null')) nullable = true;
       });
       expect(nullable, 'save_project targetDate remains nullable').toBe(true);
     }

@@ -2,11 +2,13 @@ import { mkdtemp, readFile, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { TSchema } from 'typebox';
 import { registerLinearExtension } from '../extensions/index';
 import { linearApiTool } from '../extensions/api';
 import { requirementBranches, typedLinearTools, typedToolNames } from '../extensions/typed-tools';
 import { CANONICAL_OPERATIONS, canonicalFieldNames, missingCanonicalOperations } from '../extensions/canonical';
 import { operations } from '../extensions/operations';
+import type { JsonObject, JsonValue, UnparsedJson } from '../extensions/json';
 // The validator Pi runs on every tool call, imported from the agent runtime itself.
 import { validateToolArguments } from '../node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/utils/validation.js';
 
@@ -62,7 +64,7 @@ function fakePi(builtIns: string[] = ['read', 'bash']) {
   };
 }
 
-function execute(tool: any, params: Record<string, unknown>) {
+function execute(tool: any, params: JsonObject) {
   return tool.execute('call-1', params, undefined, undefined, { hasUI: false });
 }
 
@@ -189,12 +191,12 @@ describe('deterministic activation', () => {
 
 const tools = new Map(typedLinearTools().map((tool) => [tool.name, tool]));
 
-function validate(toolName: string, args: Record<string, unknown>) {
+function validate(toolName: string, args: JsonObject) {
   const tool = tools.get(toolName)!;
   return validateToolArguments(tool as any, { id: 'call-1', name: toolName, arguments: args } as any);
 }
 
-function accepts(toolName: string, args: Record<string, unknown>): boolean {
+function accepts(toolName: string, args: JsonObject): boolean {
   try {
     validate(toolName, args);
     return true;
@@ -204,7 +206,7 @@ function accepts(toolName: string, args: Record<string, unknown>): boolean {
 }
 
 /** A value that satisfies the published schema for one canonical field. */
-function sampleFor(type: string): unknown {
+function sampleFor(type: string): JsonValue {
   switch (type) {
     case 'Int':
       return 5;
@@ -281,7 +283,7 @@ function sampleFor(type: string): unknown {
   }
 }
 
-function sampleBranch(operationName: string, branch: readonly string[]): Record<string, unknown> {
+function sampleBranch(operationName: string, branch: readonly string[]): JsonObject {
   const { fields } = CANONICAL_OPERATIONS[operationName]!;
   return Object.fromEntries(branch.map((key) => [key, sampleFor(fields[key]!)]));
 }
@@ -293,7 +295,7 @@ function sampleBranch(operationName: string, branch: readonly string[]): Record<
  * `trashed`. Linear's own association fields (projectId, cycleId, labelIds, …) are
  * capabilities, not aliases, and the fixture below requires them.
  */
-const ALIAS_OF: Record<string, string> = {
+const ALIAS_OF = {
   issueId: 'issue',
   teamId: 'team',
   stateId: 'state',
@@ -301,7 +303,7 @@ const ALIAS_OF: Record<string, string> = {
   assigneeId: 'assignee',
   parentId: 'parent',
   relatedIssueId: 'relatedIssue',
-};
+} satisfies Readonly<Record<string, string>>;
 
 /** Never published by a typed tool, whatever the operation. */
 const ALWAYS_FORBIDDEN = ['input', 'trashed', 'teamKey'];
@@ -412,7 +414,7 @@ describe('typed schema validation across all 49 tools', () => {
   });
 
   it('rejects identity-only update and save calls', () => {
-    const identities: Array<[string, Record<string, unknown>]> = [
+    const identities: Array<[string, JsonObject]> = [
       ['linear_update_issue', { issue: 'AEO-258' }],
       ['linear_update_comment', { id: 'comment-1' }],
       ['linear_update_cycle', { id: 'cycle-1' }],
@@ -475,7 +477,7 @@ describe('typed schema validation across all 49 tools', () => {
 
   it('uses prepareArguments only as a non-mutating strict gate', () => {
     for (const tool of typedLinearTools()) {
-      expect(typeof tool.prepareArguments).toBe('function');
+      expect(tool.prepareArguments).toBeTypeOf('function');
     }
     // Valid arguments come back as the identical object: no field is added, removed,
     // renamed, or reordered before Pi validates.
@@ -526,7 +528,7 @@ describe('typed execution delegates to the v0.4 operation pipeline', () => {
   const ISSUE_ID = '11111111-1111-4111-8111-111111111111';
 
   function installServer() {
-    const requests: Array<{ query: string; variables: Record<string, unknown> }> = [];
+    const requests: Array<{ query: string; variables: JsonObject }> = [];
     const fetch = vi.fn(async (_url: string, init: RequestInit) => {
       const request = JSON.parse(String(init.body));
       requests.push(request);
@@ -598,8 +600,8 @@ describe('execution boundary rejects non-canonical arguments before any network 
     const requests = installServer();
     // The published schema already refuses these; execute() refuses them again so no
     // path can reach credential lookup with two names for one thing.
-    expect(accepts(toolName as string, args as Record<string, unknown>)).toBe(false);
-    await expect(execute(tools.get(toolName as string)!, args as Record<string, unknown>))
+    expect(accepts(toolName, args)).toBe(false);
+    await expect(execute(tools.get(toolName)!, args))
       .rejects.toThrow(pattern as RegExp);
     expect(requests).toHaveLength(0);
   });
@@ -641,7 +643,7 @@ describe('execution boundary rejects non-canonical arguments before any network 
 
 describe('schema cost', () => {
   it('measures the always-on and per-tool schema cost', () => {
-    const bytes = (value: unknown) => Buffer.byteLength(JSON.stringify(value), 'utf8');
+    const bytes = (value: { name: string; description: string; parameters: TSchema }) => Buffer.byteLength(JSON.stringify(value), 'utf8');
     const api = linearApiTool() as any;
     const alwaysOn = bytes({ name: api.name, description: api.description, parameters: api.parameters });
     const typed = typedLinearTools().map((tool) => ({
@@ -705,10 +707,10 @@ const UUID = '11111111-1111-4111-8111-111111111111';
 
 const COMPATIBILITY: ReadonlyArray<{
   tool: string;
-  base: Record<string, unknown>;
+  base: JsonObject;
   /** Whether the base call alone is a complete request. */
   baseAlone: 'accepted' | 'rejected';
-  fields: ReadonlyArray<readonly [string, unknown]>;
+  fields: ReadonlyArray<readonly [string, JsonValue]>;
   absent: readonly string[];
 }> = [
   {
@@ -934,7 +936,7 @@ describe('view preferences contract', () => {
 
 const UUID_SAMPLE = '11111111-1111-4111-8111-111111111111';
 
-function rawAccepts(toolName: string, args: unknown): boolean {
+function rawAccepts(toolName: string, args: UnparsedJson): boolean {
   try {
     tools.get(toolName)!.prepareArguments!(args);
     return true;

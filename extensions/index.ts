@@ -9,8 +9,8 @@ import { typedLinearTools, typedToolNames } from './typed-tools';
 import type { MutationMode } from './safety';
 import { registerLinearSettings } from './settings';
 
-function text(value: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined;
+function text(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
   const trimmed = value.trim();
   return trimmed || undefined;
 }
