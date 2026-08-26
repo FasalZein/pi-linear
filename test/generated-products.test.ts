@@ -156,8 +156,8 @@ describe('generated products', () => {
     [
       'typed tool schema branches',
       'extensions/typed-tool-metadata.ts',
-      "options[exclusive ? 'oneOf' : 'anyOf']",
-      "options[exclusive ? 'anyOf' : 'oneOf']",
+      'oneOf: requirements',
+      'anyOf: requirements',
     ],
     [
       'typed tool label',
@@ -168,8 +168,8 @@ describe('generated products', () => {
     [
       'typed tool optional metadata',
       'extensions/typed-tool-metadata.ts',
-      'constrainedSampling: false as const',
-      'constrainedSampling: true as const',
+      'metadata.constrainedSampling = false;',
+      'metadata.constrainedSampling = true;',
     ],
   ])('fails read-only generation checks for %s drift', async (_name, path, oldText, newText) => {
     await staleSourceProbe(path, oldText, newText);
