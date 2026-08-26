@@ -74,12 +74,12 @@ describe('fallback provider route', () => {
     const openaiPayload = await captureOpenAI(fallbackOpenAI, context);
     expect(hasNativeOnlyMarker(anthropicPayload)).toBe(false);
     expect(hasNativeOnlyMarker(openaiPayload)).toBe(false);
-    expect(anthropicPayload.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear', 'linear_get_result', 'linear_graphql', 'linear_batch', 'linear_get_issue']);
-    expect(openaiPayload.tools.map((tool: { name: string }) => tool.name)).toEqual(['linear', 'linear_get_result', 'linear_graphql', 'linear_batch', 'linear_get_issue']);
-    const anthropicGuidance = anthropicPayload.tools.find((tool: { name: string }) => tool.name === 'linear')
-      ?.input_schema.properties.operation.description;
-    const openaiGuidance = openaiPayload.tools.find((tool: { name: string }) => tool.name === 'linear')
-      ?.parameters.properties.operation.description;
+    expect(anthropicPayload.tools.map((tool) => tool.name)).toEqual(['linear', 'linear_get_result', 'linear_graphql', 'linear_batch', 'linear_get_issue']);
+    expect(openaiPayload.tools.map((tool) => tool.name)).toEqual(['linear', 'linear_get_result', 'linear_graphql', 'linear_batch', 'linear_get_issue']);
+    const anthropicGuidance = anthropicPayload.tools.find((tool) => tool.name === 'linear')
+      ?.input_schema?.properties?.operation?.description;
+    const openaiGuidance = openaiPayload.tools.find((tool) => tool.name === 'linear')
+      ?.parameters?.properties?.operation?.description;
     for (const guidance of [anthropicGuidance, openaiGuidance]) {
       expect(guidance).toBe('Discover operations and activate an exact direct tool.');
       expect(guidance).not.toContain('linear batch');

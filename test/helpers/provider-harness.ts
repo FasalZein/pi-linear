@@ -20,6 +20,8 @@ import type {
   Tool,
 } from '../../node_modules/@earendil-works/pi-ai/dist/types.js';
 import { registerLinearExtension } from '../../extensions/index';
+import { isJsonObject, requireJsonObject, type JsonObject, type JsonValue } from '../../extensions/json';
+import { isCompatibilityBoolean, isCompatibilityString } from '../../extensions/operation-types';
 import type { MutationMode } from '../../extensions/safety';
 import { typedLinearTools } from '../../extensions/typed-tools';
 
@@ -33,6 +35,7 @@ type HarnessTool = LinearTool & { prepareArguments: NonNullable<LinearTool['prep
 type ToolArguments = Parameters<LinearTool['execute']>[1];
 type HarnessCommand = Omit<RegisteredCommand, 'name' | 'sourceInfo'>;
 type SessionStartHandler = ExtensionHandler<SessionStartEvent>;
+type ProviderKind = 'Anthropic' | 'OpenAI';
 
 /** The harness runs tools headless: only `hasUI` is read on this path. */
 const HEADLESS_CONTEXT = { hasUI: false } as ExtensionContext;
@@ -52,38 +55,39 @@ const emptyUsage = {
   cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 };
 
-/** Provider request tool entry, as the first-party adapters serialize it. */
+/** Provider request tool entry, limited to values inspected by provider route tests. */
 export type ProviderPayloadTool = {
   name: string;
-  description?: string;
   defer_loading?: boolean;
-  input_schema: ProviderPayloadSchema;
-  parameters: ProviderPayloadSchema;
+  input_schema?: ProviderPayloadSchema;
+  parameters?: ProviderPayloadSchema;
 };
 export type ProviderPayloadSchema = {
-  type: string;
-  properties: Record<string, ProviderPayloadProperty>;
+  type?: string;
+  properties?: {
+    operation?: ProviderPayloadProperty;
+  };
 };
 export type ProviderPayloadProperty = {
-  type?: string;
   description?: string;
 };
-/** OpenAI Responses input item, including the tool-search and additional-tools items. */
+/** OpenAI Responses input item, including tool-search and additional-tools items. */
 export type ProviderPayloadInputItem = {
-  type: string;
+  type?: string;
   status?: string;
   execution?: string;
-  tools: ProviderPayloadTool[];
+  tools?: ProviderPayloadTool[];
 };
 export type ProviderPayloadContentBlock = {
   type: string;
+  tool_name?: string;
   content?: string | ProviderPayloadContentBlock[];
 };
 export type ProviderPayloadMessage = {
   role: string;
   content: string | ProviderPayloadContentBlock[];
 };
-/** The captured provider request payload, limited to what the route tests inspect. */
+/** Parsed provider request payload owned by the route-test harness. */
 export type ProviderPayload = {
   tools: ProviderPayloadTool[];
   input: ProviderPayloadInputItem[];
@@ -91,6 +95,139 @@ export type ProviderPayload = {
 };
 
 export type LinearHarness = ReturnType<typeof createLinearHarness>;
+
+function requiredString(object: JsonObject, key: string, path: string): string {
+  const value = object[key];
+  if (!isCompatibilityString(value)) throw new Error(`${path}.${key} must be a string.`);
+  return value;
+}
+
+function optionalString(object: JsonObject, key: string, path: string): string | undefined {
+  const value = object[key];
+  if (value === undefined) return undefined;
+  if (!isCompatibilityString(value)) throw new Error(`${path}.${key} must be a string.`);
+  return value;
+}
+
+function optionalBoolean(object: JsonObject, key: string, path: string): boolean | undefined {
+  const value = object[key];
+  if (value === undefined) return undefined;
+  if (!isCompatibilityBoolean(value)) throw new Error(`${path}.${key} must be a boolean.`);
+  return value;
+}
+
+function requiredArray(object: JsonObject, key: string, path: string): readonly JsonValue[] {
+  const value = object[key];
+  if (!Array.isArray(value)) throw new Error(`${path}.${key} must be an array.`);
+  return value;
+}
+
+function objectItem(value: JsonValue | undefined, path: string): JsonObject {
+  if (!isJsonObject(value)) throw new Error(`${path} must be a JSON object.`);
+  return value;
+}
+
+function parseProperty(value: JsonValue, path: string): ProviderPayloadProperty {
+  const object = objectItem(value, path);
+  return { description: optionalString(object, 'description', path) };
+}
+
+function parseSchema(value: JsonValue, path: string): ProviderPayloadSchema {
+  const object = objectItem(value, path);
+  const properties = object.properties === undefined
+    ? undefined
+    : objectItem(object.properties, `${path}.properties`);
+  return {
+    type: optionalString(object, 'type', path),
+    properties: properties === undefined
+      ? undefined
+      : {
+          operation: properties.operation === undefined
+            ? undefined
+            : parseProperty(properties.operation, `${path}.properties.operation`),
+        },
+  };
+}
+
+function parseTool(value: JsonValue, path: string): ProviderPayloadTool {
+  const object = objectItem(value, path);
+  return {
+    name: requiredString(object, 'name', path),
+    defer_loading: optionalBoolean(object, 'defer_loading', path),
+    input_schema: object.input_schema === undefined
+      ? undefined
+      : parseSchema(object.input_schema, `${path}.input_schema`),
+    parameters: object.parameters === undefined
+      ? undefined
+      : parseSchema(object.parameters, `${path}.parameters`),
+  };
+}
+
+function parseTools(values: readonly JsonValue[], path: string): ProviderPayloadTool[] {
+  return values.map((value, index) => parseTool(value, `${path}[${index}]`));
+}
+
+function parseContentBlock(value: JsonValue, path: string): ProviderPayloadContentBlock {
+  const object = objectItem(value, path);
+  const content = object.content;
+  let parsedContent: string | ProviderPayloadContentBlock[] | undefined;
+  if (isCompatibilityString(content) || content === undefined) parsedContent = content;
+  else if (Array.isArray(content)) {
+    parsedContent = content.map((entry, index) => parseContentBlock(entry, `${path}.content[${index}]`));
+  } else {
+    throw new Error(`${path}.content must be a string or an array.`);
+  }
+  return {
+    type: requiredString(object, 'type', path),
+    tool_name: optionalString(object, 'tool_name', path),
+    content: parsedContent,
+  };
+}
+
+function parseMessage(value: JsonValue, path: string): ProviderPayloadMessage {
+  const object = objectItem(value, path);
+  const content = object.content;
+  if (isCompatibilityString(content)) {
+    return { role: requiredString(object, 'role', path), content };
+  }
+  if (!Array.isArray(content)) throw new Error(`${path}.content must be a string or an array.`);
+  return {
+    role: requiredString(object, 'role', path),
+    content: content.map((entry, index) => parseContentBlock(entry, `${path}.content[${index}]`)),
+  };
+}
+
+function parseInputItem(value: JsonValue, path: string): ProviderPayloadInputItem {
+  const object = objectItem(value, path);
+  const type = optionalString(object, 'type', path);
+  const status = optionalString(object, 'status', path);
+  const execution = optionalString(object, 'execution', path);
+  const tools = object.tools === undefined ? undefined : parseTools(requiredArray(object, 'tools', path), `${path}.tools`);
+  if ((type === 'additional_tools' || type === 'tool_search_output') && tools === undefined) {
+    throw new Error(`${path}.tools must be an array.`);
+  }
+  if ((type === 'tool_search_call' || type === 'tool_search_output') && status === undefined) {
+    throw new Error(`${path}.status must be a string.`);
+  }
+  if (type === 'tool_search_call' && execution === undefined) {
+    throw new Error(`${path}.execution must be a string.`);
+  }
+  return { type, status, execution, tools };
+}
+
+/** Decode and validate the provider values consumed by route tests. */
+export function parseProviderPayload(cause: unknown, provider: ProviderKind): ProviderPayload {
+  const payload = requireJsonObject(cause, `${provider} provider payload`);
+  const tools = parseTools(requiredArray(payload, 'tools', `${provider} provider payload`), `${provider} provider payload.tools`);
+  if (provider === 'Anthropic') {
+    const messages = requiredArray(payload, 'messages', `${provider} provider payload`)
+      .map((value, index) => parseMessage(value, `${provider} provider payload.messages[${index}]`));
+    return { tools, input: [], messages };
+  }
+  const input = requiredArray(payload, 'input', `${provider} provider payload`)
+    .map((value, index) => parseInputItem(value, `${provider} provider payload.input[${index}]`));
+  return { tools, input, messages: [] };
+}
 
 export function createLinearHarness(mode: MutationMode = 'allowlist') {
   const registered: LinearTool[] = [];
@@ -215,9 +352,10 @@ export function activationContext(harness: LinearHarness, addedToolNames: string
 
 /**
  * Runs a first-party adapter far enough to serialize its request, then stops it before
- * any network access and returns the payload it was about to send.
+ * any network access and parses the payload it was about to send.
  */
 async function capturePayload(
+  provider: ProviderKind,
   send: (options: StreamOptions) => AssistantMessageEventStream,
 ): Promise<ProviderPayload> {
   let payload: unknown;
@@ -232,22 +370,22 @@ async function capturePayload(
     },
   });
   await events.result().catch(() => undefined);
-  if (!payload) throw new Error('First-party adapter did not emit a request payload.');
-  return payload as ProviderPayload;
+  if (payload === undefined) throw new Error('First-party adapter did not emit a request payload.');
+  return parseProviderPayload(payload, provider);
 }
 
 export function captureAnthropic(
   model: Parameters<typeof anthropicStream>[0],
   context: Context,
 ): Promise<ProviderPayload> {
-  return capturePayload((options) => anthropicStream(model, context, options));
+  return capturePayload('Anthropic', (options) => anthropicStream(model, context, options));
 }
 
 export function captureOpenAI(
   model: Parameters<typeof openaiStream>[0],
   context: Context,
 ): Promise<ProviderPayload> {
-  return capturePayload((options) => openaiStream(model, context, options));
+  return capturePayload('OpenAI', (options) => openaiStream(model, context, options));
 }
 
 export function payloadText(payload: ProviderPayload): string {

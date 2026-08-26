@@ -1,7 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { rm } from 'node:fs/promises';
-import { parseJsonObject, type JsonObject, type JsonValue } from '../extensions/json';
-import { isCompatibilityObject } from '../extensions/operation-types';
 import {
   captureAnthropic,
   createLinearHarness,
@@ -9,6 +7,8 @@ import {
   isolateAgentDir,
   NATIVE_ANTHROPIC_MODEL,
   activationContext,
+  type ProviderPayload,
+  type ProviderPayloadContentBlock,
 } from './helpers/provider-harness';
 
 const originalDirectory = process.env.PI_CODING_AGENT_DIR;
@@ -21,18 +21,15 @@ afterEach(async () => {
   directory = undefined;
 });
 
-function flattenContent(payload: JsonObject): JsonObject[] {
-  const blocks: JsonObject[] = [];
-  const visit = (value: JsonValue | undefined): void => {
-    if (Array.isArray(value)) {
-      for (const item of value) visit(item);
-      return;
-    }
-    if (!isCompatibilityObject(value)) return;
-    blocks.push(value);
-    visit(value.content);
+function flattenContent(payload: ProviderPayload): ProviderPayloadContentBlock[] {
+  const blocks: ProviderPayloadContentBlock[] = [];
+  const visit = (block: ProviderPayloadContentBlock): void => {
+    blocks.push(block);
+    if (Array.isArray(block.content)) block.content.forEach(visit);
   };
-  visit(payload.messages);
+  for (const message of payload.messages) {
+    if (Array.isArray(message.content)) message.content.forEach(visit);
+  }
   return blocks;
 }
 
@@ -50,17 +47,18 @@ describe('native Anthropic route', () => {
     });
     expect(batchHelp.details.loadedTools).toEqual(['linear_batch']);
 
-    const payload = parseJsonObject(await captureAnthropic(NATIVE_ANTHROPIC_MODEL, activationContext(harness, [...help.details.loadedTools, ...batchHelp.details.loadedTools]))) ?? {};
-    const tools = Array.isArray(payload.tools)
-      ? payload.tools.filter((tool): tool is JsonObject => isCompatibilityObject(tool))
-      : [];
+    const payload = await captureAnthropic(
+      NATIVE_ANTHROPIC_MODEL,
+      activationContext(harness, [...help.details.loadedTools, ...batchHelp.details.loadedTools]),
+    );
+    const tools = payload.tools;
     expect(harness.activeTools().filter((name) => name === 'linear' || name.startsWith('linear_'))).toEqual([
       'linear', 'linear_get_result', 'linear_graphql', 'linear_batch',
     ]);
     expect(tools.find((tool) => tool.name === 'linear')?.defer_loading).toBeUndefined();
     expect(tools.find((tool) => tool.name === 'linear_get_result')?.defer_loading).toBeUndefined();
     const deferred = tools.find((tool) => tool.name === 'linear_graphql');
-    const deferredSchema = isCompatibilityObject(deferred?.input_schema) ? deferred.input_schema : undefined;
+    const deferredSchema = deferred?.input_schema;
     expect(deferred?.defer_loading).toBe(true);
     expect(deferredSchema?.type).toBe('object');
     expect(deferredSchema?.properties).toBeTypeOf('object');
