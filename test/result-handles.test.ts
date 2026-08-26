@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { linearApiTool, linearGetResultTool, linearGraphqlTool, routeLinearResult } from '../extensions/api';
 import { typedToolNames } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
+import type { JsonObject } from '../extensions/runtime';
 
 isolateLinearCredentials();
 
@@ -20,19 +21,19 @@ async function artifactRoot(): Promise<string> {
   return root;
 }
 
-function execute(params: Record<string, unknown>) {
+function execute(params: JsonObject) {
   const tool = params.query ? linearGraphqlTool() : params.operation === 'get_result' ? linearGetResultTool() : linearApiTool();
   const direct = params.operation === 'get_result'
-    ? { ...(params.variables as Record<string, unknown>), ...Object.fromEntries(Object.entries(params).filter(([key]) => !['operation', 'variables'].includes(key))) }
+    ? { ...(params.variables as JsonObject), ...Object.fromEntries(Object.entries(params).filter(([key]) => !['operation', 'variables'].includes(key))) }
     : params;
   return (tool as any).execute('call-1', direct, undefined, undefined, { hasUI: false });
 }
 
-function executeDirect(params: Record<string, unknown>) {
+function executeDirect(params: JsonObject) {
   return (linearGetResultTool() as any).execute('call-1', params, undefined, undefined, { hasUI: false });
 }
 
-async function executeThroughPi(tool: any, params: Record<string, unknown>) {
+async function executeThroughPi(tool: any, params: JsonObject) {
   const prepared = tool.prepareArguments?.(params) ?? params;
   const validated = validateToolArguments(tool, {
     id: 'call-1', name: tool.name, arguments: prepared,
@@ -40,13 +41,13 @@ async function executeThroughPi(tool: any, params: Record<string, unknown>) {
   return tool.execute('call-1', validated, undefined, undefined, { hasUI: false });
 }
 
-async function artifact(data: Record<string, unknown>) {
+async function artifact(data: JsonObject) {
   const result = await routeLinearResult(data, { label: 'caller-controlled/operation', category: 'singular', sink: 'artifact' });
   if (!('handle' in result)) throw new Error('Expected artifact result.');
   return result;
 }
 
-function expectWithinBoundary(details: unknown): void {
+function expectWithinBoundary<T>(details: T): void {
   const serialized = JSON.stringify(details);
   expect(Buffer.byteLength(serialized, 'utf8')).toBeLessThanOrEqual(DEFAULT_MAX_BYTES);
   expect(serialized.split('\n')).toHaveLength(1);
@@ -62,7 +63,8 @@ async function writeEnvelope(root: string, uuid: string, content: string): Promi
 }
 
 async function get(handle: string, path = '', offset?: number) {
-  const variables: Record<string, unknown> = { handle, ...(path ? { path } : {}) };
+  const variables: JsonObject = { handle };
+  if (path) variables.path = path;
   if (offset !== undefined) variables.offset = offset;
   return executeDirect(variables);
 }
@@ -413,7 +415,7 @@ describe('result handles', () => {
     expectWithinBoundary(stored);
     expect(stored.index.length).toBeLessThan(1_000);
 
-    const recovered: Record<string, unknown> = {};
+    const recovered: JsonObject = {};
     let offset = 0;
     do {
       const part = await get(stored.handle, '/data', offset);
@@ -421,7 +423,7 @@ describe('result handles', () => {
       Object.assign(recovered, part.details.data.value);
       if (part.details.meta.retrieval.complete) break;
       offset = part.details.meta.retrieval.nextOffset;
-    } while (true);
+    } while (offset >= 0);
     expect(recovered).toEqual(data);
   });
 

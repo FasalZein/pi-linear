@@ -28,7 +28,7 @@ function escapeRegExp(value: string): string {
  */
 export function redactText(value: string, secrets: readonly string[] = []): string {
   const exact = secrets
-    .filter((secret) => typeof secret === 'string' && secret.length >= 8)
+    .filter((secret) => secret.length >= 8)
     .reduce((text, secret) => text.replace(new RegExp(escapeRegExp(secret), 'g'), REDACTED), value);
   return CREDENTIAL_PATTERNS.reduce((text, pattern) => text.replace(pattern, REDACTED), exact);
 }
@@ -40,7 +40,7 @@ export function containsCredential(value: string): boolean {
   });
 }
 
-function redactEntries(value: object, secrets: readonly string[]): Record<string, unknown> {
+function redactEntries<T extends object>(value: T, secrets: readonly string[]): Record<string, T[keyof T]> {
   const used = new Set<string>();
   return Object.fromEntries(Object.entries(value).map(([key, child]) => {
     const redactedKey = redactText(key, secrets);
@@ -48,23 +48,23 @@ function redactEntries(value: object, secrets: readonly string[]): Record<string
     for (let suffix = 2; used.has(outputKey); suffix++) outputKey = `${redactedKey}#${suffix}`;
     used.add(outputKey);
     return [outputKey, redactDeep(child, secrets)];
-  }));
+  })) as Record<string, T[keyof T]>;
 }
 
 /** Deep copy with every string key and value redacted. Non-string leaves pass through. */
 export function redactDeep<T>(value: T, secrets: readonly string[] = []): T {
-  if (typeof value === 'string') return redactText(value, secrets) as unknown as T;
-  if (Array.isArray(value)) return value.map((item) => redactDeep(item, secrets)) as unknown as T;
+  if (Object.prototype.toString.call(value) === '[object String]') return redactText(value as string, secrets) as T;
+  if (Array.isArray(value)) return value.map((item) => redactDeep(item, secrets)) as T;
   if (value instanceof Error) {
     const copy = Object.create(Object.getPrototypeOf(value)) as Error;
     for (const key of Reflect.ownKeys(value)) {
       const descriptor = Object.getOwnPropertyDescriptor(value, key)!;
-      if (typeof key === 'string' && descriptor.enumerable) continue;
+      if (Object.prototype.toString.call(key) === '[object String]' && descriptor.enumerable) continue;
       if (key === 'stack') {
         Object.defineProperty(copy, key, {
           configurable: descriptor.configurable,
           enumerable: descriptor.enumerable,
-          value: typeof value.stack === 'string' ? redactText(value.stack, secrets) : value.stack,
+          value: value.stack === undefined ? undefined : redactText(value.stack, secrets),
           writable: true,
         });
       } else {
@@ -75,14 +75,14 @@ export function redactDeep<T>(value: T, secrets: readonly string[] = []): T {
     Object.defineProperties(copy, Object.getOwnPropertyDescriptors(redactEntries(value, secrets)));
     return copy as T;
   }
-  if (value && typeof value === 'object') return redactEntries(value, secrets) as T;
+  if (value !== null && value !== undefined && Object(value) === value) return redactEntries(value, secrets) as T;
   return value;
 }
 
 /** Redact an error without changing its type, stack, or source object. */
-export function redactError(error: unknown, secrets: readonly string[] = []): unknown {
-  if (error instanceof Error) return redactDeep(error, secrets);
-  return new Error(redactText(typeof error === 'string' ? error : String(error), secrets));
+export function redactError(cause: unknown, secrets: readonly string[] = []): Error {
+  if (cause instanceof Error) return redactDeep(cause, secrets);
+  return new Error(redactText(String(cause), secrets));
 }
 
 /** Run `work`, redacting anything it throws before the failure leaves this package. */

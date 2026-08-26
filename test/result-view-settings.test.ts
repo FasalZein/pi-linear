@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getOperation } from '../extensions/operations';
 import { operationRenderers, renderLinearApiResult } from '../extensions/renderers';
+import type { JsonObject } from '../extensions/runtime';
 import {
   applyDefaultOutputFormat,
   getDefaultJsonView,
@@ -48,15 +49,15 @@ const ISSUE = {
   state: { name: 'In Progress' },
 };
 
-function result(details: unknown) {
+function result<T>(details: T) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(details) }], details } as any;
 }
 
-function render(
+function render<T>(
   operation: string,
-  details: unknown,
+  details: T,
   options: { expanded?: boolean } = {},
-  context: Record<string, unknown> = {},
+  context: JsonObject = {},
 ) {
   return operationRenderers(getOperation(operation)).renderResult(
     result(details),

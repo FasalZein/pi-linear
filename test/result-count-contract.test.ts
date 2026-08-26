@@ -3,6 +3,7 @@ import { getOperation, operations } from '../extensions/operations';
 import { operationRenderers, SUMMARY_VIEW_NOTICE } from '../extensions/renderers';
 import { compactLinearResult, executeOperation } from '../extensions/runtime';
 import { isolateLinearCredentials } from './helpers/credentials';
+import type { JsonObject } from '../extensions/runtime';
 
 isolateLinearCredentials();
 
@@ -32,11 +33,11 @@ const ISSUE = {
   url: 'https://linear.app/aeo/issue/AEO-258',
 };
 
-function result(details: unknown) {
+function result<T>(details: T) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(details) }], details } as any;
 }
 
-function render(operationName: string, details: unknown, width = 120) {
+function render<T>(operationName: string, details: T, width = 120) {
   return operationRenderers(getOperation(operationName)).renderResult(
     result(details),
     { expanded: false, isPartial: false },
@@ -45,14 +46,14 @@ function render(operationName: string, details: unknown, width = 120) {
   ).render(width);
 }
 
-function text(operationName: string, details: unknown, width = 120) {
+function text<T>(operationName: string, details: T, width = 120) {
   return render(operationName, details, width).join('\n');
 }
 
 function capturedRequests() {
-  const requests: Array<{ query: string; variables: Record<string, unknown> }> = [];
+  const requests: Array<{ query: string; variables: JsonObject }> = [];
   vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
-    const body = JSON.parse(String(init.body)) as { query: string; variables: Record<string, unknown> };
+    const body = JSON.parse(String(init.body)) as { query: string; variables: JsonObject };
     requests.push(body);
     const { query } = body;
     const data = query.includes('query SearchIssues')
@@ -69,7 +70,7 @@ function capturedRequests() {
   return requests;
 }
 
-async function run(name: string, variables: Record<string, unknown> = {}) {
+async function run(name: string, variables: JsonObject = {}) {
   return executeOperation(
     getOperation(name),
     { variables },

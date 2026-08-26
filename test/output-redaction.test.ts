@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { linearGraphqlTool } from '../extensions/api';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { REDACTED, redactDeep, redactError, redactText } from '../extensions/redact';
+import type { JsonObject } from '../extensions/runtime';
 
 const TOKEN = 'lin_api_secret123456789abcdef';
 const OAUTH = 'lin_oauth_secret987654321zyxwv';
@@ -27,7 +28,7 @@ afterEach(() => {
   process.env = { ...originalEnvironment };
 });
 
-function execute(tool: any, params: Record<string, unknown>) {
+function execute(tool: any, params: JsonObject) {
   return tool.execute('call-1', params, undefined, undefined, { hasUI: false });
 }
 
@@ -92,7 +93,7 @@ describe('redaction unit contract', () => {
     };
 
     const redacted = redactDeep(source, [exact]);
-    const redactedEntries = redacted as Record<string, unknown>;
+    const redactedEntries = redacted as JsonObject;
 
     expect(Object.keys(redacted).slice(0, 3)).toEqual([REDACTED, `${REDACTED}#2`, `${REDACTED}#3`]);
     expect(redactedEntries[REDACTED]).toBe('first');
@@ -106,7 +107,7 @@ describe('redaction unit contract', () => {
 
   it('keeps Error type and stack while deep-redacting its keys and values without mutation', () => {
     class LinearFailure extends Error {}
-    const source = new LinearFailure(`rejected ${TOKEN}`) as LinearFailure & Record<string, unknown>;
+    const source = new LinearFailure(`rejected ${TOKEN}`) as LinearFailure & JsonObject;
     source[TOKEN] = { [OAUTH]: TOKEN };
     const originalStack = source.stack;
 
@@ -124,16 +125,16 @@ describe('redaction unit contract', () => {
 
   it('keeps the error type and stack while redacting the message and custom keys', () => {
     class LinearFailure extends Error {}
-    const source = new LinearFailure(`rejected ${TOKEN}`) as LinearFailure & Record<string, unknown>;
+    const source = new LinearFailure(`rejected ${TOKEN}`) as LinearFailure & JsonObject;
     source[TOKEN] = OAUTH;
 
-    const error = redactError(source) as LinearFailure & Record<string, unknown>;
+    const error = redactError(source) as LinearFailure & JsonObject;
 
     expect(error).toBeInstanceOf(LinearFailure);
     expect(error).not.toBe(source);
     expect(error.message).toBe(`rejected ${REDACTED}`);
     expect(error.stack).not.toContain('secret123456789');
-    expect(typeof error.stack).toBe('string');
+    expect(error.stack).toBeTypeOf('string');
     expect(error[REDACTED]).toBe(REDACTED);
     expect(source.message).toBe(`rejected ${TOKEN}`);
     expect(source[TOKEN]).toBe(OAUTH);

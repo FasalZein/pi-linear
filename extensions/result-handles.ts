@@ -7,6 +7,13 @@ import { activeSecrets } from './active-secrets';
 import { redactDeep } from './redact';
 import type { JsonObject } from './runtime';
 
+type JsonPrimitive = string | number | boolean | null;
+type JsonValue = JsonPrimitive | JsonRecord | JsonValue[];
+type JsonRecord = { [key: string]: JsonValue };
+type JsonInput = JsonValue | JsonObject;
+type RetrievalRequest = { handle?: JsonValue; path?: JsonValue; offset?: JsonValue; [key: string]: JsonValue | undefined };
+type ValidatedRetrievalRequest = { handle: string; path: string; offset: number };
+
 const HANDLE_PREFIX = 'linear-result:v1:';
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const MISSING = 'Result handle was not found or is no longer available.';
@@ -81,34 +88,46 @@ export function resultHandle(uuid: string): string {
   return `${HANDLE_PREFIX}${uuid}`;
 }
 
-function handleUuid(handle: unknown): string {
-  if (typeof handle !== 'string' || !handle.startsWith(HANDLE_PREFIX)) {
+function handleUuid(handle: JsonValue | undefined): string {
+  if (Object.prototype.toString.call(handle) !== '[object String]' || !(handle as string).startsWith(HANDLE_PREFIX)) {
     throw new Error('Invalid Linear result handle.');
   }
-  const uuid = handle.slice(HANDLE_PREFIX.length);
+  const uuid = (handle as string).slice(HANDLE_PREFIX.length);
   if (!UUID_V4.test(uuid)) throw new Error('Invalid Linear result handle.');
   return uuid;
 }
 
-function asObject(value: unknown): JsonObject | undefined {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value as JsonObject : undefined;
+function asObject(value: JsonInput | undefined): JsonRecord | undefined {
+  return value !== null && value !== undefined && Object(value) === value && !Array.isArray(value) ? value as JsonRecord : undefined;
 }
 
-function validEnvelope(value: unknown): value is JsonObject {
+function parseJsonValue(cause: unknown): JsonValue {
+  if (cause === null || cause === true || cause === false) return cause;
+  const tag = Object.prototype.toString.call(cause);
+  if (tag === '[object String]') return cause as string;
+  if (tag === '[object Number]') return cause as number;
+  if (Array.isArray(cause)) return cause.map(parseJsonValue);
+  if (Object(cause) === cause) {
+    return Object.fromEntries(Object.entries(Object(cause)).map(([key, value]) => [key, parseJsonValue(value)])) as JsonRecord;
+  }
+  throw new Error('Invalid parameters for "get_result".');
+}
+
+function validEnvelope(value: JsonValue): value is JsonRecord {
   const envelope = asObject(value);
   if (!envelope || !Object.prototype.hasOwnProperty.call(envelope, 'data')) return false;
   const allowed = new Set(['data', 'errors', 'skipped', 'meta', 'resolution']);
   if (Object.keys(envelope).some((key) => !allowed.has(key))) return false;
   if (!asObject(envelope.data)) return false;
   const meta = asObject(envelope.meta);
-  if (!meta || !Array.isArray(meta.truncations) || typeof meta.stringsClipped !== 'number') return false;
+  if (!meta || !Array.isArray(meta.truncations) || Object.prototype.toString.call(meta.stringsClipped) !== '[object Number]') return false;
   if ('errors' in envelope && !Array.isArray(envelope.errors)) return false;
   if ('skipped' in envelope && !Array.isArray(envelope.skipped)) return false;
   if ('resolution' in envelope && !asObject(envelope.resolution)) return false;
   return true;
 }
 
-async function readArtifact(handle: string): Promise<JsonObject> {
+async function readArtifact(handle: string): Promise<JsonRecord> {
   const uuid = handleUuid(handle);
   let file;
   try {
@@ -119,7 +138,7 @@ async function readArtifact(handle: string): Promise<JsonObject> {
     await assertTrustedResultDirectory(directory);
     file = await open(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
     if (!(await file.stat()).isFile()) throw new Error(INVALID_ARTIFACT);
-    const parsed: unknown = JSON.parse(await file.readFile('utf8'));
+    const parsed: JsonValue = JSON.parse(await file.readFile('utf8'));
     await assertTrustedResultDirectory(directory);
     if (!validEnvelope(parsed)) throw new Error(INVALID_ARTIFACT);
     return parsed;
@@ -132,16 +151,16 @@ async function readArtifact(handle: string): Promise<JsonObject> {
   }
 }
 
-function pointerTokens(pointer: unknown): string[] {
+function pointerTokens(pointer: JsonValue | undefined): string[] {
   if (pointer === undefined || pointer === '') return [];
-  if (typeof pointer !== 'string' || !pointer.startsWith('/')) throw new Error('Invalid JSON Pointer.');
-  return pointer.slice(1).split('/').map((token) => {
+  if (Object.prototype.toString.call(pointer) !== '[object String]' || !(pointer as string).startsWith('/')) throw new Error('Invalid JSON Pointer.');
+  return (pointer as string).slice(1).split('/').map((token) => {
     if (/~(?:[^01]|$)/.test(token)) throw new Error('Invalid JSON Pointer.');
     return token.replace(/~1/g, '/').replace(/~0/g, '~');
   });
 }
 
-function selectPointer(root: unknown, pointer: string): unknown {
+function selectPointer(root: JsonValue, pointer: string): JsonValue {
   let selected = root;
   for (const token of pointerTokens(pointer)) {
     if (Array.isArray(selected)) {
@@ -163,32 +182,28 @@ export function childPointer(pointer: string, token: string): string {
 }
 
 type Range = { unit: 'codePoints' | 'items' | 'properties'; start: number; end: number; total: number };
+type ResponseOptions = {
+  range?: Range;
+  nextOffset?: number;
+  externalized?: Array<{ path: string; handle: string; bytes: number }>;
+};
 
 function response(
   handle: string,
   path: string,
-  value: unknown,
+  value: JsonValue,
   complete: boolean,
-  options: { range?: Range; nextOffset?: number; externalized?: Array<{ path: string; handle: string; bytes: number }> } = {},
+  options: ResponseOptions = {},
 ): JsonObject {
-  return {
-    data: {
-      value,
-      ...(options.range ? { range: options.range } : {}),
-      ...(options.externalized ? { externalized: options.externalized } : {}),
-    },
-    meta: {
-      retrieval: {
-        handle,
-        path,
-        complete,
-        ...(options.nextOffset === undefined ? {} : { nextOffset: options.nextOffset }),
-      },
-    },
-  };
+  const data: JsonObject = { value };
+  if (options.range) data.range = options.range;
+  if (options.externalized) data.externalized = options.externalized;
+  const retrieval: JsonObject = { handle, path, complete };
+  if (options.nextOffset !== undefined) retrieval.nextOffset = options.nextOffset;
+  return { data, meta: { retrieval } };
 }
 
-export function fitsResultBoundary(value: unknown): boolean {
+export function fitsResultBoundary(value: JsonInput): boolean {
   const serialized = JSON.stringify(value);
   return Buffer.byteLength(serialized, 'utf8') <= DEFAULT_MAX_BYTES
     && serialized.split('\n').length <= DEFAULT_MAX_LINES;
@@ -222,12 +237,13 @@ export function resultChildPointerRepresentable(parent: string, child: string): 
   }));
 }
 
-function assertOffset(value: unknown): number {
+function assertOffset(value: JsonValue | undefined): number {
   const offset = value ?? 0;
-  if (typeof offset !== 'number' || !Number.isSafeInteger(offset) || offset < 0) {
+  const numericOffset = offset as number;
+  if (Object.prototype.toString.call(offset) !== '[object Number]' || !Number.isSafeInteger(numericOffset) || numericOffset < 0) {
     throw new Error('Invalid result offset. Use a non-negative integer.');
   }
-  return offset;
+  return numericOffset;
 }
 
 function largestEnd(start: number, total: number, candidate: (end: number) => JsonObject): number {
@@ -247,7 +263,7 @@ function segmentSequence<T>(
   values: readonly T[],
   offset: number,
   unit: Range['unit'],
-  slice: (start: number, end: number) => unknown,
+  slice: (start: number, end: number) => JsonValue,
   childToken?: (index: number) => string,
 ): JsonObject {
   const total = values.length;
@@ -256,10 +272,11 @@ function segmentSequence<T>(
     offset ? { range: { unit, start: offset, end: total, total } } : {});
   if (fitsResultBoundary(whole)) return whole;
 
-  const candidate = (end: number) => response(handle, path, slice(offset, end), end === total, {
-    range: { unit, start: offset, end, total },
-    ...(end < total ? { nextOffset: end } : {}),
-  });
+  const candidate = (end: number) => {
+    const options: ResponseOptions = { range: { unit, start: offset, end, total } };
+    if (end < total) options.nextOffset = end;
+    return response(handle, path, slice(offset, end), end === total, options);
+  };
   const end = largestEnd(offset, total, candidate);
   if (end > offset) return checked(candidate(end));
   if (!childToken) throw new Error('Invalid JSON Pointer.');
@@ -267,17 +284,19 @@ function segmentSequence<T>(
   const childPath = childPointer(path, childToken(offset));
   if (!resultChildPointerRepresentable(path, childPath)) throw new Error('Invalid JSON Pointer.');
   const next = offset + 1;
-  return checked(response(handle, path, slice(offset, offset), false, {
+  const options: ResponseOptions = {
     range: { unit, start: offset, end: next, total },
-    ...(next < total ? { nextOffset: next } : {}),
     externalized: [{ path: childPath, handle, bytes: Buffer.byteLength(JSON.stringify(values[offset]), 'utf8') }],
-  }));
+  };
+  if (next < total) options.nextOffset = next;
+  return checked(response(handle, path, slice(offset, offset), false, options));
 }
 
-function segment(handle: string, path: string, selected: unknown, offset: number): JsonObject {
+function segment(handle: string, path: string, selected: JsonValue, offset: number): JsonObject {
   let result: JsonObject;
-  if (typeof selected === 'string') {
-    const points = Array.from(selected);
+  if (Object.prototype.toString.call(selected) === '[object String]') {
+    const text = selected as string;
+    const points = Array.from(text);
     result = segmentSequence(handle, path, points, offset, 'codePoints',
       (start, end) => points.slice(start, end).join(''));
   } else if (Array.isArray(selected)) {
@@ -297,11 +316,7 @@ function segment(handle: string, path: string, selected: unknown, offset: number
   return checked(result);
 }
 
-export function validateGetResultVariables(variables: unknown): {
-  handle: string;
-  path: string;
-  offset: number;
-} {
+export function validateGetResultVariables(variables: RetrievalRequest): ValidatedRetrievalRequest {
   const object = asObject(variables) ?? {};
   const allowed = new Set(['handle', 'path', 'offset']);
   const unknown = Object.keys(object).filter((key) => !allowed.has(key));
@@ -314,7 +329,8 @@ export function validateGetResultVariables(variables: unknown): {
   return { handle: handle as string, path: path as string, offset: assertOffset(object.offset) };
 }
 
-export async function getResult(variables: unknown): Promise<JsonObject> {
+export async function getResult(cause: unknown): Promise<JsonObject> {
+  const variables = asObject(parseJsonValue(cause)) ?? {};
   const { handle, path, offset } = validateGetResultVariables(variables);
   const artifact = await readArtifact(handle);
   const selected = redactDeep(selectPointer(artifact, path), activeSecrets());

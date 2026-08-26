@@ -3,6 +3,7 @@ import { linearGraphQL } from '../extensions/client';
 import { getOperation } from '../extensions/operations';
 import { operationRenderers, renderLinearApiResult, renderLinearGraphqlResult } from '../extensions/renderers';
 import { priorityStyle, statusStyle } from '../extensions/renderers/entities';
+import type { JsonObject } from '../extensions/runtime';
 
 const plainTheme = {
   fg: (_role: string, text: string) => text,
@@ -22,14 +23,14 @@ const widths = [200, 120, 100, 80, 60, 40, 30, 26, 20, 12];
 
 afterEach(() => vi.unstubAllGlobals());
 
-function result(details: unknown) {
+function result<T>(details: T) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(details) }], details } as any;
 }
 
-function typed(
+function typed<T>(
   operation: string,
-  details: unknown,
-  args: Record<string, unknown> = {},
+  details: T,
+  args: JsonObject = {},
   theme = plainTheme,
   isError = false,
 ) {
@@ -41,7 +42,7 @@ function typed(
   );
 }
 
-function api(details: unknown, args: Record<string, unknown>, theme = plainTheme, isError = false) {
+function api<T>(details: T, args: JsonObject, theme = plainTheme, isError = false) {
   return renderLinearApiResult(
     result(details),
     { expanded: false, isPartial: false },
@@ -50,7 +51,7 @@ function api(details: unknown, args: Record<string, unknown>, theme = plainTheme
   );
 }
 
-function graphql(details: unknown, args: Record<string, unknown>, theme = plainTheme, isError = false) {
+function graphql<T>(details: T, args: JsonObject, theme = plainTheme, isError = false) {
   return renderLinearGraphqlResult(
     result(details),
     { expanded: false, isPartial: false },

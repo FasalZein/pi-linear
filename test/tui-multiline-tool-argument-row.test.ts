@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { getOperation } from '../extensions/operations';
 import { operationRenderers, renderLinearApiCall } from '../extensions/renderers';
 import { formatToolArgValue, LinearBlockComponent } from '../extensions/renderers/common';
+import type { JsonObject } from '../extensions/runtime';
 
 const theme = {
   fg: (_role: string, text: string) => text,
@@ -21,7 +22,7 @@ const MARKDOWN = [
 
 const COMMENT_ID = '11111111-1111-4111-8111-111111111111';
 
-function callRow(args: Record<string, unknown>, width: number): string[] {
+function callRow(args: JsonObject, width: number): string[] {
   const renderers = operationRenderers(getOperation('update_comment'));
   return renderers.renderCall(args, theme, {} as any).render(width);
 }

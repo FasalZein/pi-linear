@@ -23,14 +23,14 @@ export function formatFromJsonView(value: boolean): ResultOutputFormat {
   return value ? FULL_JSON : HUMAN_READABLE;
 }
 
-export function jsonViewFromFormat(value: unknown): boolean | undefined {
+export function jsonViewFromFormat(value: string | boolean | null | undefined): boolean | undefined {
   if (value === FULL_JSON || value === true) return true;
   if (value === HUMAN_READABLE || value === false) return false;
   return undefined;
 }
 
 export function registerLinearResultRenderer(context?: ResultRendererContext): void {
-  if (typeof context?.invalidate !== 'function' || !context.toolCallId) return;
+  if (!context?.invalidate || !context.toolCallId) return;
   invalidators.set(context.toolCallId, context.invalidate);
 }
 

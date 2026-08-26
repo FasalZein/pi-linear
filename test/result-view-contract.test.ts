@@ -6,6 +6,7 @@ import { compactLinearResult, executeOperation, RESULT_BUDGET } from '../extensi
 import { projection } from '../extensions/selections';
 import { buildTypedToolMetadata } from '../extensions/typed-tool-metadata';
 import { isolateLinearCredentials } from './helpers/credentials';
+import type { JsonObject } from '../extensions/runtime';
 
 isolateLinearCredentials();
 
@@ -43,11 +44,11 @@ const ISSUE = {
   labels: { nodes: [{ name: 'bug' }] },
 };
 
-function result(details: unknown) {
+function result<T>(details: T) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(details) }], details } as any;
 }
 
-function render(operationName: string, details: unknown) {
+function render<T>(operationName: string, details: T) {
   return operationRenderers(getOperation(operationName)).renderResult(
     result(details),
     { expanded: false, isPartial: false },
@@ -60,16 +61,16 @@ function enumValues(schema: { enum?: string[]; anyOf?: Array<{ const?: string }>
   if (!schema) return undefined;
   if (schema.enum) return schema.enum;
   if (schema.anyOf) {
-    const values = schema.anyOf.map((entry) => entry.const).filter((value): value is string => typeof value === 'string');
+    const values = schema.anyOf.map((entry) => entry.const).filter((value): value is string => value !== undefined);
     return values.length ? values : undefined;
   }
   return undefined;
 }
 
 function capturedRequests() {
-  const requests: Array<{ query: string; variables: Record<string, unknown> }> = [];
+  const requests: Array<{ query: string; variables: JsonObject }> = [];
   vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
-    const body = JSON.parse(String(init.body)) as { query: string; variables: Record<string, unknown> };
+    const body = JSON.parse(String(init.body)) as { query: string; variables: JsonObject };
     requests.push(body);
     const { query } = body;
     const data = query.includes('query ListIssues')
@@ -94,7 +95,7 @@ function capturedRequests() {
   return requests;
 }
 
-async function run(name: string, variables: Record<string, unknown> = {}) {
+async function run(name: string, variables: JsonObject = {}) {
   return executeOperation(
     getOperation(name),
     { variables },

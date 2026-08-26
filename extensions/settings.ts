@@ -24,6 +24,11 @@ export {
   setDefaultJsonView,
 } from './renderers/state';
 
+type SettingsDocument = {
+  defaultOutputFormat?: string | boolean | null;
+  defaultJsonView?: string | boolean | null;
+};
+
 export type ResultPreferenceLoad = {
   format: ResultOutputFormat;
   error?: string;
@@ -40,7 +45,7 @@ function defaultPreference(): ResultPreferenceLoad {
 
 export async function loadResultPreference(): Promise<ResultPreferenceLoad> {
   try {
-    const raw = JSON.parse(await fs.readFile(getResultPreferencePath(), 'utf8')) as Record<string, unknown>;
+    const raw = JSON.parse(await fs.readFile(getResultPreferencePath(), 'utf8')) as SettingsDocument;
     const format = jsonViewFromFormat(raw.defaultOutputFormat ?? raw.defaultJsonView);
     if (format === undefined) {
       const fallback = defaultPreference();

@@ -12,6 +12,7 @@ import {
 } from '../extensions/renderers';
 import { executeOperation } from '../extensions/runtime';
 import { isolateLinearCredentials } from './helpers/credentials';
+import type { JsonObject } from '../extensions/runtime';
 
 isolateLinearCredentials();
 
@@ -41,7 +42,7 @@ function block(component: any): string {
   return lines(component).join('\n');
 }
 
-function result(details: unknown) {
+function result<T>(details: T) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(details) }], details } as any;
 }
 
@@ -59,11 +60,11 @@ const ISSUE = {
   labels: { nodes: [{ name: 'bug' }] },
 };
 
-function render(
+function render<T>(
   operationName: string,
-  details: unknown,
+  details: T,
   options: { expanded?: boolean; isPartial?: boolean } = {},
-  context: Record<string, unknown> = {},
+  context: JsonObject = {},
 ) {
   const renderers = operationRenderers(getOperation(operationName));
   return renderers.renderResult(
@@ -342,7 +343,7 @@ describe('direct result rendering', () => {
 });
 
 describe('linear rendering', () => {
-  function apiResult(details: unknown, args: Record<string, unknown>, options: Record<string, boolean> = {}) {
+  function apiResult<T>(details: T, args: JsonObject, options: Record<string, boolean> = {}) {
     return renderLinearApiResult(
       result(details),
       { expanded: options.expanded ?? false, isPartial: options.isPartial ?? false },

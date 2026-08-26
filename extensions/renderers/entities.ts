@@ -10,9 +10,10 @@ import {
   truncate,
   type CellStyle,
   type TableColumn,
+  type JsonRecord,
 } from './common';
 
-export type Entity = Record<string, unknown>;
+export type Entity = JsonRecord;
 
 export type DetailField = {
   label: string;
@@ -75,8 +76,9 @@ function date(entity: Entity, key: string): string | undefined {
 
 function percent(entity: Entity, key: string): string | undefined {
   const value = entity[key];
-  if (typeof value !== 'number') return undefined;
-  return `${Math.round(value <= 1 ? value * 100 : value)}%`;
+  if (Object.prototype.toString.call(value) !== '[object Number]') return undefined;
+  const number = value as number;
+  return `${Math.round(number <= 1 ? number * 100 : number)}%`;
 }
 
 function humanize(value: string): string {
@@ -129,7 +131,7 @@ function priorityText(entity: Entity): string | undefined {
   const label = field(entity, 'priorityLabel');
   if (label) return label;
   const value = entity.priority;
-  return typeof value === 'number' && value > 0 ? `P${value}` : undefined;
+  return Object.prototype.toString.call(value) === '[object Number]' && (value as number) > 0 ? `P${value}` : undefined;
 }
 
 export function cycleStatus(entity: Entity): string {
@@ -230,7 +232,11 @@ const priorityColumn = column('priority', 'Priority', 8, priorityText, { style: 
 const teamColumn = column('team', 'Team', 4, (entity) => nested(entity, 'team', 'key'));
 const updatedColumn = column('updated', 'Updated', 10, (entity) => date(entity, 'updatedAt'));
 
-export const ENTITY_SPECS: Record<string, EntitySpec> = {
+function defineEntitySpecs(specs: Record<string, EntitySpec>): Record<string, EntitySpec> {
+  return specs;
+}
+
+export const ENTITY_SPECS = defineEntitySpecs({
   issue: {
     noun: 'issue',
     primaryLabel: 'Title',
@@ -308,10 +314,10 @@ export const ENTITY_SPECS: Record<string, EntitySpec> = {
   },
   cycle: {
     noun: 'cycle',
-    lead: (entity) => (typeof entity.number === 'number' ? `#${entity.number}` : undefined),
+    lead: (entity) => (Object.prototype.toString.call(entity.number) === '[object Number]' ? `#${entity.number}` : undefined),
     label: (entity) => name(entity, '(unnamed cycle)'),
     columns: [
-      column('number', '#', 3, (entity) => (typeof entity.number === 'number' ? String(entity.number) : undefined), {
+      column('number', '#', 3, (entity) => (Object.prototype.toString.call(entity.number) === '[object Number]' ? String(entity.number) : undefined), {
         align: 'right',
         style: (theme) => accentStyle(theme),
       }),
@@ -466,7 +472,7 @@ export const ENTITY_SPECS: Record<string, EntitySpec> = {
       column('type', 'Type', 11, (entity) => field(entity, 'type'), { style: statusStyle }),
       teamColumn,
       column('position', 'Pos', 5, (entity) =>
-        typeof entity.position === 'number' ? String(entity.position) : undefined, { align: 'right' }),
+        Object.prototype.toString.call(entity.position) === '[object Number]' ? String(entity.position) : undefined, { align: 'right' }),
     ],
     dropOrder: ['position', 'team'],
     metadata: (entity) => parts(field(entity, 'type'), nested(entity, 'team', 'key')),
@@ -554,7 +560,7 @@ export const ENTITY_SPECS: Record<string, EntitySpec> = {
     columns: [column('active', 'Active', 20, (entity) => asString(entity.active))],
     metadata: () => [],
   },
-};
+});
 
 /** Entity kind projected from the operation definition. */
 export function entityKind(operationName: string): string {

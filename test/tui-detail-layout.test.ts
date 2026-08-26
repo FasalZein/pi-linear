@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { getOperation } from '../extensions/operations';
 import { operationRenderers } from '../extensions/renderers';
 import { statusStyle } from '../extensions/renderers/entities';
+import type { JsonObject } from '../extensions/runtime';
 
 const plainTheme = {
   fg: (_role: string, text: string) => text,
@@ -20,14 +21,14 @@ const taggedTheme = {
 const meta = { truncations: [], stringsClipped: 0 };
 const WIDTHS = [200, 120, 100, 80, 60, 40, 30, 26, 20, 12] as const;
 
-function result(details: unknown) {
+function result<T>(details: T) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(details) }], details } as any;
 }
 
-function typed(
+function typed<T>(
   operation: string,
-  details: unknown,
-  args: Record<string, unknown> = {},
+  details: T,
+  args: JsonObject = {},
   theme = plainTheme,
   options: { expanded?: boolean; isPartial?: boolean } = {},
 ) {
@@ -138,7 +139,7 @@ describe('structured cycle and view details', () => {
     const details = { data: { cycle: CYCLE }, meta };
     for (const component of [typed('get_cycle', details)]) {
       expect(component).not.toBeInstanceOf(Text);
-      expect(typeof component.render).toBe('function');
+      expect(component.render).toBeTypeOf('function');
       for (const width of WIDTHS) {
         const rendered = text(component, width);
         expect(rendered.length).toBeGreaterThan(0);

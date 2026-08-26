@@ -14,6 +14,7 @@ import { linearApiTool } from '../extensions/api';
 import { activeSecrets } from '../extensions/active-secrets';
 import { REDACTED } from '../extensions/redact';
 import { renderLinearApiCall } from '../extensions/renderers';
+import type { JsonObject } from '../extensions/runtime';
 
 const ENV_SECRET = 'zzzz-unknown-format-env-secret-0001';
 const WORKSPACE_SECRET = 'qqqq-unknown-format-workspace-secret-0002';
@@ -44,7 +45,7 @@ afterEach(() => {
 
 const tool = linearApiTool('allowlist', (names) => names);
 
-function execute(params: Record<string, unknown>) {
+function execute(params: JsonObject) {
   return (tool as any).execute('call-1', params, undefined, undefined, { hasUI: false });
 }
 
@@ -68,7 +69,7 @@ describe('help paths redact unknown-format active secrets', () => {
   it('does not echo an active secret from a failed help request', async () => {
     for (const secret of [ENV_SECRET, WORKSPACE_SECRET]) {
       const error = await execute({ operation: 'help', variables: { operation: `get_issue${secret}` } })
-        .then(() => undefined, (thrown: unknown) => thrown as Error);
+        .then(() => undefined, (cause: unknown) => cause as Error);
       expect(error?.message).toBe('Unknown Linear operation. Check the catalog, then send `{ "operation": "help", "variables": { "operation": "<canonical_name>" } }`.');
       expect(error?.message).not.toContain(secret);
     }
@@ -76,7 +77,7 @@ describe('help paths redact unknown-format active secrets', () => {
 
   it('redacts an active secret echoed by a domain help request', async () => {
     const result = await execute({ operation: 'help', variables: { domain: `issues${ENV_SECRET}` } })
-      .then((value: any) => value, (thrown: unknown) => thrown as Error);
+      .then((value: any) => value, (cause: unknown) => cause as Error);
     const text = result instanceof Error ? result.message : surfaces(result);
     expect(text).not.toContain(ENV_SECRET);
   });

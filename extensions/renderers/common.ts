@@ -7,6 +7,7 @@ import {
 } from '@earendil-works/pi-coding-agent';
 import { Text, truncateToWidth, visibleWidth, wrapTextWithAnsi } from '@earendil-works/pi-tui';
 import { activeSecrets } from '../active-secrets';
+import type { JsonObject } from '../runtime';
 import { redactText } from '../redact';
 import {
   getDefaultJsonView,
@@ -14,7 +15,11 @@ import {
   type ResultRendererContext,
 } from './state';
 
-export type ToolArgs = Record<string, unknown>;
+export type JsonPrimitive = string | number | boolean | null;
+export type JsonValue = JsonPrimitive | JsonRecord | JsonValue[];
+export type JsonRecord = { [key: string]: JsonValue };
+export type JsonInput = JsonValue | JsonObject;
+export type ToolArgs = JsonRecord;
 export type CellStyle = (text: string) => string;
 
 export type TableColumn<T> = {
@@ -40,13 +45,23 @@ const FALLBACK_PRIMARY_MIN_WIDTH = 10;
 const TOOL_ARG_STRING_LIMIT = 48;
 
 
-export function asString(value: unknown): string | undefined {
-  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+export function isText(value: JsonInput | undefined): value is string {
+  return Object.prototype.toString.call(value) === '[object String]';
 }
 
-export function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
+export function asNumber(value: JsonInput | undefined): number | undefined {
+  return Object.prototype.toString.call(value) === '[object Number]' ? value as number : undefined;
+}
+
+export function asString(value: JsonInput | undefined): string | undefined {
+  if (!isText(value)) return undefined;
+  const text = value.trim();
+  return text || undefined;
+}
+
+export function asRecord(value: JsonInput | undefined): JsonRecord | undefined {
+  return value !== null && value !== undefined && Object(value) === value && !Array.isArray(value)
+    ? value as JsonRecord
     : undefined;
 }
 
@@ -71,7 +86,7 @@ export function scrubCredentials(value: string): string {
   return redactText(value, activeSecrets());
 }
 
-export function textContent(result: AgentToolResult<any>): string {
+export function textContent(result: AgentToolResult<JsonObject>): string {
   const block = result.content.find((entry) => entry.type === 'text');
   if (block?.type === 'text' && block.text) return block.text;
   return JSON.stringify(result.details ?? null, null, 2);
@@ -102,7 +117,7 @@ export function shouldShowJson(
   return options.expanded !== getDefaultJsonView();
 }
 
-export function expandedJson(result: AgentToolResult<any>, theme: Theme): Text {
+export function expandedJson(result: AgentToolResult<JsonObject>, theme: Theme): Text {
   const body = scrubCredentials(textContent(result));
   const heading = asString(asRecord(result.details)?.path) ? 'Full tool result JSON' : 'Full JSON response';
   return new Text(
@@ -124,11 +139,11 @@ export function detailLine(
 }
 
 /** Errors read as one sentence, never as a JSON envelope. */
-export function resultErrorMessage(result: AgentToolResult<any>): string {
+export function resultErrorMessage(result: AgentToolResult<JsonObject>): string {
   const raw = cleanOneLine(textContent(result));
   try {
     const parsed = JSON.parse(raw);
-    if (typeof parsed === 'string') return parsed;
+    if (Object.prototype.toString.call(parsed) === '[object String]') return parsed as string;
     const record = asRecord(parsed);
     const message = asString(record?.error) ?? asString(record?.message);
     if (message) return message;
@@ -138,7 +153,7 @@ export function resultErrorMessage(result: AgentToolResult<any>): string {
   return raw;
 }
 
-export function renderErrorResult(result: AgentToolResult<any>, theme: Theme, nextAction?: string): Text {
+export function renderErrorResult(result: AgentToolResult<JsonObject>, theme: Theme, nextAction?: string): Text {
   const message = scrubCredentials(resultErrorMessage(result)) || 'Linear request failed.';
   const recovery = nextAction ?? 'Check the parameters and call the operation again.';
   return new Text(`\n${theme.fg('error', `✗ ${message}`)}\n  ${theme.fg('dim', recovery)}`, 0, 0);
@@ -290,7 +305,7 @@ export function wrapped(text: string, indent = 0): WrappedLine {
 function renderBlockLines(lines: Array<string | WrappedLine>, width: number): string[] {
   return lines
     .flatMap((line) => {
-      if (typeof line === 'string') return truncateToWidth(scrubCredentials(line), width, '…');
+      if (isText(line)) return truncateToWidth(scrubCredentials(line), width, '…');
       const indent = Math.min(line.indent ?? 0, Math.max(0, width - 1));
       return wrapTextWithAnsi(scrubCredentials(line.text), Math.max(1, width - indent))
         .map((part) => `${' '.repeat(indent)}${part}`);
@@ -374,20 +389,21 @@ export class LinearListComponent<T> {
   invalidate(): void {}
 }
 
-export function formatToolArgValue(value: unknown): string | undefined {
+export function formatToolArgValue(value: JsonInput | undefined): string | undefined {
   // null is a request to clear a field, not an absent argument: it must be visible.
   if (value === null) return 'null';
-  if (typeof value === 'string') {
+  if (isText(value)) {
+    const stringValue = value;
     // Call rows are one line: collapse multiline whitespace before quoting and clipping.
-    const collapsed = cleanOneLine(value);
+    const collapsed = cleanOneLine(stringValue);
     if (!collapsed) return undefined;
     const clipped = truncate(scrubCredentials(collapsed), TOOL_ARG_STRING_LIMIT);
     return collapsed.includes(' ') ? `"${clipped}"` : clipped;
   }
-  if (typeof value === 'number') return String(value);
-  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (Object.prototype.toString.call(value) === '[object Number]') return String(value);
+  if (value === true || value === false) return value ? 'true' : 'false';
   if (Array.isArray(value)) return value.length ? `[${value.length}]` : undefined;
-  if (value && typeof value === 'object') return '{…}';
+  if (value !== null && value !== undefined && Object(value) === value) return '{…}';
   return undefined;
 }
 

@@ -8,8 +8,10 @@ import { operationDefinitions, type LinearOperation } from '../operations';
 import { canonicalFieldNames } from '../canonical';
 import { typedToolName } from '../tool-names';
 import type { OperationDefinition } from '../operation-types';
+import type { JsonObject } from '../runtime';
 import {
   asRecord,
+  asNumber,
   LinearBlockComponent,
   asString,
   cleanOneLine,
@@ -27,6 +29,9 @@ import {
   truncate,
   wrapped,
   type ToolArgs,
+  type JsonRecord,
+  type JsonValue,
+  isText,
 } from './common';
 import { specFor, specForKind, type Entity, type EntitySpec } from './entities';
 
@@ -59,7 +64,7 @@ type Digest =
   | { kind: 'mutation'; success: boolean; entity?: Entity; notes: string[] }
   | { kind: 'unknown'; notes: string[] };
 
-function metaNotes(details: Record<string, unknown>): string[] {
+function metaNotes(details: JsonRecord): string[] {
   const notes: string[] = [];
   const meta = (asRecord(details.meta) ?? {}) as Meta;
   for (const truncation of meta.truncations ?? []) {
@@ -70,7 +75,7 @@ function metaNotes(details: Record<string, unknown>): string[] {
   if (meta.resultBudget?.recoverable) {
     notes.push('complete result stored outside this inline result');
   }
-  if (typeof meta.stringsClipped === 'number' && meta.stringsClipped > 0) {
+  if (meta.stringsClipped !== undefined && meta.stringsClipped > 0) {
     notes.push(`${plural(meta.stringsClipped, 'long field')} clipped`);
   }
   const target = asRecord(asRecord(details.resolution)?.target);
@@ -82,8 +87,9 @@ function metaNotes(details: Record<string, unknown>): string[] {
   return notes;
 }
 
-function asCount(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
+function asCount(value: JsonValue | undefined): number | undefined {
+  const count = asNumber(value);
+  return count !== undefined && Number.isFinite(count) && count >= 0 ? count : undefined;
 }
 
 function listCountHeadline(
@@ -99,7 +105,7 @@ function listCountHeadline(
   return summary ? `${count} · summary view` : count;
 }
 
-function pageNote(connection: Record<string, unknown>, shown: number): string | undefined {
+function pageNote(connection: JsonRecord, shown: number): string | undefined {
   const total = asCount(connection.totalCount);
   const pageInfo = asRecord(connection.pageInfo);
   const cursor = asString(pageInfo?.endCursor);
@@ -114,7 +120,7 @@ function pageNote(connection: Record<string, unknown>, shown: number): string | 
 }
 
 /** Reduce one tool result to the smallest shape the TUI needs. */
-export function digestResult(result: AgentToolResult<any>, expectedRoots: readonly string[] = []): Digest {
+export function digestResult(result: AgentToolResult<JsonObject>, expectedRoots: readonly string[] = []): Digest {
   const details = asRecord(result.details) ?? {};
   const notes = metaNotes(details);
 
@@ -124,8 +130,8 @@ export function digestResult(result: AgentToolResult<any>, expectedRoots: readon
       kind: 'spill',
       handle: asString(details.handle),
       path,
-      bytes: typeof details.bytes === 'number' ? details.bytes : 0,
-      index: Array.isArray(details.index) ? details.index.filter((entry): entry is string => typeof entry === 'string') : [],
+      bytes: asNumber(details.bytes) ?? 0,
+      index: Array.isArray(details.index) ? details.index.filter(isText) : [],
       notes,
     };
   }
@@ -163,6 +169,7 @@ export function digestResult(result: AgentToolResult<any>, expectedRoots: readon
 }
 
 type Verb = { past: string; present: string };
+type EmptyState = { fact: string; action: string };
 
 function verbFor(operationName: string): Verb {
   if (operationName.startsWith('create_')) return { past: 'Created', present: 'Creating' };
@@ -190,7 +197,7 @@ function statusLine(theme: Theme, spec: EntitySpec, entity: Entity, verb: string
   return parts.join(' ');
 }
 
-function detailsView(result: AgentToolResult<any>): 'summary' | 'full' | undefined {
+function detailsView(result: AgentToolResult<JsonObject>): 'summary' | 'full' | undefined {
   const view = asRecord(asRecord(result.details)?.meta)?.view;
   return view === 'summary' || view === 'full' ? view : undefined;
 }
@@ -249,8 +256,8 @@ function spillBlock(theme: Theme, digest: Extract<Digest, { kind: 'spill' }>): A
   return [...lines, '', wrapped(theme.fg('dim', jsonHint()))];
 }
 
-function contextArgs(context: LinearRenderContext): Record<string, unknown> {
-  const args = asRecord(context.args) ?? {};
+function contextArgs(context: LinearRenderContext): JsonRecord {
+  const args = asRecord(context.args as JsonObject) ?? {};
   return asRecord(args.variables) ?? args;
 }
 
@@ -266,7 +273,7 @@ function operationTargetFields(definition: OperationDefinition): readonly string
 }
 
 function targetReference(
-  result: AgentToolResult<any>,
+  result: AgentToolResult<JsonObject>,
   context: LinearRenderContext,
   definition: OperationDefinition,
 ): string | undefined {
@@ -289,7 +296,7 @@ function emptyState(
   definition: OperationDefinition,
   spec: EntitySpec,
   context: LinearRenderContext,
-): { fact: string; action: string } {
+): EmptyState {
   const metadata = definition.render;
   const routing = new Set([
     'after', 'before', 'first', 'last', 'workspace', 'sink', 'view', ...operationTargetFields(definition),
@@ -361,7 +368,7 @@ function errorRecovery(message: string, toolName: string, noun: string, rawGraph
 
 function renderDigest(
   digest: Digest,
-  result: AgentToolResult<any>,
+  result: AgentToolResult<JsonObject>,
   theme: Theme,
   spec: EntitySpec,
   verb: Verb,
@@ -469,7 +476,7 @@ function callKeys(operation: LinearOperation): string[] {
 export type OperationRenderers = {
   renderCall: (args: any, theme: Theme, context: LinearRenderContext) => LinearBlockComponent;
   renderResult: (
-    result: AgentToolResult<any>,
+    result: AgentToolResult<JsonObject>,
     options: ToolRenderResultOptions,
     theme: Theme,
     context: LinearRenderContext,
@@ -519,9 +526,9 @@ export function renderLinearApiCall(args: any, theme: Theme): LinearBlockCompone
   ]);
 }
 
-function helpBlock(theme: Theme, details: Record<string, unknown>): LinearBlockComponent | undefined {
+function helpBlock(theme: Theme, details: JsonRecord): LinearBlockComponent | undefined {
   const loaded = Array.isArray(details.loadedTools)
-    ? details.loadedTools.filter((entry): entry is string => typeof entry === 'string')
+    ? details.loadedTools.filter(isText)
     : [];
   const lines: Array<string | ReturnType<typeof wrapped>> = [];
 
@@ -559,7 +566,7 @@ function helpBlock(theme: Theme, details: Record<string, unknown>): LinearBlockC
   return new LinearBlockComponent(['', ...lines]);
 }
 
-function rawGraphqlBlock(theme: Theme, result: AgentToolResult<any>, notes: string[]): LinearBlockComponent {
+function rawGraphqlBlock(theme: Theme, result: AgentToolResult<JsonObject>, notes: string[]): LinearBlockComponent {
   const data = asRecord((asRecord(result.details) ?? {}).data) ?? {};
   const keys = Object.keys(data);
   const lines: Array<string | ReturnType<typeof wrapped>> = [
@@ -581,15 +588,15 @@ function rawGraphqlBlock(theme: Theme, result: AgentToolResult<any>, notes: stri
       const childKeys = Object.keys(record);
       lines.push(wrapped(theme.fg('toolOutput', `${key}: object · ${plural(childKeys.length, 'key')}${childKeys.length ? ` (${childKeys.join(', ')})` : ''}`), 2));
     } else {
-      const shape = value === null ? 'null' : typeof value;
-      lines.push(wrapped(theme.fg('toolOutput', `${key}: ${shape}${typeof value === 'string' ? ` · ${value.length} chars` : ''}`), 2));
+      const valueKind = value === null ? 'null' : Object.prototype.toString.call(value).slice(8, -1).toLowerCase();
+      lines.push(wrapped(theme.fg('toolOutput', `${key}: ${valueKind}${isText(value) ? ` · ${value.length} chars` : ''}`), 2));
     }
   }
   for (const note of notes) lines.push(wrapped(theme.fg('dim', note), 2));
   return new LinearBlockComponent([...lines, '', wrapped(theme.fg('dim', jsonHint()))]);
 }
 
-function batchOperations(value: unknown): string {
+function batchOperations(value: JsonValue | undefined): string {
   if (!Array.isArray(value)) return '(none)';
   const names = value.map((entry) => asString(asRecord(entry)?.operation)).filter((name): name is string => !!name);
   return names.length ? names.join(', ') : '(none)';
@@ -610,7 +617,7 @@ export function renderLinearBatchCall(args: any, theme: Theme): LinearBlockCompo
 }
 
 export function renderLinearBatchResult(
-  result: AgentToolResult<any>,
+  result: AgentToolResult<JsonObject>,
   options: ToolRenderResultOptions,
   theme: Theme,
   context: LinearRenderContext,
@@ -630,11 +637,11 @@ export function renderLinearBatchResult(
   const details = asRecord(result.details) ?? {};
   const data = asRecord(details.data) ?? {};
   const errors = Array.isArray(details.errors) ? details.errors : [];
-  const skipped = Array.isArray(details.skipped) ? details.skipped.filter((key): key is string => typeof key === 'string') : [];
+  const skipped = Array.isArray(details.skipped) ? details.skipped.filter(isText) : [];
   const failed = [...new Set(errors.map((entry) => asString(asRecord(entry)?.key)).filter((key): key is string => !!key))];
   const requests = asRecord(asRecord(details.meta)?.requests) ?? {};
-  const readRequests = typeof requests.read === 'number' ? requests.read : 0;
-  const mutationRequests = typeof requests.mutation === 'number' ? requests.mutation : 0;
+  const readRequests = asNumber(requests.read) ?? 0;
+  const mutationRequests = asNumber(requests.mutation) ?? 0;
   const labels = (label: string, keys: readonly string[]) => `${label}: ${keys.length ? keys.join(', ') : '(none)'}`;
   return new LinearBlockComponent([
     '',
@@ -657,7 +664,7 @@ export function renderLinearGraphqlCall(args: any, theme: Theme): LinearBlockCom
 }
 
 export function renderLinearGetResultResult(
-  result: AgentToolResult<any>,
+  result: AgentToolResult<JsonObject>,
   options: ToolRenderResultOptions,
   theme: Theme,
   context: LinearRenderContext,
@@ -679,7 +686,7 @@ export function renderLinearGetResultResult(
   if (range) {
     lines.push(wrapped(theme.fg('dim', `Range: ${range.start ?? '?'}–${range.end ?? '?'} of ${range.total ?? '?'} ${asString(range.unit) ?? 'values'}`), 2));
   }
-  if (typeof retrieval.nextOffset === 'number') {
+  if (asNumber(retrieval.nextOffset) !== undefined) {
     lines.push(wrapped(theme.fg('dim', `Next offset: ${retrieval.nextOffset}`), 2));
   }
   lines.push(wrapped(theme.fg('toolOutput', JSON.stringify(data.value)), 2));
@@ -688,7 +695,7 @@ export function renderLinearGetResultResult(
 }
 
 export function renderLinearGraphqlResult(
-  result: AgentToolResult<any>,
+  result: AgentToolResult<JsonObject>,
   options: ToolRenderResultOptions,
   theme: Theme,
   context: LinearRenderContext,
@@ -707,7 +714,7 @@ export function renderLinearGraphqlResult(
 }
 
 export function renderLinearApiResult(
-  result: AgentToolResult<any>,
+  result: AgentToolResult<JsonObject>,
   options: ToolRenderResultOptions,
   theme: Theme,
   context: LinearRenderContext,
