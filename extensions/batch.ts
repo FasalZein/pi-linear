@@ -496,7 +496,8 @@ function collectAlias(
     errors.push(failed);
     return;
   }
-  data[entry.key] = entry.prepared?.acknowledgement ?? mapped;
+  const acknowledgement = entry.prepared?.acknowledgement;
+  data[entry.key] = acknowledgement === undefined ? mapped : parseCompatibilityObject(acknowledgement);
 }
 
 export type BatchError = {
@@ -868,9 +869,11 @@ async function executeBatchWithTelemetry(
     );
     readRequests = 1;
     const phase = await executeStructuredGraphQLPhase(network, query, variables, 'read');
+    const parsedRaw = parseCompatibilityObject(phase.raw);
     const readOwners: GraphQLFailureOwner[] = reads.map((entry) => {
       const owner: GraphQLFailureOwner = { entry, aliases: [entry.key] };
-      if (phase.raw[entry.key] != null) owner.partial = { [entry.root]: phase.raw[entry.key] };
+      const alias = parsedRaw[entry.key];
+      if (alias != null) owner.partial = { [entry.root]: alias };
       return owner;
     });
     const lookupOwners: GraphQLFailureOwner[] = mutations
@@ -888,7 +891,7 @@ async function executeBatchWithTelemetry(
     );
     readPhaseFailed = phase.errors.length > 0;
     for (const entry of reads) {
-      if (!failed.has(entry.key)) collectAlias(entry, phase.raw, [], data, errors);
+      if (!failed.has(entry.key)) collectAlias(entry, parsedRaw, [], data, errors);
     }
     applyIndependentLookups(mutations, phase.raw, [], errors);
   }
@@ -958,16 +961,18 @@ async function executeBatchWithTelemetry(
     assertMutationAllowed(query, mode, [mutation.root]);
     mutationRequests = 1;
     const phase = await executeStructuredGraphQLPhase(network, query, mutation.variables, 'mutation');
+    const parsedRaw = parseCompatibilityObject(phase.raw);
     if (phase.errors.length) {
       const owner: GraphQLFailureOwner = {
         entry: mutation,
         aliases: [mutation.key],
         failureMessage: attributableFailureMessage(mutation),
       };
-      if (phase.raw[mutation.key] != null) owner.partial = { [mutation.root]: phase.raw[mutation.key] };
+      const alias = parsedRaw[mutation.key];
+      if (alias != null) owner.partial = { [mutation.root]: alias };
       classifyStructuredGraphQLErrors(phase.errors, [owner], [owner], errors);
     } else {
-      collectAlias(mutation, phase.raw, [], data, errors);
+      collectAlias(mutation, parsedRaw, [], data, errors);
     }
   }
 

@@ -14,12 +14,16 @@ import {
   type LinearRateLimitSnapshot,
   type LinearTransport,
 } from './client';
-import type {
-  GraphQLDocumentVariant,
-  LocalResultExpectation,
-  OperationPlan,
-  ResultCategory,
+import {
+  isCompatibilityObject,
+  isCompatibilityString,
+  parseCompatibilityObject,
+  type GraphQLDocumentVariant,
+  type LocalResultExpectation,
+  type OperationPlan,
+  type ResultCategory,
 } from './operation-types';
+import { parseJson, type JsonObject, type JsonValue, type UnparsedJson } from './json';
 import type { LinearOperation } from './operations';
 import { resolveOperationPlan, verifyOperationResult } from './operation-plan';
 import type { ResultView } from './selections';
@@ -37,7 +41,7 @@ export const NODE_CAP = 100;
 export const STRING_CAP = 2_000;
 export const RESULT_BUDGET = 50 * 1024;
 
-export type JsonObject = Record<string, unknown>;
+export type { JsonObject, JsonValue } from './json';
 export type Truncation = { path: string; kept: number; endCursor?: string };
 export type ResultMeta = {
   nodeCap?: number;
@@ -72,29 +76,34 @@ function spillThreshold(): number | undefined {
 
 function artifactIndex(data: JsonObject): string[] {
   const issues: string[] = [];
-  const visit = (value: unknown) => {
-    if (Array.isArray(value)) return value.forEach(visit);
-    if (!value || typeof value !== 'object') return;
-    const object = value as JsonObject;
-    if (typeof object.identifier === 'string' && typeof object.title === 'string') {
-      const state = object.state as JsonObject | undefined;
-      issues.push(`${object.identifier} · ${object.title} · ${typeof state?.name === 'string' ? state.name : ''}`);
+  const visit = (value: JsonValue | undefined): void => {
+    if (Array.isArray(value)) {
+      for (const entry of value) visit(entry);
+      return;
     }
-    Object.values(object).forEach(visit);
+    if (!isCompatibilityObject(value)) return;
+    if (isCompatibilityString(value.identifier) && isCompatibilityString(value.title)) {
+      const state = isCompatibilityObject(value.state) ? value.state : undefined;
+      const stateName = state === undefined ? undefined : state.name;
+      issues.push(`${value.identifier} · ${value.title} · ${isCompatibilityString(stateName) ? stateName : ''}`);
+    }
+    for (const entry of Object.values(value)) visit(entry);
   };
   visit(data);
   if (issues.length) return [...issues.slice(0, 50), ...(issues.length > 50 ? [`+${issues.length - 50} more`] : [])];
 
   return Object.entries(data).map(([key, value]) => {
-    const nodes = value && typeof value === 'object' ? (value as JsonObject).nodes : undefined;
+    const nodes = isCompatibilityObject(value) ? value.nodes : undefined;
     return Array.isArray(nodes) ? `${key} · ${nodes.length} nodes` : key;
   });
 }
 
+export type CompactedResult<T extends JsonObject> = { data: T; meta: ResultMeta };
+
 export function compactLinearResult<T extends JsonObject>(
   input: T,
   _options: { nodeCap?: number; resultBudget?: number } = {},
-): { data: T; meta: ResultMeta } {
+): CompactedResult<T> {
   return { data: input, meta: { truncations: [], stringsClipped: 0 } };
 }
 
@@ -183,12 +192,12 @@ export async function routeLinearEnvelope<T extends JsonObject>(
   const telemetry = redactDeep(options.telemetry ?? [], options.secrets ?? []) as LinearRateLimitSnapshot[];
   const warning = rateLimitDetails(telemetry, options.telemetryMode);
   const existingMeta = envelope.meta;
-  if (!existingMeta || typeof existingMeta !== 'object' || Array.isArray(existingMeta)) {
+  if (!isCompatibilityObject(existingMeta)) {
     throw new Error(`Linear ${options.label} result envelope is missing metadata.`);
   }
   const requestedSink = options.sink ?? 'auto';
   // One reported metadata base, so inline, stored, and digest envelopes stay identical.
-  const reportedMeta: JsonObject = { ...(existingMeta as JsonObject) };
+  const reportedMeta: JsonObject = { ...existingMeta };
   if (warning) reportedMeta.rateLimit = warning;
   const inlineEnvelope = {
     ...envelope,
@@ -259,11 +268,12 @@ export async function routeLinearEnvelope<T extends JsonObject>(
   if (!fitsResultBoundary(base)) throw new Error('Linear artifact digest exceeds the tool output boundary.');
 
   let digest = base;
-  if (envelope.resolution && typeof envelope.resolution === 'object' && !Array.isArray(envelope.resolution)) {
-    const candidate = { ...digest, resolution: envelope.resolution as JsonObject };
+  const resolution = envelope.resolution;
+  if (isCompatibilityObject(resolution)) {
+    const candidate = { ...digest, resolution };
     if (fitsResultBoundary(candidate)) digest = candidate;
   }
-  for (const entry of artifactIndex(data && typeof data === 'object' && !Array.isArray(data) ? data as JsonObject : {})) {
+  for (const entry of artifactIndex(isCompatibilityObject(data) ? data : {})) {
     const candidate = { ...digest, index: [...digest.index, entry] };
     if (!fitsResultBoundary(candidate)) break;
     digest = candidate;
@@ -289,8 +299,11 @@ export async function routeLinearResult<T extends JsonObject>(
 ): Promise<RoutedEnvelope<T> | ArtifactResult> {
   const meta: ResultMeta = { truncations: [], stringsClipped: 0 };
   if (options.view) meta.view = options.view;
-  const envelope: RoutedEnvelope<T> = { data: rawData, meta };
-  if (options.errors?.length) envelope.errors = [...options.errors];
+  // Serialized envelopes keep the published key order: data, errors, meta, resolution.
+  const errors = options.errors?.length ? [...options.errors] : undefined;
+  const envelope: RoutedEnvelope<T> = errors
+    ? { data: rawData, errors, meta }
+    : { data: rawData, meta };
   if (options.resolution) envelope.resolution = options.resolution;
   return routeLinearEnvelope(envelope, options);
 }
@@ -337,7 +350,7 @@ export async function apiKeyForWorkspace(ctx: ExtensionContext, workspace?: stri
 }
 
 export type OperationRunOptions = {
-  variables: Record<string, unknown>;
+  variables: JsonObject;
   workspace?: string;
   sink?: 'inline' | 'artifact';
   telemetryMode?: TelemetryMode;
@@ -345,7 +358,7 @@ export type OperationRunOptions = {
 
 export function assertOperationAllowed(
   operation: LinearOperation,
-  variables: Record<string, unknown>,
+  variables: JsonObject,
   mode: MutationMode,
 ): void {
   if (operation.variants) {
@@ -363,15 +376,9 @@ export function assertOperationAllowed(
   }
 }
 
-function objectAtPath(value: unknown, path: string): JsonObject | undefined {
-  let current: unknown = value;
-  for (const part of path.split('.')) {
-    if (!current || typeof current !== 'object' || Array.isArray(current)) return undefined;
-    current = (current as JsonObject)[part];
-  }
-  return current && typeof current === 'object' && !Array.isArray(current)
-    ? current as JsonObject
-    : undefined;
+function objectAtPath(value: JsonValue | undefined, path: string): JsonObject | undefined {
+  const found = valueAtPath(value, path);
+  return isCompatibilityObject(found) ? found : undefined;
 }
 
 function mutationExpectation(
@@ -412,11 +419,11 @@ export function validateMutationResult(
   }
 }
 
-function valueAtPath(value: unknown, path: string): unknown {
-  let current: unknown = value;
+function valueAtPath(value: JsonValue | undefined, path: string): JsonValue | undefined {
+  let current = value;
   for (const part of path.split('.')) {
-    if (!current || typeof current !== 'object' || Array.isArray(current)) return undefined;
-    current = (current as JsonObject)[part];
+    if (!isCompatibilityObject(current)) return undefined;
+    current = current[part];
   }
   return current;
 }
@@ -427,7 +434,7 @@ function valueAtPath(value: unknown, path: string): unknown {
  */
 export function validateLocalResult(
   operationName: string,
-  data: unknown,
+  data: UnparsedJson,
   expectation: LocalResultExpectation | undefined,
 ): asserts data is JsonObject {
   const fail = (path: string, expected: string): never => {
@@ -438,10 +445,11 @@ export function validateLocalResult(
   if (!expectation) {
     throw new Error(`Linear operation "${operationName}" ran locally without a result expectation.`);
   }
-  if (!data || typeof data !== 'object' || Array.isArray(data)) fail('result', 'an object');
+  const parsed = parseJson(data);
+  if (!isCompatibilityObject(parsed)) fail('result', 'an object');
   for (const path of expectation.requiredStringPaths) {
-    const value = valueAtPath(data, path);
-    if (typeof value !== 'string' || !value.trim()) fail(path, 'a non-empty string');
+    const value = valueAtPath(parsed, path);
+    if (!isCompatibilityString(value) || !value.trim()) fail(path, 'a non-empty string');
   }
 }
 
@@ -491,7 +499,7 @@ async function executeOperationWithContext(
         data = await linearGraphQLWithContext<JsonObject>(
           network,
           document,
-          prepared.variables,
+          parseCompatibilityObject(prepared.variables),
           prepared.telemetryPhase ? { phase: prepared.telemetryPhase } : undefined,
         );
         errors = linearGraphQLErrors(data);
@@ -506,14 +514,15 @@ async function executeOperationWithContext(
       }
       const category = prepared.resultCategory ?? operation.resultCategory;
       if (category === 'local') throw new Error(`Network operation "${operation.name}" cannot use local result routing.`);
-      return routeLinearResult(prepared.acknowledgement ?? data, {
+      const acknowledgement = prepared.acknowledgement;
+      return routeLinearResult(acknowledgement === undefined ? data : parseCompatibilityObject(acknowledgement), {
         label: operation.name,
         category,
         sink: call.sink,
         secrets,
         errors,
         view: prepared.resultView,
-        resolution: prepared.resolution,
+        resolution: prepared.resolution === undefined ? undefined : parseCompatibilityObject(prepared.resolution),
         telemetry: network.telemetry,
         telemetryMode: call.telemetryMode,
       });
@@ -548,7 +557,7 @@ export async function executeOperation(
 
 export async function executeRawQuery(
   query: string,
-  variables: Record<string, unknown>,
+  variables: JsonObject,
   call: LinearCallContext,
   transport: LinearTransport = fetch,
 ): Promise<JsonObject> {

@@ -1,4 +1,11 @@
 import { Kind, parse, type FragmentDefinitionNode, type SelectionSetNode } from 'graphql';
+import { parseJson, parseJsonObject, type JsonObject, type JsonValue, type UnparsedJson } from './json';
+import {
+  isCompatibilityNumber,
+  isCompatibilityObject,
+  isCompatibilityString,
+  type GraphQLResultData,
+} from './operation-types';
 import { redactDeep, redactText } from './redact';
 
 const LINEAR_GRAPHQL_ENDPOINT = 'https://api.linear.app/graphql';
@@ -23,8 +30,8 @@ export type ResolvedState = { id: string; name: string; teamId: string };
 export type ResolvedUser = { id: string; name?: string; displayName?: string; email?: string };
 export type ResolvedNamedEntity = { id: string; name: string };
 
-function asString(value: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined;
+function asString(value: JsonValue | undefined): string | undefined {
+  if (!isCompatibilityString(value)) return undefined;
   const text = value.trim();
   return text || undefined;
 }
@@ -47,8 +54,33 @@ export {
 type GraphQLErrorBody = {
   message?: string;
   path?: ReadonlyArray<string | number>;
-  extensions?: Record<string, unknown>;
+  extensions?: JsonObject;
 };
+
+/** The Linear GraphQL response body, parsed once from the HTTP payload. */
+type LinearResponseBody = { data?: JsonObject; errors: GraphQLErrorBody[] };
+
+function parseErrorBody(entry: JsonObject): GraphQLErrorBody {
+  const body: GraphQLErrorBody = {};
+  const message = entry.message;
+  if (isCompatibilityString(message)) body.message = message;
+  const path = entry.path;
+  if (Array.isArray(path) && path.every((part) => isCompatibilityString(part) || isCompatibilityNumber(part))) {
+    body.path = path;
+  }
+  const extensions = entry.extensions;
+  if (isCompatibilityObject(extensions)) body.extensions = extensions;
+  return body;
+}
+
+/** Parse the HTTP payload once, at the network seam, into the response this module owns. */
+function parseResponseBody(payload: UnparsedJson): LinearResponseBody {
+  const parsed = parseJsonObject(payload);
+  const entries = Array.isArray(parsed?.errors) ? parsed.errors : [];
+  const errors = entries.flatMap((entry) => (isCompatibilityObject(entry) ? [parseErrorBody(entry)] : []));
+  const data = isCompatibilityObject(parsed?.data) ? parsed.data : undefined;
+  return data === undefined ? { errors } : { data, errors };
+}
 
 export type LinearGraphQLPathError = {
   path: ReadonlyArray<string | number>;
@@ -93,34 +125,36 @@ export async function withLinearRateLimitTelemetry<T>(
   }
 }
 
-export function linearRateLimitTelemetry(value: unknown): readonly LinearRateLimitSnapshot[] {
-  if (!value || typeof value !== 'object') return [];
+export function linearRateLimitTelemetry(value: GraphQLResultData | undefined): readonly LinearRateLimitSnapshot[] {
+  if (value === null || value === undefined) return [];
   return (value as { [LINEAR_RATE_LIMIT_TELEMETRY]?: readonly LinearRateLimitSnapshot[] })[LINEAR_RATE_LIMIT_TELEMETRY] ?? [];
 }
 
-export function linearErrorTelemetry(error: unknown): readonly LinearRateLimitSnapshot[] {
-  if (!(error instanceof Error)) return [];
-  return (error as Error & { linearTelemetry?: readonly LinearRateLimitSnapshot[] }).linearTelemetry ?? [];
+export function linearErrorTelemetry(cause: unknown): readonly LinearRateLimitSnapshot[] {
+  if (!(cause instanceof Error)) return [];
+  return (cause as Error & { linearTelemetry?: readonly LinearRateLimitSnapshot[] }).linearTelemetry ?? [];
 }
 
-export function linearGraphQLErrors(data: unknown): readonly LinearGraphQLPathError[] {
-  if (!data || typeof data !== 'object') return [];
+export function linearGraphQLErrors(data: GraphQLResultData | undefined): readonly LinearGraphQLPathError[] {
+  if (data === null || data === undefined) return [];
   return (data as { [LINEAR_GRAPHQL_ERRORS]?: readonly LinearGraphQLPathError[] })[LINEAR_GRAPHQL_ERRORS] ?? [];
 }
 
-export function linearGraphQLResponseFailure(error: unknown): {
+export type LinearGraphQLResponseFailure = {
   error: Error;
-  data: Record<string, unknown>;
+  data: JsonObject;
   errors: readonly LinearGraphQLPathError[];
-} | undefined {
-  if (!(error instanceof Error)) return undefined;
-  const structured = error as Error & {
+};
+
+export function linearGraphQLResponseFailure(cause: unknown): LinearGraphQLResponseFailure | undefined {
+  if (!(cause instanceof Error)) return undefined;
+  const structured = cause as Error & {
     [LINEAR_GRAPHQL_RESPONSE_FAILURE]?: readonly LinearGraphQLPathError[];
-    [LINEAR_GRAPHQL_RESPONSE_DATA]?: Record<string, unknown>;
+    [LINEAR_GRAPHQL_RESPONSE_DATA]?: JsonObject;
   };
   if (!structured[LINEAR_GRAPHQL_RESPONSE_FAILURE]) return undefined;
   return {
-    error,
+    error: cause,
     data: structured[LINEAR_GRAPHQL_RESPONSE_DATA] ?? {},
     errors: structured[LINEAR_GRAPHQL_RESPONSE_FAILURE],
   };
@@ -128,9 +162,7 @@ export function linearGraphQLResponseFailure(error: unknown): {
 
 function errorPath(error: GraphQLErrorBody): ReadonlyArray<string | number> | undefined {
   const path = error.path;
-  if (!Array.isArray(path) || path.length === 0) return undefined;
-  if (!path.every((entry) => typeof entry === 'string' || typeof entry === 'number')) return undefined;
-  return path;
+  return path === undefined || path.length === 0 ? undefined : path;
 }
 
 function responseGraphQLErrors(errors: GraphQLErrorBody[], apiKey: string): LinearGraphQLPathError[] {
@@ -145,7 +177,7 @@ function scopedPathErrors(errors: GraphQLErrorBody[], apiKey: string): LinearGra
   return scoped.every((error) => error.path.length > 0) ? scoped : undefined;
 }
 
-function hasUsableRoot(data: object, errors: readonly LinearGraphQLPathError[]): boolean {
+function hasUsableRoot(data: JsonObject, errors: readonly LinearGraphQLPathError[]): boolean {
   const failed = new Set(errors.map((error) => error.path[0]));
   return Object.entries(data).some(([key, value]) => value != null || !failed.has(key));
 }
@@ -156,17 +188,16 @@ function errorText(error: GraphQLErrorBody): string {
   if (presentable) return presentable;
 
   for (const source of [extensions, extensions.exception]) {
-    if (!source || typeof source !== 'object') continue;
+    if (!isCompatibilityObject(source)) continue;
     for (const key of ['fieldErrors', 'validationErrors']) {
-      const entries = (source as Record<string, unknown>)[key];
+      const entries = source[key];
       if (!Array.isArray(entries)) continue;
       const messages = entries.flatMap((entry) => {
-        if (!entry || typeof entry !== 'object') return asString(entry) ?? [];
-        const record = entry as Record<string, unknown>;
-        const constraints = record.constraints;
-        return constraints && typeof constraints === 'object'
+        if (!isCompatibilityObject(entry)) return asString(entry) ?? [];
+        const constraints = entry.constraints;
+        return isCompatibilityObject(constraints)
           ? Object.values(constraints).flatMap((value) => asString(value) ?? [])
-          : asString(record.message) ?? [];
+          : asString(entry.message) ?? [];
       });
       if (messages.length) return [...new Set(messages)].join('; ');
     }
@@ -254,7 +285,7 @@ function rateLimited(errors: readonly GraphQLErrorBody[]): boolean {
     extensions?.code === 'RATELIMITED' || extensions?.type === 'RATELIMITED');
 }
 
-function attachTelemetry(target: object, snapshots: readonly LinearRateLimitSnapshot[], key: symbol | string): void {
+function attachTelemetry(target: Error | JsonObject, snapshots: readonly LinearRateLimitSnapshot[], key: symbol | string): void {
   Object.defineProperty(target, key, { value: snapshots.map((snapshot) => redactDeep(snapshot)), configurable: true });
 }
 
@@ -276,7 +307,7 @@ export type LinearNetworkContext = {
 export type LinearGraphQLFn = <TData>(
   apiKey: string,
   query: string,
-  variables?: Record<string, unknown>,
+  variables?: JsonObject,
   signal?: AbortSignal,
   options?: LinearGraphQLOptions,
 ) => Promise<TData>;
@@ -302,14 +333,14 @@ function abortableDelay(delay: number, signal?: AbortSignal): Promise<void> {
 export async function linearGraphQLWithContext<TData>(
   context: LinearNetworkContext,
   query: string,
-  variables: Record<string, unknown> = {},
+  variables: JsonObject = {},
   options?: LinearGraphQLOptions,
 ): Promise<TData> {
   const { apiKey } = context.credential;
   const snapshots: LinearRateLimitSnapshot[] = [];
   const isSearchRead = searchRead(query);
   let response!: Response;
-  let body: { data?: TData; errors?: GraphQLErrorBody[] } = {};
+  let body: LinearResponseBody = { errors: [] };
 
   for (let attempt = 0; ; attempt++) {
     try {
@@ -326,22 +357,21 @@ export async function linearGraphQLWithContext<TData>(
       throw failure;
     }
 
-    const snapshot: LinearRateLimitSnapshot = {
-      ...(options?.phase ? { phase: options.phase } : {}),
-      attempt: attempt + 1,
-      headers: redactDeep(parseLinearRateLimitHeaders(response.headers ?? new Headers()), [apiKey]),
-    };
+    const headers = redactDeep(parseLinearRateLimitHeaders(response.headers ?? new Headers()), [apiKey]);
+    const snapshot: LinearRateLimitSnapshot = options?.phase
+      ? { phase: options.phase, attempt: attempt + 1, headers }
+      : { attempt: attempt + 1, headers };
     snapshots.push(snapshot);
     context.telemetry.push(snapshot);
-    body = {};
+    body = { errors: [] };
     try {
-      body = (await response.json()) as typeof body;
+      body = parseResponseBody(parseJson(await response.json()) ?? undefined);
     } catch {
       // Use the HTTP status below for non-JSON responses.
     }
 
     const retryHttp = response.status === 429;
-    const retryGraphQL = response.status === 400 && isSearchRead && rateLimited(body.errors ?? []);
+    const retryGraphQL = response.status === 400 && isSearchRead && rateLimited(body.errors);
     if (attempt === 0 && (retryHttp || retryGraphQL)) {
       try {
         await abortableDelay(retryDelay(snapshot), context.signal);
@@ -354,33 +384,34 @@ export async function linearGraphQLWithContext<TData>(
     break;
   }
 
-  const detail = redactText([...new Set((body.errors ?? []).map(errorText))].join('; '), [apiKey]);
+  const detail = redactText([...new Set(body.errors.map(errorText))].join('; '), [apiKey]);
   if (!response.ok) {
     const status = redactText(`${response.status} ${response.statusText}`, [apiKey]);
     const failure = new Error(`Linear API request failed: ${detail || status}`);
     attachTelemetry(failure, snapshots, 'linearTelemetry');
     throw failure;
   }
-  if (body.errors?.length) {
+  if (body.errors.length) {
     const data = body.data;
     const normalized = responseGraphQLErrors(body.errors, apiKey);
     if (options?.throwResponseErrors) {
       const failure = new Error(`Linear GraphQL error: ${detail}`);
       Object.defineProperty(failure, LINEAR_GRAPHQL_RESPONSE_FAILURE, { value: normalized });
-      if (data && typeof data === 'object') {
+      if (data) {
         Object.defineProperty(failure, LINEAR_GRAPHQL_RESPONSE_DATA, { value: data });
       }
       attachTelemetry(failure, snapshots, 'linearTelemetry');
       throw failure;
     }
-    if (data && typeof data === 'object') {
+    if (data) {
       const scoped = scopedPathErrors(body.errors, apiKey);
       if ((scoped && hasUsableRoot(data, scoped)) || options?.preserveUnusableRoot) {
         Object.defineProperty(data, LINEAR_GRAPHQL_ERRORS, {
           value: scoped ?? responseGraphQLErrors(body.errors, apiKey),
         });
         attachTelemetry(data, snapshots, LINEAR_RATE_LIMIT_TELEMETRY);
-        return data;
+        // The caller names the result contract of the document it sent.
+        return data as TData;
       }
     }
     const failure = new Error(`Linear GraphQL error: ${detail}`);
@@ -392,16 +423,15 @@ export async function linearGraphQLWithContext<TData>(
     attachTelemetry(failure, snapshots, 'linearTelemetry');
     throw failure;
   }
-  if (typeof body.data === 'object' && body.data !== null) {
-    attachTelemetry(body.data, snapshots, LINEAR_RATE_LIMIT_TELEMETRY);
-  }
-  return body.data;
+  attachTelemetry(body.data, snapshots, LINEAR_RATE_LIMIT_TELEMETRY);
+  // The caller names the result contract of the document it sent.
+  return body.data as TData;
 }
 
 export async function linearGraphQL<TData>(
   apiKey: string,
   query: string,
-  variables: Record<string, unknown> = {},
+  variables: JsonObject = {},
   signal?: AbortSignal,
   options?: LinearGraphQLOptions,
 ): Promise<TData> {
@@ -433,7 +463,7 @@ export function requireIssueReference(value: string): string {
   throw new Error(`Invalid Linear issue reference "${reference}". Use TEAM-123 or a UUID.`);
 }
 
-export function parseIssueReferenceSet(value: unknown): string[] {
+export function parseIssueReferenceSet(value: JsonValue | undefined): string[] {
   if (!Array.isArray(value)) {
     throw new Error('issues must be an array of issue identifiers or UUIDs.');
   }
@@ -443,7 +473,7 @@ export function parseIssueReferenceSet(value: unknown): string[] {
   const seen = new Set<string>();
   const references: string[] = [];
   for (const item of value) {
-    if (typeof item !== 'string') {
+    if (!isCompatibilityString(item)) {
       throw new Error('issues must be an array of issue identifiers or UUIDs.');
     }
     const reference = requireIssueReference(item);
@@ -457,12 +487,14 @@ export function parseIssueReferenceSet(value: unknown): string[] {
   return references;
 }
 
+export type MatchedIssueNode = JsonObject & { id: string; identifier: string };
+
 export function assertIssueNodeMatches(
   requested: string,
-  issue: { id?: unknown; identifier?: unknown; team?: { id?: unknown; key?: unknown } | null } | null | undefined,
-): asserts issue is { id: string; identifier: string; team?: { id?: unknown; key?: unknown } | null } {
+  issue: JsonObject | null | undefined,
+): asserts issue is MatchedIssueNode {
   const reference = requireIssueReference(requested);
-  if (!issue || typeof issue.id !== 'string' || typeof issue.identifier !== 'string') {
+  if (!issue || !isCompatibilityString(issue.id) || !isCompatibilityString(issue.identifier)) {
     throw new Error(`Linear issue "${reference}" was not found.`);
   }
   const identifier = reference.match(ISSUE_IDENTIFIER_PATTERN);
@@ -482,13 +514,15 @@ export function assertIssueNodeMatches(
 
 export type NamedEntityKind = 'project' | 'cycle' | 'document';
 
+export type MatchedNamedNode = JsonObject & { id: string };
+
 export function assertNamedNodeMatches(
   kind: NamedEntityKind,
   requested: string,
-  node: { id?: unknown; slugId?: unknown; name?: unknown; title?: unknown } | null | undefined,
-): asserts node is { id: string; slugId?: string; name?: string; title?: string } {
+  node: JsonObject | null | undefined,
+): asserts node is MatchedNamedNode {
   const reference = requested.trim();
-  if (!node || typeof node.id !== 'string') {
+  if (!node || !isCompatibilityString(node.id)) {
     throw new Error(`Linear ${kind} "${reference}" was not found.`);
   }
   if (UUID_PATTERN.test(reference)) {
@@ -497,7 +531,7 @@ export function assertNamedNodeMatches(
     }
     return;
   }
-  if (typeof node.slugId !== 'string') {
+  if (!isCompatibilityString(node.slugId)) {
     throw new Error(`Linear ${kind} resolver did not include slug identity proof for "${reference}".`);
   }
   if (node.slugId.toLowerCase() !== reference.toLowerCase()) {

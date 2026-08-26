@@ -1,33 +1,39 @@
 import { Kind, parse, type DocumentNode, type SelectionSetNode } from 'graphql';
+import { parseJson, type JsonValue, type UnparsedJson } from './json';
+import { isCompatibilityObject } from './operation-types';
 import { SAFE_NAMED_MUTATION_ROOTS } from './operations';
 import { redactText } from './redact';
 
 export { SAFE_NAMED_MUTATION_ROOTS } from './operations';
 export type MutationMode = 'allowlist' | 'readonly';
 
-export function assertNamedInputAllowed(value: unknown, path = 'variables'): void {
-  const seen = new WeakSet<object>();
-  const visit = (current: unknown, currentPath: string): void => {
-    if (!current || typeof current !== 'object' || seen.has(current)) return;
-    seen.add(current);
+export function assertNamedInputAllowed(value: UnparsedJson, path = 'variables'): void {
+  const reject = (childPath: string): never => {
+    throw new Error(
+      `Destructive named input is unavailable at ${childPath}. Use an authorized raw GraphQL mutation with LINEAR_MUTATIONS=all.`,
+    );
+  };
+  const visit = (current: JsonValue | undefined, currentPath: string): void => {
+    if (Array.isArray(current)) {
+      current.forEach((child, index) => visit(child, `${currentPath}[${redactText(String(index))}]`));
+      return;
+    }
+    if (!isCompatibilityObject(current)) return;
 
-    for (const key of Object.keys(current)) {
-      const childPath = Array.isArray(current)
-        ? `${currentPath}[${redactText(key)}]`
-        : `${currentPath}.${redactText(key)}`;
-      if (key === 'trashed') {
-        throw new Error(
-          `Destructive named input is unavailable at ${childPath}. Use an authorized raw GraphQL mutation with LINEAR_MUTATIONS=all.`,
-        );
-      }
-      visit((current as Record<string, unknown>)[key], childPath);
+    for (const [key, child] of Object.entries(current)) {
+      const childPath = `${currentPath}.${redactText(key)}`;
+      if (key === 'trashed') reject(childPath);
+      visit(child, childPath);
     }
   };
 
-  visit(value, path);
+  // Parse once at the tool seam: only own enumerable JSON reaches the policy walk.
+  visit(parseJson(value), path);
 }
 
-function analyzeMutations(document: DocumentNode): { hasMutation: boolean; fields: string[] } {
+type MutationAnalysis = { hasMutation: boolean; fields: string[] };
+
+function analyzeMutations(document: DocumentNode): MutationAnalysis {
   const fragments = new Map(
     document.definitions
       .filter((definition) => definition.kind === Kind.FRAGMENT_DEFINITION)

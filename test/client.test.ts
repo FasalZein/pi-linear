@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { JsonObject } from '../extensions/json';
 import { promises as fs } from 'node:fs';
 import {
   resolveApiKey,
@@ -262,7 +263,7 @@ describe('linearGraphQL error surfacing', () => {
       },
     });
 
-    const data = await linearGraphQL('key', 'query { ready: issue { id title } missing: issue { id } }');
+    const data = await linearGraphQL<JsonObject>('key', 'query { ready: issue { id title } missing: issue { id } }');
     expect(data).toEqual({
       ready: { id: 'issue-1', title: 'Ready' },
       missing: null,
@@ -288,7 +289,7 @@ describe('linearGraphQL error surfacing', () => {
       },
     });
 
-    const data = await linearGraphQL('key', 'query { ready: issue { id } missing: issue { id } forbidden: issue { id } }');
+    const data = await linearGraphQL<JsonObject>('key', 'query { ready: issue { id } missing: issue { id } forbidden: issue { id } }');
     expect(data).toEqual({
       ready: { id: 'issue-1' },
       missing: null,
@@ -317,7 +318,7 @@ describe('linearGraphQL error surfacing', () => {
       },
     });
 
-    const data = await linearGraphQL('key', 'query { ready: issue { id title } broken: issue { assignee { name } } }');
+    const data = await linearGraphQL<JsonObject>('key', 'query { ready: issue { id title } broken: issue { assignee { name } } }');
     expect(data).toEqual({
       ready: { id: 'issue-1', title: 'Ready' },
       broken: null,
@@ -381,7 +382,7 @@ describe('linearGraphQL error surfacing', () => {
       },
     });
 
-    const data = await linearGraphQL(apiKey, 'query { ready: issue { id } missing: issue { id } }');
+    const data = await linearGraphQL<JsonObject>(apiKey, 'query { ready: issue { id } missing: issue { id } }');
     expect(linearGraphQLErrors(data)).toEqual([{ path: ['missing'], message: 'rejected [REDACTED]' }]);
     expect(JSON.stringify(linearGraphQLErrors(data))).not.toContain(apiKey);
   });

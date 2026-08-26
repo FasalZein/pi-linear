@@ -5,11 +5,9 @@ import { homedir } from 'node:os';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 import { activeSecrets } from './active-secrets';
 import { redactDeep } from './redact';
-import type { JsonObject } from './runtime';
+import { parseJson, type JsonObject, type JsonValue, type UnparsedJson } from './json';
 
-type JsonPrimitive = string | number | boolean | null;
-type JsonValue = JsonPrimitive | JsonRecord | JsonValue[];
-type JsonRecord = { [key: string]: JsonValue };
+type JsonRecord = JsonObject;
 type JsonInput = JsonValue | JsonObject;
 type RetrievalRequest = { handle?: JsonValue; path?: JsonValue; offset?: JsonValue; [key: string]: JsonValue | undefined };
 type ValidatedRetrievalRequest = { handle: string; path: string; offset: number };
@@ -101,18 +99,6 @@ function asObject(value: JsonInput | undefined): JsonRecord | undefined {
   return value !== null && value !== undefined && Object(value) === value && !Array.isArray(value) ? value as JsonRecord : undefined;
 }
 
-function parseJsonValue(cause: unknown): JsonValue {
-  if (cause === null || cause === true || cause === false) return cause;
-  const tag = Object.prototype.toString.call(cause);
-  if (tag === '[object String]') return cause as string;
-  if (tag === '[object Number]') return cause as number;
-  if (Array.isArray(cause)) return cause.map(parseJsonValue);
-  if (Object(cause) === cause) {
-    return Object.fromEntries(Object.entries(Object(cause)).map(([key, value]) => [key, parseJsonValue(value)])) as JsonRecord;
-  }
-  throw new Error('Invalid parameters for "get_result".');
-}
-
 function validEnvelope(value: JsonValue): value is JsonRecord {
   const envelope = asObject(value);
   if (!envelope || !Object.prototype.hasOwnProperty.call(envelope, 'data')) return false;
@@ -172,7 +158,8 @@ function selectPointer(root: JsonValue, pointer: string): JsonValue {
     }
     const object = asObject(selected);
     if (!object || !Object.prototype.hasOwnProperty.call(object, token)) throw new Error('Invalid JSON Pointer.');
-    selected = object[token];
+    // Parsed artifacts never store `undefined`, so an own property always carries JSON.
+    selected = object[token] ?? null;
   }
   return selected;
 }
@@ -329,8 +316,8 @@ export function validateGetResultVariables(variables: RetrievalRequest): Validat
   return { handle: handle as string, path: path as string, offset: assertOffset(object.offset) };
 }
 
-export async function getResult(cause: unknown): Promise<JsonObject> {
-  const variables = asObject(parseJsonValue(cause)) ?? {};
+export async function getResult(cause: UnparsedJson): Promise<JsonObject> {
+  const variables = asObject(parseJson(cause)) ?? {};
   const { handle, path, offset } = validateGetResultVariables(variables);
   const artifact = await readArtifact(handle);
   const selected = redactDeep(selectPointer(artifact, path), activeSecrets());

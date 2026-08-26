@@ -14,6 +14,8 @@ import {
   type LinearOperation,
   type OperationDomain,
 } from './operations';
+import { parseJson, parseJsonObject, type JsonValue, type UnparsedJson } from './json';
+import { isCompatibilityString } from './operation-types';
 import {
   assertOperationAllowed,
   executeRawQuery,
@@ -67,7 +69,7 @@ function canonicalFieldList(operation: LinearOperation): string {
 function validateVariables(
   operation: LinearOperation,
   requestedName: string,
-  variables: Record<string, unknown>,
+  variables: JsonObject,
 ): void {
   const variants = parameterVariants(operation, requestedName);
   const valid = new Set(variants.flatMap((variant) => variant.map(({ name }) => name)));
@@ -103,7 +105,7 @@ function validateVariables(
 export function resolveRequest(params: {
   operation?: string;
   query?: string;
-  variables?: Record<string, unknown>;
+  variables?: JsonObject;
 }, mode: MutationMode = 'allowlist'): { query: string; named: false } | { query: string; named: true; operation: LinearOperation } {
   try {
     if (Boolean(params.operation) === Boolean(params.query)) throw new Error(REQUEST_FORMS);
@@ -130,7 +132,7 @@ function activate(activator: ToolActivator | undefined, toolNames: string[]): Js
   return added.length ? { loadedTools: added } : {};
 }
 
-export function helpResult(variables: Record<string, unknown> = {}, activator?: ToolActivator): JsonObject {
+export function helpResult(variables: JsonObject = {}, activator?: ToolActivator): JsonObject {
   const keys = Object.keys(variables);
   if (!keys.length) {
     return {
@@ -150,13 +152,13 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
   const domain = variables.domain;
   const operationName = variables.operation;
   if (keys.length !== 1) throw new Error(`Invalid help request. ${HELP_FORMS}`);
-  if (typeof domain === 'string' && DEFINITION_DOMAINS.includes(domain as OperationDomain)) {
+  if (isCompatibilityString(domain) && DEFINITION_DOMAINS.includes(domain as OperationDomain)) {
     return {
       domain,
       operations: operationsForDomain(domain as OperationDomain).map(({ name }) => ({ name })),
     };
   }
-  if (typeof operationName === 'string') {
+  if (isCompatibilityString(operationName)) {
     if (operationName === 'graphql') return { ...activate(activator, ['linear_graphql']), ...LINEAR_GRAPHQL_HELP };
     if (operationName === 'batch') return { ...activate(activator, ['linear_batch']), ...LINEAR_BATCH_HELP };
     if (operationName === 'get_result') return GET_RESULT_HELP;
@@ -192,7 +194,7 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
   throw new Error(`Invalid help request. ${HELP_FORMS}`);
 }
 
-function telemetryMode(value: unknown): TelemetryMode | undefined {
+function telemetryMode(value: JsonValue | undefined): TelemetryMode | undefined {
   if (value === undefined) return undefined;
   if (value === 'always') return value;
   throw new Error('Invalid telemetry override. Use "always" or omit telemetry.');
@@ -203,19 +205,20 @@ function toolResult(details: JsonObject, secrets: readonly string[] = []) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(redacted) }], details: redacted };
 }
 
-async function retrieveResult(variables: unknown, secrets: readonly string[]) {
+async function retrieveResult(variables: UnparsedJson, secrets: readonly string[]) {
   return toolResult(await getResult(variables), secrets);
 }
 
 function directSchemaGuard(toolName: string, schema: TSchema) {
   let validator: ReturnType<typeof Compile> | undefined;
-  return (params: unknown): void => {
+  return (params: UnparsedJson): void => {
     validator ??= Compile(schema);
     if (validator.Check(params)) return;
     const problems = [...validator.Errors(params)]
       .slice(0, 3)
       .map((error) => {
-        const path = 'path' in error && typeof error.path === 'string' ? error.path : '';
+        const errorPath = 'path' in error ? parseJson(error.path ?? undefined) : undefined;
+        const path = isCompatibilityString(errorPath) ? errorPath : '';
         return path ? `${path}: ${error.message}` : error.message;
       })
       .join('; ');
@@ -233,9 +236,9 @@ export function linearGetResultTool(definition = exceptionalToolDefinitions[0]) 
     label: 'Linear get result',
     description: definition.purpose,
     parameters: definition.parameters,
-    prepareArguments: (args: unknown) => {
+    prepareArguments: (args) => {
       try {
-        assertSchema(args);
+        assertSchema(args ?? undefined);
         return args as any;
       } catch (error) {
         throw redactError(error, activeSecrets());
@@ -306,9 +309,9 @@ export function linearGraphqlTool(
     label: 'Linear GraphQL',
     description: definition.purpose,
     parameters: definition.parameters,
-    prepareArguments: (args: unknown) => {
+    prepareArguments: (args) => {
       try {
-        assertSchema(args);
+        assertSchema(args ?? undefined);
         return args as any;
       } catch (error) {
         throw redactError(error, activeSecrets());
@@ -356,9 +359,9 @@ export function linearBatchTool(
     label: 'Linear batch',
     description: definition.purpose,
     parameters: definition.parameters,
-    prepareArguments: (args: unknown) => {
+    prepareArguments: (args) => {
       try {
-        assertSchema(args);
+        assertSchema(args ?? undefined);
         return args as any;
       } catch (error) {
         throw redactError(error, activeSecrets());
@@ -393,9 +396,9 @@ export function linearBatchTool(
   });
 }
 
-function removedLoaderRouteError(params: unknown): Error | undefined {
-  if (!params || typeof params !== 'object' || Array.isArray(params)) return undefined;
-  const request = params as Record<string, unknown>;
+function removedLoaderRouteError(params: UnparsedJson): Error | undefined {
+  const request = parseJsonObject(params);
+  if (!request) return undefined;
   if (Object.prototype.hasOwnProperty.call(request, 'query')) {
     return new Error('Raw GraphQL cannot run through linear. Call linear_graphql with direct arguments.');
   }
@@ -406,7 +409,7 @@ function removedLoaderRouteError(params: unknown): Error | undefined {
     return new Error('Result retrieval cannot run through linear. Call linear_get_result with direct arguments.');
   }
   if (request.operation === 'help' || request.operation === undefined) return undefined;
-  if (typeof request.operation === 'string') {
+  if (isCompatibilityString(request.operation)) {
     try {
       const toolName = typedToolName(getOperation(request.operation).name);
       return new Error(`Named operations cannot run through linear. Call ${toolName} with direct arguments.`);
@@ -426,7 +429,7 @@ export function linearApiTool(_mode: MutationMode = 'allowlist', activator?: Too
     ])),
   }, { additionalProperties: false });
   const assertSchema = directSchemaGuard('linear', parameters);
-  const assertArguments = (params: unknown) => {
+  const assertArguments = (params: UnparsedJson) => {
     const compatibilityError = removedLoaderRouteError(params);
     if (compatibilityError) throw compatibilityError;
     assertSchema(params);
@@ -437,8 +440,8 @@ export function linearApiTool(_mode: MutationMode = 'allowlist', activator?: Too
     label: 'Linear',
     description: LINEAR_TOOL_DESCRIPTION,
     parameters,
-    prepareArguments: (args: unknown) => {
-      assertArguments(args);
+    prepareArguments: (args) => {
+      assertArguments(args ?? undefined);
       return args as any;
     },
     renderCall: renderLinearApiCall,

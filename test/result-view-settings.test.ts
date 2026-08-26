@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getOperation } from '../extensions/operations';
 import { operationRenderers, renderLinearApiResult } from '../extensions/renderers';
-import type { JsonObject } from '../extensions/runtime';
+
 import {
   applyDefaultOutputFormat,
   getDefaultJsonView,
@@ -53,11 +53,13 @@ function result<T>(details: T) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(details) }], details } as any;
 }
 
+type RenderContext = { toolCallId?: string; invalidate?: () => void };
+
 function render<T>(
   operation: string,
   details: T,
   options: { expanded?: boolean } = {},
-  context: JsonObject = {},
+  context: RenderContext = {},
 ) {
   return operationRenderers(getOperation(operation)).renderResult(
     result(details),
