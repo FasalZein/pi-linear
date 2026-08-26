@@ -16,6 +16,21 @@ import {
 import { DOMAINS, getOperation, operationDocuments, operations } from '../extensions/operations';
 import { executeOperation } from '../extensions/runtime';
 import { isolateLinearCredentials } from './helpers/credentials';
+import { parseJsonObject, type JsonObject, type JsonValue } from '../extensions/json';
+import { isCompatibilityObject, isCompatibilityString } from '../extensions/operation-types';
+
+type GraphQLRequest = { query: string; variables: JsonObject };
+
+function parseGraphQLRequest(body: BodyInit | null | undefined): GraphQLRequest {
+  const request = parseJsonObject(JSON.parse(String(body)));
+  const query = request?.query;
+  if (!isCompatibilityString(query)) throw new Error('Test transport received a request without a query.');
+  return { query, variables: parseJsonObject(request?.variables) ?? {} };
+}
+
+function mutationInput(variables: JsonObject): JsonObject {
+  return isCompatibilityObject(variables.input) ? variables.input : {};
+}
 
 isolateLinearCredentials();
 
@@ -200,7 +215,7 @@ describe('named operations', () => {
 });
 
 describe('runtime discovery', () => {
-  function execute(tool: any, params: Record<string, unknown>) {
+  function execute(tool: any, params: JsonObject) {
     return tool.execute('call-1', params, undefined, undefined, { hasUI: false });
   }
 
@@ -353,24 +368,20 @@ describe('reference preparation pipeline', () => {
   const TEAM_ID = '33333333-3333-4333-8333-333333333333';
   const STATE_ID = '44444444-4444-4444-8444-444444444444';
 
-  function execute(tool: any, params: Record<string, unknown>) {
-    return tool.execute('call-1', params, undefined, undefined, { hasUI: false });
-  }
-
   function installGraphqlServer() {
-    const requests: Array<{ query: string; variables: Record<string, unknown> }> = [];
+    const requests: GraphQLRequest[] = [];
     const fetch = vi.fn(async (_url: string, init: RequestInit) => {
-      const request = JSON.parse(String(init.body)) as { query: string; variables: Record<string, unknown> };
+      const request = parseGraphQLRequest(init.body);
       requests.push(request);
       const { query, variables } = request;
-      const resolvedIssue = (value: unknown) => {
+      const resolvedIssue = (value: JsonValue | undefined) => {
         const raw = String(value);
         if (raw === RELATED_ID || /^AEO-259$/i.test(raw)) {
           return { id: RELATED_ID, identifier: 'AEO-259', team: { id: TEAM_ID, key: 'AEO' } };
         }
         return { id: ISSUE_ID, identifier: /^AEO-\d+$/i.test(raw) ? raw.toUpperCase() : 'AEO-258', team: { id: TEAM_ID, key: 'AEO' } };
       };
-      let data: Record<string, unknown>;
+      let data: JsonObject;
       if (query.includes('ResolveIssueById')) {
         data = { issue: resolvedIssue(variables.id) };
       } else if (query.includes('ResolveStateByName')) {
@@ -378,9 +389,9 @@ describe('reference preparation pipeline', () => {
       } else if (query.includes('ResolveStateById')) {
         data = { workflowState: { id: STATE_ID, name: 'Backlog', team: { id: TEAM_ID } } };
       } else if (query.includes('mutation CreateComment')) {
-        data = { commentCreate: { success: true, comment: { id: 'comment-1', body: (variables.input as any).body } } };
+        data = { commentCreate: { success: true, comment: { id: 'comment-1', body: mutationInput(variables).body ?? null } } };
       } else if (query.includes('mutation CreateIssueRelation')) {
-        data = { issueRelationCreate: { success: true, issueRelation: { id: 'relation-1', type: (variables.input as any).type } } };
+        data = { issueRelationCreate: { success: true, issueRelation: { id: 'relation-1', type: mutationInput(variables).type ?? null } } };
       } else if (query.includes('mutation UpdateIssue')) {
         data = { issueUpdate: { success: true, issue: resolvedIssue(variables.id) } };
       } else {

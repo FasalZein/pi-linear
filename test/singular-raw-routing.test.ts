@@ -7,6 +7,12 @@ import { linearGetResultTool, linearGraphqlTool } from '../extensions/api';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
 import { executeTyped } from './helpers/typed-execution';
+import { parseJsonObject, type JsonObject } from '../extensions/json';
+import { isCompatibilityString } from '../extensions/operation-types';
+
+type RawRequest = { query: string; sink?: 'inline' | 'artifact' };
+type NamedRequest = { operation: string; variables?: JsonObject; workspace?: string };
+type ToolRequest = RawRequest | NamedRequest;
 
 isolateLinearCredentials();
 
@@ -21,8 +27,8 @@ async function useArtifactRoot() {
   process.env.PI_ARTIFACT_PROJECT_ROOT = root;
 }
 
-function execute(params: Record<string, any>) {
-  if (params.query) {
+function execute(params: ToolRequest) {
+  if ('query' in params) {
     return (linearGraphqlTool() as any).execute('call-1', params, undefined, undefined, { hasUI: false });
   }
   if (params.operation === 'get_result') {
@@ -31,14 +37,15 @@ function execute(params: Record<string, any>) {
   return executeTyped(params.operation, params.variables, { workspace: params.workspace });
 }
 
-function installServer(respond: (query: string, variables: Record<string, unknown>) => {
-  data?: Record<string, unknown>;
+function installServer(respond: (query: string, variables: JsonObject) => {
+  data?: JsonObject;
   errors?: Array<{ path?: Array<string | number>; message: string }>;
 }) {
   process.env.LINEAR_API_KEY = 'lin_api_active_secret_123456789';
   vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
-    const request = JSON.parse(String(init.body)) as { query: string; variables: Record<string, unknown> };
-    return new Response(JSON.stringify(respond(request.query, request.variables)), {
+    const request = parseJsonObject(JSON.parse(String(init.body))) ?? {};
+    if (!isCompatibilityString(request.query)) throw new Error('Test transport received a request without a query.');
+    return new Response(JSON.stringify(respond(request.query, parseJsonObject(request.variables) ?? {})), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -187,11 +194,14 @@ describe('lossless raw GraphQL routing', () => {
       errors: [{ path: ['organization'], message: `Unavailable ${secret}` }],
     }));
 
-    const call = await execute({ query: 'query { viewer { id name } organization { id } }', ...(sink ? { sink } : {}) });
+    const query = 'query { viewer { id name } organization { id } }';
+    const call = await execute(sink ? { query, sink } : { query });
     const envelope = call.details.handle ? (await recovered(call.details)).data.value : call.details;
 
     expect(envelope.data).toEqual({ viewer: { id: 'me', name: 'Ada [REDACTED]' }, organization: null });
     expect(envelope.errors).toEqual([{ path: ['organization'], message: 'Unavailable [REDACTED]' }]);
+    // The serialized envelope keeps its published key order for every sink.
+    expect(Object.keys(envelope)).toEqual(['data', 'errors', 'meta']);
   });
 
   it('keeps every raw node when forced inline', async () => {

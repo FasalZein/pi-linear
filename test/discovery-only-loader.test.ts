@@ -16,8 +16,9 @@ vi.mock('../extensions/result-handles', async (importOriginal) => ({
 }));
 
 import { linearApiTool } from '../extensions/api';
+import type { JsonObject } from '../extensions/json';
 
-function execute(params: Record<string, unknown>) {
+function execute(params: JsonObject) {
   return (linearApiTool() as any).execute('call-1', params, undefined, undefined, { hasUI: false });
 }
 

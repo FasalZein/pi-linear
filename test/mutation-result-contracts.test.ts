@@ -4,6 +4,8 @@ import { operationDocuments, operations } from '../extensions/operations';
 import { executeOperation, validateMutationResult } from '../extensions/runtime';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
+import { parseJsonObject, type JsonObject } from '../extensions/json';
+import { isCompatibilityString } from '../extensions/operation-types';
 
 isolateLinearCredentials();
 
@@ -200,10 +202,9 @@ describe('shared mutation response validation', () => {
       const mutationDocuments: string[] = [];
       const mutationRoots: string[] = [];
       vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
-        const request = JSON.parse(String(init.body)) as {
-          query: string;
-          variables: Record<string, unknown>;
-        };
+        const request = parseJsonObject(JSON.parse(String(init.body))) ?? {};
+        if (!isCompatibilityString(request.query)) throw new Error('Test transport received a request without a query.');
+        const requestVariables = parseJsonObject(request.variables) ?? {};
         const definition = parse(request.query).definitions.find(
           (value) => value.kind === Kind.OPERATION_DEFINITION,
         );
@@ -222,7 +223,7 @@ describe('shared mutation response validation', () => {
           : undefined;
         const rootName = root?.kind === Kind.FIELD ? root.name.value : 'unknown';
         return new Response(JSON.stringify({
-          data: { [rootName]: { id: request.variables.id, name: 'Resolved' } },
+          data: { [rootName]: { id: requestVariables.id ?? null, name: 'Resolved' } },
         }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -249,7 +250,7 @@ describe('shared mutation response validation', () => {
     relatedAnchorType: 'project',
   };
 
-  function installFailure(payload: Record<string, unknown>) {
+  function installFailure(payload: JsonObject) {
     process.env.LINEAR_API_KEY = 'test-key';
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ data: payload }), {
       status: 200,

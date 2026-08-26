@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { linearApiTool, linearGraphqlTool } from '../extensions/api';
+import { linearGraphqlTool } from '../extensions/api';
+import { parseJsonObject, type JsonValue } from '../extensions/json';
 import { createLinearHarness, execute } from './helpers/provider-harness';
 import { isolateLinearCredentials } from './helpers/credentials';
 
@@ -85,10 +86,10 @@ describe('direct raw GraphQL tool', () => {
 
   it('executes the direct raw read with unchanged routing', async () => {
     process.env.LINEAR_API_KEY = 'test-key';
-    const requests: Array<{ query: string; variables: Record<string, unknown>; authorization: string | null }> = [];
+    const requests: Array<{ query: JsonValue | undefined; variables: JsonValue | undefined; authorization: string | null }> = [];
     const fetch = vi.fn(async (_url: string, init: RequestInit) => {
-      const body = JSON.parse(String(init.body));
-      requests.push({ ...body, authorization: new Headers(init.headers).get('Authorization') });
+      const body = parseJsonObject(JSON.parse(String(init.body))) ?? {};
+      requests.push({ query: body.query, variables: body.variables, authorization: new Headers(init.headers).get('Authorization') });
       return new Response(JSON.stringify({
         data: { me: { id: 'user-1', name: 'Ada' }, failed: null },
         errors: [{ message: 'Issue not found', path: ['failed', 'name'] }],

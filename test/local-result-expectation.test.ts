@@ -6,6 +6,7 @@
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { JsonObject, UnparsedJson } from '../extensions/json';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import contracts from '../extensions/generated/operation-contracts.json';
 import { getOperationDefinition, operationDefinitions, operations } from '../extensions/operations';
@@ -16,7 +17,7 @@ import { operationRenderers } from '../extensions/renderers';
 const originalEnvironment = { ...process.env };
 let agentDirectory: string;
 
-async function writeCredentialFile(value: unknown) {
+async function writeCredentialFile(value: UnparsedJson) {
   const directory = join(agentDirectory, 'extensions', 'linear');
   await mkdir(directory, { recursive: true });
   await writeFile(join(directory, 'credentials.json'), JSON.stringify(value));
@@ -104,7 +105,7 @@ describe('runtime local result validation', () => {
 describe('public surfaces', () => {
   const typed = new Map(typedLinearTools().map((entry) => [entry.name, entry]));
 
-  function execute(entry: any, params: Record<string, unknown>) {
+  function execute(entry: any, params: JsonObject) {
     return entry.execute('call-1', params, undefined, undefined, { hasUI: false });
   }
 

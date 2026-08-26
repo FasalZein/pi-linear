@@ -11,6 +11,8 @@ import {
 } from '../extensions/client';
 import { linearApiTool, linearBatchTool, linearGraphqlTool } from '../extensions/api';
 import { getResult } from '../extensions/result-handles';
+import { parseJsonObject, type JsonObject } from '../extensions/json';
+import { isCompatibilityString } from '../extensions/operation-types';
 import {
   executeOperationInContext,
   executeRawQuery,
@@ -35,25 +37,23 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
-function executeBatchLegacy(params: Record<string, unknown>, ..._unused: unknown[]) {
+function executeBatchLegacy(params: JsonObject, ..._unused: unknown[]) {
   const { operation: _operation, variables, ...direct } = params;
   return (linearBatchTool() as any).execute(
     'call-1',
-    { ...(variables as Record<string, unknown>), ...direct },
+    { ...parseJsonObject(variables), ...direct },
     undefined,
     undefined,
     { hasUI: false },
   );
 }
 
-function response(status: number, body: unknown, headers: Record<string, string> = {}) {
-  return {
-    ok: status >= 200 && status < 300,
+function response(status: number, body: JsonObject, headers: Record<string, string> = {}): Response {
+  return new Response(JSON.stringify(body), {
     status,
     statusText: status === 429 ? 'Too Many Requests' : status === 400 ? 'Bad Request' : 'OK',
-    headers: new Headers(headers),
-    json: async () => body,
-  };
+    headers,
+  });
 }
 
 const completeHeaders = {
@@ -100,7 +100,7 @@ describe('Linear rate-limit header telemetry', () => {
 
   it('keeps normal response telemetry internal and non-enumerable', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => response(200, { data: { viewer: { id: 'user-1' } } }, completeHeaders)));
-    const data = await linearGraphQL<Record<string, unknown>>('key', 'query { viewer { id } }');
+    const data = await linearGraphQL<JsonObject>('key', 'query { viewer { id } }');
 
     expect(data).toEqual({ viewer: { id: 'user-1' } });
     expect(JSON.stringify(data)).toBe('{"viewer":{"id":"user-1"}}');
@@ -133,7 +133,7 @@ describe('Linear rate-limit header telemetry', () => {
     const transport = vi.fn(async () => response(429, {}, { 'Retry-After': '60' }));
     const request = linearGraphQLWithContext({
       credential: { apiKey: 'key', source: 'env' },
-      transport: transport as unknown as typeof fetch,
+      transport,
       telemetry: [],
       signal: controller.signal,
     }, 'query { viewer { id } }');
@@ -156,7 +156,7 @@ describe('Linear rate-limit header telemetry', () => {
       }));
     vi.stubGlobal('fetch', fetch);
 
-    const data = await linearGraphQL<Record<string, unknown>>('key', 'query { viewer { id } }');
+    const data = await linearGraphQL<JsonObject>('key', 'query { viewer { id } }');
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(linearRateLimitTelemetry(data)).toEqual([
       { attempt: 1, headers: { 'X-RateLimit-Requests-Remaining': 0, 'Retry-After': '0' } },
@@ -240,13 +240,13 @@ describe('model-facing budget warnings', () => {
       return response(200, { data: { customView: { id: 'view-1', name: 'Direct' } } }, {
         'X-RateLimit-Endpoint-Name': 'direct-only',
       });
-    }) as unknown as typeof fetch;
+    });
     const rawTransport = vi.fn(async () => {
       await awaitBoth();
       return response(200, { data: { viewer: { id: 'raw-user' } } }, {
         'X-RateLimit-Endpoint-Name': 'raw-only',
       });
-    }) as unknown as typeof fetch;
+    });
     const ctx = { hasUI: false } as any;
     const directCall = linearCallContext('allowlist', undefined, ctx, { telemetryMode: 'always' });
     const rawCall = linearCallContext('allowlist', undefined, ctx, { telemetryMode: 'always' });
@@ -271,8 +271,9 @@ describe('model-facing budget warnings', () => {
   it('keeps ordinary direct lookup telemetry free of batch phase labels', async () => {
     process.env.LINEAR_API_KEY = 'lin_api_lookup_telemetry';
     const transport = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
-      const body = JSON.parse(String(init?.body)) as { query: string };
-      if (body.query.includes('ResolveTeamByKey')) {
+      const body = parseJsonObject(JSON.parse(String(init?.body))) ?? {};
+      const query = isCompatibilityString(body.query) ? body.query : '';
+      if (query.includes('ResolveTeamByKey')) {
         return response(200, { data: { teams: { nodes: [{ id: 'team-1', key: 'AEO' }] } } }, {
           'X-RateLimit-Endpoint-Name': 'lookup',
         });
@@ -280,7 +281,7 @@ describe('model-facing budget warnings', () => {
       return response(200, { data: { team: { id: 'team-1', key: 'AEO', name: 'AEO' } } }, {
         'X-RateLimit-Endpoint-Name': 'final',
       });
-    }) as unknown as typeof fetch;
+    });
     const call = linearCallContext('allowlist', undefined, { hasUI: false } as any, { telemetryMode: 'always' });
 
     const result = await executeOperationInContext(
@@ -398,7 +399,7 @@ describe('model-facing budget warnings', () => {
         : { viewer: { id: 'user-1' } };
       return response(200, { data }, { 'X-RateLimit-Requests-Remaining': '1' });
     }));
-    const execute = (tool: any, params: Record<string, unknown>) =>
+    const execute = (tool: any, params: JsonObject) =>
       tool.execute('call-1', params, undefined, undefined, { hasUI: false });
 
     const raw = await execute(linearGraphqlTool(), { query: 'query { viewer { id } }' });
@@ -454,7 +455,7 @@ describe('model-facing budget warnings', () => {
         reads: [{ key: 'read', operation: 'get_issue', variables: { issue: issue.id } }],
         mutations: [{ key: 'change', operation: 'update_issue', variables: { issue: issue.id, title: 'Updated' } }],
       },
-    }, undefined, undefined, { hasUI: false }).catch((failure: unknown) => failure);
+    }, undefined, undefined, { hasUI: false }).catch((cause: unknown) => cause);
 
     expect(linearErrorTelemetry(error)).toEqual([
       { phase: 'read', attempt: 1, headers: { 'X-RateLimit-Endpoint-Name': 'batch-read' } },
@@ -510,7 +511,7 @@ describe('model-facing budget warnings', () => {
 
   it('supports explicit telemetry on raw queries without passing the loader field to GraphQL', async () => {
     process.env.LINEAR_API_KEY = 'lin_api_secret1234';
-    const fetch = vi.fn(async (_url: string, init: RequestInit) => response(200, {
+    const fetch = vi.fn(async (_url: string, _init: RequestInit) => response(200, {
       data: { viewer: { id: 'user-1' } },
     }, {
       'X-RateLimit-Requests-Remaining': '1499',

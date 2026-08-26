@@ -5,6 +5,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { linearGraphqlTool } from "../extensions/api";
 import { writeCredentials } from "../extensions/client";
 import { executeTyped } from "./helpers/typed-execution";
+import { parseJsonObject, type JsonObject } from "../extensions/json";
+import { isCompatibilityString } from "../extensions/operation-types";
 
 const ISSUE_ID = "11111111-1111-4111-8111-111111111111";
 const TEAM_ID = "22222222-2222-4222-8222-222222222222";
@@ -14,8 +16,18 @@ const originalMutations = process.env.LINEAR_MUTATIONS;
 const originalPiDir = process.env.PI_CODING_AGENT_DIR;
 const temporaryDirectories: string[] = [];
 
-function execute(params: Record<string, any>) {
-	if (params.query) {
+type LoaderRequest =
+	| { query: string; variables?: JsonObject; sink?: "inline" | "artifact" }
+	| { operation: string; variables?: JsonObject; workspace?: string };
+
+function requestQuery(body: BodyInit | null | undefined): string {
+	const request = parseJsonObject(JSON.parse(String(body)));
+	if (!isCompatibilityString(request?.query)) throw new Error("Test transport received a request without a query.");
+	return request.query;
+}
+
+function execute(params: LoaderRequest) {
+	if ("query" in params) {
 		return (linearGraphqlTool() as any).execute("call", params, undefined, undefined, { hasUI: false });
 	}
 	return executeTyped(params.operation, params.variables, { workspace: params.workspace });
@@ -35,12 +47,8 @@ afterEach(async () => {
 describe("post-change blind regression replay", () => {
 	it("replays named calls without weakening raw mutation safety", async () => {
 		const fetch = vi.fn(async (_url: string, init: RequestInit) => {
-			const request = JSON.parse(String(init.body)) as {
-				query: string;
-				variables: Record<string, unknown>;
-			};
-			const { query, variables } = request;
-			let data: Record<string, unknown>;
+			const query = requestQuery(init.body);
+			let data: JsonObject;
 			if (query.includes("ResolveIssueById")) {
 				data = {
 					issue: { id: ISSUE_ID, identifier: "AEO-266", team: { id: TEAM_ID, key: "AEO" } },
@@ -77,11 +85,12 @@ describe("post-change blind regression replay", () => {
 		await execute({ operation: "get_issue", variables: { issue: "AEO-266" }, workspace: "default" });
 		await execute({ operation: "update_issue", variables: { issue: "AEO-266", state: "Backlog" } });
 
-		const requests = fetch.mock.calls.map(([, init]) => JSON.parse(String((init as RequestInit).body)));
-		const update = requests.find(({ query }) => query.includes("mutation UpdateIssue"));
-		expect(update.query).toContain("issueUpdate(id: $id, input: $input)");
-		expect(update.variables).toEqual({ id: "AEO-266", input: { stateId: STATE_ID } });
-		expect((fetch.mock.calls[0]?.[1] as RequestInit).headers).toMatchObject({ Authorization: "active-key" });
+		const requests = fetch.mock.calls.map(([, init]) => parseJsonObject(JSON.parse(String((init as RequestInit).body))) ?? {});
+		const update = requests.find((request) => isCompatibilityString(request.query) && request.query.includes("mutation UpdateIssue"));
+		expect(update?.query).toContain("issueUpdate(id: $id, input: $input)");
+		expect(update?.variables).toEqual({ id: "AEO-266", input: { stateId: STATE_ID } });
+		const [, firstInit] = fetch.mock.calls[0] ?? [];
+		expect((firstInit as RequestInit | undefined)?.headers).toMatchObject({ Authorization: "active-key" });
 
 		delete process.env.LINEAR_MUTATIONS;
 		await expect(execute({

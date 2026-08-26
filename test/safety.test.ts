@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { assertMutationAllowed, assertNamedInputAllowed, getMutationFields } from '../extensions/safety';
+import type { JsonObject } from '../extensions/json';
 
 afterEach(() => {
   delete process.env.LINEAR_MUTATIONS;
@@ -18,7 +19,7 @@ describe('named input policy', () => {
   });
 
   it('inspects only own enumerable string keys', () => {
-    const inherited = Object.create({ trashed: true }) as Record<string, unknown>;
+    const inherited: JsonObject = Object.create({ trashed: true });
     Object.defineProperty(inherited, 'hidden', { value: { trashed: true }, enumerable: false });
     inherited.body = 'ordinary trashed text';
 
