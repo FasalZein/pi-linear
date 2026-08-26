@@ -77,6 +77,23 @@ describe('named Result details', () => {
       summary: '{}',
     });
   });
+
+  it('summarises only decoded JSON when details contain unsupported values or cycles', () => {
+    type CyclicDetails = { label: string; self?: CyclicDetails };
+    const cyclic: CyclicDetails = { label: 'cycle' };
+    cyclic.self = cyclic;
+
+    for (const cause of [() => 'unsupported', Symbol('unsupported')]) {
+      expect(parseResultDetails(cause, { kind: 'named', expectedRoots: ['issue'] })).toEqual({
+        kind: 'unknown',
+        summary: '{}',
+      });
+    }
+    expect(parseResultDetails(cyclic, { kind: 'named', expectedRoots: ['issue'] })).toEqual({
+      kind: 'unknown',
+      summary: '{"label":"cycle"}',
+    });
+  });
 });
 
 describe('Batch Result details', () => {

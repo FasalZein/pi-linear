@@ -1,4 +1,4 @@
-import { isJsonObject, parseJsonObject, type JsonObject, type JsonValue } from '../json';
+import { isJsonObject, parseJson, type JsonObject, type JsonValue } from '../json';
 import { cleanOneLine } from './common';
 import type { Entity } from './entities';
 
@@ -243,7 +243,11 @@ function parseSpill(details: JsonObject): SpillResultDetails | undefined {
   };
 }
 
-function parseNamed(details: JsonObject, expectedRoots: readonly string[], cause: unknown): NamedResultDetails {
+function fallbackSummary(value: JsonValue | undefined): string {
+  return cleanOneLine(JSON.stringify(value ?? {}) ?? '{}');
+}
+
+function parseNamed(details: JsonObject, expectedRoots: readonly string[], fallback: JsonValue | undefined): NamedResultDetails {
   const notes = metaNotes(details);
   const view = resultView(details);
   const target = resolutionTarget(details);
@@ -256,7 +260,7 @@ function parseNamed(details: JsonObject, expectedRoots: readonly string[], cause
   if (!record) {
     const active = asString(details.active);
     if (active) return { kind: 'workspace', active };
-    return { kind: 'unknown', summary: cleanOneLine(JSON.stringify(cause ?? {})) };
+    return { kind: 'unknown', summary: fallbackSummary(fallback) };
   }
   if (Array.isArray(record.nodes)) {
     const entities = record.nodes.flatMap((node) => {
@@ -341,7 +345,7 @@ function parseRaw(details: JsonObject): RawCompleteDetails {
   };
 }
 
-function parseHelp(details: JsonObject, cause: unknown): HelpResultDetails {
+function parseHelp(details: JsonObject, fallback: JsonValue | undefined): HelpResultDetails {
   const loaded = loadedTools(details);
   if (Array.isArray(details.domains)) {
     return { kind: 'help-domains', domains: displayEntries(details.domains), loaded };
@@ -370,7 +374,7 @@ function parseHelp(details: JsonObject, cause: unknown): HelpResultDetails {
       loaded,
     };
   }
-  return { kind: 'unknown', summary: cleanOneLine(JSON.stringify(cause ?? {})) };
+  return { kind: 'unknown', summary: fallbackSummary(fallback) };
 }
 
 export function parseResultDetails(cause: unknown, surface: Extract<ResultSurface, { kind: 'named' }>): NamedResultDetails;
@@ -379,12 +383,13 @@ export function parseResultDetails(cause: unknown, surface: Extract<ResultSurfac
 export function parseResultDetails(cause: unknown, surface: Extract<ResultSurface, { kind: 'raw' }>): RawResultDetails;
 export function parseResultDetails(cause: unknown, surface: Extract<ResultSurface, { kind: 'help' }>): HelpResultDetails;
 export function parseResultDetails(cause: unknown, surface: ResultSurface): ResultDetails {
-  const details = parseJsonObject(cause) ?? {};
+  const parsed = parseJson(cause);
+  const details = asObject(parsed) ?? {};
   if (surface.kind === 'retrieval') return parseRetrieval(details);
-  if (surface.kind === 'help') return parseHelp(details, cause);
+  if (surface.kind === 'help') return parseHelp(details, parsed);
   const spill = parseSpill(details);
   if (spill) return spill;
   if (surface.kind === 'batch') return parseBatch(details);
   if (surface.kind === 'raw') return parseRaw(details);
-  return parseNamed(details, surface.expectedRoots, cause);
+  return parseNamed(details, surface.expectedRoots, parsed);
 }
