@@ -1,5 +1,5 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { isJsonObject, type JsonObject, type JsonValue, type UnparsedJson } from "./json";
+import { isJsonObject, type JsonObject, type JsonValue } from "./json";
 import type { CanonicalOperation } from "./canonical-schema";
 import type { ResultView } from "./selections";
 import type { MutationMode } from "./safety";
@@ -129,7 +129,7 @@ export type ParsedOperationPlanFactory = (
 	variables: CompatibilityObject,
 ) => OperationPlan | Promise<OperationPlan>;
 export type OperationPlanFactory = (
-	variables: UnparsedJson,
+	variables: JsonValue | undefined,
 ) => OperationPlan | Promise<OperationPlan>;
 
 export type PaginationMetadata = {
@@ -161,15 +161,15 @@ export type LinearOperation = {
 	pagination?: PaginationMetadata;
 	resolverPaths?: Readonly<{ [name: string]: string }>;
 	requiresVariables?: boolean;
-	validateVariables?: (variables: UnparsedJson) => void;
+	validateVariables?: (variables: JsonValue | undefined) => void;
 	/** Pure operation planning for direct and batch execution. */
 	plan?: OperationPlanFactory;
-	/** The result is produced in this process, so the runtime parses it before it is routed. */
+	/** A declared result is not proof: the runtime parses it before it is redacted or routed. */
 	executeLocal?: (
-		variables: UnparsedJson,
+		variables: JsonValue | undefined,
 		ctx: ExtensionContext,
 		mode: MutationMode,
-	) => Promise<UnparsedJson>;
+	) => Promise<JsonObject>;
 	/** Required whenever `executeLocal` is set. */
 	localResult?: LocalResultExpectation;
 	/**

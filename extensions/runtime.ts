@@ -22,7 +22,7 @@ import {
   type OperationPlan,
   type ResultCategory,
 } from './operation-types';
-import { parseJson, type JsonObject, type JsonValue, type UnparsedJson } from './json';
+import { parseJson, type JsonObject, type JsonValue } from './json';
 import type { LinearOperation } from './operations';
 import { resolveOperationPlan, verifyOperationResult } from './operation-plan';
 import type { ResultView } from './selections';
@@ -434,7 +434,7 @@ function valueAtPath(value: JsonValue | undefined, path: string): JsonValue | un
  */
 export function parseLocalResult(
   operationName: string,
-  data: UnparsedJson,
+  cause: unknown,
   expectation: LocalResultExpectation | undefined,
 ): JsonObject {
   const fail = (path: string, expected: string): never => {
@@ -445,7 +445,7 @@ export function parseLocalResult(
   if (!expectation) {
     throw new Error(`Linear operation "${operationName}" ran locally without a result expectation.`);
   }
-  const parsed = parseJson(data);
+  const parsed = parseJson(cause);
   if (!isCompatibilityObject(parsed)) return fail('result', 'an object');
   for (const path of expectation.requiredStringPaths) {
     const value = valueAtPath(parsed, path);

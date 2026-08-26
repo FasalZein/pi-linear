@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { parse, type OperationDefinitionNode } from 'graphql';
 import { registerLinearExtension } from '../extensions/index';
 import { linearGraphQL, resolveApiKey } from '../extensions/client';
-import { parseJsonObject, type JsonObject, type JsonValue, type UnparsedJson } from '../extensions/json';
+import { parseJsonObject, type JsonObject, type JsonValue } from '../extensions/json';
 import {
   isCompatibilityBoolean,
   isCompatibilityObject,
@@ -30,7 +30,7 @@ type SmokeTool = {
     signal: undefined,
     onUpdate: undefined,
     ctx: ReturnType<typeof fakeContext>,
-  ) => Promise<UnparsedJson>;
+  ) => Promise<unknown>;
 };
 
 type SmokeToolResult = {

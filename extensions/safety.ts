@@ -1,5 +1,5 @@
 import { Kind, parse, type DocumentNode, type SelectionSetNode } from 'graphql';
-import { parseJson, type JsonValue, type UnparsedJson } from './json';
+import { parseJson, type JsonValue } from './json';
 import { isCompatibilityObject } from './operation-types';
 import { SAFE_NAMED_MUTATION_ROOTS } from './operations';
 import { redactText } from './redact';
@@ -7,7 +7,7 @@ import { redactText } from './redact';
 export { SAFE_NAMED_MUTATION_ROOTS } from './operations';
 export type MutationMode = 'allowlist' | 'readonly';
 
-export function assertNamedInputAllowed(value: UnparsedJson, path = 'variables'): void {
+export function assertNamedInputAllowed(value: JsonValue | undefined, path = 'variables'): void {
   const reject = (childPath: string): never => {
     throw new Error(
       `Destructive named input is unavailable at ${childPath}. Use an authorized raw GraphQL mutation with LINEAR_MUTATIONS=all.`,

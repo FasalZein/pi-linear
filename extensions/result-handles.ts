@@ -5,7 +5,7 @@ import { homedir } from 'node:os';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 import { activeSecrets } from './active-secrets';
 import { redactDeep } from './redact';
-import { parseJson, type JsonObject, type JsonValue, type UnparsedJson } from './json';
+import { parseJson, type JsonObject, type JsonValue } from './json';
 
 type JsonRecord = JsonObject;
 type JsonInput = JsonValue | JsonObject;
@@ -316,7 +316,7 @@ export function validateGetResultVariables(variables: RetrievalRequest): Validat
   return { handle: handle as string, path: path as string, offset: assertOffset(object.offset) };
 }
 
-export async function getResult(cause: UnparsedJson): Promise<JsonObject> {
+export async function getResult(cause: unknown): Promise<JsonObject> {
   const variables = asObject(parseJson(cause)) ?? {};
   const { handle, path, offset } = validateGetResultVariables(variables);
   const artifact = await readArtifact(handle);

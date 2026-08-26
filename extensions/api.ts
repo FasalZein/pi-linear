@@ -14,7 +14,7 @@ import {
   type LinearOperation,
   type OperationDomain,
 } from './operations';
-import { parseJson, parseJsonObject, type JsonValue, type UnparsedJson } from './json';
+import { parseJson, parseJsonObject, type JsonValue } from './json';
 import { isCompatibilityString } from './operation-types';
 import {
   assertOperationAllowed,
@@ -205,16 +205,16 @@ function toolResult(details: JsonObject, secrets: readonly string[] = []) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(redacted) }], details: redacted };
 }
 
-async function retrieveResult(variables: UnparsedJson, secrets: readonly string[]) {
-  return toolResult(await getResult(variables), secrets);
+async function retrieveResult(cause: unknown, secrets: readonly string[]) {
+  return toolResult(await getResult(cause), secrets);
 }
 
 function directSchemaGuard(toolName: string, schema: TSchema) {
   let validator: ReturnType<typeof Compile> | undefined;
-  return (params: UnparsedJson): void => {
+  return (cause: unknown): void => {
     validator ??= Compile(schema);
-    if (validator.Check(params)) return;
-    const problems = [...validator.Errors(params)]
+    if (validator.Check(cause)) return;
+    const problems = [...validator.Errors(cause)]
       .slice(0, 3)
       .map((error) => {
         const errorPath = 'path' in error ? parseJson(error.path ?? undefined) : undefined;
@@ -339,13 +339,6 @@ export function linearGraphqlTool(
   });
 }
 
-/** Batch entries stay unparsed here; `executeBatch` owns their contract. */
-type BatchToolVariables = {
-  operations?: readonly unknown[];
-  reads?: readonly unknown[];
-  mutations?: readonly unknown[];
-};
-
 export function linearBatchTool(
   mode: MutationMode = 'allowlist',
   definition = exceptionalToolDefinitions[2],
@@ -377,10 +370,12 @@ export function linearBatchTool(
         throw redactError(error, activeSecrets());
       }
       const secrets = [...activeSecrets()];
-      const variables: BatchToolVariables = {};
-      if ('operations' in params) variables.operations = params.operations;
-      if ('reads' in params) variables.reads = params.reads;
-      if ('mutations' in params) variables.mutations = params.mutations;
+      // Parse at the tool seam; `executeBatch` owns the entry contract from there.
+      const request = parseJsonObject(params) ?? {};
+      const variables: JsonObject = {};
+      for (const phase of ['operations', 'reads', 'mutations'] as const) {
+        if (phase in request) variables[phase] = request[phase];
+      }
       return withRedactedErrors(async () => toolResult(await executeBatch(
         {
           variables,
@@ -396,8 +391,8 @@ export function linearBatchTool(
   });
 }
 
-function removedLoaderRouteError(params: UnparsedJson): Error | undefined {
-  const request = parseJsonObject(params);
+function removedLoaderRouteError(cause: unknown): Error | undefined {
+  const request = parseJsonObject(cause);
   if (!request) return undefined;
   if (Object.prototype.hasOwnProperty.call(request, 'query')) {
     return new Error('Raw GraphQL cannot run through linear. Call linear_graphql with direct arguments.');
@@ -429,10 +424,10 @@ export function linearApiTool(_mode: MutationMode = 'allowlist', activator?: Too
     ])),
   }, { additionalProperties: false });
   const assertSchema = directSchemaGuard('linear', parameters);
-  const assertArguments = (params: UnparsedJson) => {
-    const compatibilityError = removedLoaderRouteError(params);
+  const assertArguments = (cause: unknown) => {
+    const compatibilityError = removedLoaderRouteError(cause);
     if (compatibilityError) throw compatibilityError;
-    assertSchema(params);
+    assertSchema(cause);
   };
 
   return defineTool({

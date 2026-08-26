@@ -1,5 +1,5 @@
 import { Kind, parse, type FragmentDefinitionNode, type SelectionSetNode } from 'graphql';
-import { parseJsonObject, type JsonObject, type JsonValue, type UnparsedJson } from './json';
+import { parseJsonObject, type JsonObject, type JsonValue } from './json';
 import {
   isCompatibilityNumber,
   isCompatibilityObject,
@@ -73,8 +73,8 @@ function parseErrorBody(entry: JsonObject): GraphQLErrorBody {
 }
 
 /** Parse the HTTP payload once, at the network seam, into the response this module owns. */
-function parseResponseBody(payload: UnparsedJson): LinearResponseBody {
-  const parsed = parseJsonObject(payload);
+function parseResponseBody(cause: unknown): LinearResponseBody {
+  const parsed = parseJsonObject(cause);
   const entries = Array.isArray(parsed?.errors) ? parsed.errors : [];
   const errors = entries.flatMap((entry) => (isCompatibilityObject(entry) ? [parseErrorBody(entry)] : []));
   const data = isCompatibilityObject(parsed?.data) ? parsed.data : undefined;

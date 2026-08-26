@@ -1,7 +1,7 @@
-import { parseJson, type UnparsedJson } from '../extensions/json';
+import { parseJson } from '../extensions/json';
 
-export function assertNoCredentialLeak(value: UnparsedJson, activeSecret: string): void {
-  const text = JSON.stringify(parseJson(value) ?? null);
+export function assertNoCredentialLeak(cause: unknown, activeSecret: string): void {
+  const text = JSON.stringify(parseJson(cause) ?? null);
   if (
     (activeSecret && text.includes(activeSecret))
     || /lin_(?:api|oauth)_[A-Za-z0-9_-]+/.test(text)

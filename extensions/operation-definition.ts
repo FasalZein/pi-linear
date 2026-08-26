@@ -13,10 +13,10 @@ import type {
   RequirementBranch,
 } from './operation-types';
 import { isCompatibilityObject } from './operation-types';
-import { requireJsonObject, type UnparsedJson } from './json';
+import { requireJsonObject, type JsonValue } from './json';
 
 /** The seam where transport-supplied variables become parsed compatibility JSON. */
-function operationVariables(name: string, variables: UnparsedJson): CompatibilityObject {
+function operationVariables(name: string, variables: JsonValue | undefined): CompatibilityObject {
   return requireJsonObject(variables, `Linear operation "${name}" variables`);
 }
 
@@ -333,7 +333,7 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
     parameters: compatibility.fields,
     example: compatibility.example,
     document: compatibility.document,
-    validateVariables(variables: UnparsedJson) {
+    validateVariables(variables: JsonValue | undefined) {
       const parsed = operationVariables(definition.name, variables);
       assertProjectedBranches(definition, parsed);
       compatibility.semanticValidateVariables?.(parsed);
@@ -348,7 +348,7 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
   assignOptional(operation, 'resolverPaths', compatibility.resolverPaths);
   if (compatibility.requiresVariables) operation.requiresVariables = true;
   if (compatibility.plan) {
-    operation.plan = async (variables: UnparsedJson) => {
+    operation.plan = async (variables: JsonValue | undefined) => {
       const parsed = operationVariables(definition.name, variables);
       assertProjectedBranches(definition, parsed);
       compatibility.semanticValidateVariables?.(parsed);

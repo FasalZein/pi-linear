@@ -6,7 +6,7 @@
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { JsonObject, UnparsedJson } from '../extensions/json';
+import type { JsonObject } from '../extensions/json';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import contracts from '../extensions/generated/operation-contracts.json';
 import { getOperationDefinition, operationDefinitions, operations } from '../extensions/operations';
@@ -17,7 +17,7 @@ import { operationRenderers } from '../extensions/renderers';
 const originalEnvironment = { ...process.env };
 let agentDirectory: string;
 
-async function writeCredentialFile(value: UnparsedJson) {
+async function writeCredentialFile(value: JsonObject) {
   const directory = join(agentDirectory, 'extensions', 'linear');
   await mkdir(directory, { recursive: true });
   await writeFile(join(directory, 'credentials.json'), JSON.stringify(value));
@@ -93,20 +93,15 @@ describe('runtime local result validation', () => {
   });
 
   it('rejects an unsupported leaf at an expected path', () => {
-    const produced = { active: () => 'work' };
-    expect(() => parseLocalResult('switch_workspace', produced, expectation)).toThrow(
+    expect(() => parseLocalResult('switch_workspace', { active: () => 'work' }, expectation)).toThrow(
       'Linear operation "switch_workspace" failed local result expectation: active must be a non-empty string.',
     );
   });
 
   it('returns JSON with unsupported leaves and cycles removed', () => {
-    const produced = {
-      active: 'work',
-      render: () => 'never JSON',
-      marker: Symbol('never JSON'),
-      nested: { keep: 'yes' },
-    };
-    Object.assign(produced, { self: produced });
+    const produced = { active: 'work', nested: { keep: 'yes' } };
+    // A declared JSON type is not proof: the value carries a function, a symbol, and a cycle.
+    Object.assign(produced, { render: () => 'never JSON', marker: Symbol('never JSON'), self: produced });
 
     const parsed = parseLocalResult('switch_workspace', produced, expectation);
 
@@ -129,12 +124,9 @@ describe('runtime local result validation', () => {
    * output is discarded.
    */
   it('routes the parsed result instead of the value the operation produced', async () => {
-    const produced = {
-      active: 'second',
-      render: () => 'never JSON',
-      nested: { keep: 'yes' },
-    };
-    Object.assign(produced, { self: produced });
+    const produced = { active: 'second', nested: { keep: 'yes' } };
+    // A declared JSON type is not proof: the value carries a function and a cycle.
+    Object.assign(produced, { render: () => 'never JSON', self: produced });
     const operation = {
       ...operations.switch_workspace!,
       executeLocal: async () => produced,

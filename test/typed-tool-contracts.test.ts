@@ -8,7 +8,7 @@ import { linearApiTool } from '../extensions/api';
 import { requirementBranches, typedLinearTools, typedToolNames } from '../extensions/typed-tools';
 import { CANONICAL_OPERATIONS, canonicalFieldNames, missingCanonicalOperations } from '../extensions/canonical';
 import { operations } from '../extensions/operations';
-import type { JsonObject, JsonValue, UnparsedJson } from '../extensions/json';
+import type { JsonObject, JsonValue } from '../extensions/json';
 // The validator Pi runs on every tool call, imported from the agent runtime itself.
 import { validateToolArguments } from '../node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/utils/validation.js';
 
@@ -936,9 +936,9 @@ describe('view preferences contract', () => {
 
 const UUID_SAMPLE = '11111111-1111-4111-8111-111111111111';
 
-function rawAccepts(toolName: string, args: UnparsedJson): boolean {
+function rawAccepts(toolName: string, cause: unknown): boolean {
   try {
-    tools.get(toolName)!.prepareArguments!(args);
+    tools.get(toolName)!.prepareArguments!(cause);
     return true;
   } catch {
     return false;

@@ -17,7 +17,7 @@ import {
   type LinearNetworkContext,
   type LinearRateLimitSnapshot,
 } from './client';
-import { requireJsonObject, type UnparsedJson } from './json';
+import { requireJsonObject, type JsonValue } from './json';
 import {
   BATCH_HELP_EXAMPLE,
   BATCH_PHASED_HELP_EXAMPLE,
@@ -784,7 +784,7 @@ function applyIndependentLookups(
 }
 
 export type BatchRequest = {
-  variables?: UnparsedJson;
+  variables?: JsonValue;
   workspace?: string;
   sink?: 'inline' | 'artifact';
   telemetryMode?: TelemetryMode;
