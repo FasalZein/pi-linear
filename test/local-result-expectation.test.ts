@@ -10,7 +10,7 @@ import type { JsonObject, UnparsedJson } from '../extensions/json';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import contracts from '../extensions/generated/operation-contracts.json';
 import { getOperationDefinition, operationDefinitions, operations } from '../extensions/operations';
-import { executeOperation, validateLocalResult } from '../extensions/runtime';
+import { executeOperation, parseLocalResult } from '../extensions/runtime';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { operationRenderers } from '../extensions/renderers';
 
@@ -71,25 +71,47 @@ describe('runtime local result validation', () => {
     ['empty', { active: '   ' }],
     ['nested', { active: { name: 'work' } }],
   ])('rejects a %s expected field', (_label, result) => {
-    expect(() => validateLocalResult('switch_workspace', result, expectation)).toThrow(
+    expect(() => parseLocalResult('switch_workspace', result, expectation)).toThrow(
       'Linear operation "switch_workspace" failed local result expectation: active must be a non-empty string.',
     );
   });
 
   it('rejects a non-object local result', () => {
-    expect(() => validateLocalResult('switch_workspace', [], expectation)).toThrow(
+    expect(() => parseLocalResult('switch_workspace', [], expectation)).toThrow(
       'Linear operation "switch_workspace" failed local result expectation: result must be an object.',
     );
   });
 
   it('rejects a local operation with no declared expectation', () => {
-    expect(() => validateLocalResult('switch_workspace', { active: 'work' }, undefined)).toThrow(
+    expect(() => parseLocalResult('switch_workspace', { active: 'work' }, undefined)).toThrow(
       'Linear operation "switch_workspace" ran locally without a result expectation.',
     );
   });
 
   it('accepts a valid local result', () => {
-    expect(() => validateLocalResult('switch_workspace', { active: 'work' }, expectation)).not.toThrow();
+    expect(() => parseLocalResult('switch_workspace', { active: 'work' }, expectation)).not.toThrow();
+  });
+
+  it('rejects an unsupported leaf at an expected path', () => {
+    const produced = { active: () => 'work' };
+    expect(() => parseLocalResult('switch_workspace', produced, expectation)).toThrow(
+      'Linear operation "switch_workspace" failed local result expectation: active must be a non-empty string.',
+    );
+  });
+
+  it('returns JSON with unsupported leaves and cycles removed', () => {
+    const produced = {
+      active: 'work',
+      render: () => 'never JSON',
+      marker: Symbol('never JSON'),
+      nested: { keep: 'yes' },
+    };
+    Object.assign(produced, { self: produced });
+
+    const parsed = parseLocalResult('switch_workspace', produced, expectation);
+
+    expect(parsed).toEqual({ active: 'work', nested: { keep: 'yes' } });
+    expect(parsed).not.toBe(produced);
   });
 
   it('fails the execution path before the result is routed', async () => {
@@ -99,6 +121,36 @@ describe('runtime local result validation', () => {
     };
     await expect(executeOperation(operation, { variables: { name: 'second' } }, 'allowlist', { hasUI: false } as any, undefined))
       .rejects.toThrow('failed local result expectation: active must be a non-empty string.');
+  });
+
+  /**
+   * The routed value must be the parsed result. Routing the value the operation produced
+   * would carry the cycle into redaction and the transcript, so this fails if the parse
+   * output is discarded.
+   */
+  it('routes the parsed result instead of the value the operation produced', async () => {
+    const produced = {
+      active: 'second',
+      render: () => 'never JSON',
+      nested: { keep: 'yes' },
+    };
+    Object.assign(produced, { self: produced });
+    const operation = {
+      ...operations.switch_workspace!,
+      executeLocal: async () => produced,
+    };
+
+    const routed = await executeOperation(
+      operation,
+      { variables: { name: 'second' } },
+      'allowlist',
+      { hasUI: false } as any,
+      undefined,
+    );
+
+    expect(routed).toEqual({ active: 'second', nested: { keep: 'yes' } });
+    expect(routed).not.toBe(produced);
+    expect(JSON.stringify(routed)).toBe('{"active":"second","nested":{"keep":"yes"}}');
   });
 });
 

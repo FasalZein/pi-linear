@@ -17,6 +17,7 @@ import {
   type LinearNetworkContext,
   type LinearRateLimitSnapshot,
 } from './client';
+import { requireJsonObject, type UnparsedJson } from './json';
 import {
   BATCH_HELP_EXAMPLE,
   BATCH_PHASED_HELP_EXAMPLE,
@@ -30,16 +31,13 @@ import type {
   CompatibilityObject,
   CompatibilityValue,
   GraphQLDocumentVariant,
-  GraphQLResultData,
   LookupPlan,
   OperationPlan,
   OperationPreparation,
-  UnparsedCompatibilityVariables,
 } from './operation-types';
 import {
   isCompatibilityObject,
   isCompatibilityString,
-  parseCompatibilityObject,
 } from './operation-types';
 import { activeSecrets } from './active-secrets';
 import {
@@ -131,9 +129,9 @@ type CompiledLookup = {
   variables: CompatibilityObject;
   failureMessage?: string;
   resolve: (
-    raw: GraphQLResultData,
+    raw: CompatibilityObject,
     pathErrors: ReturnType<typeof linearGraphQLErrors>,
-  ) => GraphQLResultData;
+  ) => CompatibilityObject;
 };
 
 type PlannedEntry = {
@@ -145,7 +143,7 @@ type PlannedEntry = {
   operationName: string;
   variant?: GraphQLDocumentVariant;
   lookups?: CompiledLookup[];
-  batchFinish?: (resolved: GraphQLResultData) => OperationPreparation;
+  batchFinish?: (resolved: CompatibilityObject) => OperationPreparation;
   deferredDocument?: string;
 };
 
@@ -385,9 +383,9 @@ export function compileLookupDocument(key: string, lookup: LookupPlan): string {
   }).ast);
 }
 
-function prefixVariables(key: string, variables: GraphQLResultData): CompatibilityObject {
+function prefixVariables(key: string, variables: CompatibilityObject): CompatibilityObject {
   const prefixed: CompatibilityObject = {};
-  for (const [name, value] of Object.entries(parseCompatibilityObject(variables))) {
+  for (const [name, value] of Object.entries(variables)) {
     if (value !== undefined) prefixed[`${key}_${name}`] = value;
   }
   return prefixed;
@@ -497,7 +495,7 @@ function collectAlias(
     return;
   }
   const acknowledgement = entry.prepared?.acknowledgement;
-  data[entry.key] = acknowledgement === undefined ? mapped : parseCompatibilityObject(acknowledgement);
+  data[entry.key] = acknowledgement ?? mapped;
 }
 
 export type BatchError = {
@@ -524,7 +522,7 @@ type GraphQLFailureOwner = {
 };
 
 type StructuredGraphQLPhase = {
-  raw: GraphQLResultData;
+  raw: CompatibilityObject;
   errors: ReturnType<typeof linearGraphQLErrors>;
 };
 
@@ -536,7 +534,7 @@ async function executeStructuredGraphQLPhase(
 ): Promise<StructuredGraphQLPhase> {
   try {
     return {
-      raw: await linearGraphQLWithContext<GraphQLResultData>(network, query, variables, {
+      raw: await linearGraphQLWithContext(network, query, variables, {
         throwResponseErrors: true,
         phase,
       }),
@@ -656,7 +654,7 @@ function failTransaction(keys: readonly string[], message: string): BatchError[]
 
 function collectTransactionalCreates(
   plans: Array<{ key: string; uuid: string }>,
-  raw: GraphQLResultData,
+  raw: CompatibilityObject,
   pathErrors: ReturnType<typeof linearGraphQLErrors>,
   data: JsonObject,
   errors: BatchError[],
@@ -672,8 +670,7 @@ function collectTransactionalCreates(
     }
     return;
   }
-  const parsed = parseCompatibilityObject(raw);
-  const record = isCompatibilityObject(parsed.issueBatchCreate) ? parsed.issueBatchCreate : undefined;
+  const record = isCompatibilityObject(raw.issueBatchCreate) ? raw.issueBatchCreate : undefined;
   if (!record) {
     errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned unusable transaction data.'));
     return;
@@ -749,14 +746,14 @@ function collectTransactionalCreates(
 
 function applyIndependentLookups(
   mutations: PlannedEntry[],
-  raw: GraphQLResultData,
+  raw: CompatibilityObject,
   pathErrors: ReturnType<typeof linearGraphQLErrors>,
   errors: BatchError[],
 ): void {
   for (const entry of mutations) {
     if (errors.some((error) => error.key === entry.key)) continue;
     if (!entry.lookups?.length || !entry.batchFinish) continue;
-    const resolved: GraphQLResultData = {};
+    const resolved: CompatibilityObject = {};
     let failed = false;
     for (const lookup of entry.lookups) {
       try {
@@ -787,7 +784,7 @@ function applyIndependentLookups(
 }
 
 export type BatchRequest = {
-  variables?: UnparsedCompatibilityVariables;
+  variables?: UnparsedJson;
   workspace?: string;
   sink?: 'inline' | 'artifact';
   telemetryMode?: TelemetryMode;
@@ -800,7 +797,7 @@ async function executeBatchWithTelemetry(
   signal: AbortSignal | undefined,
   telemetry: LinearRateLimitSnapshot[],
 ): Promise<JsonObject> {
-  const parsed = parseEntries(parseCompatibilityObject(params.variables ?? {}));
+  const parsed = parseEntries(requireJsonObject(params.variables ?? {}, 'Batch variables'));
   const createFlags = parsed.mutations.map((entry) => isIssueCreateEntry(entry));
   const transactional = parsed.mutations.length > 1 && createFlags.every(Boolean);
   if (parsed.mutations.length > 1 && !transactional) {
@@ -869,10 +866,9 @@ async function executeBatchWithTelemetry(
     );
     readRequests = 1;
     const phase = await executeStructuredGraphQLPhase(network, query, variables, 'read');
-    const parsedRaw = parseCompatibilityObject(phase.raw);
     const readOwners: GraphQLFailureOwner[] = reads.map((entry) => {
       const owner: GraphQLFailureOwner = { entry, aliases: [entry.key] };
-      const alias = parsedRaw[entry.key];
+      const alias = phase.raw[entry.key];
       if (alias != null) owner.partial = { [entry.root]: alias };
       return owner;
     });
@@ -891,7 +887,7 @@ async function executeBatchWithTelemetry(
     );
     readPhaseFailed = phase.errors.length > 0;
     for (const entry of reads) {
-      if (!failed.has(entry.key)) collectAlias(entry, parsedRaw, [], data, errors);
+      if (!failed.has(entry.key)) collectAlias(entry, phase.raw, [], data, errors);
     }
     applyIndependentLookups(mutations, phase.raw, [], errors);
   }
@@ -914,9 +910,7 @@ async function executeBatchWithTelemetry(
 
   if (transactional) {
     const stamped = mutations.map((entry) => {
-      const input = entry.prepared
-        ? parseCompatibilityObject(entry.prepared.variables).input
-        : undefined;
+      const input = entry.prepared?.variables.input;
       if (!isCompatibilityObject(input)) {
         throw new Error(`Batch entry "${entry.key}" is missing a prepared create input.`);
       }
@@ -961,18 +955,17 @@ async function executeBatchWithTelemetry(
     assertMutationAllowed(query, mode, [mutation.root]);
     mutationRequests = 1;
     const phase = await executeStructuredGraphQLPhase(network, query, mutation.variables, 'mutation');
-    const parsedRaw = parseCompatibilityObject(phase.raw);
     if (phase.errors.length) {
       const owner: GraphQLFailureOwner = {
         entry: mutation,
         aliases: [mutation.key],
         failureMessage: attributableFailureMessage(mutation),
       };
-      const alias = parsedRaw[mutation.key];
+      const alias = phase.raw[mutation.key];
       if (alias != null) owner.partial = { [mutation.root]: alias };
       classifyStructuredGraphQLErrors(phase.errors, [owner], [owner], errors);
     } else {
-      collectAlias(mutation, parsedRaw, [], data, errors);
+      collectAlias(mutation, phase.raw, [], data, errors);
     }
   }
 

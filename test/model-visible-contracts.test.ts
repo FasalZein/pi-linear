@@ -2,7 +2,7 @@ import { buildSchema, coerceInputValue, parseType, typeFromAST, type GraphQLInpu
 import { describe, expect, it } from 'vitest';
 import { helpResult } from '../extensions/api';
 import { operations } from '../extensions/operations';
-import type { GraphQLResultData } from '../extensions/operation-types';
+import type { JsonObject } from '../extensions/json';
 import { typedLinearTools } from '../extensions/typed-tools';
 import type { ReadonlySchemaFixture } from '../scripts/readonly-schema';
 import { prepareOperation } from './helpers/operation-plan';
@@ -21,7 +21,7 @@ const schema = buildSchema([
 ].join('\n'));
 const tools = new Map(typedLinearTools().map((tool) => [tool.name, tool]));
 
-function expectLinearInput(value: GraphQLResultData[string] | null, type: string) {
+function expectLinearInput(value: JsonObject[string] | null, type: string) {
   const errors: string[] = [];
   const graphQLType = typeFromAST(schema, parseType(type)) as GraphQLInputType | undefined;
   expect(graphQLType, type).toBeDefined();

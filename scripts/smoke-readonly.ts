@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { parse, type IntrospectionQuery, type OperationDefinitionNode } from 'graphql';
+import { parse, type OperationDefinitionNode } from 'graphql';
 import { registerLinearExtension } from '../extensions/index';
 import { linearGraphQL, resolveApiKey } from '../extensions/client';
 import { parseJsonObject, type JsonObject, type JsonValue, type UnparsedJson } from '../extensions/json';
@@ -16,6 +16,7 @@ import {
   assertFixtureProvenance,
   catalogSchemaUsage,
   compareReadonlySchema,
+  parseIntrospectionQuery,
   type ReadonlySchemaFixture,
   type ReadonlySchemaScope,
 } from './readonly-schema';
@@ -265,7 +266,7 @@ async function runAuthenticatedSmoke(apiKey: string, requests: RequestEvidence):
   const scope = JSON.parse(scopeSource) as ReadonlySchemaScope;
   assertFixtureProvenance(fixture, scope, sourceQuery, scopeSource);
   const usage = catalogSchemaUsage(Object.values(operations));
-  const introspection = await linearGraphQL<IntrospectionQuery>(apiKey, sourceQuery, {});
+  const introspection = parseIntrospectionQuery(await linearGraphQL(apiKey, sourceQuery, {}));
   compareReadonlySchema(introspection, fixture, usage, scope);
 
   const harness = extensionHarness();

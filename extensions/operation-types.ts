@@ -1,32 +1,18 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import type { ExecutionResult } from "graphql";
+import { isJsonObject, type JsonObject, type JsonValue, type UnparsedJson } from "./json";
 import type { CanonicalOperation } from "./canonical-schema";
 import type { ResultView } from "./selections";
 import type { MutationMode } from "./safety";
 
-/** Parsed compatibility JSON owned by OperationDefinition. */
-export type CompatibilityValue =
-	| string
-	| number
-	| boolean
-	| null
-	| readonly CompatibilityValue[]
-	| CompatibilityObject;
-export type CompatibilityObject = {
-	[key: string]: CompatibilityValue | undefined;
-};
-/** Transport-supplied variables. Parse them at the Operation seam. */
-export type UnparsedCompatibilityVariables = {};
-/** GraphQL result maps that cross the operation-plan adapter. */
-export type GraphQLResultData = NonNullable<ExecutionResult["data"]>;
+/** Parsed compatibility JSON owned by OperationDefinition. `json.ts` owns the parser. */
+export type CompatibilityValue = JsonValue;
+export type CompatibilityObject = JsonObject;
 
-const OBJECT_TAG = "[object Object]";
-const ARRAY_TAG = "[object Array]";
 const STRING_TAG = "[object String]";
 const NUMBER_TAG = "[object Number]";
 const BOOLEAN_TAG = "[object Boolean]";
 
-function typeTag(value: UnparsedCompatibilityVariables | CompatibilityValue | null | undefined): string {
+function typeTag(value: CompatibilityValue | undefined): string {
 	return Object.prototype.toString.call(value);
 }
 
@@ -51,39 +37,7 @@ export function isCompatibilityBoolean(
 export function isCompatibilityObject(
 	value: CompatibilityValue | undefined,
 ): value is CompatibilityObject {
-	return typeTag(value) === OBJECT_TAG;
-}
-
-function parseCompatibilityValue(
-	value: UnparsedCompatibilityVariables | null,
-): CompatibilityValue {
-	if (value === null) return null;
-	const tag = typeTag(value);
-	if (tag === STRING_TAG) return value as string;
-	if (tag === NUMBER_TAG) return value as number;
-	if (tag === BOOLEAN_TAG) return value as boolean;
-	if (tag === ARRAY_TAG) {
-		const list = value as readonly (UnparsedCompatibilityVariables | null)[];
-		return list.map(parseCompatibilityValue);
-	}
-	if (tag === OBJECT_TAG) return parseCompatibilityObject(value);
-	throw new Error(`Unsupported compatibility value: ${tag}`);
-}
-
-/** Parse transport or GraphQL maps into the Operation compatibility object. */
-export function parseCompatibilityObject(
-	value: UnparsedCompatibilityVariables | GraphQLResultData,
-): CompatibilityObject {
-	if (typeTag(value) !== OBJECT_TAG) return {};
-	const parsed: CompatibilityObject = {};
-	for (const key of Object.keys(value)) {
-		const descriptor = Object.getOwnPropertyDescriptor(value, key);
-		if (descriptor === undefined || !("value" in descriptor)) continue;
-		const entry = descriptor.value as UnparsedCompatibilityVariables | null | undefined;
-		if (entry === undefined) continue;
-		parsed[key] = parseCompatibilityValue(entry);
-	}
-	return parsed;
+	return isJsonObject(value);
 }
 
 export type OperationDomain =
@@ -136,8 +90,8 @@ export type ExactNamedCheck = {
 export type ResultCategory = "singular" | "collection" | "local";
 export type NamedInputPolicy = "non-destructive" | "guarded-destructive";
 export type OperationPreparation = {
-	variables: GraphQLResultData;
-	resolution?: GraphQLResultData;
+	variables: CompatibilityObject;
+	resolution?: CompatibilityObject;
 	variant?: GraphQLDocumentVariant;
 	exactIssue?: ExactIssueCheck;
 	exactNamed?: ExactNamedCheck;
@@ -146,7 +100,7 @@ export type OperationPreparation = {
 	/** Phase label for the prepared network request after any preparation reads. */
 	telemetryPhase?: "read" | "mutation";
 	/** Compact result synthesized only after the upstream request passes its checks. */
-	acknowledgement?: GraphQLResultData;
+	acknowledgement?: CompatibilityObject;
 	/** Dependent mutations fail instead of acknowledging a partial GraphQL response. */
 	requireNoGraphQLErrors?: boolean;
 	/** Stable external error for an upstream mutation failure. */
@@ -155,12 +109,12 @@ export type OperationPreparation = {
 export type LookupPlan = {
 	key: string;
 	dependsOn?: readonly string[];
-	document: (resolved: GraphQLResultData) => string;
-	variables: (resolved: GraphQLResultData) => CompatibilityObject;
+	document: (resolved: CompatibilityObject) => string;
+	variables: (resolved: CompatibilityObject) => CompatibilityObject;
 	resolve: (
-		data: GraphQLResultData,
-		resolved: GraphQLResultData,
-	) => GraphQLResultData;
+		data: CompatibilityObject,
+		resolved: CompatibilityObject,
+	) => CompatibilityObject;
 	/** Stable external error when the lookup request itself fails. */
 	failureMessage?: string;
 	/** Preserve an explicit phase label for guarded direct calls. */
@@ -169,13 +123,13 @@ export type LookupPlan = {
 export type OperationPlan = {
 	kind: "query" | "mutation";
 	lookups: readonly LookupPlan[];
-	finish: (resolved: GraphQLResultData) => OperationPreparation;
+	finish: (resolved: CompatibilityObject) => OperationPreparation;
 };
 export type ParsedOperationPlanFactory = (
 	variables: CompatibilityObject,
 ) => OperationPlan | Promise<OperationPlan>;
 export type OperationPlanFactory = (
-	variables: UnparsedCompatibilityVariables,
+	variables: UnparsedJson,
 ) => OperationPlan | Promise<OperationPlan>;
 
 export type PaginationMetadata = {
@@ -207,14 +161,15 @@ export type LinearOperation = {
 	pagination?: PaginationMetadata;
 	resolverPaths?: Readonly<{ [name: string]: string }>;
 	requiresVariables?: boolean;
-	validateVariables?: (variables: UnparsedCompatibilityVariables) => void;
+	validateVariables?: (variables: UnparsedJson) => void;
 	/** Pure operation planning for direct and batch execution. */
 	plan?: OperationPlanFactory;
+	/** The result is produced in this process, so the runtime parses it before it is routed. */
 	executeLocal?: (
-		variables: UnparsedCompatibilityVariables,
+		variables: UnparsedJson,
 		ctx: ExtensionContext,
 		mode: MutationMode,
-	) => Promise<CompatibilityObject>;
+	) => Promise<UnparsedJson>;
 	/** Required whenever `executeLocal` is set. */
 	localResult?: LocalResultExpectation;
 	/**

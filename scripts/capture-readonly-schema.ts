@@ -2,13 +2,13 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { linearGraphQLWithContext, resolveApiKey } from '../extensions/client';
 import { redactText } from '../extensions/redact';
 import {
+  parseIntrospectionQuery,
   schemaFixtureFromIntrospection,
   sha256,
   validatePackageDocuments,
   type PackageGraphQLInventory,
   type ReadonlySchemaScope,
 } from './readonly-schema';
-import type { IntrospectionQuery } from 'graphql';
 import { assertReadOnlyEvidence, recordingTransport, requestEvidence } from './request-recorder';
 
 function context() {
@@ -32,9 +32,9 @@ try {
   const { apiKey, source } = await resolveApiKey(context(), { promptIfMissing: false });
   if (!apiKey || source === 'none') throw new Error('existing Linear authentication is unavailable');
   const requests = requestEvidence();
-  const introspection = await linearGraphQLWithContext<IntrospectionQuery>({
+  const introspection = parseIntrospectionQuery(await linearGraphQLWithContext({
     credential: { apiKey, source }, transport: recordingTransport(fetch, requests), telemetry: [],
-  }, sourceQuery, {});
+  }, sourceQuery, {}));
   validatePackageDocuments(introspection, inventory);
   assertReadOnlyEvidence(requests);
   const captureDate = process.env.LINEAR_SCHEMA_CAPTURE_DATE || new Date().toISOString().slice(0, 10);

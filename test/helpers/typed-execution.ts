@@ -1,12 +1,12 @@
 import type { ExtensionContext } from '@earendil-works/pi-coding-agent';
-import type { OperationPlanFactory } from '../../extensions/operation-types';
+import type { JsonObject } from '../../extensions/json';
 import type { MutationMode } from '../../extensions/safety';
 import { typedLinearTools } from '../../extensions/typed-tools';
 
 /** A direct Linear tool exactly as production publishes it. */
 type TypedLinearTool = ReturnType<typeof typedLinearTools>[number];
-/** Operation variables exactly as the production plan factory accepts them. */
-type OperationVariables = Parameters<OperationPlanFactory>[0];
+/** Parsed operation variables, exactly as a model-supplied tool call carries them. */
+type OperationVariables = JsonObject;
 
 /** The harness runs tools headless: only `hasUI` is read on this path. */
 const HEADLESS_CONTEXT = { hasUI: false } as ExtensionContext;

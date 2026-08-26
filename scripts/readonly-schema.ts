@@ -13,8 +13,20 @@ import {
   type OperationDefinitionNode,
   type TypeNode,
 } from 'graphql';
+import type { UnparsedJson } from '../extensions/json';
 import type { LinearOperation } from '../extensions/operations';
 import type { RequestEvidence } from './request-recorder';
+
+/**
+ * Parse an untrusted GraphQL response into an introspection result. `buildClientSchema`
+ * rejects any payload that is not a complete introspection result, so the shape is proved
+ * here instead of assumed by the network client.
+ */
+export function parseIntrospectionQuery(data: UnparsedJson): IntrospectionQuery {
+  const introspection = data as IntrospectionQuery;
+  buildClientSchema(introspection);
+  return introspection;
+}
 
 export type PackageGraphQLDocument = {
   id: string;

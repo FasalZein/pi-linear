@@ -17,7 +17,6 @@ import {
 import {
   isCompatibilityObject,
   isCompatibilityString,
-  parseCompatibilityObject,
   type GraphQLDocumentVariant,
   type LocalResultExpectation,
   type OperationPlan,
@@ -430,13 +429,14 @@ function valueAtPath(value: JsonValue | undefined, path: string): JsonValue | un
 
 /**
  * A local operation produces its result inside this process, so nothing else proves the
- * result is real. The declared expectation is checked before redaction and routing.
+ * result is real. The declared expectation is checked before redaction and routing, and
+ * the parsed value is what the caller routes.
  */
-export function validateLocalResult(
+export function parseLocalResult(
   operationName: string,
   data: UnparsedJson,
   expectation: LocalResultExpectation | undefined,
-): asserts data is JsonObject {
+): JsonObject {
   const fail = (path: string, expected: string): never => {
     throw new Error(
       `Linear operation "${operationName}" failed local result expectation: ${path} must be ${expected}.`,
@@ -446,11 +446,12 @@ export function validateLocalResult(
     throw new Error(`Linear operation "${operationName}" ran locally without a result expectation.`);
   }
   const parsed = parseJson(data);
-  if (!isCompatibilityObject(parsed)) fail('result', 'an object');
+  if (!isCompatibilityObject(parsed)) return fail('result', 'an object');
   for (const path of expectation.requiredStringPaths) {
     const value = valueAtPath(parsed, path);
     if (!isCompatibilityString(value) || !value.trim()) fail(path, 'a non-empty string');
   }
+  return parsed;
 }
 
 /**
@@ -470,8 +471,7 @@ async function executeOperationWithContext(
     if (operation.executeLocal) {
       secrets.push(...activeSecrets());
       const localResult = await operation.executeLocal(options.variables, call.pi, call.mode);
-      validateLocalResult(operation.name, localResult, operation.localResult);
-      return redactDeep(localResult, secrets);
+      return redactDeep(parseLocalResult(operation.name, localResult, operation.localResult), secrets);
     }
 
     let plan: OperationPlan | undefined;
@@ -496,10 +496,10 @@ async function executeOperationWithContext(
       let data: JsonObject;
       let errors: readonly LinearGraphQLPathError[];
       try {
-        data = await linearGraphQLWithContext<JsonObject>(
+        data = await linearGraphQLWithContext(
           network,
           document,
-          parseCompatibilityObject(prepared.variables),
+          prepared.variables,
           prepared.telemetryPhase ? { phase: prepared.telemetryPhase } : undefined,
         );
         errors = linearGraphQLErrors(data);
@@ -515,14 +515,14 @@ async function executeOperationWithContext(
       const category = prepared.resultCategory ?? operation.resultCategory;
       if (category === 'local') throw new Error(`Network operation "${operation.name}" cannot use local result routing.`);
       const acknowledgement = prepared.acknowledgement;
-      return routeLinearResult(acknowledgement === undefined ? data : parseCompatibilityObject(acknowledgement), {
+      return routeLinearResult(acknowledgement ?? data, {
         label: operation.name,
         category,
         sink: call.sink,
         secrets,
         errors,
         view: prepared.resultView,
-        resolution: prepared.resolution === undefined ? undefined : parseCompatibilityObject(prepared.resolution),
+        resolution: prepared.resolution,
         telemetry: network.telemetry,
         telemetryMode: call.telemetryMode,
       });
@@ -567,7 +567,7 @@ export async function executeRawQuery(
     const network = await networkExecutionContext(call, transport);
     secrets.push(network.credential.apiKey);
     return withLinearRateLimitTelemetry(network.telemetry, async () => {
-      const data = await linearGraphQLWithContext<JsonObject>(network, query, variables);
+      const data = await linearGraphQLWithContext(network, query, variables);
       return routeLinearResult(data, {
         label: 'query',
         category: 'composite',

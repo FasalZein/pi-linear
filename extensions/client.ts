@@ -1,10 +1,9 @@
 import { Kind, parse, type FragmentDefinitionNode, type SelectionSetNode } from 'graphql';
-import { parseJson, parseJsonObject, type JsonObject, type JsonValue, type UnparsedJson } from './json';
+import { parseJsonObject, type JsonObject, type JsonValue, type UnparsedJson } from './json';
 import {
   isCompatibilityNumber,
   isCompatibilityObject,
   isCompatibilityString,
-  type GraphQLResultData,
 } from './operation-types';
 import { redactDeep, redactText } from './redact';
 
@@ -125,7 +124,7 @@ export async function withLinearRateLimitTelemetry<T>(
   }
 }
 
-export function linearRateLimitTelemetry(value: GraphQLResultData | undefined): readonly LinearRateLimitSnapshot[] {
+export function linearRateLimitTelemetry(value: JsonObject | undefined): readonly LinearRateLimitSnapshot[] {
   if (value === null || value === undefined) return [];
   return (value as { [LINEAR_RATE_LIMIT_TELEMETRY]?: readonly LinearRateLimitSnapshot[] })[LINEAR_RATE_LIMIT_TELEMETRY] ?? [];
 }
@@ -135,7 +134,7 @@ export function linearErrorTelemetry(cause: unknown): readonly LinearRateLimitSn
   return (cause as Error & { linearTelemetry?: readonly LinearRateLimitSnapshot[] }).linearTelemetry ?? [];
 }
 
-export function linearGraphQLErrors(data: GraphQLResultData | undefined): readonly LinearGraphQLPathError[] {
+export function linearGraphQLErrors(data: JsonObject | undefined): readonly LinearGraphQLPathError[] {
   if (data === null || data === undefined) return [];
   return (data as { [LINEAR_GRAPHQL_ERRORS]?: readonly LinearGraphQLPathError[] })[LINEAR_GRAPHQL_ERRORS] ?? [];
 }
@@ -304,13 +303,13 @@ export type LinearNetworkContext = {
   signal?: AbortSignal;
 };
 
-export type LinearGraphQLFn = <TData>(
+export type LinearGraphQLFn = (
   apiKey: string,
   query: string,
   variables?: JsonObject,
   signal?: AbortSignal,
   options?: LinearGraphQLOptions,
-) => Promise<TData>;
+) => Promise<JsonObject>;
 
 function abortableDelay(delay: number, signal?: AbortSignal): Promise<void> {
   if (signal?.aborted) return Promise.reject(new Error('Request cancelled.'));
@@ -330,12 +329,12 @@ function abortableDelay(delay: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
-export async function linearGraphQLWithContext<TData>(
+export async function linearGraphQLWithContext(
   context: LinearNetworkContext,
   query: string,
   variables: JsonObject = {},
   options?: LinearGraphQLOptions,
-): Promise<TData> {
+): Promise<JsonObject> {
   const { apiKey } = context.credential;
   const snapshots: LinearRateLimitSnapshot[] = [];
   const isSearchRead = searchRead(query);
@@ -365,7 +364,7 @@ export async function linearGraphQLWithContext<TData>(
     context.telemetry.push(snapshot);
     body = { errors: [] };
     try {
-      body = parseResponseBody(parseJson(await response.json()) ?? undefined);
+      body = parseResponseBody(await response.json());
     } catch {
       // Use the HTTP status below for non-JSON responses.
     }
@@ -410,8 +409,7 @@ export async function linearGraphQLWithContext<TData>(
           value: scoped ?? responseGraphQLErrors(body.errors, apiKey),
         });
         attachTelemetry(data, snapshots, LINEAR_RATE_LIMIT_TELEMETRY);
-        // The caller names the result contract of the document it sent.
-        return data as TData;
+        return data;
       }
     }
     const failure = new Error(`Linear GraphQL error: ${detail}`);
@@ -424,17 +422,16 @@ export async function linearGraphQLWithContext<TData>(
     throw failure;
   }
   attachTelemetry(body.data, snapshots, LINEAR_RATE_LIMIT_TELEMETRY);
-  // The caller names the result contract of the document it sent.
-  return body.data as TData;
+  return body.data;
 }
 
-export async function linearGraphQL<TData>(
+export async function linearGraphQL(
   apiKey: string,
   query: string,
   variables: JsonObject = {},
   signal?: AbortSignal,
   options?: LinearGraphQLOptions,
-): Promise<TData> {
+): Promise<JsonObject> {
   return linearGraphQLWithContext({
     credential: { apiKey, source: 'env' },
     transport: fetch,

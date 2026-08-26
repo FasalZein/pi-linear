@@ -11,12 +11,14 @@ import type {
   OperationSource,
   ParsedOperationPlanFactory,
   RequirementBranch,
-  UnparsedCompatibilityVariables,
 } from './operation-types';
-import {
-  isCompatibilityObject,
-  parseCompatibilityObject,
-} from './operation-types';
+import { isCompatibilityObject } from './operation-types';
+import { requireJsonObject, type UnparsedJson } from './json';
+
+/** The seam where transport-supplied variables become parsed compatibility JSON. */
+function operationVariables(name: string, variables: UnparsedJson): CompatibilityObject {
+  return requireJsonObject(variables, `Linear operation "${name}" variables`);
+}
 
 function actionAndEntity(name: string) {
   const [action, ...parts] = name.split('_');
@@ -145,8 +147,8 @@ function assignOptional<T extends object, K extends keyof T>(
 }
 
 
-function parseThenPlan(plan: ParsedOperationPlanFactory): OperationPlanFactory {
-  return async (variables) => plan(parseCompatibilityObject(variables));
+function parseThenPlan(name: string, plan: ParsedOperationPlanFactory): OperationPlanFactory {
+  return async (variables) => plan(operationVariables(name, variables));
 }
 
 /** Project the runtime definition from one authored source operation. */
@@ -277,7 +279,7 @@ export function defineOperation(operation: OperationSource): OperationDefinition
     canonical: canonicalProjection,
   };
   if (documents) definition.graphql = { documents };
-  if (operation.plan) definition.preparation.plan = parseThenPlan(operation.plan);
+  if (operation.plan) definition.preparation.plan = parseThenPlan(operation.name, operation.plan);
   assignOptional(definition.result, 'local', operation.localResult);
   assignOptional(definition.render, 'targetFields', renderTargetFields);
   assignOptional(definition.render, 'empty', renderEmpty);
@@ -331,8 +333,8 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
     parameters: compatibility.fields,
     example: compatibility.example,
     document: compatibility.document,
-    validateVariables(variables: UnparsedCompatibilityVariables) {
-      const parsed = parseCompatibilityObject(variables);
+    validateVariables(variables: UnparsedJson) {
+      const parsed = operationVariables(definition.name, variables);
       assertProjectedBranches(definition, parsed);
       compatibility.semanticValidateVariables?.(parsed);
     },
@@ -346,8 +348,8 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
   assignOptional(operation, 'resolverPaths', compatibility.resolverPaths);
   if (compatibility.requiresVariables) operation.requiresVariables = true;
   if (compatibility.plan) {
-    operation.plan = async (variables: UnparsedCompatibilityVariables) => {
-      const parsed = parseCompatibilityObject(variables);
+    operation.plan = async (variables: UnparsedJson) => {
+      const parsed = operationVariables(definition.name, variables);
       assertProjectedBranches(definition, parsed);
       compatibility.semanticValidateVariables?.(parsed);
       return compatibility.plan!(parsed);
@@ -356,7 +358,7 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
   assignOptional(operation, 'localResult', compatibility.localResult);
   if (compatibility.executeLocal) {
     operation.executeLocal = async (variables, ctx, mode) => {
-      const parsed = parseCompatibilityObject(variables);
+      const parsed = operationVariables(definition.name, variables);
       assertProjectedBranches(definition, parsed);
       compatibility.semanticValidateVariables?.(parsed);
       return compatibility.executeLocal!(parsed, ctx, mode);

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { linearApiTool, linearBatchTool, linearGetResultTool, resolveRequest } from '../extensions/api';
-import { assertBatchAccounting, batchHelp, compileLookupDocument } from '../extensions/batch';
+import { assertBatchAccounting, batchHelp, compileLookupDocument, executeBatch } from '../extensions/batch';
 import { LINEAR_BATCH_HELP } from '../extensions/exceptional-tools';
 import { operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
 import type { MutationMode } from '../extensions/safety';
@@ -114,6 +114,17 @@ function graphqlStub(respond: (request: { query: string; variables: Compatibilit
 }
 
 describe('batch help and catalog', () => {
+  /** Batch variables arrive unparsed, so the seam that requires an object says so. */
+  it('rejects a non-object batch variables input', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(executeBatch({ variables: 'reads' }, 'allowlist', { hasUI: false } as never, undefined))
+      .rejects.toThrow('Batch variables must be a JSON object.');
+
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('returns a batch parameter card without network access or typed-tool activation', async () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);

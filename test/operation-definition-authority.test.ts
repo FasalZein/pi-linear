@@ -90,6 +90,24 @@ describe('v0.6 operation definition authority', () => {
     }
   });
 
+  /**
+   * Operation variables arrive unparsed. The seam that requires an object says so
+   * instead of silently continuing with an empty object.
+   */
+  it('rejects a non-object variables input at every operation seam', async () => {
+    const operation = getOperation('get_issue');
+    const message = 'Linear operation "get_issue" variables must be a JSON object.';
+
+    expect(() => operation.validateVariables?.('issue-1')).toThrow(message);
+    expect(() => operation.validateVariables?.(['issue-1'])).toThrow(message);
+    await expect(operation.plan?.('issue-1')).rejects.toThrow(message);
+    await expect(definition('get_issue').preparation.plan?.(42)).rejects.toThrow(message);
+
+    const local = getOperation('switch_workspace');
+    await expect(local.executeLocal?.('second', { hasUI: false } as never, 'allowlist'))
+      .rejects.toThrow('Linear operation "switch_workspace" variables must be a JSON object.');
+  });
+
   it('authors the guarded delete safety class and keeps every other named operation non-destructive', () => {
     expect(Object.fromEntries(operationDefinitions.map(({ name, safety }) => [name, safety.namedInputPolicy])))
       .toEqual(Object.fromEntries(CANONICAL_NAMES.map((name) => [

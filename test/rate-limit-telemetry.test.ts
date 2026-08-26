@@ -100,7 +100,7 @@ describe('Linear rate-limit header telemetry', () => {
 
   it('keeps normal response telemetry internal and non-enumerable', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => response(200, { data: { viewer: { id: 'user-1' } } }, completeHeaders)));
-    const data = await linearGraphQL<JsonObject>('key', 'query { viewer { id } }');
+    const data = await linearGraphQL('key', 'query { viewer { id } }');
 
     expect(data).toEqual({ viewer: { id: 'user-1' } });
     expect(JSON.stringify(data)).toBe('{"viewer":{"id":"user-1"}}');
@@ -156,7 +156,7 @@ describe('Linear rate-limit header telemetry', () => {
       }));
     vi.stubGlobal('fetch', fetch);
 
-    const data = await linearGraphQL<JsonObject>('key', 'query { viewer { id } }');
+    const data = await linearGraphQL('key', 'query { viewer { id } }');
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(linearRateLimitTelemetry(data)).toEqual([
       { attempt: 1, headers: { 'X-RateLimit-Requests-Remaining': 0, 'Retry-After': '0' } },

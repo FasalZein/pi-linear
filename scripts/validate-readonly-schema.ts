@@ -1,9 +1,8 @@
 import { readFile } from 'node:fs/promises';
-import type { IntrospectionQuery } from 'graphql';
 import { linearGraphQLWithContext, resolveApiKey } from '../extensions/client';
 import { redactText } from '../extensions/redact';
 import { assertReadOnlyEvidence, recordingTransport, requestEvidence } from './request-recorder';
-import { validatePackageDocuments, type PackageGraphQLInventory } from './readonly-schema';
+import { parseIntrospectionQuery, validatePackageDocuments, type PackageGraphQLInventory } from './readonly-schema';
 
 function context() {
   return { hasUI: false, ui: { confirm: async () => false, input: async () => undefined, notify: () => undefined } } as any;
@@ -19,9 +18,9 @@ try {
   const { apiKey, source } = await resolveApiKey(context(), { promptIfMissing: false });
   if (!apiKey || source === 'none') throw new Error('existing Linear authentication is unavailable');
   const requests = requestEvidence();
-  const introspection = await linearGraphQLWithContext<IntrospectionQuery>({
+  const introspection = parseIntrospectionQuery(await linearGraphQLWithContext({
     credential: { apiKey, source }, transport: recordingTransport(fetch, requests), telemetry: [],
-  }, sourceQuery, {});
+  }, sourceQuery, {}));
   validatePackageDocuments(introspection, inventory);
   assertReadOnlyEvidence(requests);
   process.stdout.write(`READONLY SCHEMA VALIDATION PASS: ${JSON.stringify({ documents: inventory.documents.length, requests })}\n`);
