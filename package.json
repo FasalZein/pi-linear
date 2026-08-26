@@ -12,6 +12,7 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
+    "lint": "oxlint .",
     "typecheck": "tsc --noEmit",
     "smoke:readonly": "node scripts/smoke-readonly.mjs",
     "capture:readonly-schema": "node scripts/capture-readonly-schema.mjs",
@@ -56,6 +57,8 @@
     "@earendil-works/pi-ai": "^0.84.2",
     "@earendil-works/pi-coding-agent": "^0.84.2",
     "@earendil-works/pi-tui": "0.84.2",
+    "@oxlint/plugins": "1.80.0",
+    "oxlint": "1.80.0",
     "typebox": "^1.1.38",
     "vitest": "^3.2.4"
   },
