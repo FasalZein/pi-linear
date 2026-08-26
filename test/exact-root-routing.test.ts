@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { executeTyped } from './helpers/typed-execution';
 import { isolateLinearCredentials } from './helpers/credentials';
+import type { CompatibilityObject } from '../extensions/operation-types';
 
 isolateLinearCredentials();
 
@@ -18,16 +19,16 @@ afterEach(() => {
   else process.env.LINEAR_API_KEY = originalKey;
 });
 
-function execute(params: { operation: string; variables?: Record<string, unknown> }) {
+function execute(params: { operation: string; variables?: CompatibilityObject }) {
   return executeTyped(params.operation, params.variables);
 }
 
 function graphqlStub(
-  responder: (query: string, variables: Record<string, unknown>) => Record<string, unknown>,
+  responder: (query: string, variables: CompatibilityObject) => CompatibilityObject,
 ) {
-  const requests: Array<{ query: string; variables: Record<string, unknown> }> = [];
+  const requests: Array<{ query: string; variables: CompatibilityObject }> = [];
   const fetch = vi.fn(async (_url: string, init: RequestInit) => {
-    const request = JSON.parse(String(init.body)) as { query: string; variables: Record<string, unknown> };
+    const request = JSON.parse(String(init.body)) as { query: string; variables: CompatibilityObject };
     requests.push(request);
     return {
       ok: true,

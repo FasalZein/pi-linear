@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
+import type { CompatibilityObject } from '../extensions/operation-types';
 
 isolateLinearCredentials();
 
@@ -14,7 +15,7 @@ afterEach(() => {
   else process.env.LINEAR_API_KEY = originalApiKey;
 });
 
-function execute(tool: any, params: Record<string, unknown>) {
+function execute(tool: any, params: CompatibilityObject) {
   return tool.execute('call-1', params, undefined, undefined, { hasUI: false });
 }
 
@@ -25,8 +26,8 @@ function updateTools(document = 'Planning notes') {
   ] as const;
 }
 
-function installServer(resolveData: unknown) {
-  const requests: Array<{ query: string; variables: Record<string, unknown> }> = [];
+function installServer(resolveData: CompatibilityObject) {
+  const requests: Array<{ query: string; variables: CompatibilityObject }> = [];
   process.env.LINEAR_API_KEY = 'test-key';
   vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
     const request = JSON.parse(String(init.body));

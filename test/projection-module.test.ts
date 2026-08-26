@@ -21,7 +21,7 @@ const SAME_FOR_BOTH_VIEWS = [
 	"workflowState",
 ] as const satisfies readonly ProjectionEntity[];
 
-const BASELINE: Record<ProjectionEntity, Record<ProjectionView, string>> = {
+const BASELINE = {
 	pageInfo: {
 		list: "pageInfo { hasNextPage hasPreviousPage startCursor endCursor }",
 		detail: "pageInfo { hasNextPage hasPreviousPage startCursor endCursor }",
@@ -164,7 +164,7 @@ const BASELINE: Record<ProjectionEntity, Record<ProjectionView, string>> = {
   isPast isNext isPrevious progress createdAt updatedAt team { id key name }
 `,
 	},
-};
+} satisfies Record<ProjectionEntity, Record<ProjectionView, string>>;
 
 function nestedPageSizes(selection: string): string[] {
 	return [...selection.matchAll(/\w+\(first: \d+\)/g)].map(([match]) => match);
@@ -243,7 +243,7 @@ describe("projection hides field selection syntax", () => {
 	});
 
 	it("embeds those field sets in every current operation document", () => {
-		const expected: Record<string, string> = {
+		const expected = {
 			list_comments: projection("comment", "list"),
 			create_comment: projection("comment", "detail"),
 			update_comment: projection("comment", "detail"),

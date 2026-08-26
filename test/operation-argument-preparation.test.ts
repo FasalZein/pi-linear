@@ -3,6 +3,7 @@ import { linearBatchTool, resolveRequest } from "../extensions/api";
 import { operations } from "../extensions/operations";
 import { isolateLinearCredentials } from "./helpers/credentials";
 import { prepareOperation } from "./helpers/operation-plan";
+import type { CompatibilityObject } from "../extensions/operation-types";
 
 isolateLinearCredentials();
 
@@ -10,7 +11,7 @@ const INITIATIVE_ID = "11111111-1111-4111-8111-111111111111";
 const PROJECT_ID = "22222222-2222-4222-8222-222222222222";
 const MILESTONE_ID = "33333333-3333-4333-8333-333333333333";
 
-async function prepare(name: string, variables: Record<string, unknown>) {
+async function prepare(name: string, variables: CompatibilityObject) {
 	const operation = operations[name];
 	if (!operation) throw new Error(`${name} has no operation.`);
 	return prepareOperation(operation, variables);
@@ -19,10 +20,10 @@ async function prepare(name: string, variables: Record<string, unknown>) {
 function graphqlStub(
 	responder: (
 		query: string,
-		variables: Record<string, unknown>,
-	) => Record<string, unknown>,
+		variables: CompatibilityObject,
+	) => CompatibilityObject,
 ) {
-	const requests: Array<{ query: string; variables: Record<string, unknown> }> =
+	const requests: Array<{ query: string; variables: CompatibilityObject }> =
 		[];
 	const fetch = vi.fn(async (_url: string, init: RequestInit) => {
 		const request = JSON.parse(String(init.body));
@@ -463,7 +464,7 @@ describe("save operation mode validation and branch preparation", () => {
 	});
 
 	it("prepares valid update branches and invokes exact target resolvers", async () => {
-		const { requests } = graphqlStub((query, variables) => {
+		const { requests } = graphqlStub((query, _variables) => {
 			expect(query).toContain("query ResolveNamedEntityById($id: String!)");
 			if (query.includes("initiative(id:"))
 				return { initiative: { id: INITIATIVE_ID, name: "Initiative" } };

@@ -27,10 +27,19 @@ import {
   type LinearOperation,
 } from './operations';
 import type {
+  CompatibilityObject,
+  CompatibilityValue,
   GraphQLDocumentVariant,
+  GraphQLResultData,
   LookupPlan,
   OperationPlan,
   OperationPreparation,
+  UnparsedCompatibilityVariables,
+} from './operation-types';
+import {
+  isCompatibilityObject,
+  isCompatibilityString,
+  parseCompatibilityObject,
 } from './operation-types';
 import { activeSecrets } from './active-secrets';
 import {
@@ -70,11 +79,8 @@ function isAlias(key: string): boolean {
   return ALIAS.test(key) && !key.startsWith('__');
 }
 
-function asObject(value: unknown, label: string): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error(`${label} must be an object.`);
-  }
-  return value as Record<string, unknown>;
+function isPathNumber(value: string | number): value is number {
+  return Object.prototype.toString.call(value) === '[object Number]';
 }
 
 function parameterList(operation: LinearOperation): string {
@@ -86,16 +92,16 @@ function parameterList(operation: LinearOperation): string {
 function validateVariables(
   operation: LinearOperation,
   requestedName: string,
-  variables: Record<string, unknown>,
+  variables: CompatibilityObject,
 ): void {
-  const shapes = parameterVariants(operation, requestedName);
-  const valid = new Set(shapes.flatMap((shape) => shape.map(({ name }) => name)));
-  const validShape = shapes.find((shape) => {
-    const shapeKeys = new Set(shape.map(({ name }) => name));
-    return shape.every(({ name, required }) => !required || name in variables)
-      && Object.keys(variables).every((name) => shapeKeys.has(name));
+  const variants = parameterVariants(operation, requestedName);
+  const valid = new Set(variants.flatMap((variant) => variant.map(({ name }) => name)));
+  const validVariant = variants.find((variant) => {
+    const variantKeys = new Set(variant.map(({ name }) => name));
+    return variant.every(({ name, required }) => !required || name in variables)
+      && Object.keys(variables).every((name) => variantKeys.has(name));
   });
-  if (validShape) {
+  if (validVariant) {
     try {
       operation.validateVariables?.(variables);
       return;
@@ -122,24 +128,24 @@ type CompiledLookup = {
   key: string;
   aliases: string[];
   ast: DocumentNode;
-  variables: Record<string, unknown>;
+  variables: CompatibilityObject;
   failureMessage?: string;
   resolve: (
-    raw: JsonObject,
+    raw: GraphQLResultData,
     pathErrors: ReturnType<typeof linearGraphQLErrors>,
-  ) => unknown;
+  ) => GraphQLResultData;
 };
 
 type PlannedEntry = {
   key: string;
   root: string;
   document: string;
-  variables: Record<string, unknown>;
+  variables: CompatibilityObject;
   prepared?: OperationPreparation;
   operationName: string;
   variant?: GraphQLDocumentVariant;
   lookups?: CompiledLookup[];
-  batchFinish?: (resolved: Readonly<Record<string, unknown>>) => OperationPreparation;
+  batchFinish?: (resolved: GraphQLResultData) => OperationPreparation;
   deferredDocument?: string;
 };
 
@@ -164,7 +170,12 @@ function operationDefinition(document: DocumentNode): OperationDefinitionNode {
   return definition;
 }
 
-export function aliasDocument(key: string, document: string): { ast: DocumentNode; root: string } {
+export type AliasedDocument = {
+  ast: DocumentNode;
+  root: string;
+};
+
+export function aliasDocument(key: string, document: string): AliasedDocument {
   const source = parse(document);
   const op = operationDefinition(source);
   const roots = op.selectionSet.selections.filter((selection) => selection.kind === Kind.FIELD);
@@ -220,49 +231,54 @@ export function mergeDocuments(
 type RawEntry = {
   key: string;
   operation: string;
-  variables: Record<string, unknown>;
+  variables: CompatibilityObject;
   generated: boolean;
   keyBase: string;
   nextSuffix: number;
 };
 
-function parsePhase(value: unknown, label: string): RawEntry[] {
+type ParsedBatchPhases = {
+  reads: RawEntry[];
+  mutations: RawEntry[];
+};
+
+function parsePhaseEntry(entry: CompatibilityValue, index: number, label: string): RawEntry {
+  if (!isCompatibilityObject(entry)) {
+    throw new Error(`Malformed batch ${label} entry ${index}. Send { "operation": "<name>", "variables": { ... }, "key"?: "<label>" }.`);
+  }
+  const extra = Object.keys(entry).filter((field) => !['key', 'name', 'operation', 'variables'].includes(field));
+  if (extra.length) {
+    throw new Error(`Unknown batch entry field "${extra[0]}". Send { "operation": "<name>", "variables": { ... }, "key"?: "<label>" }.`);
+  }
+  if ('key' in entry && 'name' in entry) {
+    throw new Error('Batch entries cannot include both "key" and "name". Omit "name" and send { key?, operation, variables }.');
+  }
+  const callerKey = entry.key ?? entry.name;
+  if (callerKey !== undefined && (!isCompatibilityString(callerKey) || !isAlias(callerKey))) {
+    throw new Error(`"${String(callerKey)}" is not a valid batch entry key. Send { key?: "valid_label", operation, variables }; keys are optional.`);
+  }
+  if (!isCompatibilityString(entry.operation) || !entry.operation.trim()) {
+    throw new Error('Malformed batch entry. Send { "operation": "<name>", "variables": { ... }, "key"?: "<label>" }.');
+  }
+  if (entry.variables !== undefined && !isCompatibilityObject(entry.variables)) {
+    throw new Error('Malformed batch entry variables. Send { "operation": "<name>", "variables": { ... }, "key"?: "<label>" }.');
+  }
+  return {
+    key: isCompatibilityString(callerKey) ? callerKey : '',
+    operation: entry.operation,
+    variables: isCompatibilityObject(entry.variables) ? entry.variables : {},
+    generated: callerKey === undefined,
+    keyBase: '',
+    nextSuffix: 2,
+  };
+}
+
+function parsePhase(value: CompatibilityValue | undefined, label: string): RawEntry[] {
   if (value === undefined) return [];
   if (!Array.isArray(value)) {
     throw new Error(`Batch ${label} must be an array. Send { "operations": [...] } for reads or { "reads": [...], "mutations": [...] } for mixed work.`);
   }
-  return value.map((entry, index) => {
-    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
-      throw new Error(`Malformed batch ${label} entry ${index}. Send { "operation": "<name>", "variables": { ... }, "key"?: "<label>" }.`);
-    }
-    const record = entry as Record<string, unknown>;
-    const extra = Object.keys(record).filter((field) => !['key', 'name', 'operation', 'variables'].includes(field));
-    if (extra.length) {
-      throw new Error(`Unknown batch entry field "${extra[0]}". Send { "operation": "<name>", "variables": { ... }, "key"?: "<label>" }.`);
-    }
-    if ('key' in record && 'name' in record) {
-      throw new Error('Batch entries cannot include both "key" and "name". Omit "name" and send { key?, operation, variables }.');
-    }
-    const callerKey = record.key ?? record.name;
-    if (callerKey !== undefined && (typeof callerKey !== 'string' || !isAlias(callerKey))) {
-      throw new Error(`"${String(callerKey)}" is not a valid batch entry key. Send { key?: "valid_label", operation, variables }; keys are optional.`);
-    }
-    if (typeof record.operation !== 'string' || !record.operation.trim()) {
-      throw new Error('Malformed batch entry. Send { "operation": "<name>", "variables": { ... }, "key"?: "<label>" }.');
-    }
-    if (record.variables !== undefined && (!record.variables || typeof record.variables !== 'object' || Array.isArray(record.variables))) {
-      throw new Error('Malformed batch entry variables. Send { "operation": "<name>", "variables": { ... }, "key"?: "<label>" }.');
-    }
-    const entryVariables = (record.variables as Record<string, unknown> | undefined) ?? {};
-    return {
-      key: (callerKey as string | undefined) ?? '',
-      operation: record.operation,
-      variables: entryVariables,
-      generated: callerKey === undefined,
-      keyBase: '',
-      nextSuffix: 2,
-    };
-  });
+  return value.map((entry, index) => parsePhaseEntry(entry, index, label));
 }
 
 function assignKeys(entries: RawEntry[]): void {
@@ -287,7 +303,7 @@ function assignKeys(entries: RawEntry[]): void {
   }
 }
 
-function parseEntries(variables: Record<string, unknown>): { reads: RawEntry[]; mutations: RawEntry[] } {
+function parseEntries(variables: CompatibilityObject): ParsedBatchPhases {
   const allowed = new Set(['operations', 'reads', 'mutations']);
   const unknown = Object.keys(variables).filter((name) => !allowed.has(name));
   if (unknown.length) {
@@ -364,8 +380,12 @@ export function compileLookupDocument(key: string, lookup: LookupPlan): string {
   }).ast);
 }
 
-function prefixVariables(key: string, variables: Record<string, unknown>): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(variables).map(([name, value]) => [`${key}_${name}`, value]));
+function prefixVariables(key: string, variables: GraphQLResultData): CompatibilityObject {
+  const prefixed: CompatibilityObject = {};
+  for (const [name, value] of Object.entries(parseCompatibilityObject(variables))) {
+    if (value !== undefined) prefixed[`${key}_${name}`] = value;
+  }
+  return prefixed;
 }
 
 function assertNamedEntry(entry: RawEntry): LinearOperation {
@@ -408,7 +428,7 @@ async function planEntry(
   }
   if (plan.lookups.length) {
     const variant = operation.variants?.[0];
-    return {
+    const planned: PlannedEntry = {
       key: entry.key,
       root: variant?.root ?? '',
       document: '',
@@ -417,8 +437,9 @@ async function planEntry(
       variant,
       lookups: plan.lookups.map((lookup) => compilePlanLookup(entry.key, lookup)),
       batchFinish: plan.finish,
-      ...(expectedKind === 'mutation' ? { deferredDocument: operation.document } : {}),
     };
+    if (expectedKind === 'mutation') planned.deferredDocument = operation.document;
+    return planned;
   }
   const prepared = plan.finish({});
   const document = prepared.variant?.document ?? operation.document;
@@ -449,7 +470,9 @@ function collectAlias(
       errors.push({ key: entry.key, path: [entry.key], message: entry.prepared.failureMessage });
     } else {
       for (const error of scoped) {
-        errors.push({ key: entry.key, path: error.path, message: error.message, ...(partial ? { partial } : {}) });
+        const owned: BatchError = { key: entry.key, path: error.path, message: error.message };
+        if (partial) owned.partial = partial;
+        errors.push(owned);
       }
     }
     return;
@@ -463,7 +486,9 @@ function collectAlias(
   } catch (error) {
     const message = entry.prepared?.failureMessage
       ?? (error instanceof Error ? error.message : String(error));
-    errors.push({ key: entry.key, path: [entry.key], message, ...(value == null ? {} : { partial: mapped }) });
+    const failed: BatchError = { key: entry.key, path: [entry.key], message };
+    if (value != null) failed.partial = mapped;
+    errors.push(failed);
     return;
   }
   data[entry.key] = entry.prepared?.acknowledgement ?? mapped;
@@ -493,19 +518,19 @@ type GraphQLFailureOwner = {
 };
 
 type StructuredGraphQLPhase = {
-  raw: JsonObject;
+  raw: GraphQLResultData;
   errors: ReturnType<typeof linearGraphQLErrors>;
 };
 
 async function executeStructuredGraphQLPhase(
   network: LinearNetworkContext,
   query: string,
-  variables: Record<string, unknown>,
+  variables: CompatibilityObject,
   phase: 'read' | 'mutation',
 ): Promise<StructuredGraphQLPhase> {
   try {
     return {
-      raw: await linearGraphQLWithContext<JsonObject>(network, query, variables, {
+      raw: await linearGraphQLWithContext<GraphQLResultData>(network, query, variables, {
         throwResponseErrors: true,
         phase,
       }),
@@ -548,15 +573,16 @@ function classifyStructuredGraphQLErrors(
     if (output.some((error) => error.key === owner.entry.key)) continue;
     const first = errors[0]!;
     const stable = owner.failureMessage;
-    output.push({
+    const owned: BatchError = {
       key: owner.entry.key,
       path: stable || fallback || !first.path.length ? [owner.entry.key] : first.path,
       message: stable ?? first.message,
-      ...(errors.length > 1
-        ? { causes: errors.map((error) => ({ path: error.path, message: error.message })) }
-        : {}),
-      ...(owner.partial ? { partial: owner.partial } : {}),
-    });
+    };
+    if (errors.length > 1) {
+      owned.causes = errors.map((error) => ({ path: error.path, message: error.message }));
+    }
+    if (owner.partial) owned.partial = owner.partial;
+    output.push(owned);
   }
   return new Set(grouped.keys());
 }
@@ -568,13 +594,14 @@ function consolidateBatchErrors(errors: readonly BatchError[]): BatchError[] {
     const first = entries[0]!;
     const causes = entries.flatMap((entry) => entry.causes ?? [{ path: entry.path, message: entry.message }]);
     const partial = entries.find((entry) => entry.partial)?.partial;
-    return {
+    const consolidated: BatchError = {
       key,
       path: first.path,
       message: first.message,
-      ...(causes.length > 1 ? { causes } : {}),
-      ...(partial ? { partial } : {}),
     };
+    if (causes.length > 1) consolidated.causes = causes;
+    if (partial) consolidated.partial = partial;
+    return consolidated;
   });
 }
 
@@ -623,7 +650,7 @@ function failTransaction(keys: readonly string[], message: string): BatchError[]
 
 function collectTransactionalCreates(
   plans: Array<{ key: string; uuid: string }>,
-  raw: JsonObject,
+  raw: GraphQLResultData,
   pathErrors: ReturnType<typeof linearGraphQLErrors>,
   data: JsonObject,
   errors: BatchError[],
@@ -632,19 +659,19 @@ function collectTransactionalCreates(
   const scoped = pathErrors.filter((error) => error.path[0] === 'issueBatchCreate');
   const rootErrors = scoped.filter((error) => error.path.length < 3
     || error.path[1] !== 'issues'
-    || typeof error.path[2] !== 'number');
+    || !isPathNumber(error.path[2]!));
   if (rootErrors.length) {
     for (const key of keys) {
       for (const error of rootErrors) errors.push({ key, path: error.path, message: error.message });
     }
     return;
   }
-  const payload = raw.issueBatchCreate;
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+  const parsed = parseCompatibilityObject(raw);
+  const record = isCompatibilityObject(parsed.issueBatchCreate) ? parsed.issueBatchCreate : undefined;
+  if (!record) {
     errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned unusable transaction data.'));
     return;
   }
-  const record = payload as JsonObject;
   if (record.success !== true) {
     errors.push(...failTransaction(keys, 'Linear issueBatchCreate failed mutation expectation: issueBatchCreate.success must be true.'));
     return;
@@ -653,14 +680,14 @@ function collectTransactionalCreates(
     errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned unusable transaction data.'));
     return;
   }
-  const byId = new Map<string, JsonObject>();
+  const byId = new Map<string, CompatibilityObject>();
   for (const issue of record.issues) {
-    if (!issue || typeof issue !== 'object' || Array.isArray(issue)) {
+    if (!isCompatibilityObject(issue)) {
       errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned unusable transaction data.'));
       return;
     }
-    const id = (issue as JsonObject).id;
-    if (typeof id !== 'string' || !id) {
+    const id = issue.id;
+    if (!isCompatibilityString(id) || !id) {
       errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned unusable transaction data.'));
       return;
     }
@@ -668,7 +695,7 @@ function collectTransactionalCreates(
       errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned duplicate issue ids.'));
       return;
     }
-    byId.set(id, issue as JsonObject);
+    byId.set(id, issue);
   }
   const stamped = new Set(plans.map((plan) => plan.uuid));
   if (byId.size !== stamped.size || [...byId.keys()].some((id) => !stamped.has(id))) {
@@ -687,8 +714,10 @@ function collectTransactionalCreates(
       errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned uncorrelatable transaction errors.'));
       return;
     }
-    const issue = record.issues[index] as JsonObject;
-    const key = keyById.get(issue.id as string);
+    const issue = record.issues[index];
+    const key = isCompatibilityObject(issue) && isCompatibilityString(issue.id)
+      ? keyById.get(issue.id)
+      : undefined;
     if (!key) {
       errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned uncorrelatable transaction errors.'));
       return;
@@ -714,14 +743,14 @@ function collectTransactionalCreates(
 
 function applyIndependentLookups(
   mutations: PlannedEntry[],
-  raw: JsonObject,
+  raw: GraphQLResultData,
   pathErrors: ReturnType<typeof linearGraphQLErrors>,
   errors: BatchError[],
 ): void {
   for (const entry of mutations) {
     if (errors.some((error) => error.key === entry.key)) continue;
     if (!entry.lookups?.length || !entry.batchFinish) continue;
-    const resolved: Record<string, unknown> = {};
+    const resolved: GraphQLResultData = {};
     let failed = false;
     for (const lookup of entry.lookups) {
       try {
@@ -751,14 +780,21 @@ function applyIndependentLookups(
   }
 }
 
+export type BatchRequest = {
+  variables?: UnparsedCompatibilityVariables;
+  workspace?: string;
+  sink?: 'inline' | 'artifact';
+  telemetryMode?: TelemetryMode;
+};
+
 async function executeBatchWithTelemetry(
-  params: { variables?: Record<string, unknown>; workspace?: string; sink?: 'inline' | 'artifact'; telemetryMode?: TelemetryMode },
+  params: BatchRequest,
   mode: MutationMode,
   ctx: ExtensionContext,
   signal: AbortSignal | undefined,
   telemetry: LinearRateLimitSnapshot[],
 ): Promise<JsonObject> {
-  const parsed = parseEntries(params.variables ?? {});
+  const parsed = parseEntries(parseCompatibilityObject(params.variables ?? {}));
   const createFlags = parsed.mutations.map((entry) => isIssueCreateEntry(entry));
   const transactional = parsed.mutations.length > 1 && createFlags.every(Boolean);
   if (parsed.mutations.length > 1 && !transactional) {
@@ -827,11 +863,11 @@ async function executeBatchWithTelemetry(
     );
     readRequests = 1;
     const phase = await executeStructuredGraphQLPhase(network, query, variables, 'read');
-    const readOwners: GraphQLFailureOwner[] = reads.map((entry) => ({
-      entry,
-      aliases: [entry.key],
-      ...(phase.raw[entry.key] == null ? {} : { partial: { [entry.root]: phase.raw[entry.key] } }),
-    }));
+    const readOwners: GraphQLFailureOwner[] = reads.map((entry) => {
+      const owner: GraphQLFailureOwner = { entry, aliases: [entry.key] };
+      if (phase.raw[entry.key] != null) owner.partial = { [entry.root]: phase.raw[entry.key] };
+      return owner;
+    });
     const lookupOwners: GraphQLFailureOwner[] = mutations
       .filter((entry) => entry.lookups?.length)
       .map((entry) => ({
@@ -870,12 +906,14 @@ async function executeBatchWithTelemetry(
 
   if (transactional) {
     const stamped = mutations.map((entry) => {
-      const input = entry.prepared?.variables.input;
-      if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      const input = entry.prepared
+        ? parseCompatibilityObject(entry.prepared.variables).input
+        : undefined;
+      if (!isCompatibilityObject(input)) {
         throw new Error(`Batch entry "${entry.key}" is missing a prepared create input.`);
       }
       const uuid = randomUUID();
-      return { key: entry.key, uuid, input: { ...(input as JsonObject), id: uuid } };
+      return { key: entry.key, uuid, input: { ...input, id: uuid } };
     });
     assertMutationAllowed(ISSUE_BATCH_CREATE_DOCUMENT, mode, ['issueBatchCreate']);
     mutationRequests = 1;
@@ -887,7 +925,7 @@ async function executeBatchWithTelemetry(
     );
     const scoped = phase.errors.filter((error) => error.path[0] === 'issueBatchCreate'
       && error.path[1] === 'issues'
-      && typeof error.path[2] === 'number');
+      && isPathNumber(error.path[2]!));
     const responseWide = phase.errors.filter((error) => !scoped.includes(error));
     if (responseWide.length) {
       const owners: GraphQLFailureOwner[] = mutations.map((entry) => ({ entry, aliases: ['issueBatchCreate'] }));
@@ -916,12 +954,12 @@ async function executeBatchWithTelemetry(
     mutationRequests = 1;
     const phase = await executeStructuredGraphQLPhase(network, query, mutation.variables, 'mutation');
     if (phase.errors.length) {
-      const owner = {
+      const owner: GraphQLFailureOwner = {
         entry: mutation,
         aliases: [mutation.key],
         failureMessage: attributableFailureMessage(mutation),
-        ...(phase.raw[mutation.key] == null ? {} : { partial: { [mutation.root]: phase.raw[mutation.key] } }),
-      } satisfies GraphQLFailureOwner;
+      };
+      if (phase.raw[mutation.key] != null) owner.partial = { [mutation.root]: phase.raw[mutation.key] };
       classifyStructuredGraphQLErrors(phase.errors, [owner], [owner], errors);
     } else {
       collectAlias(mutation, phase.raw, [], data, errors);
@@ -943,7 +981,7 @@ async function executeBatchWithTelemetry(
 }
 
 export async function executeBatch(
-  params: { variables?: Record<string, unknown>; workspace?: string; sink?: 'inline' | 'artifact'; telemetryMode?: TelemetryMode },
+  params: BatchRequest,
   mode: MutationMode,
   ctx: ExtensionContext,
   signal: AbortSignal | undefined,

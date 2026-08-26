@@ -3,6 +3,7 @@ import { linearBatchTool } from '../extensions/api';
 import { renderLinearBatchCall, renderLinearBatchResult } from '../extensions/renderers';
 import { createLinearHarness, execute } from './helpers/provider-harness';
 import { isolateLinearCredentials } from './helpers/credentials';
+import type { CompatibilityObject } from '../extensions/operation-types';
 
 isolateLinearCredentials();
 
@@ -20,7 +21,7 @@ function block(component: any): string {
   return component.render(120).join('\n');
 }
 
-function result(details: unknown) {
+function result(details: CompatibilityObject) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(details) }], details } as any;
 }
 
@@ -64,7 +65,7 @@ describe('direct batch tool', () => {
 
   it('preserves canonical-key reads on the direct batch tool', async () => {
     process.env.LINEAR_API_KEY = 'test-key';
-    const requests: Array<{ query: string; variables: Record<string, unknown> }> = [];
+    const requests: Array<{ query: string; variables: CompatibilityObject }> = [];
     vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
       const request = JSON.parse(String(init.body));
       requests.push(request);

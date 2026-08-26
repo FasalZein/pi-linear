@@ -5,6 +5,7 @@ import { operations } from '../extensions/operations';
 import { projection } from '../extensions/selections';
 import { isolateLinearCredentials } from './helpers/credentials';
 import { prepareOperation } from './helpers/operation-plan';
+import type { CompatibilityObject } from '../extensions/operation-types';
 
 isolateLinearCredentials();
 
@@ -19,16 +20,16 @@ afterEach(() => {
   else process.env.LINEAR_API_KEY = originalKey;
 });
 
-function execute(params: { operation: string; variables?: Record<string, unknown> }) {
+function execute(params: { operation: string; variables?: CompatibilityObject }) {
   return executeTyped(params.operation, params.variables);
 }
 
 function graphqlStub(
-  responder: (query: string, variables: Record<string, unknown>) => Record<string, unknown>,
+  responder: (query: string, variables: CompatibilityObject) => CompatibilityObject,
 ) {
-  const requests: Array<{ query: string; variables: Record<string, unknown> }> = [];
+  const requests: Array<{ query: string; variables: CompatibilityObject }> = [];
   const fetch = vi.fn(async (_url: string, init: RequestInit) => {
-    const request = JSON.parse(String(init.body)) as { query: string; variables: Record<string, unknown> };
+    const request = JSON.parse(String(init.body)) as { query: string; variables: CompatibilityObject };
     requests.push(request);
     return {
       ok: true,
@@ -47,7 +48,7 @@ function issueNode(id: string, identifier: string) {
   return { id, identifier, title: identifier, team: { id: TEAM_ID, key: 'AEO' } };
 }
 
-async function prepare(variables: Record<string, unknown>) {
+async function prepare(variables: CompatibilityObject) {
   return prepareOperation(operations.list_issues!, variables);
 }
 

@@ -7,6 +7,7 @@ import { SAFE_NAMED_MUTATION_ROOTS } from '../extensions/safety';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
 import { executeTyped } from './helpers/typed-execution';
+import type { CompatibilityObject } from '../extensions/operation-types';
 
 isolateLinearCredentials();
 
@@ -26,34 +27,34 @@ const theme = {
   underline: (text: string) => text,
 } as any;
 
-function execute(input: Record<string, any>, mode: 'allowlist' | 'readonly' = 'allowlist') {
+function execute(input: { operation: string; variables?: CompatibilityObject }, mode: 'allowlist' | 'readonly' = 'allowlist') {
   if (input.operation === 'batch') {
     return (linearBatchTool(mode) as any).execute('call', input.variables, undefined, undefined, { hasUI: false });
   }
   return executeTyped(input.operation, input.variables, { mode });
 }
 
-function executeWithSignal(input: Record<string, any>, signal: AbortSignal) {
+function executeWithSignal(input: { operation: string; variables?: CompatibilityObject }, signal: AbortSignal) {
   if (input.operation === 'batch') {
     return (linearBatchTool('allowlist') as any).execute('call', input.variables, signal, undefined, { hasUI: false });
   }
   return executeTyped(input.operation, input.variables, { signal });
 }
 
-function response(body: unknown, headers: Record<string, string> = {}) {
+function response(body: CompatibilityObject, headers: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
     status: 200,
     headers: { 'Content-Type': 'application/json', ...headers },
   });
 }
 
-function successStub(relation: Record<string, unknown> | null = {
+function successStub(relation: CompatibilityObject | null = {
   id: RELATION,
   type: 'related',
   issue: { id: ISSUE },
   relatedIssue: { id: RELATED },
 }) {
-  const requests: Array<{ query: string; variables: Record<string, unknown> }> = [];
+  const requests: Array<{ query: string; variables: CompatibilityObject }> = [];
   const fetch = vi.fn(async (_url: string, init: RequestInit) => {
     const request = JSON.parse(String(init.body));
     requests.push(request);
@@ -222,18 +223,16 @@ describe('delete_issue_relation strict guarded delete', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  function batchDelete(reads: unknown[] = []) {
-    return execute({
-      operation: 'batch',
-      variables: {
-        ...(reads.length ? { reads } : {}),
-        mutations: [{ key: 'remove', operation: 'delete_issue_relation', variables }],
-      },
-    });
+  function batchDelete(reads: CompatibilityObject[] = []) {
+    const payload: CompatibilityObject = {
+      mutations: [{ key: 'remove', operation: 'delete_issue_relation', variables }],
+    };
+    if (reads.length) payload.reads = reads;
+    return execute({ operation: 'batch', variables: payload });
   }
 
   it('folds a guarded preflight beside reads, then returns the keyed acknowledgement', async () => {
-    const requests: Array<{ query: string; variables: Record<string, unknown> }> = [];
+    const requests: Array<{ query: string; variables: CompatibilityObject }> = [];
     const fetch = vi.fn(async (_url: string, init: RequestInit) => {
       const request = JSON.parse(String(init.body));
       requests.push(request);

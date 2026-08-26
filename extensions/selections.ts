@@ -1,3 +1,5 @@
+import type { CompatibilityValue } from "./operation-types";
+
 // Field sets ported from @alasano/pi-linear 0.4.1, with public summary/full
 // views mapped onto the list/detail projection boundary for issue, project,
 // and document reads.
@@ -96,7 +98,7 @@ const CYCLE = `
   isPast isNext isPrevious progress createdAt updatedAt team { id key name }
 `;
 
-const SELECTIONS: Record<ProjectionEntity, Record<ProjectionView, string>> = {
+const SELECTIONS = {
   comment: { list: COMMENT, detail: COMMENT },
   cycle: { list: CYCLE, detail: CYCLE },
   document: { list: DOCUMENT_SUMMARY, detail: DOCUMENT_FULL },
@@ -116,7 +118,7 @@ const SELECTIONS: Record<ProjectionEntity, Record<ProjectionView, string>> = {
   user: { list: USER, detail: USER },
   view: { list: VIEW, detail: VIEW },
   workflowState: { list: WORKFLOW_STATE, detail: WORKFLOW_STATE },
-};
+} satisfies Record<ProjectionEntity, Record<ProjectionView, string>>;
 
 export function projection(entity: ProjectionEntity, view: ProjectionView): string {
   return SELECTIONS[entity][view];
@@ -126,7 +128,7 @@ export function projectionViewFor(view: ResultView): ProjectionView {
   return view === "summary" ? "list" : "detail";
 }
 
-export function parseResultView(value: unknown, fallback: ResultView): ResultView {
+export function parseResultView(value: CompatibilityValue | undefined, fallback: ResultView): ResultView {
   if (value === undefined) return fallback;
   if (value === "summary" || value === "full") return value;
   throw new Error('view must be "summary" or "full"');

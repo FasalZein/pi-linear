@@ -9,6 +9,7 @@ import { operationDefinitions, projectCompatibilityOperation } from '../extensio
 import type { MutationMode } from '../extensions/safety';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
+import type { CompatibilityObject, CompatibilityValue } from '../extensions/operation-types';
 
 isolateLinearCredentials();
 
@@ -39,12 +40,12 @@ afterEach(async () => {
   await Promise.all(artifactRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
-function directParams(params: Record<string, unknown>) {
-  const variables = params.variables as Record<string, unknown> | undefined;
-  return { ...(variables ?? {}), ...Object.fromEntries(Object.entries(params).filter(([key]) => !['operation', 'variables'].includes(key))) };
+function directParams(params: CompatibilityObject) {
+  const variables = params.variables as CompatibilityObject | undefined;
+  return { ...variables, ...Object.fromEntries(Object.entries(params).filter(([key]) => !['operation', 'variables'].includes(key))) };
 }
 
-function execute(params: Record<string, unknown>, mode: MutationMode = 'allowlist') {
+function execute(params: CompatibilityObject, mode: MutationMode = 'allowlist') {
   const tool = params.operation === 'batch'
     ? linearBatchTool(mode)
     : params.operation === 'get_result'
@@ -53,21 +54,21 @@ function execute(params: Record<string, unknown>, mode: MutationMode = 'allowlis
   return (tool as any).execute('call-1', params.operation === 'help' ? params : directParams(params), undefined, undefined, { hasUI: false });
 }
 
-function executeWithSignal(params: Record<string, unknown>, signal: AbortSignal, mode: MutationMode = 'allowlist') {
+function executeWithSignal(params: CompatibilityObject, signal: AbortSignal, mode: MutationMode = 'allowlist') {
   return (linearBatchTool(mode) as any).execute('call-1', directParams(params), signal, undefined, { hasUI: false });
 }
 
-function executeTyped(operation: string, variables: Record<string, unknown>) {
+function executeTyped(operation: string, variables: CompatibilityObject) {
   const tool = typedLinearTools().find(({ name }) => name === `linear_${operation}`);
   if (!tool) throw new Error(`Missing typed tool for ${operation}.`);
   return (tool as any).execute('call-1', variables, undefined, undefined, { hasUI: false });
 }
 
-function batch(reads: unknown[], extra: Record<string, unknown> = {}) {
+function batch(reads: CompatibilityObject[], extra: CompatibilityObject = {}) {
   return execute({ operation: 'batch', variables: { reads, ...extra } });
 }
 
-function operations(entries: unknown[]) {
+function operations(entries: CompatibilityValue[]) {
   return execute({ operation: 'batch', variables: { operations: entries } });
 }
 
@@ -75,7 +76,7 @@ function issueNode(id: string, identifier: string, title = 'Fix login') {
   return { id, identifier, title, team: { id: TEAM_ID, key: 'AEO' } };
 }
 
-function graphqlStub(respond: (request: { query: string; variables: Record<string, unknown> }) => {
+function graphqlStub(respond: (request: { query: string; variables: CompatibilityObject }) => {
   ok?: boolean;
   status?: number;
   statusText?: string;
@@ -83,9 +84,9 @@ function graphqlStub(respond: (request: { query: string; variables: Record<strin
   json?: boolean;
   throw?: Error;
 }) {
-  const requests: Array<{ query: string; variables: Record<string, unknown> }> = [];
+  const requests: Array<{ query: string; variables: CompatibilityObject }> = [];
   const fetch = vi.fn(async (_url: string, init: RequestInit) => {
-    const request = JSON.parse(String(init.body)) as { query: string; variables: Record<string, unknown> };
+    const request = JSON.parse(String(init.body)) as { query: string; variables: CompatibilityObject };
     requests.push(request);
     const outcome = respond(request);
     if (outcome.throw) throw outcome.throw;
@@ -128,9 +129,9 @@ describe('batch help and catalog', () => {
       .filter((example) => 'operations' in example || 'reads' in example);
     const help = batchHelp() as any;
     const examples = [LINEAR_BATCH_HELP.flatExample, LINEAR_BATCH_HELP.phasedExample, help.example.variables, help.phasedExample.variables, ...documented] as Array<{
-      operations?: Array<{ operation: string; variables: Record<string, unknown> }>;
-      reads?: Array<{ operation: string; variables: Record<string, unknown> }>;
-      mutations?: Array<{ operation: string; variables: Record<string, unknown> }>;
+      operations?: Array<{ operation: string; variables: CompatibilityObject }>;
+      reads?: Array<{ operation: string; variables: CompatibilityObject }>;
+      mutations?: Array<{ operation: string; variables: CompatibilityObject }>;
     }>;
     expect(examples.length).toBeGreaterThanOrEqual(6);
     for (const example of examples) {
@@ -503,9 +504,9 @@ describe('batch read phase', () => {
   it('keeps a concurrent read-only batch and direct call on their own responses', async () => {
     let releaseBatch!: () => void;
     const batchBlocked = new Promise<void>((resolve) => { releaseBatch = resolve; });
-    const requests: Array<{ query: string; variables: Record<string, unknown> }> = [];
+    const requests: Array<{ query: string; variables: CompatibilityObject }> = [];
     const fetch = vi.fn(async (_url: string, init: RequestInit) => {
-      const request = JSON.parse(String(init.body)) as { query: string; variables: Record<string, unknown> };
+      const request = JSON.parse(String(init.body)) as { query: string; variables: CompatibilityObject };
       requests.push(request);
       if (request.query.includes('BatchRead')) {
         await batchBlocked;
@@ -539,7 +540,7 @@ describe('pure mutation operation plans', () => {
       expect(plan, definition.name).toBeTypeOf('function');
       const first = await plan!({ ...definition.canonical.example });
       const second = await plan!({ ...definition.canonical.example });
-      const shape = (value: typeof first) => ({
+      const planCard = (value: typeof first) => ({
         kind: value.kind,
         lookups: value.lookups.map((lookup) => ({
           key: lookup.key,
@@ -550,7 +551,7 @@ describe('pure mutation operation plans', () => {
           variables: lookup.dependsOn?.length ? lookup.variables.toString() : lookup.variables({}),
         })),
       });
-      expect(shape(first), definition.name).toEqual(shape(second));
+      expect(planCard(first), definition.name).toEqual(planCard(second));
       expect(first.kind, definition.name).toBe('mutation');
     }
     expect(fetch).not.toHaveBeenCalled();
@@ -990,8 +991,8 @@ function aliases(query: string, field: string): string[] {
   return [...query.matchAll(new RegExp(`(\\w+)\\s*:\\s*${field}\\b`, 'g'))].map((match) => match[1]!);
 }
 
-function lookupData(query: string, overrides: Record<string, unknown> = {}) {
-  const data: Record<string, unknown> = {};
+function lookupData(query: string, overrides: CompatibilityObject = {}) {
+  const data: CompatibilityObject = {};
   const user = { id: USER_ID, name: 'Me', displayName: 'Me', email: 'me@example.com' };
   for (const alias of aliases(query, 'teams')) data[alias] = { nodes: [{ id: TEAM_ID, key: 'AEO' }] };
   for (const alias of aliases(query, 'team')) data[alias] = { id: TEAM_ID, key: 'AEO' };
@@ -1009,11 +1010,11 @@ function lookupData(query: string, overrides: Record<string, unknown> = {}) {
   return { ...data, ...overrides };
 }
 
-function createIssue(key: string, title: string, extra: Record<string, unknown> = {}) {
+function createIssue(key: string, title: string, extra: CompatibilityObject = {}) {
   return { key, operation: 'create_issue', variables: { title, team: 'AEO', ...extra } };
 }
 
-function batchIssues(request: { variables: Record<string, unknown> }) {
+function batchIssues(request: { variables: CompatibilityObject }) {
   const input = request.variables.input as { issues?: Array<{ id: string; title: string; teamId?: string; stateId?: string; assigneeId?: string }> };
   return input.issues ?? [];
 }
@@ -1433,8 +1434,8 @@ describe('batch transactional create', () => {
     const { requests } = graphqlStub((request) => {
       if (request.query.includes('issueCreate')) {
         const input = Object.values(request.variables).find((value) =>
-          typeof value === 'object' && value !== null && 'projectId' in value,
-        ) as Record<string, unknown>;
+          value !== null && Object.prototype.toString.call(value) === '[object Object]' && 'projectId' in (value as object),
+        ) as CompatibilityObject;
         expect(input).toMatchObject({ projectId: PROJECT_ID, labelIds: [LABEL_ID] });
         expect(input).not.toHaveProperty('project');
         expect(input).not.toHaveProperty('labels');
@@ -1477,7 +1478,7 @@ describe('exact batch accounting and routing', () => {
       operation: 'get_issue',
       variables: { issue: `AEO-${index + 1}` },
     }));
-    graphqlStub((request) => ({
+    graphqlStub((_request) => ({
       body: {
         data: Object.fromEntries(reads.map((entry, index) => [entry.key, {
           id: `${String(index + 1).padStart(8, '0')}-1111-4111-8111-111111111111`,
@@ -1490,7 +1491,9 @@ describe('exact batch accounting and routing', () => {
     }));
 
     const run = async (sink?: 'inline' | 'artifact') => {
-      const result = await execute({ operation: 'batch', variables: { reads }, ...(sink ? { sink } : {}) });
+      const payload: CompatibilityObject = { operation: 'batch', variables: { reads } };
+      if (sink) payload.sink = sink;
+      const result = await execute(payload);
       if (!result.details.handle) return result.details;
       const recovered = await execute({
         operation: 'get_result',

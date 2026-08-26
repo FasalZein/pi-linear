@@ -4,6 +4,7 @@ import { resolveRequest } from "../extensions/api";
 import { operations } from "../extensions/operations";
 import { isolateLinearCredentials } from "./helpers/credentials";
 import { prepareOperation } from "./helpers/operation-plan";
+import type { CompatibilityObject } from "../extensions/operation-types";
 
 isolateLinearCredentials();
 
@@ -14,17 +15,17 @@ const STATE = "44444444-4444-4444-8444-444444444444";
 
 type Fixture = {
 	name: string;
-	variables: Record<string, unknown>;
+	variables: CompatibilityObject;
 	root: string;
-	expectedVariables: Record<string, unknown>;
+	expectedVariables: CompatibilityObject;
 	rejectsEmpty: boolean;
 	kind?: "local";
 };
 const f = (
 	name: string,
-	variables: Record<string, unknown>,
+	variables: CompatibilityObject,
 	root: string,
-	expectedVariables: Record<string, unknown>,
+	expectedVariables: CompatibilityObject,
 	rejectsEmpty: boolean,
 	kind?: "local",
 ): Fixture => ({
@@ -400,7 +401,7 @@ function root(document: string): string {
 function installResolvers() {
 	const fetch = vi.fn(async (_url: string, init: RequestInit) => {
 		const { query, variables } = JSON.parse(String(init.body));
-		let data: Record<string, unknown>;
+		let data;
 		if (query.includes("ResolveIssueByIdentifier"))
 			data = {
 				issues: {

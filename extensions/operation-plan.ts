@@ -8,14 +8,16 @@ import {
   type LinearGraphQLFn,
   type LinearNetworkContext,
   type ResolvedIssue,
-  type ResolvedNamedEntity,
-  type ResolvedState,
-  type ResolvedTeam,
-  type ResolvedUser,
 } from './client';
 import type { LookupPlan, OperationPlan, OperationPreparation } from './operation-types';
-
-type JsonObject = Record<string, unknown>;
+import {
+  isCompatibilityObject,
+  isCompatibilityString,
+  parseCompatibilityObject,
+  type CompatibilityObject,
+  type CompatibilityValue,
+  type GraphQLResultData,
+} from './operation-types';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TEAM_KEY = /^[A-Z][A-Z0-9]*$/i;
@@ -31,6 +33,49 @@ function one<T>(nodes: readonly T[], description: string): T {
     throw new Error(`Linear ${description} resolved to ${nodes.length} matches; expected exactly one.`);
   }
   return nodes[0]!;
+}
+
+function presentRecord(value: CompatibilityValue | undefined): CompatibilityObject | undefined {
+  if (value === undefined || value === null) return undefined;
+  return isCompatibilityObject(value) ? value : {};
+}
+
+function lookupNodes(value: CompatibilityValue | undefined): readonly CompatibilityObject[] {
+  const record = presentRecord(value);
+  if (!record) return [];
+  const nodes = record.nodes;
+  if (!Array.isArray(nodes)) return [];
+  return nodes.map((node) => (isCompatibilityObject(node) ? node : {}));
+}
+
+function recordAt(resolved: GraphQLResultData, key: string): GraphQLResultData {
+  const value = parseCompatibilityObject(resolved)[key];
+  return isCompatibilityObject(value) ? value : {};
+}
+
+function teamIdFromResolved(value: GraphQLResultData): string {
+  const id = parseCompatibilityObject(value).id;
+  if (!isCompatibilityString(id)) throw new Error('Linear team is missing id.');
+  return id;
+}
+
+function assignOptional<T extends object, K extends keyof T>(
+  target: T,
+  key: K,
+  value: T[K] | undefined,
+): void {
+  if (value !== undefined) target[key] = value;
+}
+
+function objectAtPath(value: GraphQLResultData, path: string): CompatibilityObject | undefined {
+  let current: CompatibilityValue = parseCompatibilityObject(value);
+  for (const part of path.split('.')) {
+    if (!isCompatibilityObject(current)) return undefined;
+    const next: CompatibilityValue | undefined = current[part];
+    if (next === undefined) return undefined;
+    current = next;
+  }
+  return isCompatibilityObject(current) ? current : undefined;
 }
 
 export function pureQueryPlan(prepared: OperationPreparation): OperationPlan {
@@ -50,12 +95,11 @@ export function issueLookup(key: string, value: string): LookupPlan {
 }`,
     variables: () => ({ id: reference }),
     resolve(data) {
-      const issue = data.issue as {
-        id?: unknown; identifier?: unknown; team?: { id?: unknown; key?: unknown } | null;
-      } | null;
+      const issue = presentRecord(parseCompatibilityObject(data).issue);
+      const teamValue = issue?.team;
       assertIssueNodeMatches(reference, issue);
-      const team = issue.team;
-      if (!team || typeof team.id !== 'string' || typeof team.key !== 'string') {
+      const team = presentRecord(teamValue);
+      if (!team || !isCompatibilityString(team.id) || !isCompatibilityString(team.key)) {
         throw new Error(`Linear issue "${reference}" has no team.`);
       }
       const identifier = reference.match(/^([A-Z][A-Z0-9]*)-(\d+)$/i);
@@ -75,7 +119,7 @@ export function teamLookup(key: string, value: string): LookupPlan {
       document: () => `query ResolveTeamById($id: String!) { team(id: $id) { id key } }`,
       variables: () => ({ id: reference }),
       resolve(data) {
-        const team = data.team as ResolvedTeam | null;
+        const team = presentRecord(parseCompatibilityObject(data).team);
         if (!team) throw new Error(`Linear team "${reference}" was not found.`);
         if (team.id !== reference) throw new Error(`Linear team resolver returned mismatched id for "${reference}".`);
         return team;
@@ -92,9 +136,9 @@ export function teamLookup(key: string, value: string): LookupPlan {
 }`,
     variables: () => ({ key: reference.toUpperCase() }),
     resolve(data) {
-      const team = one((data.teams as { nodes?: ResolvedTeam[] } | undefined)?.nodes ?? [], `team "${reference}"`);
-      if (team.key.toLowerCase() !== reference.toLowerCase()) {
-        throw new Error(`Linear team resolver returned mismatched key "${team.key}" for "${reference}".`);
+      const team = one(lookupNodes(parseCompatibilityObject(data).teams), `team "${reference}"`);
+      if (!isCompatibilityString(team.key) || team.key.toLowerCase() !== reference.toLowerCase()) {
+        throw new Error(`Linear team resolver returned mismatched key "${String(team.key)}" for "${reference}".`);
       }
       return team;
     },
@@ -105,27 +149,29 @@ export function stateLookup(
   key: string,
   value: string,
   teamKey?: string,
-  teamIdFrom: (value: unknown) => string = (value) => (value as ResolvedTeam).id,
+  teamIdFrom: (value: GraphQLResultData) => string = teamIdFromResolved,
 ): LookupPlan {
   const reference = required(value, 'state');
   if (UUID.test(reference)) {
-    return {
+    const lookup: LookupPlan = {
       key,
-      ...(teamKey ? { dependsOn: [teamKey] } : {}),
       document: () => `query ResolveStateById($id: String!) {
   workflowState(id: $id) { id name team { id } }
 }`,
       variables: () => ({ id: reference }),
       resolve(data) {
-        const state = data.workflowState as { id?: unknown; name?: unknown; team?: { id?: unknown } | null } | null;
-        if (!state || typeof state.id !== 'string' || typeof state.name !== 'string') {
+        const state = presentRecord(parseCompatibilityObject(data).workflowState);
+        if (!state || !isCompatibilityString(state.id) || !isCompatibilityString(state.name)) {
           throw new Error(`Linear state "${reference}" was not found.`);
         }
         if (state.id !== reference) throw new Error(`Linear state resolver returned mismatched id for "${reference}".`);
-        if (typeof state.team?.id !== 'string') throw new Error(`Linear state "${reference}" has no team.`);
-        return { id: state.id, name: state.name, teamId: state.team.id } satisfies ResolvedState;
+        const team = presentRecord(state.team);
+        if (!team || !isCompatibilityString(team.id)) throw new Error(`Linear state "${reference}" has no team.`);
+        return { id: state.id, name: state.name, teamId: team.id };
       },
     };
+    assignOptional(lookup, 'dependsOn', teamKey ? [teamKey] : undefined);
+    return lookup;
   }
   if (!teamKey) {
     throw new Error(`Invalid Linear state reference "${reference}". Use a state UUID, or provide team with an exact state name.`);
@@ -139,17 +185,18 @@ export function stateLookup(
   }
 }`,
     variables(resolved) {
-      return { teamId: teamIdFrom(resolved[teamKey]), name: reference };
+      return { teamId: teamIdFrom(recordAt(resolved, teamKey)), name: reference };
     },
     resolve(data, resolved) {
-      const teamId = teamIdFrom(resolved[teamKey]);
-      const nodes = (data.workflowStates as {
-        nodes?: Array<{ id: string; name: string; team: { id: string } | null }>;
-      } | undefined)?.nodes ?? [];
-      const matches = nodes.filter((state) =>
-        state.team?.id === teamId && state.name.toLowerCase() === reference.toLowerCase());
+      const teamId = teamIdFrom(recordAt(resolved, teamKey));
+      const matches = lookupNodes(parseCompatibilityObject(data).workflowStates).filter((state) => {
+        const team = presentRecord(state.team);
+        return team?.id === teamId
+          && isCompatibilityString(state.name)
+          && state.name.toLowerCase() === reference.toLowerCase();
+      });
       const state = one(matches, `state "${reference}" in team "${teamId}"`);
-      return { id: state.id, name: state.name, teamId } satisfies ResolvedState;
+      return { id: state.id, name: state.name, teamId };
     },
   };
 }
@@ -176,14 +223,18 @@ export function stateLookupForTeamReference(key: string, value: string, teamValu
       ? { teamId: team, name: reference }
       : { teamKey: team.toUpperCase(), name: reference },
     resolve(data) {
-      const nodes = (data.workflowStates as {
-        nodes?: Array<{ id: string; name: string; team: { id: string; key?: string } | null }>;
-      } | undefined)?.nodes ?? [];
-      const matches = nodes.filter((state) => state.name.toLowerCase() === reference.toLowerCase()
-        && state.team && (byId ? state.team.id === team : state.team.key?.toLowerCase() === team.toLowerCase()));
+      const matches = lookupNodes(parseCompatibilityObject(data).workflowStates).filter((state) => {
+        const owner = presentRecord(state.team);
+        if (!owner || !isCompatibilityString(state.name)) return false;
+        if (state.name.toLowerCase() !== reference.toLowerCase()) return false;
+        return byId
+          ? owner.id === team
+          : isCompatibilityString(owner.key) && owner.key.toLowerCase() === team.toLowerCase();
+      });
       const state = one(matches, `state "${reference}" in team "${team}"`);
-      if (!state.team) throw new Error(`Linear state "${reference}" has no team.`);
-      return { id: state.id, name: state.name, teamId: state.team.id } satisfies ResolvedState;
+      const owner = presentRecord(state.team);
+      if (!owner) throw new Error(`Linear state "${reference}" has no team.`);
+      return { id: state.id, name: state.name, teamId: owner.id };
     },
   };
 }
@@ -197,7 +248,7 @@ export function userLookup(key: string, value: string): LookupPlan {
       document: () => `query ResolveViewer { viewer { ${selection} } }`,
       variables: () => ({}),
       resolve(data) {
-        const viewer = data.viewer as ResolvedUser | null;
+        const viewer = presentRecord(parseCompatibilityObject(data).viewer);
         if (!viewer?.id) throw new Error('Linear viewer could not be resolved.');
         return viewer;
       },
@@ -209,7 +260,7 @@ export function userLookup(key: string, value: string): LookupPlan {
       document: () => `query ResolveUserById($id: String!) { user(id: $id) { ${selection} } }`,
       variables: () => ({ id: reference }),
       resolve(data) {
-        const user = data.user as ResolvedUser | null;
+        const user = presentRecord(parseCompatibilityObject(data).user);
         if (!user) throw new Error(`Linear user "${reference}" was not found.`);
         if (user.id !== reference) throw new Error(`Linear user resolver returned mismatched id for "${reference}".`);
         return user;
@@ -225,8 +276,8 @@ export function userLookup(key: string, value: string): LookupPlan {
 }`,
     variables: () => ({ reference }),
     resolve(data) {
-      const records = ['byEmail', 'byName', 'byDisplayName'].flatMap((name) =>
-        (data[name] as { nodes?: ResolvedUser[] } | undefined)?.nodes ?? []);
+      const payload = parseCompatibilityObject(data);
+      const records = ['byEmail', 'byName', 'byDisplayName'].flatMap((name) => lookupNodes(payload[name]));
       const exact = records.filter((user) =>
         user.email === reference || user.name === reference || user.displayName === reference);
       return one([...new Map(exact.map((user) => [user.id, user])).values()], `user "${reference}"`);
@@ -242,7 +293,7 @@ export function documentLookup(key: string, value: string): LookupPlan {
       document: () => `query ResolveDocumentById($id: String!) { document(id: $id) { id title } }`,
       variables: () => ({ id: reference }),
       resolve(data) {
-        const document = data.document as { id?: unknown; title?: unknown } | null;
+        const document = presentRecord(parseCompatibilityObject(data).document);
         if (!document) throw new Error(`Linear document "${reference}" was not found.`);
         if (document.id !== reference) throw new Error(`Linear document resolver returned mismatched id "${String(document.id)}" for "${reference}".`);
         return { id: document.id, name: document.title };
@@ -256,9 +307,9 @@ export function documentLookup(key: string, value: string): LookupPlan {
 }`,
     variables: () => ({ title: reference }),
     resolve(data) {
-      const nodes = (data.documents as { nodes?: Array<{ id: string; title: string }> } | undefined)?.nodes ?? [];
+      const nodes = lookupNodes(parseCompatibilityObject(data).documents);
       if (nodes.length !== 1) throw new Error(`Linear document "${reference}" resolved to ${nodes.length} results; expected exactly one.`);
-      if (nodes[0]!.title !== reference) throw new Error(`Linear document resolver returned mismatched title "${nodes[0]!.title}" for "${reference}".`);
+      if (nodes[0]!.title !== reference) throw new Error(`Linear document resolver returned mismatched title "${String(nodes[0]!.title)}" for "${reference}".`);
       return { id: nodes[0]!.id, name: nodes[0]!.title };
     },
   };
@@ -275,21 +326,18 @@ export function issueRelationLookup(key: string, value: string, failureMessage: 
 }`,
     variables: () => ({ id: reference }),
     resolve(data) {
-      const relation = data.issueRelation as {
-        id?: unknown;
-        type?: unknown;
-        issue?: { id?: unknown } | null;
-        relatedIssue?: { id?: unknown } | null;
-      } | null;
-      if (!relation || typeof relation.id !== 'string' || typeof relation.type !== 'string'
-        || typeof relation.issue?.id !== 'string' || typeof relation.relatedIssue?.id !== 'string') {
+      const relation = presentRecord(parseCompatibilityObject(data).issueRelation);
+      const issue = presentRecord(relation?.issue);
+      const related = presentRecord(relation?.relatedIssue);
+      if (!relation || !isCompatibilityString(relation.id) || !isCompatibilityString(relation.type)
+        || !issue || !isCompatibilityString(issue.id) || !related || !isCompatibilityString(related.id)) {
         throw new Error('Linear issue relation did not match the exact delete guard.');
       }
       return {
         id: relation.id,
         type: relation.type,
-        issueId: relation.issue.id,
-        relatedIssueId: relation.relatedIssue.id,
+        issueId: issue.id,
+        relatedIssueId: related.id,
       };
     },
   };
@@ -310,7 +358,7 @@ export function namedEntityLookup(key: string, kind: LookupNamedKind, value: str
 }`,
       variables: () => ({ id: reference }),
       resolve(data) {
-        const entity = data[kind] as ResolvedNamedEntity | null;
+        const entity = presentRecord(parseCompatibilityObject(data)[kind]);
         if (!entity) throw new Error(`Linear ${kind} "${reference}" was not found.`);
         if (entity.id !== reference) throw new Error(`Linear ${kind} resolver returned mismatched id for "${reference}".`);
         return entity;
@@ -324,18 +372,18 @@ export function namedEntityLookup(key: string, kind: LookupNamedKind, value: str
 }`,
     variables: () => ({ name: reference }),
     resolve(data) {
-      const nodes = (data[plural] as { nodes?: ResolvedNamedEntity[] } | undefined)?.nodes ?? [];
-      return one(nodes.filter((entity) => entity.name === reference), `${kind} "${reference}"`);
+      const nodes = lookupNodes(parseCompatibilityObject(data)[plural]).filter((entity) => entity.name === reference);
+      return one(nodes, `${kind} "${reference}"`);
     },
   };
 }
 
 async function resolvePlanLookups(
   plan: OperationPlan,
-  execute: (lookup: LookupPlan, resolved: Readonly<Record<string, unknown>>) => Promise<JsonObject>,
+  execute: (lookup: LookupPlan, resolved: GraphQLResultData) => Promise<GraphQLResultData>,
 ): Promise<OperationPreparation> {
   const pending = [...plan.lookups];
-  const resolved: Record<string, unknown> = {};
+  const resolved: GraphQLResultData = {};
   const keys = new Set<string>();
   for (const lookup of pending) {
     if (keys.has(lookup.key)) throw new Error(`Duplicate operation lookup key "${lookup.key}".`);
@@ -357,11 +405,14 @@ export async function resolveOperationPlan(
 ): Promise<OperationPreparation> {
   return resolvePlanLookups(plan, async (lookup, resolved) => {
     try {
-      const data = await linearGraphQLWithContext<JsonObject>(
+      const options: { phase: 'read' } | undefined = lookup.telemetryPhase
+        ? { phase: lookup.telemetryPhase }
+        : undefined;
+      const data = await linearGraphQLWithContext<GraphQLResultData>(
         context,
         lookup.document(resolved),
         lookup.variables(resolved),
-        lookup.telemetryPhase ? { phase: lookup.telemetryPhase } : undefined,
+        options,
       );
       if (linearGraphQLErrors(data).length) throw new Error(lookup.failureMessage ?? linearGraphQLErrors(data)[0]!.message);
       return data;
@@ -380,12 +431,15 @@ export async function resolveOperationPlanWithGraphQL(
 ): Promise<OperationPreparation> {
   return resolvePlanLookups(plan, async (lookup, resolved) => {
     try {
-      const data = await graphql<JsonObject>(
+      const options: { phase: 'read' } | undefined = lookup.telemetryPhase
+        ? { phase: lookup.telemetryPhase }
+        : undefined;
+      const data = await graphql<GraphQLResultData>(
         apiKey,
         lookup.document(resolved),
         lookup.variables(resolved),
         signal,
-        lookup.telemetryPhase ? { phase: lookup.telemetryPhase } : undefined,
+        options,
       );
       if (linearGraphQLErrors(data).length) throw new Error(lookup.failureMessage ?? linearGraphQLErrors(data)[0]!.message);
       return data;
@@ -396,27 +450,17 @@ export async function resolveOperationPlanWithGraphQL(
   });
 }
 
-function objectAtPath(value: unknown, path: string): JsonObject | undefined {
-  let current: unknown = value;
-  for (const part of path.split('.')) {
-    if (!current || typeof current !== 'object' || Array.isArray(current)) return undefined;
-    current = (current as JsonObject)[part];
-  }
-  return current && typeof current === 'object' && !Array.isArray(current)
-    ? current as JsonObject
-    : undefined;
-}
-
-export function verifyOperationResult(prepared: OperationPreparation, data: JsonObject): void {
+export function verifyOperationResult(prepared: OperationPreparation, data: GraphQLResultData): void {
   if (prepared.exactIssue) {
     const check = prepared.exactIssue;
     const issue = objectAtPath(data, check.path);
     assertIssueNodeMatches(check.requested, issue);
-    const resolution = prepared.resolution ?? {};
+    const resolution = parseCompatibilityObject(prepared.resolution ?? {});
+    const existingTarget = isCompatibilityObject(resolution.target) ? resolution.target : {};
     prepared.resolution = {
       ...resolution,
       target: {
-        ...(typeof resolution.target === 'object' && resolution.target ? resolution.target : {}),
+        ...existingTarget,
         requested: check.requested,
         resolvedId: issue.id,
         identifier: issue.identifier,
@@ -427,16 +471,18 @@ export function verifyOperationResult(prepared: OperationPreparation, data: Json
     const check = prepared.exactNamed;
     const node = objectAtPath(data, check.path);
     assertNamedNodeMatches(check.kind, check.requested, node);
-    const resolution = prepared.resolution ?? {};
+    const resolution = parseCompatibilityObject(prepared.resolution ?? {});
+    const existingTarget = isCompatibilityObject(resolution.target) ? resolution.target : {};
+    const target: CompatibilityObject = {
+      ...existingTarget,
+      requested: check.requested,
+      resolvedId: node.id,
+    };
+    if (node.name !== undefined) target.name = node.name;
+    if (node.title !== undefined) target.title = node.title;
     prepared.resolution = {
       ...resolution,
-      target: {
-        ...(typeof resolution.target === 'object' && resolution.target ? resolution.target : {}),
-        requested: check.requested,
-        resolvedId: node.id,
-        ...(typeof node.name === 'string' ? { name: node.name } : {}),
-        ...(typeof node.title === 'string' ? { title: node.title } : {}),
-      },
+      target,
     };
   }
 }
