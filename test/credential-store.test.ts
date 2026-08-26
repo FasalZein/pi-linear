@@ -9,14 +9,21 @@ import { getCredentialFilePath } from '../extensions/client';
 const originalEnvironment = { ...process.env };
 let agentDirectory: string;
 
-async function put(value: string | object): Promise<string> {
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+type JsonDocument = { [key: string]: JsonValue };
+
+async function putText(source: string): Promise<string> {
   const file = getCredentialFilePath();
   await mkdir(join(agentDirectory, 'extensions', 'linear'), { recursive: true });
-  await writeFile(file, typeof value === 'string' ? value : JSON.stringify(value), { mode: 0o600 });
+  await writeFile(file, source, { mode: 0o600 });
   return file;
 }
 
-function document(overrides: Record<string, unknown> = {}) {
+function put(value: JsonDocument): Promise<string> {
+  return putText(JSON.stringify(value));
+}
+
+function document(overrides: JsonDocument = {}): JsonDocument {
   return {
     activeWorkspace: 'first',
     authPreference: 'workspace',
@@ -106,7 +113,7 @@ describe('Credential store public boundary', () => {
   });
 
   it('rejects a malformed Credential document without changing its bytes', async () => {
-    const file = await put('{"workspaces":');
+    const file = await putText('{"workspaces":');
     const before = await readFile(file);
 
     await expect(credentialStore.resolve()).rejects.toThrow(
@@ -189,7 +196,7 @@ describe('Credential store changes', () => {
   });
 
   it('rejects malformed documents, preserves bytes, and leaves no temporary state', async () => {
-    const file = await put('{"activeWorkspace":"first","workspaces":');
+    const file = await putText('{"activeWorkspace":"first","workspaces":');
     const before = await readFile(file);
 
     await expect(credentialStore.change({ type: 'remove', name: 'first' }, 'allowlist')).rejects.toThrow('Invalid Linear credential file');
@@ -239,13 +246,13 @@ describe('Credential store Active secrets', () => {
   });
 
   it('recovers complete closed apiKey strings from damaged JSON in first-seen order', async () => {
-    await put('{"apiKey":" first-key ","broken":[,"apiKey" : "second-key","apiKey":"first-key"}');
+    await putText('{"apiKey":" first-key ","broken":[,"apiKey" : "second-key","apiKey":"first-key"}');
 
     expect(credentialStore.secrets()).toEqual(['first-key', 'second-key']);
   });
 
   it('parses recovered escapes with JSON string rules', async () => {
-    await put(String.raw`{"apiKey":" line\nquote:\" slash:\/ unicode:\u0061 backslash:\\ "},broken`);
+    await putText(String.raw`{"apiKey":" line\nquote:\" slash:\/ unicode:\u0061 backslash:\\ "},broken`);
 
     expect(credentialStore.secrets()).toEqual(['line\nquote:" slash:/ unicode:a backslash:\\']);
   });
@@ -261,7 +268,7 @@ describe('Credential store Active secrets', () => {
     ['unrelated string', '{"name":"unrelated-secret",broken'],
     ['arbitrary text', 'arbitrary-secret text without a JSON property'],
   ])('ignores %s in damaged JSON', async (_name, source) => {
-    await put(source);
+    await putText(source);
 
     expect(credentialStore.secrets()).toEqual([]);
   });
@@ -283,14 +290,14 @@ describe('Credential store Active secrets', () => {
 
   it('puts the environment key first and trims, removes empty values, and deduplicates recovered keys', async () => {
     process.env.LINEAR_API_KEY = ' shared-key ';
-    await put('{"apiKey":" ","apiKey":"second-key","bad":,"apiKey":" shared-key ","apiKey":"third-key"}');
+    await putText('{"apiKey":" ","apiKey":"second-key","bad":,"apiKey":" shared-key ","apiKey":"third-key"}');
 
     expect(credentialStore.secrets()).toEqual(['shared-key', 'second-key', 'third-key']);
   });
 
   it('never throws for damaged, missing, and unreadable documents', async () => {
     process.env.LINEAR_API_KEY = 'env-key';
-    const file = await put('{"workspaces":{"work":{"apiKey":"saved-key"}},broken');
+    const file = await putText('{"workspaces":{"work":{"apiKey":"saved-key"}},broken');
     expect(credentialStore.secrets()).toEqual(['env-key', 'saved-key']);
 
     await rm(file);
@@ -302,7 +309,7 @@ describe('Credential store Active secrets', () => {
 
   it('keeps resolve and change fail-closed on recovered damaged-file values without changing bytes', async () => {
     const secret = 'recovered-unknown-secret-123456789';
-    const file = await put(`{"workspaces":{"first":{"apiKey":"${secret}"}},broken`);
+    const file = await putText(`{"workspaces":{"first":{"apiKey":"${secret}"}},broken`);
     const before = await readFile(file);
     const expected = 'Invalid Linear credential file. Repair or remove it before changing stored credentials.';
 

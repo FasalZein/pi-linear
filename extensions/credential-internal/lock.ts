@@ -1,9 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { Type } from 'typebox';
+import { Compile } from 'typebox/compile';
 import { redactError } from '../redact';
 
 type CredentialLockOwner = { pid: number; token: string };
+
+const storedLockOwner = Compile(
+  Type.Object({
+    pid: Type.Integer({ minimum: 1, maximum: Number.MAX_SAFE_INTEGER }),
+    token: Type.String(),
+  }),
+);
 
 function invalidCredentialLock(): never {
   throw new Error('Invalid Linear credential lock. Repair or remove it before changing stored credentials.');
@@ -38,14 +47,8 @@ async function readCredentialLockRecord(lockPath: string, fileName: string): Pro
   if (!current || current.dev !== lockStat.dev || current.ino !== lockStat.ino) {
     throw Object.assign(new Error('Credential lock changed.'), { code: 'ENOENT' });
   }
-  if (!isRecord(record) || !Number.isSafeInteger(record.pid) || Number(record.pid) <= 0 || typeof record.token !== 'string') {
-    invalidCredentialLock();
-  }
-  return { pid: Number(record.pid), token: record.token };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  if (!storedLockOwner.Check(record)) invalidCredentialLock();
+  return { pid: record.pid, token: record.token };
 }
 
 function readCredentialLockOwner(lockPath: string): Promise<CredentialLockOwner> {

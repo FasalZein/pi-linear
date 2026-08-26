@@ -31,6 +31,9 @@ function fakeCtx(hasUI = false) {
   } as any;
 }
 
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+type GraphQLVariables = { [name: string]: JsonValue };
+
 const ENV_KEY = 'LINEAR_API_KEY';
 const WORKSPACE_KEY = 'lin_api_workspace_key';
 const ENV_VAR_KEY = 'lin_api_env_var_key';
@@ -410,9 +413,9 @@ describe('shared operation-plan resolvers', () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  function graphqlStub(handler: (query: string, variables: Record<string, unknown>) => unknown) {
+  function graphqlStub(handler: (query: string, variables: GraphQLVariables) => unknown) {
     const fetch = vi.fn(async (_url: string, init: RequestInit) => {
-      const request = JSON.parse(String(init.body)) as { query: string; variables: Record<string, unknown> };
+      const request = JSON.parse(String(init.body)) as { query: string; variables: GraphQLVariables };
       return {
         ok: true, status: 200, statusText: 'OK', headers: new Headers(),
         json: async () => ({ data: handler(request.query, request.variables) }),

@@ -33,11 +33,18 @@ function credentials(overrides: Partial<WorkspaceCredentials> = {}): WorkspaceCr
   };
 }
 
-async function put(source: string | object): Promise<string> {
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+type JsonDocument = { [key: string]: JsonValue };
+
+async function putText(source: string): Promise<string> {
   const file = getCredentialFilePath();
   await mkdir(join(agentDirectory, 'extensions', 'linear'), { recursive: true });
-  await writeFile(file, typeof source === 'string' ? source : JSON.stringify(source), { mode: 0o600 });
+  await writeFile(file, source, { mode: 0o600 });
   return file;
+}
+
+function put(source: JsonDocument): Promise<string> {
+  return putText(JSON.stringify(source));
 }
 
 beforeEach(async () => {
@@ -264,7 +271,7 @@ describe('fail-closed credential mutation', () => {
     ['switch', () => switchWorkspace('second')],
     ['preference', () => setAuthPreference('workspace')],
   ])('rejects %s after truncated JSON and leaves the file unchanged', async (_name, mutate) => {
-    const file = await put('{"activeWorkspace":"first","workspaces":');
+    const file = await putText('{"activeWorkspace":"first","workspaces":');
     const before = await readFile(file);
 
     await expect(mutate()).rejects.toThrow();
@@ -274,7 +281,7 @@ describe('fail-closed credential mutation', () => {
 
   it('does not expose credential text from corrupt JSON errors', async () => {
     const secret = 'lin_api_corrupt_secret_123456789';
-    await put(`{"workspaces":{"first":{"apiKey":"${secret}"}},broken`);
+    await putText(`{"workspaces":{"first":{"apiKey":"${secret}"}},broken`);
 
     const error = await addWorkspace('second', 'lin_api_second_secret_123456789').catch((failure: Error) => failure);
 
