@@ -9,9 +9,10 @@ import {
   assertFixtureProvenance,
   catalogSchemaUsage,
   compareReadonlySchema,
+  parseReadonlySchemaFixture,
+  parseReadonlySchemaScope,
   schemaFixtureFromIntrospection,
   sha256,
-  type ReadonlySchemaFixture,
   type ReadonlySchemaScope,
 } from '../scripts/readonly-schema';
 import { assertNoCredentialLeak } from '../scripts/smoke-safety';
@@ -20,21 +21,20 @@ import { assertNoCredentialLeak } from '../scripts/smoke-safety';
 import { readonlyRefusal, runReadonlySmokeCommand } from '../scripts/smoke-readonly.mjs';
 
 const queryOperation = {
-  name: 'list_things', aliases: [], domain: 'issues', purpose: 'test', parameters: [],
-  example: { operation: 'list_things', variables: {} },
+  name: 'list_things',
   document: `query ListThings($filter: ThingFilter!, $ids: [[ID!]!]!, $mode: ThingMode) {
     things(filter: $filter, ids: $ids, mode: $mode) { nodes { id } }
   }`,
-} as any;
+};
 const mutationDocument = `mutation CreateThing($input: ThingInput!) {
   thingCreate(input: $input) { success thing { id } }
 }`;
 function mutationOperation(document = mutationDocument) {
   return {
-    name: 'create_thing', aliases: [], domain: 'issues', purpose: 'test', parameters: [],
-    example: { operation: 'create_thing', variables: {} }, document,
-    variants: [{ root: 'thingCreate', document, mutationResult: { successPath: 'success', successValue: true, requiredEntityPaths: ['thing'] } }],
-  } as any;
+    name: 'create_thing',
+    document,
+    variants: [{ document }],
+  };
 }
 
 const schemaText = `
@@ -70,7 +70,9 @@ function testContract(text = schemaText) {
 
 describe('read-only schema comparator', () => {
   it('covers every current catalog root argument and payload selection with the independent fixture', async () => {
-    const fixture = (await import('../scripts/fixtures/readonly-schema-contract.json')).default as unknown as ReadonlySchemaFixture;
+    const fixture = parseReadonlySchemaFixture(
+      await readFile(new URL('../scripts/fixtures/readonly-schema-contract.json', import.meta.url), 'utf8'),
+    );
     const usage = catalogSchemaUsage(Object.values(operations));
     for (const kind of ['Query', 'Mutation'] as const) {
       for (const [root, catalog] of Object.entries(usage.roots[kind])) {
@@ -92,7 +94,7 @@ describe('read-only schema comparator', () => {
       readFile(new URL('../scripts/capture-readonly-schema.ts', import.meta.url), 'utf8'),
     ]);
     expect(() => assertFixtureProvenance(
-      JSON.parse(fixtureSource), JSON.parse(scopeSource), query, scopeSource,
+      parseReadonlySchemaFixture(fixtureSource), parseReadonlySchemaScope(scopeSource), query, scopeSource,
     )).not.toThrow();
     expect(captureSource).not.toContain("../extensions/operations");
   });

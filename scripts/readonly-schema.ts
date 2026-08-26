@@ -14,6 +14,7 @@ import {
   type TypeNode,
 } from 'graphql';
 import type { LinearOperation } from '../extensions/operations';
+import type { RequestEvidence } from './request-recorder';
 
 export type PackageGraphQLDocument = {
   id: string;
@@ -76,7 +77,7 @@ export type ReadonlySchemaProvenance = {
   scope: string;
   scopeSha256: string;
   normalizedSha256: string;
-  requests?: import('./request-recorder').RequestEvidence;
+  requests?: RequestEvidence;
 };
 export type ReadonlySchemaFixture = {
   schemaVersion: 1;
@@ -94,21 +95,256 @@ export type CatalogSchemaUsage = {
   namedTypes: string[];
   mutationPayloadFields: Record<string, string[]>;
 };
+export type CatalogDocumentOperation = {
+  name: string;
+  document: string;
+  executeLocal?: LinearOperation['executeLocal'];
+  variants?: readonly { document: string }[];
+};
+
+type SchemaSignature =
+  | string
+  | readonly string[]
+  | RootContract
+  | ReadonlySchemaScope
+  | undefined;
 
 export function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex');
 }
 
-function stableValue(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(stableValue);
-  if (!value || typeof value !== 'object') return value;
-  return Object.fromEntries(Object.entries(value as Record<string, unknown>)
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, child]) => [key, stableValue(child)]));
+function compareKeys(left: string, right: string): number {
+  return left.localeCompare(right);
+}
+
+function stableStringMap(value: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(value).sort(([left], [right]) => compareKeys(left, right)));
+}
+
+function stableRootContract(contract: RootContract): RootContract {
+  const result: RootContract = {
+    arguments: stableStringMap(contract.arguments),
+    returns: contract.returns,
+  };
+  if (contract.selectedPayloadFields !== undefined) {
+    result.selectedPayloadFields = [...contract.selectedPayloadFields];
+  }
+  return result;
+}
+
+function stableRootMap(value: Record<string, RootContract>): Record<string, RootContract> {
+  return Object.fromEntries(
+    Object.entries(value)
+      .sort(([left], [right]) => compareKeys(left, right))
+      .map(([name, contract]) => [name, stableRootContract(contract)]),
+  );
+}
+
+function stableFixture(fixture: Omit<ReadonlySchemaFixture, 'provenance'>): Omit<ReadonlySchemaFixture, 'provenance'> {
+  return {
+    enums: Object.fromEntries(
+      Object.entries(fixture.enums)
+        .sort(([left], [right]) => compareKeys(left, right))
+        .map(([name, type]) => [name, { kind: type.kind, values: [...type.values] }]),
+    ),
+    inputs: Object.fromEntries(
+      Object.entries(fixture.inputs)
+        .sort(([left], [right]) => compareKeys(left, right))
+        .map(([name, type]) => [name, { fields: stableStringMap(type.fields), kind: type.kind }]),
+    ),
+    objects: Object.fromEntries(
+      Object.entries(fixture.objects)
+        .sort(([left], [right]) => compareKeys(left, right))
+        .map(([name, type]) => [name, { fields: stableStringMap(type.fields), kind: type.kind }]),
+    ),
+    roots: {
+      Mutation: stableRootMap(fixture.roots.Mutation),
+      Query: stableRootMap(fixture.roots.Query),
+    },
+    scalars: Object.fromEntries(
+      Object.entries(fixture.scalars)
+        .sort(([left], [right]) => compareKeys(left, right))
+        .map(([name, type]) => [name, { kind: type.kind }]),
+    ),
+    schemaVersion: fixture.schemaVersion,
+  };
+}
+
+function stableScope(scope: ReadonlySchemaScope): ReadonlySchemaScope {
+  return {
+    endpoint: scope.endpoint,
+    mutationPayloadFields: Object.fromEntries(
+      Object.entries(scope.mutationPayloadFields)
+        .sort(([left], [right]) => compareKeys(left, right))
+        .map(([name, fields]) => [name, [...fields]]),
+    ),
+    roots: {
+      Mutation: [...scope.roots.Mutation],
+      Query: [...scope.roots.Query],
+    },
+    schemaIdentity: {
+      mutationType: scope.schemaIdentity.mutationType,
+      queryType: scope.schemaIdentity.queryType,
+    },
+    schemaVersion: scope.schemaVersion,
+  };
 }
 
 export function normalizedFixtureDigest(fixture: Omit<ReadonlySchemaFixture, 'provenance'>): string {
-  return sha256(JSON.stringify(stableValue(fixture)));
+  return sha256(JSON.stringify(stableFixture(fixture)));
+}
+
+function textField(value: string, label: string): string {
+  if (value === `${value}`) return value;
+  throw new Error(`${label}: expected string`);
+}
+
+function readSchemaVersion(value: 1): 1 {
+  if (value === 1) return 1;
+  throw new Error('schemaVersion: expected 1');
+}
+
+function readStringList(value: readonly string[]): string[] {
+  return value.map((entry, index) => textField(entry, String(index)));
+}
+
+function readStringMap(value: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(value).map(([key, signature]) => [key, textField(signature, key)]));
+}
+
+function readStringListMap(value: Record<string, string[]>): Record<string, string[]> {
+  return Object.fromEntries(Object.entries(value).map(([key, fields]) => [key, readStringList(fields)]));
+}
+
+function readSchemaIdentity(value: ReadonlySchemaScope['schemaIdentity']): ReadonlySchemaScope['schemaIdentity'] {
+  return {
+    queryType: textField(value.queryType, 'schemaIdentity.queryType'),
+    mutationType: textField(value.mutationType, 'schemaIdentity.mutationType'),
+  };
+}
+
+function readRootContract(value: RootContract): RootContract {
+  const contract: RootContract = {
+    returns: textField(value.returns, 'returns'),
+    arguments: readStringMap(value.arguments),
+  };
+  if (value.selectedPayloadFields !== undefined) {
+    contract.selectedPayloadFields = readStringList(value.selectedPayloadFields);
+  }
+  return contract;
+}
+
+function readRootContracts(value: Record<string, RootContract>): Record<string, RootContract> {
+  return Object.fromEntries(Object.entries(value).map(([name, contract]) => [name, readRootContract(contract)]));
+}
+
+function readCount(value: number): number {
+  if (Number.isFinite(value) && value === Math.trunc(value)) return value;
+  throw new Error('request evidence count is invalid');
+}
+
+function readOperationType(value: RecordedOperationType): RecordedOperationType {
+  if (value === 'query' || value === 'mutation' || value === 'subscription') return value;
+  throw new Error('operationType is invalid');
+}
+
+type RecordedOperationType = RequestEvidence['documents'][number]['operationType'];
+
+function readRequestEvidence(value: RequestEvidence): RequestEvidence {
+  return {
+    total: readCount(value.total),
+    query: readCount(value.query),
+    mutation: readCount(value.mutation),
+    documents: value.documents.map((document) => ({
+      operationType: readOperationType(document.operationType),
+      operationName: document.operationName === null ? null : textField(document.operationName, 'operationName'),
+      documentSha256: textField(document.documentSha256, 'documentSha256'),
+    })),
+  };
+}
+
+function readProvenance(value: ReadonlySchemaProvenance): ReadonlySchemaProvenance {
+  const provenance: ReadonlySchemaProvenance = {
+    captureDate: textField(value.captureDate, 'captureDate'),
+    endpoint: textField(value.endpoint, 'endpoint'),
+    schemaIdentity: readSchemaIdentity(value.schemaIdentity),
+    sourceQuery: textField(value.sourceQuery, 'sourceQuery'),
+    sourceQuerySha256: textField(value.sourceQuerySha256, 'sourceQuerySha256'),
+    scope: textField(value.scope, 'scope'),
+    scopeSha256: textField(value.scopeSha256, 'scopeSha256'),
+    normalizedSha256: textField(value.normalizedSha256, 'normalizedSha256'),
+  };
+  if (value.requests !== undefined) {
+    provenance.requests = readRequestEvidence(value.requests);
+  }
+  return provenance;
+}
+
+function readInputKind(value: 'INPUT_OBJECT'): 'INPUT_OBJECT' {
+  if (value === 'INPUT_OBJECT') return value;
+  throw new Error('kind: expected INPUT_OBJECT');
+}
+
+function readEnumKind(value: 'ENUM'): 'ENUM' {
+  if (value === 'ENUM') return value;
+  throw new Error('kind: expected ENUM');
+}
+
+function readObjectKind(value: 'OBJECT'): 'OBJECT' {
+  if (value === 'OBJECT') return value;
+  throw new Error('kind: expected OBJECT');
+}
+
+function readScalarKind(value: 'SCALAR'): 'SCALAR' {
+  if (value === 'SCALAR') return value;
+  throw new Error('kind: expected SCALAR');
+}
+
+function readFixture(value: ReadonlySchemaFixture): ReadonlySchemaFixture {
+  return {
+    schemaVersion: readSchemaVersion(value.schemaVersion),
+    provenance: readProvenance(value.provenance),
+    roots: {
+      Query: readRootContracts(value.roots.Query),
+      Mutation: readRootContracts(value.roots.Mutation),
+    },
+    inputs: Object.fromEntries(Object.entries(value.inputs).map(([name, type]) => [name, {
+      kind: readInputKind(type.kind),
+      fields: readStringMap(type.fields),
+    }])),
+    enums: Object.fromEntries(Object.entries(value.enums).map(([name, type]) => [name, {
+      kind: readEnumKind(type.kind),
+      values: readStringList(type.values),
+    }])),
+    objects: Object.fromEntries(Object.entries(value.objects).map(([name, type]) => [name, {
+      kind: readObjectKind(type.kind),
+      fields: readStringMap(type.fields),
+    }])),
+    scalars: Object.fromEntries(Object.entries(value.scalars).map(([name, type]) => [name, {
+      kind: readScalarKind(type.kind),
+    }])),
+  };
+}
+
+function readScope(value: ReadonlySchemaScope): ReadonlySchemaScope {
+  return {
+    schemaVersion: readSchemaVersion(value.schemaVersion),
+    endpoint: textField(value.endpoint, 'endpoint'),
+    schemaIdentity: readSchemaIdentity(value.schemaIdentity),
+    roots: {
+      Query: readStringList(value.roots.Query),
+      Mutation: readStringList(value.roots.Mutation),
+    },
+    mutationPayloadFields: readStringListMap(value.mutationPayloadFields),
+  };
+}
+
+export function parseReadonlySchemaFixture(source: string): ReadonlySchemaFixture {
+  return readFixture(JSON.parse(source));
+}
+
+export function parseReadonlySchemaScope(source: string): ReadonlySchemaScope {
+  return readScope(JSON.parse(source));
 }
 
 function astTypeSignature(type: TypeNode): string {
@@ -121,7 +357,7 @@ function terminalName(type: TypeNode): string {
   return type.kind === 'NamedType' ? type.name.value : terminalName(type.type);
 }
 
-function operationDocuments(operation: LinearOperation): string[] {
+function operationDocuments(operation: CatalogDocumentOperation): string[] {
   return operation.variants?.map((variant) => variant.document) ?? [operation.document];
 }
 
@@ -129,7 +365,7 @@ function recordSignature(value: Record<string, string>): string {
   return JSON.stringify(Object.entries(value).sort(([left], [right]) => left.localeCompare(right)));
 }
 
-export function catalogSchemaUsage(operations: readonly LinearOperation[]): CatalogSchemaUsage {
+export function catalogSchemaUsage(operations: readonly CatalogDocumentOperation[]): CatalogSchemaUsage {
   const roots: CatalogSchemaUsage['roots'] = { Query: {}, Mutation: {} };
   const namedTypes = new Set<string>();
   const mutationPayloadFields: Record<string, string[]> = {};
@@ -196,7 +432,7 @@ export function schemaFixtureFromIntrospection(
     throw new Error(`schema.identity: expected ${scope.schemaIdentity.queryType}/${scope.schemaIdentity.mutationType}, actual ${queryType ?? '<missing>'}/${mutationType ?? '<missing>'}`);
   }
 
-  const roots = { Query: {}, Mutation: {} } as ReadonlySchemaFixture['roots'];
+  const roots: ReadonlySchemaFixture['roots'] = { Query: {}, Mutation: {} };
   const referencedNames = new Set<string>();
   const payloadTypes = new Map<string, string[]>();
 
@@ -212,11 +448,14 @@ export function schemaFixtureFromIntrospection(
       const selectedPayloadFields = kind === 'Mutation'
         ? [...(scope.mutationPayloadFields[fieldName] ?? [])].sort()
         : undefined;
-      roots[kind][fieldName] = {
+      const contract: RootContract = {
         returns: String(field.type),
         arguments: args,
-        ...(selectedPayloadFields ? { selectedPayloadFields } : {}),
       };
+      if (selectedPayloadFields !== undefined) {
+        contract.selectedPayloadFields = selectedPayloadFields;
+      }
+      roots[kind][fieldName] = contract;
       const returnName = getNamedType(field.type).name;
       referencedNames.add(returnName);
       if (selectedPayloadFields) payloadTypes.set(returnName, selectedPayloadFields);
@@ -264,8 +503,8 @@ function sameSet(actual: readonly string[], expected: readonly string[]): boolea
   return actual.length === expected.length && actual.every((value, index) => value === expected[index]);
 }
 
-function signatureError(path: string, expected: unknown, actual: unknown): Error {
-  const show = (value: unknown) => value === undefined ? '<missing>' : JSON.stringify(value);
+function signatureError(path: string, expected: SchemaSignature, actual: SchemaSignature): Error {
+  const show = (value: SchemaSignature) => value === undefined ? '<missing>' : JSON.stringify(value);
   return new Error(`${path}: expected ${show(expected)}, actual ${show(actual)}`);
 }
 
@@ -306,7 +545,7 @@ export function assertFixtureProvenance(
   if (fixture.provenance.normalizedSha256 !== normalizedFixtureDigest(contract)) {
     throw signatureError('fixture.provenance.normalizedSha256', fixture.provenance.normalizedSha256, normalizedFixtureDigest(contract));
   }
-  if (JSON.stringify(stableValue(fixtureScope(fixture))) !== JSON.stringify(stableValue(scope))) {
+  if (JSON.stringify(stableScope(fixtureScope(fixture))) !== JSON.stringify(stableScope(scope))) {
     throw signatureError('fixture.provenance.scope', scope, fixtureScope(fixture));
   }
 }

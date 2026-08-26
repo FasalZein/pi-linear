@@ -15,14 +15,41 @@ export type RequestEvidence = {
   documents: RecordedRequest[];
 };
 
+export type GraphQLRequestBody = {
+  query: string;
+};
+
 export function requestEvidence(): RequestEvidence {
   return { total: 0, query: 0, mutation: 0, documents: [] };
 }
 
-async function serializedBody(input: RequestInfo | URL, init?: RequestInit): Promise<string> {
-  if (typeof init?.body === 'string') return init.body;
-  if (typeof Request !== 'undefined' && input instanceof Request) return await input.clone().text();
+function missingSerializedBody(): never {
   throw new Error('request-recorder: serialized GraphQL request body is missing');
+}
+
+function requestBodyText(body: BodyInit): string {
+  if (body instanceof Blob) missingSerializedBody();
+  if (body instanceof FormData) missingSerializedBody();
+  if (body instanceof URLSearchParams) missingSerializedBody();
+  if (body instanceof ReadableStream) missingSerializedBody();
+  if (body instanceof ArrayBuffer) missingSerializedBody();
+  if (ArrayBuffer.isView(body)) missingSerializedBody();
+  return body;
+}
+
+async function serializedBody(input: RequestInfo | URL, init?: RequestInit): Promise<string> {
+  if (init?.body != null) return requestBodyText(init.body);
+  if (input instanceof Request) return await input.clone().text();
+  missingSerializedBody();
+}
+
+function readGraphQLRequestBody(value: GraphQLRequestBody): GraphQLRequestBody {
+  if (value.query === `${value.query}`) return { query: value.query };
+  throw new Error('request-recorder: GraphQL query is missing');
+}
+
+export function parseGraphQLRequestBody(source: string): GraphQLRequestBody {
+  return readGraphQLRequestBody(JSON.parse(source));
 }
 
 export function recordingTransport(
@@ -30,8 +57,7 @@ export function recordingTransport(
   evidence: RequestEvidence,
 ): LinearTransport {
   return async (input, init) => {
-    const body = JSON.parse(await serializedBody(input, init)) as { query?: unknown };
-    if (typeof body.query !== 'string') throw new Error('request-recorder: GraphQL query is missing');
+    const body = parseGraphQLRequestBody(await serializedBody(input, init));
     const definitions = parse(body.query).definitions.filter(
       (entry): entry is OperationDefinitionNode => entry.kind === Kind.OPERATION_DEFINITION,
     );
