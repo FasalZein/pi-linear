@@ -18,7 +18,6 @@ import type {
   GraphQLDocumentVariant,
   LocalResultExpectation,
   OperationPlan,
-  OperationPreparation,
   ResultCategory,
 } from './operation-types';
 import type { LinearOperation } from './operations';
@@ -140,11 +139,12 @@ function rateLimitDetails(
   return {
     scopes: [...scopes],
     retryAttempts: snapshots.filter(({ attempt }) => attempt > 1).length,
-    responses: snapshots.map(({ phase, attempt, headers }) => ({
-      ...(phase ? { phase } : {}),
-      attempt,
-      ...headers,
-    })),
+    responses: snapshots.map(({ phase, attempt, headers }) => {
+      const response: Record<string, string | number> = {};
+      if (phase) response.phase = phase;
+      response.attempt = attempt;
+      return { ...response, ...headers };
+    }),
   };
 }
 
@@ -187,11 +187,13 @@ export async function routeLinearEnvelope<T extends JsonObject>(
     throw new Error(`Linear ${options.label} result envelope is missing metadata.`);
   }
   const requestedSink = options.sink ?? 'auto';
+  // One reported metadata base, so inline, stored, and digest envelopes stay identical.
+  const reportedMeta: JsonObject = { ...(existingMeta as JsonObject) };
+  if (warning) reportedMeta.rateLimit = warning;
   const inlineEnvelope = {
     ...envelope,
     meta: {
-      ...(existingMeta as JsonObject),
-      ...(warning ? { rateLimit: warning } : {}),
+      ...reportedMeta,
       routing: { requestedSink, actualSink: 'inline', inlineComplete: true },
     },
   } as T;
@@ -216,8 +218,7 @@ export async function routeLinearEnvelope<T extends JsonObject>(
   const storedEnvelope = {
     ...envelope,
     meta: {
-      ...(existingMeta as JsonObject),
-      ...(warning ? { rateLimit: warning } : {}),
+      ...reportedMeta,
       routing: { requestedSink, actualSink: 'artifact', reason, inlineComplete: false },
     },
   } as T;
@@ -229,23 +230,23 @@ export async function routeLinearEnvelope<T extends JsonObject>(
   await writeResultArtifact(directory, uuid, serialized);
   const path = join(resultArtifactRoot(), `${uuid}.json`);
   const data = envelope.data;
+  const digestMeta: JsonObject = { ...reportedMeta };
+  if (exceedsBoundary) {
+    digestMeta.resultBudget = {
+      maxBytes: DEFAULT_MAX_BYTES,
+      maxLines: DEFAULT_MAX_LINES,
+      truncated: true,
+      recoverable: true,
+      omissions: [{ path: '', handle, originalBytes: bytes, inlineBytes: 0 }],
+    };
+  }
   const base: ArtifactResult = {
     handle,
     path,
     bytes,
     index: [],
     meta: {
-      ...(existingMeta as JsonObject),
-      ...(warning ? { rateLimit: warning } : {}),
-      ...(exceedsBoundary ? {
-        resultBudget: {
-          maxBytes: DEFAULT_MAX_BYTES,
-          maxLines: DEFAULT_MAX_LINES,
-          truncated: true,
-          recoverable: true,
-          omissions: [{ path: '', handle, originalBytes: bytes, inlineBytes: 0 }],
-        },
-      } : {}),
+      ...digestMeta,
       routing: {
         requestedSink,
         actualSink: 'artifact',
@@ -286,16 +287,12 @@ export async function routeLinearResult<T extends JsonObject>(
     telemetryMode?: TelemetryMode;
   },
 ): Promise<RoutedEnvelope<T> | ArtifactResult> {
-  return routeLinearEnvelope({
-    data: rawData,
-    ...(options.errors?.length ? { errors: options.errors } : {}),
-    meta: {
-      truncations: [],
-      stringsClipped: 0,
-      ...(options.view ? { view: options.view } : {}),
-    },
-    ...(options.resolution ? { resolution: options.resolution } : {}),
-  } as RoutedEnvelope<T>, options);
+  const meta: ResultMeta = { truncations: [], stringsClipped: 0 };
+  if (options.view) meta.view = options.view;
+  const envelope: RoutedEnvelope<T> = { data: rawData, meta };
+  if (options.errors?.length) envelope.errors = [...options.errors];
+  if (options.resolution) envelope.resolution = options.resolution;
+  return routeLinearEnvelope(envelope, options);
 }
 
 export type LinearCallContext = {

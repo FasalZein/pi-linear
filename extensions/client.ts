@@ -1,5 +1,5 @@
 import { Kind, parse, type FragmentDefinitionNode, type SelectionSetNode } from 'graphql';
-import { redactDeep, redactError, redactText } from './redact';
+import { redactDeep, redactText } from './redact';
 
 const LINEAR_GRAPHQL_ENDPOINT = 'https://api.linear.app/graphql';
 

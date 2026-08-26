@@ -11,7 +11,6 @@ import {
   operationDefinitions,
   operationsForDomain,
   parameterVariants,
-  operations,
   type LinearOperation,
   type OperationDomain,
 } from './operations';
@@ -55,8 +54,8 @@ export {
   routeLinearResult,
 } from './runtime';
 
-const REQUEST_SHAPES = 'Invalid request. Send exactly one of: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }, { "operation": "help" }, or { "query": "query { viewer { id } }", "variables": {} }.';
-const HELP_SHAPES = 'Send exactly one of: { "operation": "help" }, { "operation": "help", "variables": { "domain": "issues" } }, or { "operation": "help", "variables": { "operation": "get_issue" } }.';
+const REQUEST_FORMS = 'Invalid request. Send exactly one of: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }, { "operation": "help" }, or { "query": "query { viewer { id } }", "variables": {} }.';
+const HELP_FORMS = 'Send exactly one of: { "operation": "help" }, { "operation": "help", "variables": { "domain": "issues" } }, or { "operation": "help", "variables": { "operation": "get_issue" } }.';
 const NATURAL_SEARCH_REMOVED = 'Natural search was removed. The operation catalog is in the `linear` tool description. Send `{ "operation": "help", "variables": { "operation": "get_issue" } }` for exact parameters and to load `linear_get_issue`.';
 const definitionDomainSet = new Set(operationDefinitions.map(({ domain }) => domain));
 const DEFINITION_DOMAINS = DOMAINS.filter((domain) => definitionDomainSet.has(domain));
@@ -70,14 +69,14 @@ function validateVariables(
   requestedName: string,
   variables: Record<string, unknown>,
 ): void {
-  const shapes = parameterVariants(operation, requestedName);
-  const valid = new Set(shapes.flatMap((shape) => shape.map(({ name }) => name)));
-  const validShape = shapes.find((shape) => {
-    const shapeKeys = new Set(shape.map(({ name }) => name));
-    return shape.every(({ name, required }) => !required || name in variables)
-      && Object.keys(variables).every((name) => shapeKeys.has(name));
+  const variants = parameterVariants(operation, requestedName);
+  const valid = new Set(variants.flatMap((variant) => variant.map(({ name }) => name)));
+  const acceptedVariant = variants.find((variant) => {
+    const variantKeys = new Set(variant.map(({ name }) => name));
+    return variant.every(({ name, required }) => !required || name in variables)
+      && Object.keys(variables).every((name) => variantKeys.has(name));
   });
-  if (validShape) {
+  if (acceptedVariant) {
     try {
       operation.validateVariables?.(variables);
       return;
@@ -107,7 +106,7 @@ export function resolveRequest(params: {
   variables?: Record<string, unknown>;
 }, mode: MutationMode = 'allowlist'): { query: string; named: false } | { query: string; named: true; operation: LinearOperation } {
   try {
-    if (Boolean(params.operation) === Boolean(params.query)) throw new Error(REQUEST_SHAPES);
+    if (Boolean(params.operation) === Boolean(params.query)) throw new Error(REQUEST_FORMS);
     if (!params.operation) return { query: params.query!, named: false };
 
     const operation = getOperation(params.operation);
@@ -150,7 +149,7 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
 
   const domain = variables.domain;
   const operationName = variables.operation;
-  if (keys.length !== 1) throw new Error(`Invalid help request. ${HELP_SHAPES}`);
+  if (keys.length !== 1) throw new Error(`Invalid help request. ${HELP_FORMS}`);
   if (typeof domain === 'string' && DEFINITION_DOMAINS.includes(domain as OperationDomain)) {
     return {
       domain,
@@ -178,18 +177,19 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
         ? canonical.branches.reduce<string[]>((shared, branch) => shared.filter((field) => branch.includes(field)), [...canonical.branches[0]!])
         : [],
     );
-    return {
+    const help: JsonObject = {
       ...activate(activator, [typedToolName(operation.name)]),
       name: operation.name,
       domain: operation.domain,
       purpose: operation.purpose,
       parameters: Object.entries(canonical.fields).map(([name, type]) => ({ name, type, required: alwaysRequired.has(name) })),
       requirements: canonical.branches,
-      ...(operation.pagination ? { pagination: { defaultPageSize: operation.pagination.defaultPageSize } } : {}),
-      example: getOperationDefinition(operation.name).canonical.example,
     };
+    if (operation.pagination) help.pagination = { defaultPageSize: operation.pagination.defaultPageSize };
+    help.example = getOperationDefinition(operation.name).canonical.example;
+    return help;
   }
-  throw new Error(`Invalid help request. ${HELP_SHAPES}`);
+  throw new Error(`Invalid help request. ${HELP_FORMS}`);
 }
 
 function telemetryMode(value: unknown): TelemetryMode | undefined {
@@ -336,6 +336,13 @@ export function linearGraphqlTool(
   });
 }
 
+/** Batch entries stay unparsed here; `executeBatch` owns their contract. */
+type BatchToolVariables = {
+  operations?: readonly unknown[];
+  reads?: readonly unknown[];
+  mutations?: readonly unknown[];
+};
+
 export function linearBatchTool(
   mode: MutationMode = 'allowlist',
   definition = exceptionalToolDefinitions[2],
@@ -367,13 +374,13 @@ export function linearBatchTool(
         throw redactError(error, activeSecrets());
       }
       const secrets = [...activeSecrets()];
+      const variables: BatchToolVariables = {};
+      if ('operations' in params) variables.operations = params.operations;
+      if ('reads' in params) variables.reads = params.reads;
+      if ('mutations' in params) variables.mutations = params.mutations;
       return withRedactedErrors(async () => toolResult(await executeBatch(
         {
-          variables: {
-            ...('operations' in params ? { operations: params.operations } : {}),
-            ...('reads' in params ? { reads: params.reads } : {}),
-            ...('mutations' in params ? { mutations: params.mutations } : {}),
-          },
+          variables,
           workspace: params.workspace,
           sink: params.sink,
           telemetryMode: telemetryMode(params.telemetry),
