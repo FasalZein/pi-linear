@@ -1,20 +1,30 @@
+import type { ExtensionContext } from '@earendil-works/pi-coding-agent';
+import type { OperationPlanFactory } from '../../extensions/operation-types';
 import type { MutationMode } from '../../extensions/safety';
 import { typedLinearTools } from '../../extensions/typed-tools';
 
-export function typedTool(operation: string, mode: MutationMode = 'allowlist') {
+/** A direct Linear tool exactly as production publishes it. */
+type TypedLinearTool = ReturnType<typeof typedLinearTools>[number];
+/** Operation variables exactly as the production plan factory accepts them. */
+type OperationVariables = Parameters<OperationPlanFactory>[0];
+
+/** The harness runs tools headless: only `hasUI` is read on this path. */
+const HEADLESS_CONTEXT = { hasUI: false } as ExtensionContext;
+
+export function typedTool(operation: string, mode: MutationMode = 'allowlist'): TypedLinearTool {
   const tool = typedLinearTools(mode).find(({ name }) => name === `linear_${operation}`);
   if (!tool) throw new Error(`Missing typed tool for ${operation}.`);
-  return tool as any;
+  return tool;
 }
 
 export function executeTyped(
   operation: string,
-  variables: Record<string, unknown> = {},
+  variables: OperationVariables = {},
   options: {
     mode?: MutationMode;
     workspace?: string;
     signal?: AbortSignal;
-    ctx?: { hasUI: boolean };
+    ctx?: ExtensionContext;
   } = {},
 ) {
   const args = options.workspace === undefined ? variables : { ...variables, workspace: options.workspace };
@@ -23,6 +33,6 @@ export function executeTyped(
     args,
     options.signal,
     undefined,
-    options.ctx ?? { hasUI: false },
+    options.ctx ?? HEADLESS_CONTEXT,
   );
 }
