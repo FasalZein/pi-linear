@@ -70,7 +70,7 @@ const PREFERENCES = Type.Object(
 // Sort keys, enums, and reminder vocabularies are the upstream 0.4.1 closed sets.
 const SORT_KEYS: Record<string, readonly string[]> = {
   '[IssueSort!]': [
-    'priority', 'estimate', 'title', 'label', 'labelGroup', 'slaStatus', 'createdAt',
+    'priority', 'estimate', 'title', 'label', 'slaStatus', 'createdAt',
     'updatedAt', 'completedAt', 'dueDate', 'accumulatedStateUpdatedAt', 'cycle', 'milestone',
     'assignee', 'delegate', 'project', 'team', 'manual', 'workflowState', 'customer',
     'customerRevenue', 'customerCount', 'customerImportantCount', 'rootIssue', 'linkCount',
@@ -212,16 +212,28 @@ function forbiddenFields(fields: readonly string[]): Record<string, unknown> {
   return { not: { anyOf: fields.map((field) => ({ required: [field] })) } };
 }
 
+function describePagination(schema: TSchema, operation: LinearOperation): TSchema {
+  if (!operation.pagination) return schema;
+  const properties = (schema as { properties: Record<string, TSchema> }).properties;
+  if (properties.first) {
+    properties.first = { ...properties.first, description: `Forward page size. Omit first to use the default ${operation.pagination.defaultPageSize}.` } as TSchema;
+  }
+  if (properties.last) {
+    properties.last = { ...properties.last, description: `Backward page size. Omit last to use the default ${operation.pagination.defaultPageSize}.` } as TSchema;
+  }
+  return schema;
+}
+
 /** Publish one provider-safe object root, with mode rules as constraint fragments. */
 export function parameterSchema(operation: LinearOperation) {
   const contract = canonicalOperation(operation);
   if (!contract.variants) {
-    return objectSchema(
+    return describePagination(objectSchema(
       contract.fields,
       Object.keys(contract.fields),
       contract.branches,
       contract.exclusiveBranches,
-    );
+    ), operation);
   }
 
   const [create, update] = contract.variants;
@@ -242,10 +254,10 @@ export function parameterSchema(operation: LinearOperation) {
     anyOf: update.branches.map((branch) => ({ required: [...branch] })),
     ...forbiddenFields(updateForbidden),
   };
-  return Type.Object(properties, {
+  return describePagination(Type.Object(properties, {
     additionalProperties: false,
     oneOf: [createClause, updateClause],
-  } as any);
+  } as any), operation);
 }
 
 function toolDescription(operation: LinearOperation): string {

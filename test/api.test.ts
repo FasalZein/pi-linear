@@ -328,7 +328,7 @@ describe('runtime discovery', () => {
     }).catch((error: Error) => error);
 
     expect(failure).toBeInstanceOf(Error);
-    expect((failure as Error).message).toBe('Unknown Linear operation. Send { "operation": "help" }.');
+    expect((failure as Error).message).toBe('Unknown Linear operation. Check the catalog, then send `{ "operation": "help", "variables": { "operation": "<canonical_name>" } }`.');
     expect((failure as Error).message).not.toContain(token);
     expect(fetch).not.toHaveBeenCalled();
   });

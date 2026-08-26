@@ -22,10 +22,12 @@
             "minLength": 1
           },
           "first": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Forward page size. Omit first to use the default 20."
           },
           "last": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Backward page size. Omit last to use the default 20."
           },
           "includeArchived": {
             "type": "boolean"
@@ -1176,10 +1178,12 @@
             "minLength": 1
           },
           "first": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Forward page size. Omit first to use the default 50."
           },
           "last": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Backward page size. Omit last to use the default 50."
           },
           "includeArchived": {
             "type": "boolean"
@@ -1506,7 +1510,7 @@
     "tool": {
       "name": "linear_create_view",
       "label": "Linear create view",
-      "description": "Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData. Call with direct arguments {\"name\":\"My issues\",\"filterData\":{\"assignee\":\"me\"}}.",
+      "description": "Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData. Call with direct arguments {\"name\":\"My issues\",\"filterData\":{\"assignee\":{\"isMe\":{\"eq\":true}}}}.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -1590,7 +1594,11 @@
         "variables": {
           "name": "My issues",
           "filterData": {
-            "assignee": "me"
+            "assignee": {
+              "isMe": {
+                "eq": true
+              }
+            }
           }
         }
       },
@@ -1818,7 +1826,11 @@
       "example": {
         "name": "My issues",
         "filterData": {
-          "assignee": "me"
+          "assignee": {
+            "isMe": {
+              "eq": true
+            }
+          }
         }
       }
     },
@@ -2491,10 +2503,12 @@
             "minLength": 1
           },
           "first": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Forward page size. Omit first to use the default 50."
           },
           "last": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Backward page size. Omit last to use the default 50."
           },
           "includeArchived": {
             "type": "boolean"
@@ -3521,10 +3535,12 @@
             "minLength": 1
           },
           "first": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Forward page size. Omit first to use the default 20."
           },
           "last": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Backward page size. Omit last to use the default 20."
           },
           "includeArchived": {
             "type": "boolean"
@@ -5044,10 +5060,12 @@
             "minLength": 1
           },
           "first": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Forward page size. Omit first to use the default 20."
           },
           "last": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Backward page size. Omit last to use the default 20."
           },
           "includeArchived": {
             "type": "boolean"
@@ -5434,10 +5452,12 @@
             "minLength": 1
           },
           "first": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Forward page size. Omit first to use the default 50."
           },
           "last": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Backward page size. Omit last to use the default 50."
           },
           "includeArchived": {
             "type": "boolean"
@@ -6377,10 +6397,12 @@
             "minLength": 1
           },
           "first": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Forward page size. Omit first to use the default 20."
           },
           "last": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Backward page size. Omit last to use the default 20."
           },
           "includeArchived": {
             "type": "boolean"
@@ -7270,10 +7292,12 @@
             "minLength": 1
           },
           "first": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Forward page size. Omit first to use the default 50."
           },
           "last": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Backward page size. Omit last to use the default 50."
           },
           "includeArchived": {
             "type": "boolean"
@@ -7538,7 +7562,6 @@
                     "estimate",
                     "title",
                     "label",
-                    "labelGroup",
                     "slaStatus",
                     "createdAt",
                     "updatedAt",
@@ -7584,10 +7607,12 @@
             "minLength": 1
           },
           "first": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Forward page size. Omit first to use the default 20."
           },
           "last": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Backward page size. Omit last to use the default 20."
           },
           "includeArchived": {
             "type": "boolean"
@@ -7856,7 +7881,6 @@
           "estimate",
           "title",
           "label",
-          "labelGroup",
           "slaStatus",
           "createdAt",
           "updatedAt",
@@ -10195,10 +10219,12 @@
             "minLength": 1
           },
           "first": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Forward page size. Omit first to use the default 20."
           },
           "last": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Backward page size. Omit last to use the default 20."
           },
           "includeArchived": {
             "type": "boolean"
@@ -10549,10 +10575,12 @@
             "minLength": 1
           },
           "first": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Forward page size. Omit first to use the default 20."
           },
           "last": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Backward page size. Omit last to use the default 20."
           },
           "includeArchived": {
             "type": "boolean"
@@ -10910,10 +10938,12 @@
             "minLength": 1
           },
           "first": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Forward page size. Omit first to use the default 50."
           },
           "last": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Backward page size. Omit last to use the default 50."
           },
           "includeArchived": {
             "type": "boolean"
@@ -11688,10 +11718,12 @@
             "minLength": 1
           },
           "first": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Forward page size. Omit first to use the default 20."
           },
           "last": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Backward page size. Omit last to use the default 20."
           },
           "includeArchived": {
             "type": "boolean"
@@ -12549,10 +12581,12 @@
             "minLength": 1
           },
           "first": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Forward page size. Omit first to use the default 20."
           },
           "last": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Backward page size. Omit last to use the default 20."
           },
           "includeArchived": {
             "type": "boolean"
@@ -12975,10 +13009,12 @@
             "minLength": 1
           },
           "first": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Forward page size. Omit first to use the default 50."
           },
           "last": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Backward page size. Omit last to use the default 50."
           },
           "includeArchived": {
             "type": "boolean"
@@ -13367,10 +13403,12 @@
             "minLength": 1
           },
           "first": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Forward page size. Omit first to use the default 50."
           },
           "last": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Backward page size. Omit last to use the default 50."
           },
           "includeArchived": {
             "type": "boolean"
@@ -14232,7 +14270,10 @@
       ]
     },
     "compatibility": {
-      "operationAliases": [],
+      "operationAliases": [
+        "create_initiative",
+        "update_initiative"
+      ],
       "fields": [
         {
           "name": "initiativeId",
@@ -15148,7 +15189,10 @@
       ]
     },
     "compatibility": {
-      "operationAliases": [],
+      "operationAliases": [
+        "create_milestone",
+        "update_milestone"
+      ],
       "fields": [
         {
           "name": "milestoneId",
@@ -16107,7 +16151,10 @@
       ]
     },
     "compatibility": {
-      "operationAliases": [],
+      "operationAliases": [
+        "create_project",
+        "update_project"
+      ],
       "fields": [
         {
           "name": "projectId",

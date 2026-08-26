@@ -39,7 +39,6 @@ export const ISSUE_SORT_KEYS = [
 	"estimate",
 	"title",
 	"label",
-	"labelGroup",
 	"slaStatus",
 	"createdAt",
 	"updatedAt",
@@ -239,6 +238,16 @@ function mutationVariant(
 		},
 	};
 }
+export function linearSort(value: unknown): unknown[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+	return value.map((clause) => {
+		if (!clause || typeof clause !== "object" || Array.isArray(clause)) return clause;
+		const { key, order } = clause as { key?: unknown; order?: unknown };
+		if (typeof key !== "string") return clause;
+		return { [key]: compactObject({ order }) };
+	});
+}
+
 export function listPrepare(
 	defaultPageSize: number,
 	extra?: (
@@ -249,7 +258,7 @@ export function listPrepare(
 		variables: compactObject({
 			...paginationVariables(variables, defaultPageSize),
 			filter: object(variables.filter),
-			sort: Array.isArray(variables.sort) ? variables.sort : undefined,
+			sort: linearSort(variables.sort),
 			...(extra ? await extra(variables) : {}),
 		}),
 	});
@@ -552,7 +561,7 @@ export function addSaveOperation(config: {
 		name: config.name,
 		resultCategory: "singular",
 		canonical: config.canonical,
-		aliases: [],
+		aliases: [`create_${config.name.slice(5)}`, `update_${config.name.slice(5)}`],
 		domain: config.domain,
 		purpose: `Create or update ${/^[aeiou]/i.test(config.noun) ? "an" : "a"} ${config.noun}.`,
 		parameters: cardParameters,

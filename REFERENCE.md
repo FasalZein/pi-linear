@@ -38,7 +38,7 @@ Use exact loader help to activate an ordinary operation. Then call its typed too
 | `update_comment` | `linear_update_comment` | comments | id | Update a comment by id. | `{"id":"comment-id","body":"Updated text"}` |
 | `list_views` | `linear_list_views` | views | none | List custom views. | `{}` |
 | `get_view` | `linear_get_view` | views | id | Get a custom view. | `{"id":"view-id"}` |
-| `create_view` | `linear_create_view` | views | name | Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData. | `{"name":"My issues","filterData":{"assignee":"me"}}` |
+| `create_view` | `linear_create_view` | views | name | Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData. | `{"name":"My issues","filterData":{"assignee":{"isMe":{"eq":true}}}}` |
 | `update_view` | `linear_update_view` | views | id | Update a custom view. | `{"id":"view-id","name":"New name"}` |
 | `set_view_preferences` | `linear_set_view_preferences` | views | viewId, preferences | Set preferences for a custom view. | `{"viewId":"view-id","preferences":{"showEmptyGroups":true}}` |
 | `list_cycles` | `linear_list_cycles` | cycles | none | List cycles. | `{}` |

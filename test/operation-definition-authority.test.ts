@@ -60,9 +60,15 @@ const CANONICAL_NAMES = [
 
 const COMPATIBILITY_ALIASES = {
   add_comment: 'create_comment',
+  create_initiative: 'save_initiative',
+  create_milestone: 'save_milestone',
+  create_project: 'save_project',
   create_relation: 'create_issue_relation',
   list_workflow_states: 'list_issue_statuses',
+  update_initiative: 'save_initiative',
   update_issue_state: 'update_issue',
+  update_milestone: 'save_milestone',
+  update_project: 'save_project',
 } as const;
 
 describe('v0.6 operation definition authority', () => {

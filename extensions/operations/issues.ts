@@ -38,6 +38,7 @@ import {
 	getDocument,
 	workspaceEmpty,
 	listOperation,
+	linearSort,
 	simpleMutation,
 	withGetResultView,
 } from "./shared";
@@ -401,7 +402,7 @@ export const issues: readonly OperationDefinition[] = ([
 						assignee: assignee ? { id: { eq: assignee.id } } : undefined,
 					});
 					return {
-						variables: { ...paginationVariables(v, 20), filter: mergeFilters(object(v.filter), convenience), sort: Array.isArray(v.sort) ? v.sort : undefined },
+						variables: { ...paginationVariables(v, 20), filter: mergeFilters(object(v.filter), convenience), sort: linearSort(v.sort) },
 						resolution: compactObject({
 							team: team ? { requested: teamRef, resolvedId: team.id, key: team.key } : undefined,
 							assignee: assignee ? { requested: assigneeRef, resolvedId: assignee.id, name: assignee.name } : undefined,

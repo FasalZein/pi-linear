@@ -138,7 +138,7 @@ export const views: readonly OperationDefinition[] = ([
 			].map((n) => p(n)),
 		],
 		example: { name: "My issues", filterData: {} },
-		canonicalExample: { name: "My issues", filterData: { assignee: "me" } },
+		canonicalExample: { name: "My issues", filterData: { assignee: { isMe: { eq: true } } } },
 		resolverPaths: {
 			team: "resolveTeamReference",
 			teamKey: "resolveTeamReference",

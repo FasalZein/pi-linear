@@ -106,6 +106,8 @@ const resultTool = harness.registered.find((tool) => tool.name === 'linear_get_r
 const graphqlTool = harness.registered.find((tool) => tool.name === 'linear_graphql');
 const batchTool = harness.registered.find((tool) => tool.name === 'linear_batch');
 const typed = harness.registered.find((tool) => tool.name === 'linear_get_issue');
+const saveProject = harness.registered.find((tool) => tool.name === 'linear_save_project');
+const listProjects = harness.registered.find((tool) => tool.name === 'linear_list_projects');
 if (api.parameters.properties.operation.const !== 'help' || Object.keys(api.parameters.properties).join(',') !== 'operation,variables') {
   throw new Error('linear schema is not discovery-only.');
 }
@@ -122,6 +124,34 @@ if (!batchTool || typeof batchTool.renderCall !== 'function' || typeof batchTool
   throw new Error('Direct batch tool or its renderers are missing.');
 }
 if (typed.promptSnippet || typed.promptGuidelines) throw new Error('Typed tools must omit active-only prompt metadata.');
+
+const createProjectHelp = await api.execute('save-help', { operation: 'help', variables: { operation: 'create_project' } }, undefined, undefined, { hasUI: false });
+if (createProjectHelp.details.name !== 'save_project' || JSON.stringify(createProjectHelp.details.loadedTools) !== JSON.stringify(['linear_save_project'])) {
+  throw new Error(\`Create-project help did not recover save_project: \${JSON.stringify(createProjectHelp.details)}\`);
+}
+if (!saveProject || !harness.activeTools().includes('linear_save_project')) throw new Error('linear_save_project was not activated.');
+
+const listProjectHelp = await api.execute('list-help', { operation: 'help', variables: { operation: 'list_projects' } }, undefined, undefined, { hasUI: false });
+if (listProjectHelp.details.name !== 'list_projects' || listProjectHelp.details.pagination?.defaultPageSize !== 20) {
+  throw new Error(\`List-projects help omitted default page size 20: \${JSON.stringify(listProjectHelp.details)}\`);
+}
+if (!listProjects || !harness.activeTools().includes('linear_list_projects')) throw new Error('linear_list_projects was not activated.');
+if (!listProjects.parameters.properties.first.description?.includes('Omit first to use the default 20')) {
+  throw new Error('linear_list_projects first schema omitted default guidance.');
+}
+const publicSort = { sort: [{ key: 'updatedAt', order: 'Descending' }] };
+listProjects.prepareArguments(publicSort);
+const operationModule = await jiti.import(join(packageRoot, 'extensions/operations/index.ts'));
+const planModule = await jiti.import(join(packageRoot, 'extensions/operation-plan.ts'));
+const plan = await operationModule.operations.list_projects.plan(publicSort);
+const prepared = await planModule.resolveOperationPlanWithGraphQL('test-key', plan);
+if (JSON.stringify(prepared.variables.sort) !== JSON.stringify([{ updatedAt: { order: 'Descending' } }])) {
+  throw new Error(\`List-projects sort was not translated for GraphQL: \${JSON.stringify(prepared.variables.sort)}\`);
+}
+if (harness.activeTools().filter((name) => name.startsWith('linear_')).length >= names.filter((name) => name.startsWith('linear_')).length) {
+  throw new Error('Exact help eagerly activated all Linear tools.');
+}
+
 try {
   await api.execute('removed-route', { operation: 'get_issue', variables: { issue: 'AEO-258' } }, undefined, undefined, { hasUI: false });
   throw new Error('linear accepted removed named execution.');

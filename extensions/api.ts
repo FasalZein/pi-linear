@@ -23,7 +23,7 @@ import {
   type TelemetryMode,
 } from './runtime';
 import { activeSecrets } from './active-secrets';
-import { redactDeep, redactError, withRedactedErrors } from './redact';
+import { redactDeep, redactError, redactText, withRedactedErrors } from './redact';
 import {
   renderLinearApiCall,
   renderLinearApiResult,
@@ -165,7 +165,12 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
     try {
       operation = getOperation(operationName);
     } catch {
-      throw new Error('Unknown Linear operation. Send { "operation": "help" }.');
+      const redactedName = redactText(operationName, activeSecrets());
+      const failedName = redactedName === operationName ? ` "${operationName}"` : '';
+      throw new Error(
+        `Unknown Linear operation${failedName}. Check the catalog, then send `
+        + '`{ "operation": "help", "variables": { "operation": "<canonical_name>" } }`.',
+      );
     }
     const canonical = operation.canonical;
     const alwaysRequired = new Set(
@@ -180,6 +185,7 @@ export function helpResult(variables: Record<string, unknown> = {}, activator?: 
       purpose: operation.purpose,
       parameters: Object.entries(canonical.fields).map(([name, type]) => ({ name, type, required: alwaysRequired.has(name) })),
       requirements: canonical.branches,
+      ...(operation.pagination ? { pagination: { defaultPageSize: operation.pagination.defaultPageSize } } : {}),
       example: getOperationDefinition(operation.name).canonical.example,
     };
   }

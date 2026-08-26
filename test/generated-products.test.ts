@@ -305,6 +305,7 @@ describe('generated products', () => {
           required: alwaysRequired.includes(name),
         })),
         requirements: operation.canonical.branches,
+        ...(operation.pagination ? { pagination: { defaultPageSize: operation.pagination.defaultPageSize } } : {}),
         example: definition.canonical.example,
       });
       expect(loaded, definition.name).toEqual([definition.toolName]);

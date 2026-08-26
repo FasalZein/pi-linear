@@ -69,7 +69,7 @@ describe('help paths redact unknown-format active secrets', () => {
     for (const secret of [ENV_SECRET, WORKSPACE_SECRET]) {
       const error = await execute({ operation: 'help', variables: { operation: `get_issue${secret}` } })
         .then(() => undefined, (thrown: unknown) => thrown as Error);
-      expect(error?.message).toBe('Unknown Linear operation. Send { "operation": "help" }.');
+      expect(error?.message).toBe('Unknown Linear operation. Check the catalog, then send `{ "operation": "help", "variables": { "operation": "<canonical_name>" } }`.');
       expect(error?.message).not.toContain(secret);
     }
   });
