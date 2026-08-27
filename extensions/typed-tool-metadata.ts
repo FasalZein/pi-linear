@@ -1,9 +1,16 @@
 import { StringEnum } from '@earendil-works/pi-ai';
 import { Type, type TSchema } from 'typebox';
-import { getOperationDefinition, type LinearOperation } from './operations';
+import type { LinearOperation } from './operations';
 import { canonicalOperation } from './canonical';
 import { typedToolName } from './tool-names';
 
+/**
+ * Hints for values a caller cannot infer from the property name and type.
+ *
+ * A description earns its bytes only when it says something the name and the published
+ * type do not. `projectId: string` needs no "Linear UUID."; `priority: number` cannot be
+ * guessed. Enum members are published in the schema, so restating them here is duplication.
+ */
 const REFERENCE_HINTS = {
   IssueReference: 'Issue identifier such as ABC-123, or an issue UUID.',
   '[IssueReference!]': 'One or more issue identifiers such as ABC-123, or issue UUIDs.',
@@ -17,28 +24,20 @@ const REFERENCE_HINTS = {
   DocumentReference: 'Exact document title, or a document UUID.',
   DateTime: 'ISO 8601 date-time.',
   Date: 'Calendar date, YYYY-MM-DD.',
-  PaginationOrderBy: 'createdAt or updatedAt.',
-  WorkflowStateType: 'triage, backlog, unstarted, started, completed, or canceled.',
-  ResultView: 'summary or full. Lists default to summary. Single records default to full.',
-  IssueRelationType: 'blocks, duplicate, related, or similar.',
-  Filter: 'Linear filter object for this entity; must name at least one field.',
-  FilterData: 'Linear view filter object; must name at least one field.',
-  Preferences: 'View preference object; must name at least one field.',
+  ResultView: 'Lists default to summary; single records to full.',
+  Filter: 'Linear filter object.',
+  FilterData: 'Linear view filter object.',
+  Preferences: 'View preference object.',
   Color: 'Hex color such as #ff0000.',
-  UUID: 'Linear UUID.',
-  '[UUID!]': 'One or more Linear UUIDs.',
-  NullableDate: 'Calendar date YYYY-MM-DD, or null to clear it.',
-  NullableUserReference: 'User email, exact name, display name, "me", a user UUID, or null to clear it.',
-  NullableIssueReference: 'Issue identifier such as ABC-123, an issue UUID, or null to clear it.',
-  NullableUUID: 'Linear UUID, or null to clear it.',
+  NullableDate: 'Calendar date YYYY-MM-DD; null clears it.',
+  NullableUserReference: 'User email, exact name, display name, "me", or a user UUID; null clears it.',
+  NullableIssueReference: 'Issue identifier such as ABC-123, or an issue UUID; null clears it.',
+  NullableUUID: 'Null clears it.',
+  NullableDateTime: 'Null clears it.',
   Priority: '0 none, 1 urgent, 2 high, 3 medium, 4 low.',
-  '[ID!]': 'One or more UUIDs.',
-  '[SortInput!]': 'Sort clauses, each { key, order }.',
-  Float: 'Number.',
   JsonString: 'Serialized Linear document JSON.',
   JsonObject: 'Linear document JSON object.',
   Url: 'Absolute http(s) URL.',
-  NullableDateTime: 'ISO 8601 date-time, or null to clear it.',
 } satisfies Readonly<Record<string, string>>;
 
 const UUID_PATTERN = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$';
@@ -178,7 +177,8 @@ function schemaFor(type: string): TSchema {
       const sortKeys = ownedValue(SORT_KEYS, type);
       if (sortKeys) return Type.Array(sortItem(sortKeys), { ...options, minItems: 1 });
       const enumValues = ownedValue(ENUMS, type);
-      if (enumValues) return StringEnum(enumValues, { description: description ?? `${type} value.` });
+      // The members are published in the schema; a restating description adds only bytes.
+      if (enumValues) return StringEnum(enumValues, options);
       return Type.String({ ...options, minLength: 1 });
     }
   }
@@ -220,10 +220,6 @@ function objectSchema(
     : Type.Object(properties, { additionalProperties: false, anyOf: requirements });
 }
 
-function forbiddenFields(fields: readonly string[]) {
-  return { not: { anyOf: fields.map((field) => ({ required: [field] })) } };
-}
-
 function describePagination(schema: TSchema, operation: LinearOperation): TSchema {
   if (!operation.pagination) return schema;
   const properties = (schema as { properties: Record<string, TSchema> }).properties;
@@ -250,29 +246,36 @@ export function parameterSchema(operation: LinearOperation) {
 
   const [create, update] = contract.variants;
   const fieldNames = Object.keys(contract.fields);
-  const createForbidden = fieldNames.filter((field) => !create.fields.includes(field));
-  const updateForbidden = fieldNames.filter((field) => !update.fields.includes(field));
   const properties: Record<string, TSchema> = Object.fromEntries(
     fieldNames.map((name) => [name, Type.Optional(schemaFor(contract.fields[name]!))]),
   );
 
-  const createClause = {
-    required: [...create.branches[0]!],
-    ...forbiddenFields(createForbidden),
-  };
-  const updateClause = {
-    required: [update.branches[0]![0]!],
-    anyOf: update.branches.map((branch) => ({ required: [...branch] })),
-    ...forbiddenFields(updateForbidden),
-  };
+  /**
+   * Publish what each mode requires; enforce what each mode forbids at runtime.
+   *
+   * The required sets are information a caller needs and cost about 60 bytes. The forbidden
+   * sets were an enumeration of every excluded field per mode, and when they tripped the
+   * validator named no field and no fix. `assertVariant` in typed-tools.ts applies that
+   * half, naming the mode, the offending field, and what the mode accepts.
+   */
   return describePagination(Type.Object(properties, {
     additionalProperties: false,
-    oneOf: [createClause, updateClause],
+    anyOf: [
+      { required: [...create.branches[0]!] },
+      // Every update branch is the identity plus one changed field, so `save_project`
+      // enumerated 31 pairs to say this. `minProperties` states it in one clause.
+      { required: [update.branches[0]![0]!], minProperties: 2 },
+    ],
   }), operation);
 }
 
+/**
+ * The published schema already states the call shape, so the description carries purpose
+ * only. A repeated worked example cost 2,910 bytes across the tool set and said nothing
+ * the parameter list did not.
+ */
 function toolDescription(operation: LinearOperation): string {
-  return `${operation.purpose} Call with direct arguments ${JSON.stringify(getOperationDefinition(operation.name).canonical.example)}.`;
+  return operation.purpose;
 }
 
 export type TypedToolMetadata = {

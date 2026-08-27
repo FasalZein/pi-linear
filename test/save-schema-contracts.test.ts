@@ -3,6 +3,7 @@ import { validateToolArguments } from '@earendil-works/pi-ai';
 import { convertTools } from '../node_modules/@earendil-works/pi-ai/dist/api/google-shared.js';
 import { makeStrictJsonSchema, resolveJsonSchemaStrictSampling } from '../node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.js';
 import { linearGraphqlTool } from '../extensions/api';
+import { canonicalOperation } from '../extensions/canonical';
 import { operations } from '../extensions/operations';
 import type { CompatibilityObject } from '../extensions/operation-types';
 import { typedLinearTools } from '../extensions/typed-tools';
@@ -22,6 +23,11 @@ function accepts(toolName: string, args: CompatibilityObject): boolean {
   } catch {
     return false;
   }
+}
+
+/** The pre-call gate itself, so a test can assert on the message it produces. */
+function strictGate(toolName: string, args: CompatibilityObject): unknown {
+  return tools.get(toolName)!.prepareArguments!(args);
 }
 
 function strictAccepts(toolName: string, args: CompatibilityObject): boolean {
@@ -88,16 +94,18 @@ describe('closed create and update save schemas', () => {
 
   it.each(SAVE_CASES)('$tool rejects incomplete and cross-mode calls', (entry) => {
     const identity = Object.fromEntries(Object.entries(entry.update).slice(0, 1));
+    const invalid = [identity, entry.createOnly, entry.missingCreate, entry.invalidCreate]
+      .filter((args): args is CompatibilityObject => Boolean(args));
+
+    // Every invalid call is refused before execution by the gate that owns the mode rule.
+    for (const args of invalid) expect(strictAccepts(entry.tool, args)).toBe(false);
+
+    // The published schema still carries what each mode requires, so it catches the
+    // incomplete calls on its own. It no longer enumerates forbidden fields, so a
+    // cross-mode call reaches the gate instead, which names the field and the mode.
     expect(accepts(entry.tool, identity)).toBe(false);
-    expect(strictAccepts(entry.tool, identity)).toBe(false);
-    expect(accepts(entry.tool, entry.createOnly)).toBe(false);
-    expect(strictAccepts(entry.tool, entry.createOnly)).toBe(false);
     expect(accepts(entry.tool, entry.missingCreate)).toBe(false);
-    expect(strictAccepts(entry.tool, entry.missingCreate)).toBe(false);
-    if (entry.invalidCreate) {
-      expect(accepts(entry.tool, entry.invalidCreate)).toBe(false);
-      expect(strictAccepts(entry.tool, entry.invalidCreate)).toBe(false);
-    }
+    expect(() => strictGate(entry.tool, entry.createOnly)).toThrow(/does not accept:/);
   });
 
   it.each(SAVE_CASES)('$tool rejects before making a network request', async (entry) => {
@@ -109,7 +117,9 @@ describe('closed create and update save schemas', () => {
       .filter((args): args is CompatibilityObject => Boolean(args));
 
     for (const args of rejected) {
-      await expect(execute(entry.tool, args)).rejects.toThrow(/^Invalid (parameters|arguments)/);
+      // The message shape differs by which gate caught it; what matters is that the call
+      // is refused, names the tool, and never reaches the network.
+      await expect(execute(entry.tool, args)).rejects.toThrow(entry.tool);
     }
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -141,27 +151,44 @@ describe('closed create and update save schemas', () => {
       expect(root.type).toBe('object');
       expect(Object.keys(root.properties)).toEqual(fields);
       expect(root.additionalProperties).toBe(false);
-      expect(root.oneOf).toHaveLength(2);
+      // Two clauses: what create requires, and what update requires. The forbidden-field
+      // enumerations moved to the pre-call gate.
+      expect(root.anyOf).toHaveLength(2);
+      expect(root.oneOf).toBeUndefined();
     }
   });
 
-  it('publishes exact create and update mode constraints', () => {
+  it('enforces exact create and update mode constraints', () => {
     const expected = {
       linear_save_initiative: { create: ['name'], identity: 'initiativeId', createForbidden: ['initiativeId', 'customIdentifier', 'frequencyResolution', 'updateReminderFrequency', 'updateReminderFrequencyInWeeks', 'updateRemindersDay', 'updateRemindersHour'], updateForbidden: ['id'] },
       linear_save_milestone: { create: ['name', 'projectId'], identity: 'milestoneId', createForbidden: ['milestoneId'], updateForbidden: ['id'] },
       linear_save_project: { create: ['name', 'teamIds'], identity: 'projectId', createForbidden: ['projectId', 'canceledAt', 'completedAt', 'projectUpdateRemindersPausedUntilAt', 'slackIssueComments', 'slackIssueStatuses', 'slackNewIssue', 'frequencyResolution', 'updateReminderFrequency', 'updateReminderFrequencyInWeeks', 'updateRemindersDay', 'updateRemindersHour'], updateForbidden: ['slackChannelName', 'templateId', 'useDefaultTemplate', 'id'] },
     } as const;
     for (const [toolName, rule] of Object.entries(expected)) {
-      const [create, update] = schema(toolName).oneOf;
-      expect(create.required).toEqual(rule.create);
-      expect(create.not.anyOf.map((item: any) => item.required[0])).toEqual(rule.createForbidden);
-      expect(update.required).toEqual([rule.identity]);
-      expect(update.not.anyOf.map((item: any) => item.required[0])).toEqual(rule.updateForbidden);
-      expect(update.anyOf.length).toBeGreaterThan(0);
-      for (const branch of update.anyOf) {
-        expect(branch.required[0]).toBe(rule.identity);
-        expect(branch.required).toHaveLength(2);
+      const [create, update] = canonicalOperation(operations[toolName.slice('linear_'.length)]!).variants!;
+      const published = Object.keys(schema(toolName).properties);
+
+      // The partition itself, read from the contract the gate enforces.
+      expect(create.branches[0]).toEqual(rule.create);
+      expect(update.branches[0]![0]).toBe(rule.identity);
+      expect(published.filter((field) => !create.fields.includes(field))).toEqual(rule.createForbidden);
+      expect(published.filter((field) => !update.fields.includes(field))).toEqual(rule.updateForbidden);
+      expect(update.branches.every((branch) => branch.length === 2 && branch[0] === rule.identity)).toBe(true);
+
+      // And the gate refuses each forbidden field, naming it. The identity is excluded:
+      // supplying it is what selects update mode, so it is a mode switch, not a violation.
+      for (const field of rule.createForbidden.filter((name) => name !== rule.identity)) {
+        const args = Object.fromEntries([...rule.create, field].map((name) => [name, 'x']));
+        expect(() => strictGate(toolName, args), `${toolName} create must refuse ${field}`).toThrow(field);
       }
+      for (const field of rule.updateForbidden) {
+        expect(() => strictGate(toolName, { [rule.identity]: 'x', [field]: 'x' }), `${toolName} update must refuse ${field}`).toThrow(field);
+      }
+
+      // The published schema carries the required half only.
+      const [createClause, updateClause] = schema(toolName).anyOf;
+      expect(createClause.required).toEqual(rule.create);
+      expect(updateClause).toEqual({ required: [rule.identity], minProperties: 2 });
     }
   });
 });
@@ -201,7 +228,8 @@ describe('mode-specific field ownership', () => {
       expect(accepts('linear_save_initiative', { initiativeId: 'Initiative', [field]: value })).toBe(true);
     }
     expect(accepts('linear_save_initiative', { initiativeId: 'Initiative', customIdentifier: 'PLAT' })).toBe(true);
-    expect(accepts('linear_save_initiative', { name: 'Initiative', customIdentifier: 'PLAT' })).toBe(false);
+    // Create mode forbids customIdentifier; the gate owns that rule now, not the schema.
+    expect(strictAccepts('linear_save_initiative', { name: 'Initiative', customIdentifier: 'PLAT' })).toBe(false);
     expect(accepts('linear_save_project', { name: 'Project', teamIds: [UUID], leadTeamId: UUID })).toBe(true);
     expect(accepts('linear_save_project', { projectId: 'Project', leadTeamId: UUID })).toBe(true);
     expect(accepts('linear_create_document', { title: 'Plan', ownerId: UUID })).toBe(true);

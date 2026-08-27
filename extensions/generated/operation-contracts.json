@@ -4,7 +4,7 @@
     "tool": {
       "name": "linear_list_comments",
       "label": "Linear list comments",
-      "description": "List comments, optionally for one exact issue. Call with direct arguments {\"issue\":\"AEO-258\"}.",
+      "description": "List comments, optionally for one exact issue.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -37,15 +37,14 @@
             "enum": [
               "createdAt",
               "updatedAt"
-            ],
-            "description": "createdAt or updatedAt."
+            ]
           },
           "filter": {
             "type": "object",
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear filter object for this entity; must name at least one field.",
+            "description": "Linear filter object.",
             "minProperties": 1
           }
         },
@@ -251,7 +250,7 @@
     "tool": {
       "name": "linear_create_comment",
       "label": "Linear create comment",
-      "description": "Create a comment on an issue or another supported target. Call with direct arguments {\"issue\":\"AEO-258\",\"body\":\"Comment text\"}.",
+      "description": "Create a comment on an issue or another supported target.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -262,37 +261,30 @@
           },
           "projectId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "initiativeId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "projectUpdateId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "initiativeUpdateId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "postId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "documentContentId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "parentId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "body": {
@@ -323,7 +315,6 @@
           },
           "id": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           }
         },
@@ -903,7 +894,7 @@
     "tool": {
       "name": "linear_update_comment",
       "label": "Linear update comment",
-      "description": "Update a comment by id. Call with direct arguments {\"id\":\"comment-id\",\"body\":\"Updated text\"}.",
+      "description": "Update a comment by id.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -1150,7 +1141,7 @@
     "tool": {
       "name": "linear_list_views",
       "label": "Linear list views",
-      "description": "List custom views. Call with direct arguments {}.",
+      "description": "List custom views.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -1178,15 +1169,14 @@
             "enum": [
               "createdAt",
               "updatedAt"
-            ],
-            "description": "createdAt or updatedAt."
+            ]
           },
           "filter": {
             "type": "object",
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear filter object for this entity; must name at least one field.",
+            "description": "Linear filter object.",
             "minProperties": 1
           }
         },
@@ -1367,7 +1357,7 @@
     "tool": {
       "name": "linear_get_view",
       "label": "Linear get view",
-      "description": "Get a custom view. Call with direct arguments {\"id\":\"view-id\"}.",
+      "description": "Get a custom view.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -1485,7 +1475,7 @@
     "tool": {
       "name": "linear_create_view",
       "label": "Linear create view",
-      "description": "Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData. Call with direct arguments {\"name\":\"My issues\",\"filterData\":{\"assignee\":{\"isMe\":{\"eq\":true}}}}.",
+      "description": "Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -1519,7 +1509,7 @@
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear view filter object; must name at least one field.",
+            "description": "Linear view filter object.",
             "minProperties": 1
           },
           "projectFilterData": {
@@ -1527,7 +1517,7 @@
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear view filter object; must name at least one field.",
+            "description": "Linear view filter object.",
             "minProperties": 1
           },
           "initiativeFilterData": {
@@ -1535,7 +1525,7 @@
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear view filter object; must name at least one field.",
+            "description": "Linear view filter object.",
             "minProperties": 1
           },
           "feedItemFilterData": {
@@ -1543,7 +1533,7 @@
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear view filter object; must name at least one field.",
+            "description": "Linear view filter object.",
             "minProperties": 1
           }
         },
@@ -1833,7 +1823,7 @@
     "tool": {
       "name": "linear_update_view",
       "label": "Linear update view",
-      "description": "Update a custom view. Call with direct arguments {\"id\":\"view-id\",\"name\":\"New name\"}.",
+      "description": "Update a custom view.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -1866,7 +1856,7 @@
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear view filter object; must name at least one field.",
+            "description": "Linear view filter object.",
             "minProperties": 1
           },
           "projectFilterData": {
@@ -1874,7 +1864,7 @@
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear view filter object; must name at least one field.",
+            "description": "Linear view filter object.",
             "minProperties": 1
           },
           "initiativeFilterData": {
@@ -1882,7 +1872,7 @@
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear view filter object; must name at least one field.",
+            "description": "Linear view filter object.",
             "minProperties": 1
           },
           "feedItemFilterData": {
@@ -1890,7 +1880,7 @@
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear view filter object; must name at least one field.",
+            "description": "Linear view filter object.",
             "minProperties": 1
           }
         },
@@ -2239,7 +2229,7 @@
     "tool": {
       "name": "linear_set_view_preferences",
       "label": "Linear set view preferences",
-      "description": "Set preferences for a custom view. Call with direct arguments {\"viewId\":\"view-id\",\"preferences\":{\"showEmptyGroups\":true}}.",
+      "description": "Set preferences for a custom view.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -2303,7 +2293,7 @@
             },
             "additionalProperties": false,
             "minProperties": 1,
-            "description": "View preference object; must name at least one field.",
+            "description": "View preference object.",
             "~optional": true
           }
         },
@@ -2445,7 +2435,7 @@
     "tool": {
       "name": "linear_list_cycles",
       "label": "Linear list cycles",
-      "description": "List cycles. Call with direct arguments {}.",
+      "description": "List cycles.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -2478,15 +2468,14 @@
             "enum": [
               "createdAt",
               "updatedAt"
-            ],
-            "description": "createdAt or updatedAt."
+            ]
           },
           "filter": {
             "type": "object",
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear filter object for this entity; must name at least one field.",
+            "description": "Linear filter object.",
             "minProperties": 1
           }
         },
@@ -2734,7 +2723,7 @@
     "tool": {
       "name": "linear_get_cycle",
       "label": "Linear get cycle",
-      "description": "Get a cycle by exact name or UUID. Call with direct arguments {\"cycle\":\"Cycle 12\"}.",
+      "description": "Get a cycle by exact name or UUID.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -2870,7 +2859,7 @@
     "tool": {
       "name": "linear_create_cycle",
       "label": "Linear create cycle",
-      "description": "Create a cycle. Call with direct arguments {\"team\":\"AEO\",\"startsAt\":\"2026-08-17\",\"endsAt\":\"2026-08-31\"}.",
+      "description": "Create a cycle.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -3166,7 +3155,7 @@
     "tool": {
       "name": "linear_update_cycle",
       "label": "Linear update cycle",
-      "description": "Update a cycle. Call with direct arguments {\"id\":\"cycle-id\",\"name\":\"Cycle 12\"}.",
+      "description": "Update a cycle.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -3431,7 +3420,7 @@
     "tool": {
       "name": "linear_list_documents",
       "label": "Linear list documents",
-      "description": "List documents. Call with direct arguments {}.",
+      "description": "List documents.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -3490,15 +3479,14 @@
             "enum": [
               "createdAt",
               "updatedAt"
-            ],
-            "description": "createdAt or updatedAt."
+            ]
           },
           "filter": {
             "type": "object",
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear filter object for this entity; must name at least one field.",
+            "description": "Linear filter object.",
             "minProperties": 1
           },
           "view": {
@@ -3507,7 +3495,7 @@
               "summary",
               "full"
             ],
-            "description": "summary or full. Lists default to summary. Single records default to full."
+            "description": "Lists default to summary; single records to full."
           }
         },
         "additionalProperties": false
@@ -3719,7 +3707,7 @@
     "tool": {
       "name": "linear_get_document",
       "label": "Linear get document",
-      "description": "Get a document by exact title or UUID. Call with direct arguments {\"document\":\"Planning notes\"}.",
+      "description": "Get a document by exact title or UUID.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -3734,7 +3722,7 @@
               "summary",
               "full"
             ],
-            "description": "summary or full. Lists default to summary. Single records default to full."
+            "description": "Lists default to summary; single records to full."
           }
         },
         "additionalProperties": false,
@@ -3875,7 +3863,7 @@
     "tool": {
       "name": "linear_create_document",
       "label": "Linear create document",
-      "description": "Create a document. Call with direct arguments {\"title\":\"Planning notes\",\"content\":\"Notes\"}.",
+      "description": "Create a document.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -3908,37 +3896,30 @@
           },
           "projectId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "initiativeId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "cycleId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "releaseId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "resourceFolderId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "lastAppliedTemplateId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "ownerId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "subscriberIds": {
@@ -3947,16 +3928,13 @@
               "type": "string",
               "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
-            "description": "One or more Linear UUIDs.",
             "minItems": 1
           },
           "sortOrder": {
-            "type": "number",
-            "description": "Number."
+            "type": "number"
           },
           "id": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           }
         },
@@ -4298,7 +4276,7 @@
     "tool": {
       "name": "linear_update_document",
       "label": "Linear update document",
-      "description": "Update a document. Call with direct arguments {\"document\":\"document-id\",\"title\":\"Updated notes\"}.",
+      "description": "Update a document.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -4336,37 +4314,30 @@
           },
           "projectId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "initiativeId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "cycleId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "releaseId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "resourceFolderId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "lastAppliedTemplateId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "ownerId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "subscriberIds": {
@@ -4375,12 +4346,10 @@
               "type": "string",
               "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
-            "description": "One or more Linear UUIDs.",
             "minItems": 1
           },
           "sortOrder": {
-            "type": "number",
-            "description": "Number."
+            "type": "number"
           },
           "hiddenAt": {
             "anyOf": [
@@ -4392,7 +4361,7 @@
                 "type": "null"
               }
             ],
-            "description": "ISO 8601 date-time, or null to clear it."
+            "description": "Null clears it."
           }
         },
         "additionalProperties": false,
@@ -4932,7 +4901,7 @@
     "tool": {
       "name": "linear_list_initiatives",
       "label": "Linear list initiatives",
-      "description": "List initiatives. Call with direct arguments {}.",
+      "description": "List initiatives.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -4995,15 +4964,14 @@
             "enum": [
               "createdAt",
               "updatedAt"
-            ],
-            "description": "createdAt or updatedAt."
+            ]
           },
           "filter": {
             "type": "object",
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear filter object for this entity; must name at least one field.",
+            "description": "Linear filter object.",
             "minProperties": 1
           }
         },
@@ -5208,7 +5176,7 @@
     "tool": {
       "name": "linear_get_initiative",
       "label": "Linear get initiative",
-      "description": "Get an initiative by exact name or UUID. Call with direct arguments {\"initiative\":\"Platform\"}.",
+      "description": "Get an initiative by exact name or UUID.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -5344,7 +5312,7 @@
     "tool": {
       "name": "linear_list_issue_labels",
       "label": "Linear list issue labels",
-      "description": "List issue labels. Call with direct arguments {}.",
+      "description": "List issue labels.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -5377,15 +5345,14 @@
             "enum": [
               "createdAt",
               "updatedAt"
-            ],
-            "description": "createdAt or updatedAt."
+            ]
           },
           "filter": {
             "type": "object",
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear filter object for this entity; must name at least one field.",
+            "description": "Linear filter object.",
             "minProperties": 1
           }
         },
@@ -5633,7 +5600,7 @@
     "tool": {
       "name": "linear_create_issue_label",
       "label": "Linear create issue label",
-      "description": "Create an issue label. Call with direct arguments {\"name\":\"needs-review\",\"color\":\"#ff0000\"}.",
+      "description": "Create an issue label.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -5660,7 +5627,6 @@
           },
           "parentId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "retiredAt": {
@@ -5673,7 +5639,6 @@
           },
           "id": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           }
         },
@@ -5937,7 +5902,7 @@
     "tool": {
       "name": "linear_update_issue_label",
       "label": "Linear update issue label",
-      "description": "Update an issue label. Call with direct arguments {\"id\":\"label-id\",\"name\":\"review\"}.",
+      "description": "Update an issue label.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -5963,7 +5928,6 @@
           },
           "parentId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "retiredAt": {
@@ -5976,7 +5940,7 @@
                 "type": "null"
               }
             ],
-            "description": "ISO 8601 date-time, or null to clear it."
+            "description": "Null clears it."
           },
           "replaceTeamLabels": {
             "type": "boolean"
@@ -6279,7 +6243,7 @@
     "tool": {
       "name": "linear_list_issue_relations",
       "label": "Linear list issue relations",
-      "description": "List issue relations. Call with direct arguments {}.",
+      "description": "List issue relations.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -6307,8 +6271,7 @@
             "enum": [
               "createdAt",
               "updatedAt"
-            ],
-            "description": "createdAt or updatedAt."
+            ]
           }
         },
         "additionalProperties": false
@@ -6475,7 +6438,7 @@
     "tool": {
       "name": "linear_create_issue_relation",
       "label": "Linear create issue relation",
-      "description": "Create a relation between two issues. Call with direct arguments {\"issue\":\"AEO-258\",\"relatedIssue\":\"AEO-259\",\"type\":\"related\"}.",
+      "description": "Create a relation between two issues.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -6496,8 +6459,7 @@
               "duplicate",
               "related",
               "similar"
-            ],
-            "description": "blocks, duplicate, related, or similar."
+            ]
           }
         },
         "additionalProperties": false,
@@ -6714,7 +6676,7 @@
     "tool": {
       "name": "linear_update_issue_relation",
       "label": "Linear update issue relation",
-      "description": "Update an issue relation. Call with direct arguments {\"id\":\"relation-id\",\"type\":\"blocks\"}.",
+      "description": "Update an issue relation.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -6729,8 +6691,7 @@
               "duplicate",
               "related",
               "similar"
-            ],
-            "description": "blocks, duplicate, related, or similar."
+            ]
           },
           "issueId": {
             "type": "string",
@@ -6950,23 +6911,20 @@
     "tool": {
       "name": "linear_delete_issue_relation",
       "label": "Linear delete issue relation",
-      "description": "Delete one issue relation after exact relation and endpoint verification. Call with direct arguments {\"relationId\":\"33333333-3333-4333-8333-333333333333\",\"issueId\":\"11111111-1111-4111-8111-111111111111\",\"relatedIssueId\":\"22222222-2222-4222-8222-222222222222\",\"type\":\"related\"}.",
+      "description": "Delete one issue relation after exact relation and endpoint verification.",
       "parameters": {
         "type": "object",
         "properties": {
           "relationId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "issueId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "relatedIssueId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "type": {
@@ -6976,8 +6934,7 @@
               "duplicate",
               "related",
               "similar"
-            ],
-            "description": "blocks, duplicate, related, or similar."
+            ]
           }
         },
         "additionalProperties": false,
@@ -7154,7 +7111,7 @@
     "tool": {
       "name": "linear_list_issue_statuses",
       "label": "Linear list issue statuses",
-      "description": "List issue workflow states. Call with direct arguments {}.",
+      "description": "List issue workflow states.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -7182,15 +7139,14 @@
             "enum": [
               "createdAt",
               "updatedAt"
-            ],
-            "description": "createdAt or updatedAt."
+            ]
           },
           "filter": {
             "type": "object",
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear filter object for this entity; must name at least one field.",
+            "description": "Linear filter object.",
             "minProperties": 1
           }
         },
@@ -7373,7 +7329,7 @@
     "tool": {
       "name": "linear_list_issues",
       "label": "Linear list issues",
-      "description": "List issues with exact convenience filters. Call with direct arguments {\"assignee\":\"me\",\"stateType\":\"started\"}.",
+      "description": "List issues with exact convenience filters.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -7409,8 +7365,7 @@
               "started",
               "completed",
               "canceled"
-            ],
-            "description": "triage, backlog, unstarted, started, completed, or canceled."
+            ]
           },
           "assignee": {
             "type": "string",
@@ -7492,15 +7447,14 @@
             "enum": [
               "createdAt",
               "updatedAt"
-            ],
-            "description": "createdAt or updatedAt."
+            ]
           },
           "filter": {
             "type": "object",
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear filter object for this entity; must name at least one field.",
+            "description": "Linear filter object.",
             "minProperties": 1
           },
           "view": {
@@ -7509,7 +7463,7 @@
               "summary",
               "full"
             ],
-            "description": "summary or full. Lists default to summary. Single records default to full."
+            "description": "Lists default to summary; single records to full."
           }
         },
         "additionalProperties": false
@@ -7926,7 +7880,7 @@
     "tool": {
       "name": "linear_get_issue",
       "label": "Linear get issue",
-      "description": "Get one issue by exact identifier or UUID. Call with direct arguments {\"issue\":\"AEO-258\"}.",
+      "description": "Get one issue by exact identifier or UUID.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -7941,7 +7895,7 @@
               "summary",
               "full"
             ],
-            "description": "summary or full. Lists default to summary. Single records default to full."
+            "description": "Lists default to summary; single records to full."
           }
         },
         "additionalProperties": false,
@@ -8088,7 +8042,7 @@
     "tool": {
       "name": "linear_create_issue",
       "label": "Linear create issue",
-      "description": "Create an issue. A parent reference supplies the team when team is omitted. Call with direct arguments {\"title\":\"v0.4 trial child\",\"parent\":\"AEO-258\"}.",
+      "description": "Create an issue. A parent reference supplies the team when team is omitted.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -8141,17 +8095,14 @@
           },
           "projectId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "projectMilestoneId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "cycleId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "labelIds": {
@@ -8160,7 +8111,6 @@
               "type": "string",
               "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
-            "description": "One or more Linear UUIDs.",
             "minItems": 1
           },
           "subscriberIds": {
@@ -8169,17 +8119,14 @@
               "type": "string",
               "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
-            "description": "One or more Linear UUIDs.",
             "minItems": 1
           },
           "delegateId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "lastAppliedTemplateId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "slaType": {
@@ -8187,8 +8134,7 @@
             "enum": [
               "all",
               "onlyBusinessDays"
-            ],
-            "description": "SlaDayCountType value."
+            ]
           },
           "slaBreachesAt": {
             "anyOf": [
@@ -8200,7 +8146,7 @@
                 "type": "null"
               }
             ],
-            "description": "ISO 8601 date-time, or null to clear it."
+            "description": "Null clears it."
           },
           "slaStartedAt": {
             "anyOf": [
@@ -8212,23 +8158,19 @@
                 "type": "null"
               }
             ],
-            "description": "ISO 8601 date-time, or null to clear it."
+            "description": "Null clears it."
           },
           "sortOrder": {
-            "type": "number",
-            "description": "Number."
+            "type": "number"
           },
           "subIssueSortOrder": {
-            "type": "number",
-            "description": "Number."
+            "type": "number"
           },
           "prioritySortOrder": {
-            "type": "number",
-            "description": "Number."
+            "type": "number"
           },
           "templateId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "useDefaultTemplate": {
@@ -8239,17 +8181,14 @@
           },
           "referenceCommentId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "sourceCommentId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "sourcePullRequestCommentId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "createAsUser": {
@@ -8272,7 +8211,7 @@
                 "type": "null"
               }
             ],
-            "description": "ISO 8601 date-time, or null to clear it."
+            "description": "Null clears it."
           },
           "createdAt": {
             "type": "string",
@@ -8281,7 +8220,6 @@
           },
           "id": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           }
         },
@@ -8938,7 +8876,7 @@
     "tool": {
       "name": "linear_update_issue",
       "label": "Linear update issue",
-      "description": "Update an issue by exact identifier or UUID. Call with direct arguments {\"issue\":\"AEO-258\",\"state\":\"Backlog\"}.",
+      "description": "Update an issue by exact identifier or UUID.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -8966,7 +8904,7 @@
                 "type": "null"
               }
             ],
-            "description": "User email, exact name, display name, \"me\", a user UUID, or null to clear it."
+            "description": "User email, exact name, display name, \"me\", or a user UUID; null clears it."
           },
           "parent": {
             "anyOf": [
@@ -8978,7 +8916,7 @@
                 "type": "null"
               }
             ],
-            "description": "Issue identifier such as ABC-123, an issue UUID, or null to clear it."
+            "description": "Issue identifier such as ABC-123, or an issue UUID; null clears it."
           },
           "teamId": {
             "type": "string",
@@ -8995,7 +8933,7 @@
                 "type": "null"
               }
             ],
-            "description": "Calendar date YYYY-MM-DD, or null to clear it."
+            "description": "Calendar date YYYY-MM-DD; null clears it."
           },
           "addedLabelIds": {
             "type": "array",
@@ -9003,7 +8941,6 @@
               "type": "string",
               "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
-            "description": "One or more Linear UUIDs.",
             "minItems": 1
           },
           "removedLabelIds": {
@@ -9012,7 +8949,6 @@
               "type": "string",
               "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
-            "description": "One or more Linear UUIDs.",
             "minItems": 1
           },
           "description": {
@@ -9043,7 +8979,7 @@
                 "type": "null"
               }
             ],
-            "description": "Linear UUID, or null to clear it."
+            "description": "Null clears it."
           },
           "projectMilestoneId": {
             "anyOf": [
@@ -9055,7 +8991,7 @@
                 "type": "null"
               }
             ],
-            "description": "Linear UUID, or null to clear it."
+            "description": "Null clears it."
           },
           "cycleId": {
             "anyOf": [
@@ -9067,7 +9003,7 @@
                 "type": "null"
               }
             ],
-            "description": "Linear UUID, or null to clear it."
+            "description": "Null clears it."
           },
           "labelIds": {
             "type": "array",
@@ -9075,7 +9011,6 @@
               "type": "string",
               "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
-            "description": "One or more Linear UUIDs.",
             "minItems": 1
           },
           "subscriberIds": {
@@ -9084,17 +9019,14 @@
               "type": "string",
               "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
-            "description": "One or more Linear UUIDs.",
             "minItems": 1
           },
           "delegateId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "lastAppliedTemplateId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "slaType": {
@@ -9102,8 +9034,7 @@
             "enum": [
               "all",
               "onlyBusinessDays"
-            ],
-            "description": "SlaDayCountType value."
+            ]
           },
           "slaBreachesAt": {
             "anyOf": [
@@ -9115,7 +9046,7 @@
                 "type": "null"
               }
             ],
-            "description": "ISO 8601 date-time, or null to clear it."
+            "description": "Null clears it."
           },
           "slaStartedAt": {
             "anyOf": [
@@ -9127,26 +9058,22 @@
                 "type": "null"
               }
             ],
-            "description": "ISO 8601 date-time, or null to clear it."
+            "description": "Null clears it."
           },
           "sortOrder": {
-            "type": "number",
-            "description": "Number."
+            "type": "number"
           },
           "subIssueSortOrder": {
-            "type": "number",
-            "description": "Number."
+            "type": "number"
           },
           "prioritySortOrder": {
-            "type": "number",
-            "description": "Number."
+            "type": "number"
           },
           "autoClosedByParentClosing": {
             "type": "boolean"
           },
           "snoozedById": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "snoozedUntilAt": {
@@ -9159,7 +9086,7 @@
                 "type": "null"
               }
             ],
-            "description": "ISO 8601 date-time, or null to clear it."
+            "description": "Null clears it."
           }
         },
         "additionalProperties": false,
@@ -10044,7 +9971,7 @@
     "tool": {
       "name": "linear_search_issues",
       "label": "Linear search issues",
-      "description": "Search issues by text. Call with direct arguments {\"term\":\"authentication\"}.",
+      "description": "Search issues by text.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -10084,15 +10011,14 @@
             "enum": [
               "createdAt",
               "updatedAt"
-            ],
-            "description": "createdAt or updatedAt."
+            ]
           },
           "filter": {
             "type": "object",
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear filter object for this entity; must name at least one field.",
+            "description": "Linear filter object.",
             "minProperties": 1
           },
           "view": {
@@ -10101,7 +10027,7 @@
               "summary",
               "full"
             ],
-            "description": "summary or full. Lists default to summary. Single records default to full."
+            "description": "Lists default to summary; single records to full."
           }
         },
         "additionalProperties": false,
@@ -10407,7 +10333,7 @@
     "tool": {
       "name": "linear_list_milestones",
       "label": "Linear list milestones",
-      "description": "List project milestones. Call with direct arguments {}.",
+      "description": "List project milestones.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -10435,15 +10361,14 @@
             "enum": [
               "createdAt",
               "updatedAt"
-            ],
-            "description": "createdAt or updatedAt."
+            ]
           },
           "filter": {
             "type": "object",
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear filter object for this entity; must name at least one field.",
+            "description": "Linear filter object.",
             "minProperties": 1
           }
         },
@@ -10624,7 +10549,7 @@
     "tool": {
       "name": "linear_get_milestone",
       "label": "Linear get milestone",
-      "description": "Get a milestone by exact name or UUID. Call with direct arguments {\"milestone\":\"Beta\"}.",
+      "description": "Get a milestone by exact name or UUID.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -10760,7 +10685,7 @@
     "tool": {
       "name": "linear_list_project_labels",
       "label": "Linear list project labels",
-      "description": "List project labels. Call with direct arguments {}.",
+      "description": "List project labels.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -10788,15 +10713,14 @@
             "enum": [
               "createdAt",
               "updatedAt"
-            ],
-            "description": "createdAt or updatedAt."
+            ]
           },
           "filter": {
             "type": "object",
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear filter object for this entity; must name at least one field.",
+            "description": "Linear filter object.",
             "minProperties": 1
           }
         },
@@ -10977,7 +10901,7 @@
     "tool": {
       "name": "linear_create_project_label",
       "label": "Linear create project label",
-      "description": "Create a project label. Call with direct arguments {\"name\":\"Strategic\"}.",
+      "description": "Create a project label.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -10999,7 +10923,6 @@
           },
           "parentId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "retiredAt": {
@@ -11210,7 +11133,7 @@
     "tool": {
       "name": "linear_update_project_label",
       "label": "Linear update project label",
-      "description": "Update a project label. Call with direct arguments {\"id\":\"label-id\",\"name\":\"Strategy\"}.",
+      "description": "Update a project label.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -11236,7 +11159,6 @@
           },
           "parentId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "retiredAt": {
@@ -11249,7 +11171,7 @@
                 "type": "null"
               }
             ],
-            "description": "ISO 8601 date-time, or null to clear it."
+            "description": "Null clears it."
           }
         },
         "additionalProperties": false,
@@ -11525,7 +11447,7 @@
     "tool": {
       "name": "linear_list_project_relations",
       "label": "Linear list project relations",
-      "description": "List project relations. Call with direct arguments {}.",
+      "description": "List project relations.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -11553,8 +11475,7 @@
             "enum": [
               "createdAt",
               "updatedAt"
-            ],
-            "description": "createdAt or updatedAt."
+            ]
           }
         },
         "additionalProperties": false
@@ -11721,7 +11642,7 @@
     "tool": {
       "name": "linear_create_project_relation",
       "label": "Linear create project relation",
-      "description": "Create a relation between two projects. Call with direct arguments {\"projectId\":\"project-id\",\"relatedProjectId\":\"other-project-id\",\"type\":\"related\",\"anchorType\":\"project\",\"relatedAnchorType\":\"project\"}.",
+      "description": "Create a relation between two projects.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -11747,12 +11668,10 @@
           },
           "projectMilestoneId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "relatedProjectMilestoneId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           }
         },
@@ -11999,7 +11918,7 @@
     "tool": {
       "name": "linear_update_project_relation",
       "label": "Linear update project relation",
-      "description": "Update a project relation. Call with direct arguments {\"id\":\"relation-id\",\"type\":\"related\"}.",
+      "description": "Update a project relation.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -12021,22 +11940,18 @@
           },
           "projectId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "relatedProjectId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "projectMilestoneId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "relatedProjectMilestoneId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           }
         },
@@ -12337,7 +12252,7 @@
     "tool": {
       "name": "linear_list_projects",
       "label": "Linear list projects",
-      "description": "List projects. Call with direct arguments {}.",
+      "description": "List projects.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -12401,15 +12316,14 @@
             "enum": [
               "createdAt",
               "updatedAt"
-            ],
-            "description": "createdAt or updatedAt."
+            ]
           },
           "filter": {
             "type": "object",
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear filter object for this entity; must name at least one field.",
+            "description": "Linear filter object.",
             "minProperties": 1
           },
           "view": {
@@ -12418,7 +12332,7 @@
               "summary",
               "full"
             ],
-            "description": "summary or full. Lists default to summary. Single records default to full."
+            "description": "Lists default to summary; single records to full."
           }
         },
         "additionalProperties": false
@@ -12635,7 +12549,7 @@
     "tool": {
       "name": "linear_get_project",
       "label": "Linear get project",
-      "description": "Get a project by exact name or UUID. Call with direct arguments {\"project\":\"Platform\"}.",
+      "description": "Get a project by exact name or UUID.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -12650,7 +12564,7 @@
               "summary",
               "full"
             ],
-            "description": "summary or full. Lists default to summary. Single records default to full."
+            "description": "Lists default to summary; single records to full."
           }
         },
         "additionalProperties": false,
@@ -12791,7 +12705,7 @@
     "tool": {
       "name": "linear_list_teams",
       "label": "Linear list teams",
-      "description": "List teams and workflow states. Call with direct arguments {}.",
+      "description": "List teams and workflow states.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -12819,15 +12733,14 @@
             "enum": [
               "createdAt",
               "updatedAt"
-            ],
-            "description": "createdAt or updatedAt."
+            ]
           },
           "filter": {
             "type": "object",
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear filter object for this entity; must name at least one field.",
+            "description": "Linear filter object.",
             "minProperties": 1
           }
         },
@@ -13008,7 +12921,7 @@
     "tool": {
       "name": "linear_get_team",
       "label": "Linear get team",
-      "description": "Get a team by exact key or UUID. Call with direct arguments {\"team\":\"AEO\"}.",
+      "description": "Get a team by exact key or UUID.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -13144,7 +13057,7 @@
     "tool": {
       "name": "linear_list_users",
       "label": "Linear list users",
-      "description": "List users. Call with direct arguments {}.",
+      "description": "List users.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -13203,15 +13116,14 @@
             "enum": [
               "createdAt",
               "updatedAt"
-            ],
-            "description": "createdAt or updatedAt."
+            ]
           },
           "filter": {
             "type": "object",
             "patternProperties": {
               "^.*$": {}
             },
-            "description": "Linear filter object for this entity; must name at least one field.",
+            "description": "Linear filter object.",
             "minProperties": 1
           }
         },
@@ -13421,7 +13333,7 @@
     "tool": {
       "name": "linear_get_user",
       "label": "Linear get user",
-      "description": "Get a user by me, UUID, email, name, or display name. Call with direct arguments {\"user\":\"me\"}.",
+      "description": "Get a user by me, UUID, email, name, or display name.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -13557,7 +13469,7 @@
     "tool": {
       "name": "linear_switch_workspace",
       "label": "Linear switch workspace",
-      "description": "Switch the active stored workspace without exposing credentials. Call with direct arguments {\"name\":\"work\"}.",
+      "description": "Switch the active stored workspace without exposing credentials.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -13672,7 +13584,7 @@
     "tool": {
       "name": "linear_save_initiative",
       "label": "Linear save initiative",
-      "description": "Create or update an initiative. Call with direct arguments {\"name\":\"Platform\"}.",
+      "description": "Create or update an initiative.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -13710,8 +13622,7 @@
               "Active",
               "Completed",
               "Canceled"
-            ],
-            "description": "InitiativeStatus value."
+            ]
           },
           "targetDate": {
             "anyOf": [
@@ -13723,7 +13634,7 @@
                 "type": "null"
               }
             ],
-            "description": "Calendar date YYYY-MM-DD, or null to clear it."
+            "description": "Calendar date YYYY-MM-DD; null clears it."
           },
           "targetDateResolution": {
             "type": "string",
@@ -13732,26 +13643,21 @@
               "quarter",
               "halfYear",
               "year"
-            ],
-            "description": "DateResolutionType value."
+            ]
           },
           "ownerId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "leadTeamId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "sortOrder": {
-            "type": "number",
-            "description": "Number."
+            "type": "number"
           },
           "prioritySortOrder": {
-            "type": "number",
-            "description": "Number."
+            "type": "number"
           },
           "priority": {
             "type": "integer",
@@ -13765,12 +13671,10 @@
               "type": "string",
               "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
-            "description": "One or more Linear UUIDs.",
             "minItems": 1
           },
           "id": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "customIdentifier": {
@@ -13782,16 +13686,13 @@
             "enum": [
               "daily",
               "weekly"
-            ],
-            "description": "FrequencyResolutionType value."
+            ]
           },
           "updateReminderFrequency": {
-            "type": "number",
-            "description": "Number."
+            "type": "number"
           },
           "updateReminderFrequencyInWeeks": {
-            "type": "number",
-            "description": "Number."
+            "type": "number"
           },
           "updateRemindersDay": {
             "type": "string",
@@ -13803,195 +13704,24 @@
               "Thursday",
               "Friday",
               "Saturday"
-            ],
-            "description": "Day value."
+            ]
           },
           "updateRemindersHour": {
-            "type": "number",
-            "description": "Number."
+            "type": "number"
           }
         },
         "additionalProperties": false,
-        "oneOf": [
+        "anyOf": [
           {
             "required": [
               "name"
-            ],
-            "not": {
-              "anyOf": [
-                {
-                  "required": [
-                    "initiativeId"
-                  ]
-                },
-                {
-                  "required": [
-                    "customIdentifier"
-                  ]
-                },
-                {
-                  "required": [
-                    "frequencyResolution"
-                  ]
-                },
-                {
-                  "required": [
-                    "updateReminderFrequency"
-                  ]
-                },
-                {
-                  "required": [
-                    "updateReminderFrequencyInWeeks"
-                  ]
-                },
-                {
-                  "required": [
-                    "updateRemindersDay"
-                  ]
-                },
-                {
-                  "required": [
-                    "updateRemindersHour"
-                  ]
-                }
-              ]
-            }
+            ]
           },
           {
             "required": [
               "initiativeId"
             ],
-            "anyOf": [
-              {
-                "required": [
-                  "initiativeId",
-                  "name"
-                ]
-              },
-              {
-                "required": [
-                  "initiativeId",
-                  "description"
-                ]
-              },
-              {
-                "required": [
-                  "initiativeId",
-                  "content"
-                ]
-              },
-              {
-                "required": [
-                  "initiativeId",
-                  "icon"
-                ]
-              },
-              {
-                "required": [
-                  "initiativeId",
-                  "color"
-                ]
-              },
-              {
-                "required": [
-                  "initiativeId",
-                  "status"
-                ]
-              },
-              {
-                "required": [
-                  "initiativeId",
-                  "targetDate"
-                ]
-              },
-              {
-                "required": [
-                  "initiativeId",
-                  "targetDateResolution"
-                ]
-              },
-              {
-                "required": [
-                  "initiativeId",
-                  "ownerId"
-                ]
-              },
-              {
-                "required": [
-                  "initiativeId",
-                  "leadTeamId"
-                ]
-              },
-              {
-                "required": [
-                  "initiativeId",
-                  "sortOrder"
-                ]
-              },
-              {
-                "required": [
-                  "initiativeId",
-                  "prioritySortOrder"
-                ]
-              },
-              {
-                "required": [
-                  "initiativeId",
-                  "priority"
-                ]
-              },
-              {
-                "required": [
-                  "initiativeId",
-                  "labelIds"
-                ]
-              },
-              {
-                "required": [
-                  "initiativeId",
-                  "customIdentifier"
-                ]
-              },
-              {
-                "required": [
-                  "initiativeId",
-                  "frequencyResolution"
-                ]
-              },
-              {
-                "required": [
-                  "initiativeId",
-                  "updateReminderFrequency"
-                ]
-              },
-              {
-                "required": [
-                  "initiativeId",
-                  "updateReminderFrequencyInWeeks"
-                ]
-              },
-              {
-                "required": [
-                  "initiativeId",
-                  "updateRemindersDay"
-                ]
-              },
-              {
-                "required": [
-                  "initiativeId",
-                  "updateRemindersHour"
-                ]
-              }
-            ],
-            "not": {
-              "anyOf": [
-                {
-                  "required": [
-                    "id"
-                  ]
-                }
-              ]
-            }
+            "minProperties": 2
           }
         ]
       },
@@ -14802,7 +14532,7 @@
     "tool": {
       "name": "linear_save_milestone",
       "label": "Linear save milestone",
-      "description": "Create or update a milestone. Call with direct arguments {\"name\":\"Beta\",\"projectId\":\"project-id\"}.",
+      "description": "Create or update a milestone.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -14839,86 +14569,29 @@
                 "type": "null"
               }
             ],
-            "description": "Calendar date YYYY-MM-DD, or null to clear it."
+            "description": "Calendar date YYYY-MM-DD; null clears it."
           },
           "sortOrder": {
-            "type": "number",
-            "description": "Number."
+            "type": "number"
           },
           "id": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           }
         },
         "additionalProperties": false,
-        "oneOf": [
+        "anyOf": [
           {
             "required": [
               "name",
               "projectId"
-            ],
-            "not": {
-              "anyOf": [
-                {
-                  "required": [
-                    "milestoneId"
-                  ]
-                }
-              ]
-            }
+            ]
           },
           {
             "required": [
               "milestoneId"
             ],
-            "anyOf": [
-              {
-                "required": [
-                  "milestoneId",
-                  "name"
-                ]
-              },
-              {
-                "required": [
-                  "milestoneId",
-                  "projectId"
-                ]
-              },
-              {
-                "required": [
-                  "milestoneId",
-                  "description"
-                ]
-              },
-              {
-                "required": [
-                  "milestoneId",
-                  "descriptionData"
-                ]
-              },
-              {
-                "required": [
-                  "milestoneId",
-                  "targetDate"
-                ]
-              },
-              {
-                "required": [
-                  "milestoneId",
-                  "sortOrder"
-                ]
-              }
-            ],
-            "not": {
-              "anyOf": [
-                {
-                  "required": [
-                    "id"
-                  ]
-                }
-              ]
-            }
+            "minProperties": 2
           }
         ]
       },
@@ -15329,7 +15002,7 @@
     "tool": {
       "name": "linear_save_project",
       "label": "Linear save project",
-      "description": "Create or update a project. Call with direct arguments {\"name\":\"Platform\",\"teamIds\":[\"team-id\"]}.",
+      "description": "Create or update a project.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -15348,7 +15021,6 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "One or more UUIDs.",
             "minItems": 1
           },
           "description": {
@@ -15386,8 +15058,7 @@
               "quarter",
               "halfYear",
               "year"
-            ],
-            "description": "DateResolutionType value."
+            ]
           },
           "targetDate": {
             "anyOf": [
@@ -15399,7 +15070,7 @@
                 "type": "null"
               }
             ],
-            "description": "Calendar date YYYY-MM-DD, or null to clear it."
+            "description": "Calendar date YYYY-MM-DD; null clears it."
           },
           "targetDateResolution": {
             "type": "string",
@@ -15408,22 +15079,18 @@
               "quarter",
               "halfYear",
               "year"
-            ],
-            "description": "DateResolutionType value."
+            ]
           },
           "statusId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "leadId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "leadTeamId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "memberIds": {
@@ -15432,7 +15099,6 @@
               "type": "string",
               "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
-            "description": "One or more Linear UUIDs.",
             "minItems": 1
           },
           "labelIds": {
@@ -15441,7 +15107,6 @@
               "type": "string",
               "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
-            "description": "One or more Linear UUIDs.",
             "minItems": 1
           },
           "convertedFromIssueId": {
@@ -15451,16 +15116,13 @@
           },
           "lastAppliedTemplateId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "sortOrder": {
-            "type": "number",
-            "description": "Number."
+            "type": "number"
           },
           "prioritySortOrder": {
-            "type": "number",
-            "description": "Number."
+            "type": "number"
           },
           "canceledAt": {
             "anyOf": [
@@ -15472,7 +15134,7 @@
                 "type": "null"
               }
             ],
-            "description": "ISO 8601 date-time, or null to clear it."
+            "description": "Null clears it."
           },
           "completedAt": {
             "anyOf": [
@@ -15484,7 +15146,7 @@
                 "type": "null"
               }
             ],
-            "description": "ISO 8601 date-time, or null to clear it."
+            "description": "Null clears it."
           },
           "projectUpdateRemindersPausedUntilAt": {
             "anyOf": [
@@ -15496,7 +15158,7 @@
                 "type": "null"
               }
             ],
-            "description": "ISO 8601 date-time, or null to clear it."
+            "description": "Null clears it."
           },
           "slackIssueComments": {
             "type": "boolean"
@@ -15513,7 +15175,6 @@
           },
           "templateId": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "useDefaultTemplate": {
@@ -15521,7 +15182,6 @@
           },
           "id": {
             "type": "string",
-            "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "frequencyResolution": {
@@ -15529,16 +15189,13 @@
             "enum": [
               "daily",
               "weekly"
-            ],
-            "description": "FrequencyResolutionType value."
+            ]
           },
           "updateReminderFrequency": {
-            "type": "number",
-            "description": "Number."
+            "type": "number"
           },
           "updateReminderFrequencyInWeeks": {
-            "type": "number",
-            "description": "Number."
+            "type": "number"
           },
           "updateRemindersDay": {
             "type": "string",
@@ -15550,302 +15207,25 @@
               "Thursday",
               "Friday",
               "Saturday"
-            ],
-            "description": "Day value."
+            ]
           },
           "updateRemindersHour": {
-            "type": "number",
-            "description": "Number."
+            "type": "number"
           }
         },
         "additionalProperties": false,
-        "oneOf": [
+        "anyOf": [
           {
             "required": [
               "name",
               "teamIds"
-            ],
-            "not": {
-              "anyOf": [
-                {
-                  "required": [
-                    "projectId"
-                  ]
-                },
-                {
-                  "required": [
-                    "canceledAt"
-                  ]
-                },
-                {
-                  "required": [
-                    "completedAt"
-                  ]
-                },
-                {
-                  "required": [
-                    "projectUpdateRemindersPausedUntilAt"
-                  ]
-                },
-                {
-                  "required": [
-                    "slackIssueComments"
-                  ]
-                },
-                {
-                  "required": [
-                    "slackIssueStatuses"
-                  ]
-                },
-                {
-                  "required": [
-                    "slackNewIssue"
-                  ]
-                },
-                {
-                  "required": [
-                    "frequencyResolution"
-                  ]
-                },
-                {
-                  "required": [
-                    "updateReminderFrequency"
-                  ]
-                },
-                {
-                  "required": [
-                    "updateReminderFrequencyInWeeks"
-                  ]
-                },
-                {
-                  "required": [
-                    "updateRemindersDay"
-                  ]
-                },
-                {
-                  "required": [
-                    "updateRemindersHour"
-                  ]
-                }
-              ]
-            }
+            ]
           },
           {
             "required": [
               "projectId"
             ],
-            "anyOf": [
-              {
-                "required": [
-                  "projectId",
-                  "name"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "teamIds"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "description"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "content"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "icon"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "color"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "priority"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "startDate"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "startDateResolution"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "targetDate"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "targetDateResolution"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "statusId"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "leadId"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "leadTeamId"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "memberIds"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "labelIds"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "convertedFromIssueId"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "lastAppliedTemplateId"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "sortOrder"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "prioritySortOrder"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "canceledAt"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "completedAt"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "projectUpdateRemindersPausedUntilAt"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "slackIssueComments"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "slackIssueStatuses"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "slackNewIssue"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "frequencyResolution"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "updateReminderFrequency"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "updateReminderFrequencyInWeeks"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "updateRemindersDay"
-                ]
-              },
-              {
-                "required": [
-                  "projectId",
-                  "updateRemindersHour"
-                ]
-              }
-            ],
-            "not": {
-              "anyOf": [
-                {
-                  "required": [
-                    "slackChannelName"
-                  ]
-                },
-                {
-                  "required": [
-                    "templateId"
-                  ]
-                },
-                {
-                  "required": [
-                    "useDefaultTemplate"
-                  ]
-                },
-                {
-                  "required": [
-                    "id"
-                  ]
-                }
-              ]
-            }
+            "minProperties": 2
           }
         ]
       },

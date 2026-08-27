@@ -60,6 +60,43 @@ function assertCanonicalOnly(operation: LinearOperation, variables: JsonObject):
   }
 }
 
+/**
+ * Enforce the create/update field partition that the published schema no longer carries.
+ *
+ * A caller supplying the update identity is updating; anything else is creating. Naming
+ * the mode, the offending field, and that mode's accepted fields tells the caller what to
+ * change — which a `oneOf` rejection never did.
+ */
+function assertVariant(operation: LinearOperation, variables: JsonObject): void {
+  const { variants } = canonicalOperation(operation);
+  if (!variants) return;
+  const [create, update] = variants;
+  const supplied = Object.keys(variables).filter((name) => variables[name] !== undefined);
+  const identity = update.branches[0]![0]!;
+  const updating = supplied.includes(identity);
+  const variant = updating ? update : create;
+  const mode = updating ? 'update' : 'create';
+  const toolName = typedToolName(operation.name);
+
+  const foreign = supplied.filter((name) => !variant.fields.includes(name));
+  if (foreign.length) {
+    throw new Error(
+      `"${toolName}" is in ${mode} mode because ${updating ? `${identity} was supplied` : `${identity} was omitted`}, `
+      + `and ${mode} does not accept: ${foreign.join(', ')}. `
+      + `${mode} accepts: ${variant.fields.join(', ')}.`,
+    );
+  }
+  if (variant.branches.some((branch) => branch.every((name) => supplied.includes(name)))) return;
+  // Update branches are the identity paired with each changeable field, so listing all 31
+  // of them for save_project would bury the point. State the shape instead.
+  const pairedWithIdentity = variant.branches.length > 1
+    && variant.branches.every((branch) => branch.length === 2 && branch[0] === variant.branches[0]![0]);
+  const required = pairedWithIdentity
+    ? `${variant.branches[0]![0]} plus at least one field to change`
+    : variant.branches.map((branch) => `{ ${branch.join(', ')} }`).join(' or ');
+  throw new Error(`"${toolName}" in ${mode} mode requires ${required}.`);
+}
+
 /** Attach the recovery sentence to the failure itself. See extensions/failure-message.ts. */
 function guidedError(cause: unknown, guidance: (message: string) => string): Error {
   // Extend the redacted error in place. A replacement Error would drop the properties
@@ -112,6 +149,7 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
         // Runs before the schema check so a stray `workspace` gets the actionable message
         // rather than a bare additionalProperties rejection.
         assertCanonicalOnly(operation, variables);
+        assertVariant(operation, variables);
         assertSchema(args);
         return args;
       } catch (error) {
@@ -126,6 +164,7 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
       try {
         assertOperationAllowed(operation, variables, mode);
         assertCanonicalOnly(operation, variables);
+        assertVariant(operation, variables);
         assertBranch(operation, variables);
         assertSchema(params);
         operation.validateVariables?.(variables);

@@ -1,9 +1,34 @@
 {
-  "directResult": { "baseline": 0, "current": 530 },
-  "directGraphql": { "baseline": 0, "current": 695 },
-  "directBatch": { "baseline": 0, "current": 2465 },
-  "initial": { "baseline": 673, "before": 2122, "current": 2068 },
-  "oneTool": { "baseline": 1179, "before": 2666, "current": 2552 },
-  "fiveTools": { "baseline": 14635, "before": 17016, "current": 16446 },
-  "allTools": { "baseline": 64706, "before": 71687, "current": 66101 }
+  "directResult": {
+    "baseline": 0,
+    "current": 530
+  },
+  "directGraphql": {
+    "baseline": 0,
+    "current": 695
+  },
+  "directBatch": {
+    "baseline": 0,
+    "current": 2465
+  },
+  "initial": {
+    "baseline": 673,
+    "before": 2122,
+    "current": 2068
+  },
+  "oneTool": {
+    "baseline": 1179,
+    "before": 2552,
+    "current": 2475
+  },
+  "fiveTools": {
+    "baseline": 14635,
+    "before": 16446,
+    "current": 14573
+  },
+  "allTools": {
+    "baseline": 64706,
+    "before": 66101,
+    "current": 54000
+  }
 }

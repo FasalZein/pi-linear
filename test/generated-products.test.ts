@@ -144,8 +144,8 @@ describe('generated products', () => {
     [
       'typed tool description',
       'extensions/typed-tool-metadata.ts',
-      'Call with direct arguments',
-      'Invoke with direct arguments',
+      'return operation.purpose;',
+      'return `${operation.purpose} Call it.`;',
     ],
     [
       'typed tool schema field',
