@@ -7,7 +7,9 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import manifest from '../extensions/generated/linear-tools.manifest.json';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const expectedTools = ['write', ...manifest.allowedTools].join(', ');
+// Sync restricts: the agent keeps `read` and `write` and the published Linear tools,
+// and loses anything else it was granted.
+const expectedTools = ['read', 'write', ...manifest.allowedTools].join(', ');
 const staleAgent = (name: string) =>
   `---\nname: ${name}\ntools: all, read, bash, linear_old\nmode: background\ncustom: preserve-${name}\n---\n\nIntro for ${name}.\n\n## Tool surface\n\nLegacy tool note for ${name}.\n\n## Query discipline\n\nLegacy query note for ${name}.\n\n## Job 1 — Execute a Linear task\n\nPreserve job instructions for ${name}.\n`;
 
@@ -85,6 +87,26 @@ describe('bound Linear agent allowlist package scripts', () => {
     expect(await readFile(linear, 'utf8')).toContain(`tools: ${expectedTools}`);
     expect(npm('check:linear-agent-allowlists', home).status).toBe(0);
   }, 120_000);
+
+  /**
+   * Regression: sync rebuilt the line as `write` plus the Linear tools, so an agent granted
+   * `read` lost it silently on the next sync. Pi ignores unknown tool names without an
+   * error, so the ability would vanish with nothing to explain it.
+   */
+  it('keeps the tools the agent owns and manages only the Linear ones', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'linear-allowlist-owned-'));
+    await mkdir(join(directory, '.pi/agent/agents'), { recursive: true });
+    const agent = join(directory, '.pi/agent/agents/linear.md');
+    await writeFile(agent, staleAgent('linear').replace('tools: all, read, bash, linear_old', 'tools: read, write, linear_retired_tool'));
+
+    expect(npm('sync:linear-agent-allowlists', directory).status).toBe(0);
+    const tools = /^tools:[ \t]*(.*)$/m.exec(await readFile(agent, 'utf8'))![1]!.split(', ');
+    expect(tools.slice(0, 2)).toEqual(['read', 'write']);
+    expect(tools).not.toContain('linear_retired_tool');
+    expect(tools.slice(2)).toEqual([...manifest.allowedTools]);
+    expect(npm('check:linear-agent-allowlists', directory).status).toBe(0);
+  }, 180_000);
+
 
   it('preserves marker-bounded, legacy-heading, minimal-body, and unrelated custom content', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'linear-allowlist-custom-'));

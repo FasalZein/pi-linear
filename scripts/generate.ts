@@ -319,9 +319,20 @@ function replaceOwnedAgentContract(source: string): string {
   );
 }
 
+/**
+ * The non-Linear tools a bound Linear agent may hold.
+ *
+ * This sync restricts deliberately: an agent granted `all`, `bash` or `exec` loses them,
+ * because a Linear agent has no business running commands. `read` is included because the
+ * agent's job is to write brief artifacts and it must be able to open what it produced;
+ * without it here, every sync silently revoked a granted `read`, and pi drops unknown tool
+ * names without an error, so the loss came with nothing to explain it.
+ */
+const AGENT_BASE_TOOLS = ['read', 'write'] as const;
+
 function replaceToolsLine(source: string, allowedTools: readonly string[]): string {
   if (!/^tools:\s*(.*)$/m.test(source)) throw new Error('Agent allowlist has no tools frontmatter field.');
-  return source.replace(/^tools:.*$/m, `tools: ${['write', ...allowedTools].join(', ')}`);
+  return source.replace(/^tools:.*$/m, `tools: ${[...AGENT_BASE_TOOLS, ...allowedTools].join(', ')}`);
 }
 
 export function defaultAllowlistPaths(): string[] {

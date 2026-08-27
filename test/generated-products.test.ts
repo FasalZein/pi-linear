@@ -336,7 +336,7 @@ describe('generated products', () => {
     await writeFile(path, '---\nname: fixture\ntools: all, read, bash, linear_old\nmode: background\ncustom: keep\n---\n\nIntro.\n\n## Tool surface\n\nOld tool custom.\n\n## Query discipline\n\nOld query custom.\n\n## Job 1 — Execute\n\nKeep job.\n');
     await syncAllowlistFile(path);
     const synced = await readFile(path, 'utf8');
-    expect(synced).toContain(`tools: write, ${expectedNames.join(', ')}`);
+    expect(synced).toContain(`tools: read, write, ${expectedNames.join(', ')}`);
     expect(synced).toContain('custom: keep');
     expect(synced).toContain('Intro.');
     expect(synced).toContain('Keep job.');

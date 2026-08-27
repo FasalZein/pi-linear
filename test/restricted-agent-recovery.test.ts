@@ -73,9 +73,10 @@ describe('restricted Linear agent recovery', () => {
     await syncAllowlistFile(agentPath);
     const allowed = toolsFromAgent(await readFile(agentPath, 'utf8'));
 
-    expect(allowed).toEqual(['write', ...manifest.allowedTools]);
-    expect(allowed.filter((name) => !name.startsWith('linear'))).toEqual(['write']);
-    expect(allowed).not.toEqual(expect.arrayContaining(['all', 'read', 'bash', 'exec']));
+    // `read` and `write` are the agent's permitted base; command-running tools are stripped.
+    expect(allowed).toEqual(['read', 'write', ...manifest.allowedTools]);
+    expect(allowed.filter((name) => !name.startsWith('linear'))).toEqual(['read', 'write']);
+    expect(allowed).not.toEqual(expect.arrayContaining(['all', 'bash', 'exec']));
     expect(allowed).toContain('linear_get_result');
     expect(allowed).toContain('linear_graphql');
 
