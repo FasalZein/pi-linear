@@ -189,10 +189,15 @@ export function requirementBranches(operation: LinearOperation): readonly (reado
   return canonicalOperation(operation).branches;
 }
 
-const WORKSPACE = Type.Optional(
-  Type.String({ minLength: 1, description: 'Stored workspace name. Omit for the active workspace.' }),
-);
-
+/**
+ * Typed tools publish no `workspace` property.
+ *
+ * It was optional, absent from every help parameter card, and collided with pi's own
+ * meaning of "workspace" (the working directory). Callers filled it with paths, and an
+ * unrecognised name is a hard credential failure, so the call could not recover. Workspace
+ * selection is session state: `/linear-auth switch` and `linear_switch_workspace` set it,
+ * and `linear_graphql` / `linear_batch` still accept it for explicit cross-account work.
+ */
 function objectSchema(
   fields: Record<string, string>,
   fieldNames: readonly string[],
@@ -202,7 +207,6 @@ function objectSchema(
   const properties: Record<string, TSchema> = Object.fromEntries(
     fieldNames.map((name) => [name, Type.Optional(schemaFor(fields[name]!))]),
   );
-  properties.workspace = WORKSPACE;
 
   if (branches.length === 1) {
     const required = branches[0]!;
@@ -251,7 +255,6 @@ export function parameterSchema(operation: LinearOperation) {
   const properties: Record<string, TSchema> = Object.fromEntries(
     fieldNames.map((name) => [name, Type.Optional(schemaFor(contract.fields[name]!))]),
   );
-  properties.workspace = WORKSPACE;
 
   const createClause = {
     required: [...create.branches[0]!],

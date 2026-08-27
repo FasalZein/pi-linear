@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { linearBatchTool, resolveRequest } from '../extensions/api';
 import { linearErrorTelemetry } from '../extensions/client';
+import { failureLine, recoveryLine } from '../extensions/failure-message';
 import { getOperation, operations } from '../extensions/operations';
 import { operationRenderers } from '../extensions/renderers';
 import { SAFE_NAMED_MUTATION_ROOTS } from '../extensions/safety';
@@ -162,7 +163,8 @@ describe('delete_issue_relation strict guarded delete', () => {
     const fetch = vi.fn(fetcher);
     vi.stubGlobal('fetch', fetch);
     const error = await execute({ operation: 'delete_issue_relation', variables }).catch((value: Error) => value);
-    expect(error.message).toBe('Linear issue relation delete preflight failed.');
+    expect(failureLine(error)).toBe('Linear issue relation delete preflight failed.');
+    expect(recoveryLine(error)).not.toBe('');
     for (const secret of [RELATION, ISSUE, RELATED, SECRET]) expect(error.message).not.toContain(secret);
     expect(fetch).toHaveBeenCalledOnce();
   });
@@ -180,7 +182,8 @@ describe('delete_issue_relation strict guarded delete', () => {
     vi.stubGlobal('fetch', fetch);
     process.env.LINEAR_API_KEY = SECRET;
     const error = await execute({ operation: 'delete_issue_relation', variables }).catch((value: Error) => value);
-    expect(error.message).toBe('Linear issue relation delete failed.');
+    expect(failureLine(error)).toBe('Linear issue relation delete failed.');
+    expect(recoveryLine(error)).not.toBe('');
     expect(linearErrorTelemetry(error)).toEqual([
       { phase: 'read', attempt: 1, headers: { 'X-RateLimit-Requests-Remaining': 9 } },
       { phase: 'mutation', attempt: 1, headers: { 'X-RateLimit-Complexity-Remaining': 8 } },
@@ -207,7 +210,8 @@ describe('delete_issue_relation strict guarded delete', () => {
     vi.stubGlobal('fetch', fetch);
     process.env.LINEAR_API_KEY = SECRET;
     const error = await execute({ operation: 'delete_issue_relation', variables }).catch((value: Error) => value);
-    expect(error.message).toBe('Linear issue relation delete failed.');
+    expect(failureLine(error)).toBe('Linear issue relation delete failed.');
+    expect(recoveryLine(error)).not.toBe('');
     for (const secret of [RELATION, ISSUE, RELATED, SECRET]) expect(error.message).not.toContain(secret);
     expect(fetch).toHaveBeenCalledTimes(2);
   });

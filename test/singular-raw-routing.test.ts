@@ -11,7 +11,7 @@ import { parseJsonObject, type JsonObject } from '../extensions/json';
 import { isCompatibilityString } from '../extensions/operation-types';
 
 type RawRequest = { query: string; sink?: 'inline' | 'artifact' };
-type NamedRequest = { operation: string; variables?: JsonObject; workspace?: string };
+type NamedRequest = { operation: string; variables?: JsonObject };
 type ToolRequest = RawRequest | NamedRequest;
 
 isolateLinearCredentials();
@@ -34,7 +34,7 @@ function execute(params: ToolRequest) {
   if (params.operation === 'get_result') {
     return (linearGetResultTool() as any).execute('call-1', params.variables, undefined, undefined, { hasUI: false });
   }
-  return executeTyped(params.operation, params.variables, { workspace: params.workspace });
+  return executeTyped(params.operation, params.variables);
 }
 
 function installServer(respond: (query: string, variables: JsonObject) => {

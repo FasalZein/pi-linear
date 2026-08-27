@@ -235,6 +235,9 @@ function errorRecovery(message: string, toolName: string, noun: string, rawGraph
   if (normalized.includes('configuration') || normalized.includes('manifest') || normalized.includes('filtered tool')) {
     return 'Check the generated tool manifest and the active tool policy, then load the operation again.';
   }
+  if (normalized.includes('unknown parameters')) {
+    return `Remove the unaccepted parameters and call ${toolName} again with the accepted ones only.`;
+  }
   if (normalized.includes('not found') || normalized.includes('was not found')) {
     return `Check the exact ${noun} reference and call ${toolName} again.`;
   }
@@ -372,6 +375,12 @@ export type OperationRenderers = {
     theme: Theme,
     context: LinearRenderContext,
   ) => Text | LinearBlockComponent | LinearListComponent<Entity>;
+  /**
+   * The recovery sentence for one failure, exposed so the thrown message can carry it.
+   * `renderResult` reaches only the human; a caller that must correct the call reads the
+   * error text, so the guidance has to travel with the message rather than the display.
+   */
+  guidance: (message: string) => string;
 };
 
 /** Renderers for one typed tool, derived from the catalog entry. */
@@ -382,7 +391,10 @@ export function operationRenderers(operation: LinearOperation): OperationRendere
   const keys = definition ? [...definition.canonical.fields.map(({ name }) => name), 'workspace'] : callKeys(operation);
   const toolName = typedToolName(operation.name);
 
+  const guidance = (message: string): string => errorRecovery(message, toolName, spec.noun);
+
   return {
+    guidance,
     renderCall: (args, theme) => renderToolCall(toolName, args as ToolArgs, theme, keys),
     renderResult: (result, options, theme, context) => {
       if (options.isPartial) {
@@ -390,8 +402,7 @@ export function operationRenderers(operation: LinearOperation): OperationRendere
         return new Text(theme.fg('warning', `${verb.present} ${noun}…`), 0, 0);
       }
       if (context.isError) {
-        const message = resultErrorMessage(result);
-        return renderErrorResult(result, theme, errorRecovery(message, toolName, spec.noun));
+        return renderErrorResult(result, theme, guidance(resultErrorMessage(result)));
       }
 
       if (shouldShowJson(options, context)) return expandedJson(result, theme);

@@ -258,11 +258,13 @@ describe('shared mutation response validation', () => {
     })));
   }
 
+  it('refuses a workspace parameter on the typed tool surface', async () => {
+    const tool = typedLinearTools().find(({ name }) => name === 'linear_create_project_relation')! as any;
+    await expect(tool.execute('call-1', { ...variables, workspace: 'default' }, undefined, undefined, { hasUI: false }))
+      .rejects.toThrow('Typed tools have no workspace parameter');
+  });
+
   it.each([
-    ['typed tool with workspace routing', () => {
-      const tool = typedLinearTools().find(({ name }) => name === 'linear_create_project_relation')! as any;
-      return tool.execute('call-1', { ...variables, workspace: 'default' }, undefined, undefined, { hasUI: false });
-    }],
     ['typed tool', () => {
       const tool = typedLinearTools().find(({ name }) => name === 'linear_create_project_relation')! as any;
       return tool.execute('call-1', variables, undefined, undefined, { hasUI: false });

@@ -14,7 +14,7 @@ import { redactError } from './redact';
 import { operationRenderers } from './renderers';
 import { typedToolName } from './tool-names';
 import { parseJsonObject } from './json';
-import { isCompatibilityString } from './operation-types';
+import { withRecovery } from './failure-message';
 import type { MutationMode } from './safety';
 import { buildTypedToolMetadata, requirementBranches } from './typed-tool-metadata';
 
@@ -52,9 +52,21 @@ function assertCanonicalOnly(operation: LinearOperation, variables: JsonObject):
   if (foreign.length) {
     throw new Error(
       `Unknown parameters for "${typedToolName(operation.name)}": ${foreign.join(', ')}. `
-      + `Accepted parameters: ${[...allowed].join(', ')}. Legacy aliases and raw input go through linear.`,
+      + `Accepted parameters: ${[...allowed].join(', ')}. Legacy aliases and raw input go through linear.`
+      + (foreign.includes('workspace')
+        ? ' Typed tools have no workspace parameter: the active workspace is used. Change it with /linear-auth switch.'
+        : ''),
     );
   }
+}
+
+/** Attach the recovery sentence to the failure itself. See extensions/failure-message.ts. */
+function guidedError(cause: unknown, guidance: (message: string) => string): Error {
+  // Extend the redacted error in place. A replacement Error would drop the properties
+  // carried on it, including `linearTelemetry`, which callers read after a failure.
+  const redacted = redactError(cause, activeSecrets());
+  redacted.message = withRecovery(redacted.message, guidance(redacted.message));
+  return redacted;
 }
 
 /**
@@ -83,6 +95,7 @@ function schemaGuard(operation: LinearOperation, schema: TSchema) {
 
 function typedTool(operation: LinearOperation, mode: MutationMode) {
   const renderers = operationRenderers(operation);
+  const guided = (cause: unknown): Error => guidedError(cause, renderers.guidance);
   const metadata = buildTypedToolMetadata(operation);
   const assertSchema = schemaGuard(operation, metadata.parameters);
   return defineTool({
@@ -94,20 +107,22 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
      */
     prepareArguments: (args) => {
       try {
-        const { workspace: _workspace, ...variables } = parseJsonObject(args) ?? {};
+        const variables = parseJsonObject(args) ?? {};
         assertOperationAllowed(operation, variables, mode);
+        // Runs before the schema check so a stray `workspace` gets the actionable message
+        // rather than a bare additionalProperties rejection.
+        assertCanonicalOnly(operation, variables);
         assertSchema(args);
         return args;
       } catch (error) {
-        throw redactError(error, activeSecrets());
+        throw guided(error);
       }
     },
     renderCall: renderers.renderCall,
     renderResult: renderers.renderResult,
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       if (signal?.aborted) throw new Error('Request cancelled.');
-      const parsed = parseJsonObject(params) ?? {};
-      const { workspace, ...variables } = parsed;
+      const variables = parseJsonObject(params) ?? {};
       try {
         assertOperationAllowed(operation, variables, mode);
         assertCanonicalOnly(operation, variables);
@@ -115,13 +130,17 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
         assertSchema(params);
         operation.validateVariables?.(variables);
       } catch (error) {
-        throw redactError(error, activeSecrets());
+        throw guided(error);
       }
-      const call = linearCallContext(mode, signal, ctx, {
-        workspace: isCompatibilityString(workspace) ? workspace : undefined,
-      });
-      const details = await executeOperationInContext(operation, { variables }, call);
-      return { content: [{ type: 'text' as const, text: JSON.stringify(details) }], details };
+      // Typed tools always use the active workspace; only linear_graphql and linear_batch
+      // select one explicitly.
+      const call = linearCallContext(mode, signal, ctx, {});
+      try {
+        const details = await executeOperationInContext(operation, { variables }, call);
+        return { content: [{ type: 'text' as const, text: JSON.stringify(details) }], details };
+      } catch (error) {
+        throw guided(error);
+      }
     },
   });
 }

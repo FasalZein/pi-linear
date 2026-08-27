@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { linearApiTool, linearBatchTool, linearGetResultTool, resolveRequest } from '../extensions/api';
 import { assertBatchAccounting, batchHelp, compileLookupDocument, executeBatch } from '../extensions/batch';
+import { failureLine } from '../extensions/failure-message';
 import { LINEAR_BATCH_HELP } from '../extensions/exceptional-tools';
 import { operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
 import type { MutationMode } from '../extensions/safety';
@@ -780,7 +781,9 @@ describe('batch mutation phase', () => {
     });
     expect(direct).toBeInstanceOf(Error);
     expect(batched.details.errors).toHaveLength(1);
-    expect(batched.details.errors[0].message).toBe((direct as Error).message);
+    // Same verification, same normalized failure. Only the direct tool appends caller
+    // guidance, so compare the failure itself.
+    expect(batched.details.errors[0].message).toBe(failureLine(direct));
     expect(batched.details.skipped).toEqual([]);
   });
 

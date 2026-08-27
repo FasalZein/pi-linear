@@ -77,12 +77,13 @@ afterEach(() => {
 });
 
 describe('closed create and update save schemas', () => {
-  it.each(SAVE_CASES)('$tool accepts each valid mode and optional workspace', (entry) => {
+  it.each(SAVE_CASES)('$tool accepts each valid mode and rejects a workspace parameter', (entry) => {
     expect(accepts(entry.tool, entry.create)).toBe(true);
-    expect(accepts(entry.tool, { ...entry.create, workspace: 'work' })).toBe(true);
     expect(accepts(entry.tool, entry.update)).toBe(true);
-    expect(accepts(entry.tool, { ...entry.update, workspace: 'work' })).toBe(true);
     if (entry.updateOnly) expect(accepts(entry.tool, entry.updateOnly)).toBe(true);
+    // Typed tools always use the active workspace; the property is not published.
+    expect(accepts(entry.tool, { ...entry.create, workspace: 'work' })).toBe(false);
+    expect(accepts(entry.tool, { ...entry.update, workspace: 'work' })).toBe(false);
   });
 
   it.each(SAVE_CASES)('$tool rejects incomplete and cross-mode calls', (entry) => {
@@ -122,7 +123,7 @@ describe('closed create and update save schemas', () => {
 
   it('keeps save arguments byte-identical through prepareArguments', () => {
     const tool = tools.get('linear_save_initiative')!;
-    const args = { initiativeId: 'Platform', targetDate: null, workspace: 'work' };
+    const args = { initiativeId: 'Platform', targetDate: null };
     const before = JSON.stringify(args);
     expect(tool.prepareArguments!(args)).toBe(args);
     expect(JSON.stringify(args)).toBe(before);
@@ -130,9 +131,9 @@ describe('closed create and update save schemas', () => {
 
   it('publishes the dated live field union on one closed root object', () => {
     const expected = {
-      linear_save_initiative: ['initiativeId', 'name', 'description', 'content', 'icon', 'color', 'status', 'targetDate', 'targetDateResolution', 'ownerId', 'leadTeamId', 'sortOrder', 'prioritySortOrder', 'priority', 'labelIds', 'id', 'customIdentifier', 'frequencyResolution', 'updateReminderFrequency', 'updateReminderFrequencyInWeeks', 'updateRemindersDay', 'updateRemindersHour', 'workspace'],
-      linear_save_milestone: ['milestoneId', 'name', 'projectId', 'description', 'descriptionData', 'targetDate', 'sortOrder', 'id', 'workspace'],
-      linear_save_project: ['projectId', 'name', 'teamIds', 'description', 'content', 'icon', 'color', 'priority', 'startDate', 'startDateResolution', 'targetDate', 'targetDateResolution', 'statusId', 'leadId', 'leadTeamId', 'memberIds', 'labelIds', 'convertedFromIssueId', 'lastAppliedTemplateId', 'sortOrder', 'prioritySortOrder', 'canceledAt', 'completedAt', 'projectUpdateRemindersPausedUntilAt', 'slackIssueComments', 'slackIssueStatuses', 'slackNewIssue', 'slackChannelName', 'templateId', 'useDefaultTemplate', 'id', 'frequencyResolution', 'updateReminderFrequency', 'updateReminderFrequencyInWeeks', 'updateRemindersDay', 'updateRemindersHour', 'workspace'],
+      linear_save_initiative: ['initiativeId', 'name', 'description', 'content', 'icon', 'color', 'status', 'targetDate', 'targetDateResolution', 'ownerId', 'leadTeamId', 'sortOrder', 'prioritySortOrder', 'priority', 'labelIds', 'id', 'customIdentifier', 'frequencyResolution', 'updateReminderFrequency', 'updateReminderFrequencyInWeeks', 'updateRemindersDay', 'updateRemindersHour'],
+      linear_save_milestone: ['milestoneId', 'name', 'projectId', 'description', 'descriptionData', 'targetDate', 'sortOrder', 'id'],
+      linear_save_project: ['projectId', 'name', 'teamIds', 'description', 'content', 'icon', 'color', 'priority', 'startDate', 'startDateResolution', 'targetDate', 'targetDateResolution', 'statusId', 'leadId', 'leadTeamId', 'memberIds', 'labelIds', 'convertedFromIssueId', 'lastAppliedTemplateId', 'sortOrder', 'prioritySortOrder', 'canceledAt', 'completedAt', 'projectUpdateRemindersPausedUntilAt', 'slackIssueComments', 'slackIssueStatuses', 'slackNewIssue', 'slackChannelName', 'templateId', 'useDefaultTemplate', 'id', 'frequencyResolution', 'updateReminderFrequency', 'updateReminderFrequencyInWeeks', 'updateRemindersDay', 'updateRemindersHour'],
     };
 
     for (const [toolName, fields] of Object.entries(expected)) {
@@ -173,12 +174,12 @@ describe('mode-specific field ownership', () => {
 
   it('publishes exact dated document and label fields without unsupported extras', () => {
     const expected = {
-      linear_create_document: ['title', 'content', 'icon', 'color', 'issueId', 'teamId', 'projectId', 'initiativeId', 'cycleId', 'releaseId', 'resourceFolderId', 'lastAppliedTemplateId', 'ownerId', 'subscriberIds', 'sortOrder', 'id', 'workspace'],
-      linear_update_document: ['document', 'title', 'content', 'icon', 'color', 'issueId', 'teamId', 'projectId', 'initiativeId', 'cycleId', 'releaseId', 'resourceFolderId', 'lastAppliedTemplateId', 'ownerId', 'subscriberIds', 'sortOrder', 'hiddenAt', 'workspace'],
-      linear_create_issue_label: ['name', 'team', 'description', 'color', 'isGroup', 'parentId', 'retiredAt', 'replaceTeamLabels', 'id', 'workspace'],
-      linear_update_issue_label: ['id', 'name', 'description', 'color', 'isGroup', 'parentId', 'retiredAt', 'replaceTeamLabels', 'workspace'],
-      linear_create_project_label: ['name', 'description', 'color', 'isGroup', 'parentId', 'retiredAt', 'workspace'],
-      linear_update_project_label: ['id', 'name', 'description', 'color', 'isGroup', 'parentId', 'retiredAt', 'workspace'],
+      linear_create_document: ['title', 'content', 'icon', 'color', 'issueId', 'teamId', 'projectId', 'initiativeId', 'cycleId', 'releaseId', 'resourceFolderId', 'lastAppliedTemplateId', 'ownerId', 'subscriberIds', 'sortOrder', 'id'],
+      linear_update_document: ['document', 'title', 'content', 'icon', 'color', 'issueId', 'teamId', 'projectId', 'initiativeId', 'cycleId', 'releaseId', 'resourceFolderId', 'lastAppliedTemplateId', 'ownerId', 'subscriberIds', 'sortOrder', 'hiddenAt'],
+      linear_create_issue_label: ['name', 'team', 'description', 'color', 'isGroup', 'parentId', 'retiredAt', 'replaceTeamLabels', 'id'],
+      linear_update_issue_label: ['id', 'name', 'description', 'color', 'isGroup', 'parentId', 'retiredAt', 'replaceTeamLabels'],
+      linear_create_project_label: ['name', 'description', 'color', 'isGroup', 'parentId', 'retiredAt'],
+      linear_update_project_label: ['id', 'name', 'description', 'color', 'isGroup', 'parentId', 'retiredAt'],
     };
     for (const [tool, fields] of Object.entries(expected)) {
       expect(Object.keys(schema(tool).properties)).toEqual(fields);

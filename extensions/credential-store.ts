@@ -16,7 +16,19 @@ async function resolve(query?: { workspace?: string }): Promise<ResolvedCredenti
   const requestedWorkspace = workspaceAlias ? undefined : trimmedString(query?.workspace);
   if (requestedWorkspace) {
     const apiKey = document.workspaces[requestedWorkspace]?.apiKey;
-    if (!apiKey) throw new Error(`Workspace "${redactText(requestedWorkspace)}" does not exist.`);
+    /**
+     * Never fall back to the active workspace here: a mutation aimed at one account must
+     * not silently land in another. The message instead names what would work, because a
+     * caller has no other way to discover stored workspace names.
+     */
+    if (!apiKey) {
+      const known = snapshot.workspaces.map((name) => `"${redactText(name)}"`).join(', ');
+      throw new Error(
+        `Workspace "${redactText(requestedWorkspace)}" does not exist. `
+        + (known ? `Stored workspaces: ${known}. ` : 'No workspaces are stored. Add one with /linear-auth add. ')
+        + 'Omit workspace to use the active one. Typed Linear tools do not accept a workspace parameter.',
+      );
+    }
     return { apiKey, source: 'workspace', snapshot };
   }
 

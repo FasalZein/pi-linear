@@ -22,15 +22,15 @@ export function executeTyped(
   variables: OperationVariables = {},
   options: {
     mode?: MutationMode;
-    workspace?: string;
     signal?: AbortSignal;
     ctx?: ExtensionContext;
   } = {},
 ) {
-  const args = options.workspace === undefined ? variables : { ...variables, workspace: options.workspace };
+  // No `workspace` option: typed tools publish no such parameter and always use the
+  // active workspace. Explicit selection goes through linear_graphql or linear_batch.
   return typedTool(operation, options.mode).execute(
     'call',
-    args,
+    variables,
     options.signal,
     undefined,
     options.ctx ?? HEADLESS_CONTEXT,

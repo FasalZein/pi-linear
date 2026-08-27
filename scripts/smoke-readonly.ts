@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { parse, type OperationDefinitionNode } from 'graphql';
 import { registerLinearExtension } from '../extensions/index';
 import { linearGraphQL, resolveApiKey } from '../extensions/client';
+import { failureLine, recoveryLine } from '../extensions/failure-message';
 import { parseJsonObject, type JsonObject, type JsonValue } from '../extensions/json';
 import {
   isCompatibilityBoolean,
@@ -343,18 +344,22 @@ async function runAuthenticatedSmoke(apiKey: string, requests: RequestEvidence):
     pairResults.push({ list, get: pair.get, status: 'passed' });
   }
 
-  let missingMessage = '';
+  let missingFailure: unknown;
   try {
     await executeTool(typedGetIssue, { issue: MISSING_ISSUE_ID });
   } catch (error) {
-    missingMessage = error instanceof Error ? error.message : String(error);
+    missingFailure = error;
   }
   const expectedMissing = [
     `Linear issue "${MISSING_ISSUE_ID}" was not found.`,
     'Linear GraphQL error: Could not find referenced Issue.',
   ];
-  if (!expectedMissing.includes(missingMessage)) {
+  if (!expectedMissing.includes(failureLine(missingFailure))) {
     throw new Error('smoke.missing-reference: semantic not-found signal mismatch');
+  }
+  // The caller must be told what to do next, not only what went wrong.
+  if (!recoveryLine(missingFailure)) {
+    throw new Error('smoke.missing-reference: failure carried no recovery guidance');
   }
 
   let rejectionMessage = '';
@@ -363,7 +368,7 @@ async function runAuthenticatedSmoke(apiKey: string, requests: RequestEvidence):
     if (!createComment) throw new Error('smoke.readonly: linear_create_comment is unavailable');
     await executeTool(createComment, { issue: ISSUE_REFERENCE, body: 'must not execute' });
   } catch (error) {
-    rejectionMessage = error instanceof Error ? error.message : String(error);
+    rejectionMessage = failureLine(error);
   }
   if (
     process.env.NODE_ENV === 'test'

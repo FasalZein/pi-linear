@@ -7,6 +7,7 @@ import {
 } from '@earendil-works/pi-coding-agent';
 import { Text, truncateToWidth, visibleWidth, wrapTextWithAnsi } from '@earendil-works/pi-tui';
 import { activeSecrets } from '../active-secrets';
+import { failureLine, recoveryLine } from '../failure-message';
 import type { JsonObject } from '../runtime';
 import { redactText } from '../redact';
 import {
@@ -153,9 +154,14 @@ export function resultErrorMessage(result: AgentToolResult<JsonObject>): string 
   return raw;
 }
 
+/**
+ * Split the carried recovery sentence back out to keep the two-line display, and fall back
+ * to `nextAction` for failures raised outside the guided path (pi's own argument validation).
+ */
 export function renderErrorResult(result: AgentToolResult<JsonObject>, theme: Theme, nextAction?: string): Text {
-  const message = scrubCredentials(resultErrorMessage(result)) || 'Linear request failed.';
-  const recovery = nextAction ?? 'Check the parameters and call the operation again.';
+  const raw = scrubCredentials(resultErrorMessage(result)) || 'Linear request failed.';
+  const message = failureLine(raw);
+  const recovery = recoveryLine(raw) || nextAction || 'Check the parameters and call the operation again.';
   return new Text(`\n${theme.fg('error', `✗ ${message}`)}\n  ${theme.fg('dim', recovery)}`, 0, 0);
 }
 

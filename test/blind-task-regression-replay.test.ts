@@ -18,7 +18,7 @@ const temporaryDirectories: string[] = [];
 
 type LoaderRequest =
 	| { query: string; variables?: JsonObject; sink?: "inline" | "artifact" }
-	| { operation: string; variables?: JsonObject; workspace?: string };
+	| { operation: string; variables?: JsonObject };
 
 function requestQuery(body: BodyInit | null | undefined): string {
 	const request = parseJsonObject(JSON.parse(String(body)));
@@ -30,7 +30,7 @@ function execute(params: LoaderRequest) {
 	if ("query" in params) {
 		return (linearGraphqlTool() as any).execute("call", params, undefined, undefined, { hasUI: false });
 	}
-	return executeTyped(params.operation, params.variables, { workspace: params.workspace });
+	return executeTyped(params.operation, params.variables);
 }
 
 afterEach(async () => {
@@ -82,7 +82,7 @@ describe("post-change blind regression replay", () => {
 			authPreference: "workspace",
 			workspaces: { work: { apiKey: "active-key" } },
 		});
-		await execute({ operation: "get_issue", variables: { issue: "AEO-266" }, workspace: "default" });
+		await execute({ operation: "get_issue", variables: { issue: "AEO-266" } });
 		await execute({ operation: "update_issue", variables: { issue: "AEO-266", state: "Backlog" } });
 
 		const requests = fetch.mock.calls.map(([, init]) => parseJsonObject(JSON.parse(String((init as RequestInit).body))) ?? {});

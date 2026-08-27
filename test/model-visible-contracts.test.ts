@@ -1,6 +1,7 @@
 import { buildSchema, coerceInputValue, parseType, typeFromAST, type GraphQLInputType } from 'graphql';
 import { describe, expect, it } from 'vitest';
 import { helpResult } from '../extensions/api';
+import { recoveryLine } from '../extensions/failure-message';
 import { operations } from '../extensions/operations';
 import type { JsonObject } from '../extensions/json';
 import { typedLinearTools } from '../extensions/typed-tools';
@@ -79,6 +80,42 @@ describe('model-visible deferred operation contracts', () => {
   ])('exact help for %s activates canonical %s', (alias, canonical) => {
     const result = helpResult({ operation: alias }, (names) => names);
     expect(result).toMatchObject({ name: canonical, loadedTools: [`linear_${canonical}`] });
+  });
+
+  /**
+   * Regression: `workspace` was published on all 49 schemas but absent from every help
+   * card. A caller told to trust the card met an undocumented free-text field, filled it
+   * with a directory path, and could not recover. The published schema and the card must
+   * name the same parameters.
+   */
+  it('publishes no parameter the help card does not document', () => {
+    for (const [toolName, tool] of tools) {
+      const operation = toolName.slice('linear_'.length);
+      const card = helpResult({ operation }) as { parameters: { name: string }[] };
+      const documented = new Set(card.parameters.map(({ name }) => name));
+      const schema = (tool as any).parameters;
+      const objects = schema.properties ? [schema] : (schema.anyOf ?? schema.oneOf ?? []);
+      const published = new Set<string>(objects.flatMap((object: any) => Object.keys(object.properties ?? {})));
+      const undocumented = [...published].filter((name) => !documented.has(name));
+      expect(undocumented, `${toolName} publishes undocumented parameters`).toEqual([]);
+      expect(published, `${toolName} must not publish workspace`).not.toContain('workspace');
+    }
+  });
+
+  it('names the fix when a caller supplies a workspace parameter', async () => {
+    const tool = tools.get('linear_get_document')! as any;
+    const args = { document: 'Decision record', workspace: '/Users/someone/Dev/project' };
+    for (const attempt of [
+      () => tool.prepareArguments(args),
+      () => tool.execute('call-1', args, undefined, undefined, { hasUI: false }),
+    ]) {
+      const failure = await Promise.resolve().then(attempt).catch((error: Error) => error) as Error;
+      expect(failure).toBeInstanceOf(Error);
+      expect(failure.message).toContain('Typed tools have no workspace parameter');
+      expect(failure.message).toContain('/linear-auth switch');
+      // The recovery has to travel on the message: renderResult reaches only the human.
+      expect(recoveryLine(failure)).toContain('Remove the unaccepted parameters');
+    }
   });
 
   it('preserves safe unknown names and gives an exact recovery request', () => {

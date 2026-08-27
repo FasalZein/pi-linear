@@ -47,11 +47,6 @@
             },
             "description": "Linear filter object for this entity; must name at least one field.",
             "minProperties": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false
@@ -330,11 +325,6 @@
             "type": "string",
             "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -938,11 +928,6 @@
           },
           "skipEditedAt": {
             "type": "boolean"
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -1203,11 +1188,6 @@
             },
             "description": "Linear filter object for this entity; must name at least one field.",
             "minProperties": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false
@@ -1394,11 +1374,6 @@
           "id": {
             "type": "string",
             "minLength": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -1570,11 +1545,6 @@
             },
             "description": "Linear view filter object; must name at least one field.",
             "minProperties": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -1922,11 +1892,6 @@
             },
             "description": "Linear view filter object; must name at least one field.",
             "minProperties": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -2340,11 +2305,6 @@
             "minProperties": 1,
             "description": "View preference object; must name at least one field.",
             "~optional": true
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -2528,11 +2488,6 @@
             },
             "description": "Linear filter object for this entity; must name at least one field.",
             "minProperties": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false
@@ -2787,11 +2742,6 @@
             "type": "string",
             "description": "Exact cycle name, or a cycle UUID.",
             "minLength": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -2946,11 +2896,6 @@
           "description": {
             "type": "string",
             "minLength": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -3251,11 +3196,6 @@
             "type": "string",
             "description": "ISO 8601 date-time.",
             "minLength": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -3568,11 +3508,6 @@
               "full"
             ],
             "description": "summary or full. Lists default to summary. Single records default to full."
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false
@@ -3800,11 +3735,6 @@
               "full"
             ],
             "description": "summary or full. Lists default to summary. Single records default to full."
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -4028,11 +3958,6 @@
             "type": "string",
             "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -4468,11 +4393,6 @@
               }
             ],
             "description": "ISO 8601 date-time, or null to clear it."
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -5085,11 +5005,6 @@
             },
             "description": "Linear filter object for this entity; must name at least one field.",
             "minProperties": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false
@@ -5301,11 +5216,6 @@
             "type": "string",
             "description": "Exact initiative name, or an initiative UUID.",
             "minLength": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -5477,11 +5387,6 @@
             },
             "description": "Linear filter object for this entity; must name at least one field.",
             "minProperties": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false
@@ -5770,11 +5675,6 @@
             "type": "string",
             "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -6080,11 +5980,6 @@
           },
           "replaceTeamLabels": {
             "type": "boolean"
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -6414,11 +6309,6 @@
               "updatedAt"
             ],
             "description": "createdAt or updatedAt."
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false
@@ -6608,11 +6498,6 @@
               "similar"
             ],
             "description": "blocks, duplicate, related, or similar."
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -6856,11 +6741,6 @@
             "type": "string",
             "description": "Issue identifier such as ABC-123, or an issue UUID.",
             "minLength": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -7098,11 +6978,6 @@
               "similar"
             ],
             "description": "blocks, duplicate, related, or similar."
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -7317,11 +7192,6 @@
             },
             "description": "Linear filter object for this entity; must name at least one field.",
             "minProperties": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false
@@ -7640,11 +7510,6 @@
               "full"
             ],
             "description": "summary or full. Lists default to summary. Single records default to full."
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false
@@ -8077,11 +7942,6 @@
               "full"
             ],
             "description": "summary or full. Lists default to summary. Single records default to full."
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -8423,11 +8283,6 @@
             "type": "string",
             "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -9305,11 +9160,6 @@
               }
             ],
             "description": "ISO 8601 date-time, or null to clear it."
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -10252,11 +10102,6 @@
               "full"
             ],
             "description": "summary or full. Lists default to summary. Single records default to full."
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -10600,11 +10445,6 @@
             },
             "description": "Linear filter object for this entity; must name at least one field.",
             "minProperties": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false
@@ -10792,11 +10632,6 @@
             "type": "string",
             "description": "Exact milestone name, or a milestone UUID.",
             "minLength": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -10963,11 +10798,6 @@
             },
             "description": "Linear filter object for this entity; must name at least one field.",
             "minProperties": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false
@@ -11176,11 +11006,6 @@
             "type": "string",
             "description": "ISO 8601 date-time.",
             "minLength": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -11425,11 +11250,6 @@
               }
             ],
             "description": "ISO 8601 date-time, or null to clear it."
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -11735,11 +11555,6 @@
               "updatedAt"
             ],
             "description": "createdAt or updatedAt."
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false
@@ -11939,11 +11754,6 @@
             "type": "string",
             "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -12228,11 +12038,6 @@
             "type": "string",
             "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -12614,11 +12419,6 @@
               "full"
             ],
             "description": "summary or full. Lists default to summary. Single records default to full."
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false
@@ -12851,11 +12651,6 @@
               "full"
             ],
             "description": "summary or full. Lists default to summary. Single records default to full."
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -13034,11 +12829,6 @@
             },
             "description": "Linear filter object for this entity; must name at least one field.",
             "minProperties": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false
@@ -13226,11 +13016,6 @@
             "type": "string",
             "description": "Team key such as ABC, or a team UUID.",
             "minLength": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -13428,11 +13213,6 @@
             },
             "description": "Linear filter object for this entity; must name at least one field.",
             "minProperties": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false
@@ -13649,11 +13429,6 @@
             "type": "string",
             "description": "User email, exact name, display name, \"me\", or a user UUID.",
             "minLength": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -13789,11 +13564,6 @@
           "name": {
             "type": "string",
             "minLength": 1
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -14039,11 +13809,6 @@
           "updateRemindersHour": {
             "type": "number",
             "description": "Number."
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -15084,11 +14849,6 @@
             "type": "string",
             "description": "Linear UUID.",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,
@@ -15796,11 +15556,6 @@
           "updateRemindersHour": {
             "type": "number",
             "description": "Number."
-          },
-          "workspace": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stored workspace name. Omit for the active workspace."
           }
         },
         "additionalProperties": false,

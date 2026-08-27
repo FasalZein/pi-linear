@@ -3,7 +3,7 @@
   "directGraphql": { "baseline": 0, "current": 695 },
   "directBatch": { "baseline": 0, "current": 2465 },
   "initial": { "baseline": 673, "before": 2122, "current": 2068 },
-  "oneTool": { "baseline": 1179, "current": 2666 },
-  "fiveTools": { "baseline": 14635, "current": 17016 },
-  "allTools": { "baseline": 64706, "current": 71687 }
+  "oneTool": { "baseline": 1179, "before": 2666, "current": 2552 },
+  "fiveTools": { "baseline": 14635, "before": 17016, "current": 16446 },
+  "allTools": { "baseline": 64706, "before": 71687, "current": 66101 }
 }

@@ -110,10 +110,10 @@ describe('canonical comment schemas', () => {
     expect(Object.keys((create.parameters as any).properties)).toEqual([
       'issue', 'projectId', 'initiativeId', 'projectUpdateId', 'initiativeUpdateId', 'postId',
       'documentContentId', 'parentId', 'body', 'bodyData', 'quotedText',
-      'doNotSubscribeToIssue', 'createOnSyncedSlackThread', 'createdAt', 'id', 'workspace',
+      'doNotSubscribeToIssue', 'createOnSyncedSlackThread', 'createdAt', 'id',
     ]);
     expect(Object.keys((update.parameters as any).properties)).toEqual([
-      'id', 'body', 'bodyData', 'quotedText', 'skipEditedAt', 'workspace',
+      'id', 'body', 'bodyData', 'quotedText', 'skipEditedAt',
     ]);
     for (const field of ['input', 'issueId', 'subscriberIds', 'createAsUser', 'displayIconUrl', 'resolvingCommentId', 'resolvingUserId', 'resolved', 'trashed', 'archivedAt', 'externalUserId']) {
       expect((create.parameters as any).properties).not.toHaveProperty(field);

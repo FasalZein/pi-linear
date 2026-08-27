@@ -348,12 +348,13 @@ describe('canonical typed contract', () => {
     }
   });
 
-  it('publishes exactly the canonical fields, plus workspace, on every tool', () => {
+  it('publishes exactly the canonical fields, and no workspace property, on every tool', () => {
     for (const [operationName, contract] of Object.entries(CANONICAL_OPERATIONS)) {
       const schema = tools.get(`linear_${operationName}`)!.parameters as any;
       const objects = schema.properties ? [schema] : schema.anyOf;
       const properties = [...new Set(objects.flatMap((object: any) => Object.keys(object.properties)))];
-      expect(properties.sort()).toEqual([...Object.keys(contract.fields), 'workspace'].sort());
+      expect(properties.sort()).toEqual(Object.keys(contract.fields).sort());
+      expect(properties, `${operationName} must not publish workspace`).not.toContain('workspace');
     }
   });
 });
