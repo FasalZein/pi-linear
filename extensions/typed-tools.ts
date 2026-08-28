@@ -14,7 +14,7 @@ import { redactError } from './redact';
 import { operationRenderers } from './renderers';
 import { typedToolName } from './tool-names';
 import { parseJsonObject } from './json';
-import { withRecovery } from './failure-message';
+import { schemaProblems, withRecovery } from './failure-message';
 import type { MutationMode } from './safety';
 import { buildTypedToolMetadata, requirementBranches } from './typed-tool-metadata';
 
@@ -119,13 +119,7 @@ function schemaGuard(operation: LinearOperation, schema: TSchema) {
   return (cause: unknown): void => {
     validator ??= Compile(schema);
     if (validator.Check(cause)) return;
-    const problems = [...validator.Errors(cause)]
-      .slice(0, 3)
-      .map((error) => {
-        const path = 'path' in error ? String(error.path) : '';
-        return path ? `${path}: ${error.message}` : error.message;
-      })
-      .join('; ');
+    const problems = schemaProblems(validator.Errors(cause));
     throw new Error(`Invalid arguments for "${typedToolName(operation.name)}": ${problems}.`);
   };
 }

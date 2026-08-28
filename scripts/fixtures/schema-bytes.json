@@ -9,7 +9,8 @@
   },
   "directBatch": {
     "baseline": 0,
-    "current": 2465
+    "current": 2162,
+    "before": 2465
   },
   "initial": {
     "baseline": 673,
@@ -29,6 +30,6 @@
   "allTools": {
     "baseline": 64706,
     "before": 66101,
-    "current": 54000
+    "current": 53697
   }
 }

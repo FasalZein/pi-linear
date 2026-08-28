@@ -51,20 +51,28 @@ const batchShared = {
   )),
 };
 
-export const linearBatchParameters = Type.Union([
-  Type.Object({
-    operations: Type.Array(batchEntry, { minItems: 1, description: 'Independent read operations.' }),
-    ...batchShared,
-  }, { additionalProperties: false }),
-  Type.Object({
-    reads: Type.Optional(Type.Array(batchEntry, { minItems: 1, description: 'Read phase.' })),
-    mutations: Type.Optional(Type.Array(batchEntry, { minItems: 1, description: 'Mutation phase.' })),
-    ...batchShared,
-  }, {
-    additionalProperties: false,
-    anyOf: [{ required: ['reads'] }, { required: ['mutations'] }],
-  } as any),
-]);
+/**
+ * One object root, not a union of two.
+ *
+ * A `Type.Union` root produces a bare `anyOf` with no `type`, `properties` or `required`.
+ * Pi's Anthropic adapter builds a tool's input schema as
+ * `{ type: 'object', properties: schema.properties ?? {}, required: schema.required ?? [] }`,
+ * so a bare-anyOf root reached the model as a tool that accepts nothing at all. The model
+ * could only guess field names from the description, and this guard then rejected the guess
+ * against a schema the model had never been shown.
+ *
+ * All three entry points are published here. The rule that `operations` excludes the phased
+ * pair is enforced by `parseBatchRequest`, whose messages name the fields involved.
+ */
+export const linearBatchParameters = Type.Object({
+  operations: Type.Optional(Type.Array(batchEntry, { minItems: 1, description: 'Reads only, run together. Excludes reads and mutations.' })),
+  reads: Type.Optional(Type.Array(batchEntry, { minItems: 1, description: 'Read phase, run before mutations. Excludes operations.' })),
+  mutations: Type.Optional(Type.Array(batchEntry, { minItems: 1, description: 'Mutation phase, run after reads. Excludes operations.' })),
+  ...batchShared,
+}, {
+  additionalProperties: false,
+  anyOf: [{ required: ['operations'] }, { required: ['reads'] }, { required: ['mutations'] }],
+} as any);
 
 export const LINEAR_BATCH_HELP = {
   name: 'batch',
@@ -74,6 +82,7 @@ export const LINEAR_BATCH_HELP = {
     { operations: 'BatchEntry[]', workspace: 'string?', sink: '"inline" | "artifact"?', telemetry: '"always"?' },
     { reads: 'BatchEntry[]?', mutations: 'BatchEntry[]?', workspace: 'string?', sink: '"inline" | "artifact"?', telemetry: '"always"?' },
   ],
+  rule: 'Send operations, or send reads and/or mutations. Never both.',
   flatExample: BATCH_HELP_EXAMPLE.variables,
   phasedExample: BATCH_PHASED_HELP_EXAMPLE.variables,
 } as const;

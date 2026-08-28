@@ -65,8 +65,23 @@ describe('native Anthropic route', () => {
     const deferredBatch = tools.find((tool) => tool.name === 'linear_batch');
     expect(deferredBatch?.defer_loading).toBe(true);
     expect(deferredBatch?.input_schema).toBeTypeOf('object');
+
+    /*
+     * Regression: linear_batch published a union root, so it had no top-level `properties`.
+     * The adapter builds a tool's input schema as
+     * `{ type: 'object', properties: schema.properties ?? {}, required: schema.required ?? [] }`,
+     * which turned linear_batch into a tool that appeared to accept nothing. The model then
+     * guessed field names from the description and every guess was rejected locally against
+     * a schema it had never been shown. Assert on the real payload, not on our own object.
+     */
+    expect(Object.keys(deferredBatch?.input_schema?.properties ?? {}))
+      .toEqual(['operations', 'reads', 'mutations', 'workspace', 'sink', 'telemetry']);
+    for (const tool of tools) {
+      expect(Object.keys(tool.input_schema?.properties ?? {}).length, `${tool.name} must show its parameters`).toBeGreaterThan(0);
+    }
+
     expect(() => harness.tool('linear_batch').prepareArguments({ operations: [{ operation: 'get_issue' }], reads: [{ operation: 'get_issue' }] }))
-      .toThrow(/Invalid arguments for "linear_batch"/);
+      .toThrow(/cannot combine "operations" with "reads" or "mutations"/);
 
     const references = flattenContent(payload).filter((block) => block.type === 'tool_reference');
     expect(references).toEqual([

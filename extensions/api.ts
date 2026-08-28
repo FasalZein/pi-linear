@@ -14,7 +14,8 @@ import {
   type LinearOperation,
   type OperationDomain,
 } from './operations';
-import { parseJson, parseJsonObject, type JsonValue } from './json';
+import { schemaProblems } from './failure-message';
+import { parseJsonObject, type JsonValue } from './json';
 import { isCompatibilityString } from './operation-types';
 import {
   assertOperationAllowed,
@@ -39,7 +40,7 @@ import { typedToolName } from './tool-names';
 import { LINEAR_BATCH_HELP, LINEAR_GRAPHQL_HELP, exceptionalToolDefinitions } from './exceptional-tools';
 import type { MutationMode } from './safety';
 import { LINEAR_TOOL_DESCRIPTION } from './generated/operation-catalog';
-import { executeBatch } from './batch';
+import { assertBatchPhaseCombination, executeBatch } from './batch';
 import {
   GET_RESULT_HELP,
   childPointer,
@@ -214,14 +215,7 @@ function directSchemaGuard(toolName: string, schema: TSchema) {
   return (cause: unknown): void => {
     validator ??= Compile(schema);
     if (validator.Check(cause)) return;
-    const problems = [...validator.Errors(cause)]
-      .slice(0, 3)
-      .map((error) => {
-        const errorPath = 'path' in error ? parseJson(error.path ?? undefined) : undefined;
-        const path = isCompatibilityString(errorPath) ? errorPath : '';
-        return path ? `${path}: ${error.message}` : error.message;
-      })
-      .join('; ');
+    const problems = schemaProblems(validator.Errors(cause));
     throw new Error(`Invalid arguments for "${toolName}": ${problems}.`);
   };
 }
@@ -355,6 +349,7 @@ export function linearBatchTool(
     prepareArguments: (args) => {
       try {
         assertSchema(args ?? undefined);
+        assertBatchPhaseCombination((args ?? {}) as any);
         return args as any;
       } catch (error) {
         throw redactError(error, activeSecrets());
@@ -366,6 +361,7 @@ export function linearBatchTool(
       if (signal?.aborted) throw new Error('Request cancelled.');
       try {
         assertSchema(params);
+        assertBatchPhaseCombination(params as any);
       } catch (error) {
         throw redactError(error, activeSecrets());
       }

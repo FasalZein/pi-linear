@@ -301,6 +301,20 @@ function assignKeys(entries: RawEntry[]): void {
   }
 }
 
+/**
+ * `operations` is the read-only shorthand and cannot be combined with the phased pair.
+ *
+ * The published schema lists all three fields so the model can see them, so the rule that
+ * separates them lives here. The tool's pre-call gate and the batch parser share this one
+ * definition, which means a wrong combination is refused before any network request and
+ * names both halves of the conflict.
+ */
+export function assertBatchPhaseCombination(variables: CompatibilityObject): void {
+  if ('operations' in variables && ('reads' in variables || 'mutations' in variables)) {
+    throw new Error('Batch cannot combine "operations" with "reads" or "mutations". Use { "operations": [...] } for reads or { "reads": [...], "mutations": [...] } for mixed work.');
+  }
+}
+
 function parseEntries(variables: CompatibilityObject): ParsedBatchPhases {
   const allowed = new Set(['operations', 'reads', 'mutations']);
   const unknown = Object.keys(variables).filter((name) => !allowed.has(name));
@@ -308,9 +322,7 @@ function parseEntries(variables: CompatibilityObject): ParsedBatchPhases {
     throw new Error(`Unknown batch field "${unknown[0]}". Send { "operations": [...] } for reads or { "reads": [...], "mutations": [...] } for mixed work.`);
   }
   const flat = 'operations' in variables;
-  if (flat && ('reads' in variables || 'mutations' in variables)) {
-    throw new Error('Batch cannot combine "operations" with "reads" or "mutations". Use { "operations": [...] } for reads or { "reads": [...], "mutations": [...] } for mixed work.');
-  }
+  assertBatchPhaseCombination(variables);
   const reads = parsePhase(flat ? variables.operations : variables.reads, flat ? 'operations' : 'reads');
   const mutations = flat ? [] : parsePhase(variables.mutations, 'mutations');
   if (!reads.length && !mutations.length) {

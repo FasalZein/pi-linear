@@ -64,7 +64,8 @@ export type ProviderPayloadTool = {
 };
 export type ProviderPayloadSchema = {
   type?: string;
-  properties?: {
+  /** Every property the provider payload declares, so a test can assert on the set. */
+  properties?: Record<string, ProviderPayloadProperty | undefined> & {
     operation?: ProviderPayloadProperty;
   };
 };
@@ -141,11 +142,11 @@ function parseSchema(value: JsonValue, path: string): ProviderPayloadSchema {
     type: optionalString(object, 'type', path),
     properties: properties === undefined
       ? undefined
-      : {
-          operation: properties.operation === undefined
-            ? undefined
-            : parseProperty(properties.operation, `${path}.properties.operation`),
-        },
+      : Object.fromEntries(Object.entries(properties).flatMap(
+          ([name, property]) => (property === undefined
+            ? []
+            : [[name, parseProperty(property, `${path}.properties.${name}`)] as const]),
+        )),
   };
 }
 

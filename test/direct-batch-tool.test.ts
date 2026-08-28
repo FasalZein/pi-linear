@@ -31,18 +31,27 @@ describe('direct batch tool', () => {
     vi.stubGlobal('fetch', fetch);
     const tool = linearBatchTool() as any;
     expect(tool.name).toBe('linear_batch');
-    expect(tool.parameters.anyOf).toHaveLength(2);
+    // One object root, so the model is shown every field it may send. A union root would
+    // publish no properties at all through pi's Anthropic adapter.
+    expect(tool.parameters.type).toBe('object');
+    expect(Object.keys(tool.parameters.properties)).toEqual(['operations', 'reads', 'mutations', 'workspace', 'sink', 'telemetry']);
+    expect(tool.parameters.anyOf).toEqual([{ required: ['operations'] }, { required: ['reads'] }, { required: ['mutations'] }]);
 
     for (const args of [
       { operations: [{ name: 'one', operation: 'get_issue' }] },
       { operations: [{ operation: 'get_issue', extra: true }] },
-      { operations: [{ operation: 'get_issue' }], reads: [{ operation: 'get_issue' }] },
       { reads: [] },
       { operations: [], extra: true },
     ]) {
       expect(() => tool.prepareArguments(args)).toThrow(/Invalid arguments for "linear_batch"/);
       await expect(execute(tool, args as any)).rejects.toThrow(/Invalid arguments for "linear_batch"/);
     }
+
+    // Mixing the shorthand with the phased pair is a rule, not a shape, so it is refused by
+    // the shared assertion with a message that names both halves.
+    const combined = { operations: [{ operation: 'get_issue' }], reads: [{ operation: 'get_issue' }] };
+    expect(() => tool.prepareArguments(combined)).toThrow(/cannot combine "operations" with "reads" or "mutations"/);
+    await expect(execute(tool, combined as any)).rejects.toThrow(/cannot combine "operations" with "reads" or "mutations"/);
     expect(fetch).not.toHaveBeenCalled();
   });
 
