@@ -186,7 +186,7 @@ describe('generated products', () => {
     ],
     [
       'typed tool schema field',
-      'extensions/typed-tool-metadata.ts',
+      'extensions/parameter-schema.ts',
       'Issue identifier such as ABC-123, or an issue UUID.',
       'Issue UUID or identifier such as ABC-123.',
     ],
@@ -359,6 +359,12 @@ describe('generated products', () => {
       const operation = projectCompatibilityOperation(definition);
       const alwaysRequired = Object.keys(operation.canonical.fields)
         .filter((name) => operation.canonical.branches.every((branch) => branch.includes(name)));
+      const advanced = operation.canonical.advanced ?? {};
+      const advancedNames = new Set(Object.keys(advanced));
+      const requirements = [...new Map(operation.canonical.branches.map((branch) => {
+        const projected = [...new Set(branch.map((name) => advancedNames.has(name) ? 'advanced' : name))];
+        return [JSON.stringify(projected), projected] as const;
+      })).values()];
       const expected = {
         loadedTools: [definition.toolName],
         name: definition.name,
@@ -369,13 +375,16 @@ describe('generated products', () => {
           type,
           required: alwaysRequired.includes(name),
         })),
-        requirements: operation.canonical.branches,
+        requirements,
         example: definition.canonical.example,
       };
+      const expectedWithAdvanced = Object.keys(advanced).length
+        ? { ...expected, advancedHelp: { operation: 'help', variables: { operation: `${definition.name}:advanced` } } }
+        : expected;
       expect(result, definition.name).toEqual(
         operation.pagination
-          ? { ...expected, pagination: { defaultPageSize: operation.pagination.defaultPageSize } }
-          : expected,
+          ? { ...expectedWithAdvanced, pagination: { defaultPageSize: operation.pagination.defaultPageSize } }
+          : expectedWithAdvanced,
       );
       expect(loaded, definition.name).toEqual([definition.toolName]);
     }

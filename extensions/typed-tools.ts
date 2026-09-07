@@ -18,6 +18,7 @@ import { schemaProblems, withRecovery } from './failure-message';
 import type { MutationMode } from './safety';
 import { buildTypedToolMetadata, requirementBranches } from './typed-tool-metadata';
 import { legacyReferenceReplacement } from './operations/reference-language';
+import { flattenAdvancedArguments } from './advanced-arguments';
 
 export { typedToolName, typedToolOperationName } from './tool-names';
 export { canonicalFieldNames } from './canonical';
@@ -48,9 +49,17 @@ function assertBranch(operation: LinearOperation, variables: JsonObject): void {
  * compatibility alias reaching a typed tool is refused before credential lookup.
  */
 function assertCanonicalOnly(operation: LinearOperation, variables: JsonObject): void {
+  const contract = canonicalOperation(operation);
   const allowed = new Set(canonicalFieldNames(operation));
   const foreign = Object.keys(variables).filter((key) => !allowed.has(key));
   if (!foreign.length) return;
+  const advanced = foreign.filter((field) => field in (contract.advanced ?? {}));
+  if (advanced.length) {
+    throw new Error(
+      `${advanced.map((field) => `"${field}"`).join(', ')} ${advanced.length === 1 ? 'is' : 'are'} advanced; `
+      + `send ${advanced.length === 1 ? 'it' : 'them'} inside "advanced".`,
+    );
+  }
   const replacements = foreign
     .map((field) => ({ field, replacement: legacyReferenceReplacement(operation.name, field, allowed) }))
     .filter((entry): entry is { field: string; replacement: string } => entry.replacement !== undefined);
@@ -160,7 +169,8 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
         // Runs before the schema check so a stray `workspace` gets the actionable message
         // rather than a bare additionalProperties rejection.
         assertCanonicalOnly(operation, variables);
-        assertVariant(operation, variables);
+        const flattened = flattenAdvancedArguments(operation.name, canonicalOperation(operation), variables);
+        assertVariant(operation, flattened);
         assertSchema(args);
         return args;
       } catch (error) {
@@ -172,13 +182,15 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       if (signal?.aborted) throw new Error('Request cancelled.');
       const variables = parseJsonObject(params) ?? {};
+      let flattened: JsonObject;
       try {
         assertOperationAllowed(operation, variables, mode);
         assertCanonicalOnly(operation, variables);
-        assertVariant(operation, variables);
-        assertBranch(operation, variables);
+        flattened = flattenAdvancedArguments(operation.name, canonicalOperation(operation), variables);
+        assertVariant(operation, flattened);
+        assertBranch(operation, flattened);
         assertSchema(params);
-        operation.validateVariables?.(variables);
+        operation.validateVariables?.(flattened);
       } catch (error) {
         throw guided(error);
       }
@@ -186,7 +198,7 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
       // select one explicitly.
       const call = linearCallContext(mode, signal, ctx, {});
       try {
-        const details = await executeOperationInContext(operation, { variables }, call);
+        const details = await executeOperationInContext(operation, { variables: flattened }, call);
         return { content: [{ type: 'text' as const, text: JSON.stringify(details) }], details };
       } catch (error) {
         throw guided(error);

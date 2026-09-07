@@ -284,8 +284,14 @@ function sampleFor(type: string): JsonValue {
 }
 
 function sampleBranch(operationName: string, branch: readonly string[]): JsonObject {
-  const { fields } = CANONICAL_OPERATIONS[operationName]!;
-  return Object.fromEntries(branch.map((key) => [key, sampleFor(fields[key]!)]));
+  const { fields, advanced = {} } = CANONICAL_OPERATIONS[operationName]!;
+  const common = branch.filter((key) => key in fields)
+    .map((key) => [key, sampleFor(fields[key]!)] as const);
+  const tail = branch.filter((key) => key in advanced)
+    .map((key) => [key, sampleFor(advanced[key]!)] as const);
+  const sample: JsonObject = Object.fromEntries(common);
+  if (tail.length) sample.advanced = Object.fromEntries(tail);
+  return sample;
 }
 
 /**
@@ -309,7 +315,8 @@ const ALIAS_OF = {
 const ALWAYS_FORBIDDEN = ['input', 'trashed', 'teamKey'];
 
 function forbiddenAliases(operationName: string): string[] {
-  const published = new Set(Object.keys(CANONICAL_OPERATIONS[operationName]!.fields));
+  const contract = CANONICAL_OPERATIONS[operationName]!;
+  const published = new Set([...Object.keys(contract.fields), ...Object.keys(contract.advanced ?? {})]);
   return [
     ...ALWAYS_FORBIDDEN,
     ...Object.entries(ALIAS_OF)
@@ -326,7 +333,7 @@ describe('canonical typed contract', () => {
 
   it('publishes no v0.4 compatibility alias', () => {
     for (const [operationName, contract] of Object.entries(CANONICAL_OPERATIONS)) {
-      const published = Object.keys(contract.fields);
+      const published = [...Object.keys(contract.fields), ...Object.keys(contract.advanced ?? {})];
       for (const alias of forbiddenAliases(operationName)) {
         expect(published, `${operationName}.${alias}`).not.toContain(alias);
       }
@@ -342,7 +349,7 @@ describe('canonical typed contract', () => {
     for (const [operationName, contract] of Object.entries(CANONICAL_OPERATIONS)) {
       for (const branch of contract.branches) {
         for (const key of branch) {
-          expect(Object.keys(contract.fields), `${operationName}.${key}`).toContain(key);
+          expect([...Object.keys(contract.fields), ...Object.keys(contract.advanced ?? {})], `${operationName}.${key}`).toContain(key);
         }
       }
     }
@@ -353,7 +360,10 @@ describe('canonical typed contract', () => {
       const schema = tools.get(`linear_${operationName}`)!.parameters as any;
       const objects = schema.properties ? [schema] : schema.anyOf;
       const properties = [...new Set(objects.flatMap((object: any) => Object.keys(object.properties)))];
-      expect(properties.sort()).toEqual(Object.keys(contract.fields).sort());
+      expect(properties.sort()).toEqual([
+        ...Object.keys(contract.fields),
+        ...(Object.keys(contract.advanced ?? {}).length ? ['advanced'] : []),
+      ].sort());
       expect(properties, `${operationName} must not publish workspace`).not.toContain('workspace');
     }
   });
@@ -376,10 +386,15 @@ describe('typed schema validation across all 49 tools', () => {
       for (const branch of contract.branches) {
         const args = sampleBranch(operationName, branch);
         for (const omitted of branch) {
-          const partial = { ...args };
-          delete partial[omitted];
-          const satisfiedByAnother = contract.branches.some((other) =>
-            other.every((key) => partial[key] !== undefined));
+          const partial = structuredClone(args);
+          if (omitted in (contract.advanced ?? {})) {
+            delete (partial.advanced as JsonObject)[omitted];
+            if (!Object.keys(partial.advanced as JsonObject).length) delete partial.advanced;
+          } else delete partial[omitted];
+          const satisfiedByAnother = contract.branches.some((other) => other.every((key) =>
+            key in (contract.advanced ?? {})
+              ? (partial.advanced as JsonObject | undefined)?.[key] !== undefined
+              : partial[key] !== undefined));
           if (!satisfiedByAnother) {
             expect(accepts(toolName, partial), `${toolName} without ${omitted}`).toBe(false);
           }
@@ -691,9 +706,10 @@ describe('package hygiene', () => {
     const createIssueFields = canonicalFieldNames(operations.create_issue!);
     expect(createIssueFields.slice(0, 6))
       .toEqual(['title', 'team', 'parent', 'state', 'assignee', 'dueDate']);
-    for (const field of ['labels', 'project', 'cycle', 'slaType', 'templateId', 'id']) {
+    for (const field of ['labels', 'project', 'cycle', 'advanced']) {
       expect(createIssueFields).toContain(field);
     }
+    for (const field of ['slaType', 'templateId', 'id']) expect(createIssueFields).not.toContain(field);
   });
 });
 
@@ -853,9 +869,10 @@ describe('upstream and runtime capability coverage', () => {
       const value = ['labels', 'addLabels', 'removeLabels', 'subscribers'].includes(field) ? [UUID] : UUID;
       expect(accepts('linear_update_issue', { issue: 'AEO-258', [field]: value }), field).toBe(true);
     }
-    for (const field of ['assignee', 'parent', 'project', 'milestone', 'cycle', 'dueDate']) {
+    for (const field of ['assignee', 'parent', 'project', 'cycle', 'dueDate']) {
       expect(accepts('linear_update_issue', { issue: 'AEO-258', [field]: null }), field).toBe(true);
     }
+    expect(accepts('linear_update_issue', { issue: 'AEO-258', advanced: { milestone: null } }), 'milestone').toBe(true);
   });
 
   it('publishes only team keys or UUIDs and rejects a human team name before credential access', async () => {
@@ -964,9 +981,10 @@ describe('strict raw arguments before Pi conversion', () => {
   it('rejects an invalid null and keeps valid nullable updates', () => {
     expect(rawAccepts('linear_get_issue', { issue: null })).toBe(false);
     expect(rawAccepts('linear_create_issue', { title: 'T', team: 'AEO', dueDate: null })).toBe(false);
-    for (const field of ['assignee', 'parent', 'project', 'milestone', 'cycle', 'dueDate']) {
+    for (const field of ['assignee', 'parent', 'project', 'cycle', 'dueDate']) {
       expect(rawAccepts('linear_update_issue', { issue: 'AEO-1', [field]: null }), field).toBe(true);
     }
+    expect(rawAccepts('linear_update_issue', { issue: 'AEO-1', advanced: { milestone: null } }), 'milestone').toBe(true);
     expect(rawAccepts('linear_update_issue', { issue: 'AEO-1', dueDate: '2026-09-01' })).toBe(true);
   });
 
@@ -1004,7 +1022,7 @@ describe('strict raw arguments before Pi conversion', () => {
       priority: 0,
       dueDate: null,
       labels: [UUID_SAMPLE],
-      sortOrder: 1.5,
+      advanced: { sortOrder: 1.5 },
     };
     const snapshot = JSON.stringify(args);
     const prepared = tools.get('linear_update_issue')!.prepareArguments!(args);

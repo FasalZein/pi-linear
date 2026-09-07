@@ -293,6 +293,7 @@ export type OperationDefinition = {
 	};
 	canonical: {
 		fields: readonly OperationParameter[];
+		advancedFields: readonly OperationParameter[];
 		branches: readonly RequirementBranch[];
 		exclusiveBranches?: true;
 		variants?: readonly {

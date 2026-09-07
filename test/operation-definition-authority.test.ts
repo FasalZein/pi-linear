@@ -44,6 +44,14 @@ function assertCreateIssueBranchFixtureParity(): void {
   expect(definition('create_issue').compatibility.branches).toEqual(CREATE_ISSUE_BRANCH_FIXTURE);
 }
 
+function helpRequirements(value: OperationDefinition): readonly (readonly string[])[] {
+  const advanced = new Set(value.canonical.advancedFields.map(({ name }) => name));
+  return [...new Map(value.canonical.branches.map(({ all }) => {
+    const projected = [...new Set(all.map((name) => advanced.has(name) ? 'advanced' : name))];
+    return [JSON.stringify(projected), projected] as const;
+  })).values()];
+}
+
 const CANONICAL_NAMES = [
   'list_comments', 'create_comment', 'update_comment', 'list_views', 'get_view', 'create_view',
   'update_view', 'set_view_preferences', 'list_cycles', 'get_cycle', 'create_cycle', 'update_cycle',
@@ -227,7 +235,7 @@ describe('v0.6 operation definition authority', () => {
         name: definition.name,
         purpose: definition.purpose,
         parameters: definition.canonical.fields,
-        requirements: definition.canonical.branches.map(({ all }) => all),
+        requirements: helpRequirements(definition),
         example: definition.canonical.example,
       });
       expect(() => resolveRequest(definition.compatibility.example)).not.toThrow();

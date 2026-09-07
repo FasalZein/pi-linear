@@ -204,6 +204,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": []
@@ -785,6 +786,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -883,12 +885,12 @@
           ]
         }
       ],
-      "exclusiveBranches": true,
       "strictRawArguments": true,
       "example": {
         "issue": "AEO-258",
         "body": "Comment text"
-      }
+      },
+      "exclusiveBranches": true
     },
     "result": {
       "category": "singular",
@@ -1151,6 +1153,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -1378,6 +1381,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": []
@@ -1504,6 +1508,7 @@
           "required": true
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -1860,6 +1865,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -2248,6 +2254,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -2528,6 +2535,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -2813,6 +2821,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": []
@@ -2958,6 +2967,7 @@
           "required": true
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -3277,6 +3287,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -3547,6 +3558,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -3856,6 +3868,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": []
@@ -4021,6 +4034,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -4456,6 +4470,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -5023,6 +5038,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -5402,6 +5418,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": []
@@ -5547,6 +5564,7 @@
           "required": true
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -5826,6 +5844,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": []
@@ -6152,6 +6171,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -6487,6 +6507,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -6721,6 +6742,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": []
@@ -6985,6 +7007,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -7238,6 +7261,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -7468,6 +7492,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -7694,6 +7719,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": []
@@ -8252,6 +8278,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": []
@@ -8433,6 +8460,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -8503,11 +8531,6 @@
             "type": "string",
             "minLength": 1
           },
-          "descriptionData": {
-            "type": "string",
-            "description": "Serialized Linear document JSON.",
-            "minLength": 1
-          },
           "priority": {
             "type": "integer",
             "description": "0 none, 1 urgent, 2 high, 3 medium, 4 low.",
@@ -8520,11 +8543,6 @@
           "project": {
             "type": "string",
             "description": "Exact project name or slug, or a project UUID.",
-            "minLength": 1
-          },
-          "milestone": {
-            "type": "string",
-            "description": "Exact milestone name, or a milestone UUID.",
             "minLength": 1
           },
           "cycle": {
@@ -8550,108 +8568,6 @@
             "description": "One or more exact user references.",
             "minItems": 1
           },
-          "delegate": {
-            "type": "string",
-            "description": "User email, exact name, display name, \"me\", or a user UUID.",
-            "minLength": 1
-          },
-          "lastAppliedTemplateId": {
-            "type": "string",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "slaType": {
-            "type": "string",
-            "enum": [
-              "all",
-              "onlyBusinessDays"
-            ]
-          },
-          "slaBreachesAt": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Null clears it."
-          },
-          "slaStartedAt": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Null clears it."
-          },
-          "sortOrder": {
-            "type": "number"
-          },
-          "subIssueSortOrder": {
-            "type": "number"
-          },
-          "prioritySortOrder": {
-            "type": "number"
-          },
-          "templateId": {
-            "type": "string",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "useDefaultTemplate": {
-            "type": "boolean"
-          },
-          "preserveSortOrderOnCreate": {
-            "type": "boolean"
-          },
-          "referenceCommentId": {
-            "type": "string",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "sourceCommentId": {
-            "type": "string",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "sourcePullRequestCommentId": {
-            "type": "string",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "createAsUser": {
-            "type": "string",
-            "minLength": 1
-          },
-          "displayIconUrl": {
-            "type": "string",
-            "description": "Absolute http(s) URL.",
-            "minLength": 1,
-            "pattern": "^https?://"
-          },
-          "completedAt": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Null clears it."
-          },
-          "createdAt": {
-            "type": "string",
-            "description": "ISO 8601 date-time.",
-            "minLength": 1
-          },
-          "id": {
-            "type": "string",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
           "view": {
             "type": "string",
             "enum": [
@@ -8659,6 +8575,11 @@
               "full"
             ],
             "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false,
@@ -8682,7 +8603,7 @@
     "purpose": "Create an issue. A parent reference supplies the team when team is omitted.",
     "kind": "mutation",
     "help": {
-      "signature": "create_issue(title: String, team?: TeamReference, parent?: IssueReference, state?: StateReference, assignee?: UserReference, dueDate?: Date, description?: String, descriptionData?: JsonString, priority?: Priority, estimate?: Int, project?: ProjectReference, milestone?: MilestoneReference, cycle?: CycleReference, labels?: [LabelReference!], subscribers?: [UserReference!], delegate?: UserReference, lastAppliedTemplateId?: UUID, slaType?: SlaDayCountType, slaBreachesAt?: NullableDateTime, slaStartedAt?: NullableDateTime, sortOrder?: Float, subIssueSortOrder?: Float, prioritySortOrder?: Float, templateId?: UUID, useDefaultTemplate?: Boolean, preserveSortOrderOnCreate?: Boolean, referenceCommentId?: UUID, sourceCommentId?: UUID, sourcePullRequestCommentId?: UUID, createAsUser?: String, displayIconUrl?: Url, completedAt?: NullableDateTime, createdAt?: DateTime, id?: UUID, view?: ResultView)",
+      "signature": "create_issue(title: String, team?: TeamReference, parent?: IssueReference, state?: StateReference, assignee?: UserReference, dueDate?: Date, description?: String, priority?: Priority, estimate?: Int, project?: ProjectReference, cycle?: CycleReference, labels?: [LabelReference!], subscribers?: [UserReference!], view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "create_issue",
@@ -8699,33 +8620,12 @@
         "assignee",
         "dueDate",
         "description",
-        "descriptionData",
         "priority",
         "estimate",
         "project",
-        "milestone",
         "cycle",
         "labels",
         "subscribers",
-        "delegate",
-        "lastAppliedTemplateId",
-        "slaType",
-        "slaBreachesAt",
-        "slaStartedAt",
-        "sortOrder",
-        "subIssueSortOrder",
-        "prioritySortOrder",
-        "templateId",
-        "useDefaultTemplate",
-        "preserveSortOrderOnCreate",
-        "referenceCommentId",
-        "sourceCommentId",
-        "sourcePullRequestCommentId",
-        "createAsUser",
-        "displayIconUrl",
-        "completedAt",
-        "createdAt",
-        "id",
         "view"
       ]
     },
@@ -9125,11 +9025,6 @@
           "required": false
         },
         {
-          "name": "descriptionData",
-          "type": "JsonString",
-          "required": false
-        },
-        {
           "name": "priority",
           "type": "Priority",
           "required": false
@@ -9145,11 +9040,6 @@
           "required": false
         },
         {
-          "name": "milestone",
-          "type": "MilestoneReference",
-          "required": false
-        },
-        {
           "name": "cycle",
           "type": "CycleReference",
           "required": false
@@ -9162,6 +9052,23 @@
         {
           "name": "subscribers",
           "type": "[UserReference!]",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
+        }
+      ],
+      "advancedFields": [
+        {
+          "name": "descriptionData",
+          "type": "JsonString",
+          "required": false
+        },
+        {
+          "name": "milestone",
+          "type": "MilestoneReference",
           "required": false
         },
         {
@@ -9258,11 +9165,6 @@
           "name": "id",
           "type": "UUID",
           "required": false
-        },
-        {
-          "name": "view",
-          "type": "ResultView",
-          "required": false
         }
       ],
       "branches": [
@@ -9302,33 +9204,12 @@
         "assignee",
         "dueDate",
         "description",
-        "descriptionData",
         "priority",
         "estimate",
         "project",
-        "milestone",
         "cycle",
         "labels",
         "subscribers",
-        "delegate",
-        "lastAppliedTemplateId",
-        "slaType",
-        "slaBreachesAt",
-        "slaStartedAt",
-        "sortOrder",
-        "subIssueSortOrder",
-        "prioritySortOrder",
-        "templateId",
-        "useDefaultTemplate",
-        "preserveSortOrderOnCreate",
-        "referenceCommentId",
-        "sourceCommentId",
-        "sourcePullRequestCommentId",
-        "createAsUser",
-        "displayIconUrl",
-        "completedAt",
-        "createdAt",
-        "id",
         "view"
       ],
       "action": "create"
@@ -9420,11 +9301,6 @@
             "type": "string",
             "minLength": 1
           },
-          "descriptionData": {
-            "type": "string",
-            "description": "Serialized Linear document JSON.",
-            "minLength": 1
-          },
           "priority": {
             "type": "integer",
             "description": "0 none, 1 urgent, 2 high, 3 medium, 4 low.",
@@ -9445,18 +9321,6 @@
               }
             ],
             "description": "Exact project name or slug, or a project UUID; null clears it."
-          },
-          "milestone": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Exact milestone name, or a milestone UUID; null clears it."
           },
           "cycle": {
             "anyOf": [
@@ -9488,75 +9352,6 @@
             "description": "One or more exact user references.",
             "minItems": 1
           },
-          "delegate": {
-            "type": "string",
-            "description": "User email, exact name, display name, \"me\", or a user UUID.",
-            "minLength": 1
-          },
-          "lastAppliedTemplateId": {
-            "type": "string",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "slaType": {
-            "type": "string",
-            "enum": [
-              "all",
-              "onlyBusinessDays"
-            ]
-          },
-          "slaBreachesAt": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Null clears it."
-          },
-          "slaStartedAt": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Null clears it."
-          },
-          "sortOrder": {
-            "type": "number"
-          },
-          "subIssueSortOrder": {
-            "type": "number"
-          },
-          "prioritySortOrder": {
-            "type": "number"
-          },
-          "autoClosedByParentClosing": {
-            "type": "boolean"
-          },
-          "snoozedBy": {
-            "type": "string",
-            "description": "User email, exact name, display name, \"me\", or a user UUID.",
-            "minLength": 1
-          },
-          "snoozedUntilAt": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Null clears it."
-          },
           "view": {
             "type": "string",
             "enum": [
@@ -9564,186 +9359,25 @@
               "full"
             ],
             "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false,
-        "anyOf": [
-          {
-            "required": [
-              "issue",
-              "title"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "state"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "assignee"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "parent"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "team"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "dueDate"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "addLabels"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "removeLabels"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "description"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "descriptionData"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "priority"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "estimate"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "project"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "milestone"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "cycle"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "labels"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "subscribers"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "delegate"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "lastAppliedTemplateId"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "slaType"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "slaBreachesAt"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "slaStartedAt"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "sortOrder"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "subIssueSortOrder"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "prioritySortOrder"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "autoClosedByParentClosing"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "snoozedBy"
-            ]
-          },
-          {
-            "required": [
-              "issue",
-              "snoozedUntilAt"
-            ]
-          }
-        ]
+        "required": [
+          "issue"
+        ],
+        "minProperties": 2
       }
     },
     "domain": "issues",
     "purpose": "Update an issue by exact identifier or UUID.",
     "kind": "mutation",
     "help": {
-      "signature": "update_issue(issue: IssueReference, title?: String, state?: StateReference, assignee?: NullableUserReference, parent?: NullableIssueReference, team?: TeamReference, dueDate?: NullableDate, addLabels?: [LabelReference!], removeLabels?: [LabelReference!], description?: String, descriptionData?: JsonString, priority?: Priority, estimate?: Int, project?: NullableProjectReference, milestone?: NullableMilestoneReference, cycle?: NullableCycleReference, labels?: [LabelReference!], subscribers?: [UserReference!], delegate?: UserReference, lastAppliedTemplateId?: UUID, slaType?: SlaDayCountType, slaBreachesAt?: NullableDateTime, slaStartedAt?: NullableDateTime, sortOrder?: Float, subIssueSortOrder?: Float, prioritySortOrder?: Float, autoClosedByParentClosing?: Boolean, snoozedBy?: UserReference, snoozedUntilAt?: NullableDateTime, view?: ResultView)",
+      "signature": "update_issue(issue: IssueReference, title?: String, state?: StateReference, assignee?: NullableUserReference, parent?: NullableIssueReference, team?: TeamReference, dueDate?: NullableDate, addLabels?: [LabelReference!], removeLabels?: [LabelReference!], description?: String, priority?: Priority, estimate?: Int, project?: NullableProjectReference, cycle?: NullableCycleReference, labels?: [LabelReference!], subscribers?: [UserReference!], view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "update_issue",
@@ -9763,25 +9397,12 @@
         "addLabels",
         "removeLabels",
         "description",
-        "descriptionData",
         "priority",
         "estimate",
         "project",
-        "milestone",
         "cycle",
         "labels",
         "subscribers",
-        "delegate",
-        "lastAppliedTemplateId",
-        "slaType",
-        "slaBreachesAt",
-        "slaStartedAt",
-        "sortOrder",
-        "subIssueSortOrder",
-        "prioritySortOrder",
-        "autoClosedByParentClosing",
-        "snoozedBy",
-        "snoozedUntilAt",
         "view"
       ]
     },
@@ -10155,11 +9776,6 @@
           "required": false
         },
         {
-          "name": "descriptionData",
-          "type": "JsonString",
-          "required": false
-        },
-        {
           "name": "priority",
           "type": "Priority",
           "required": false
@@ -10175,11 +9791,6 @@
           "required": false
         },
         {
-          "name": "milestone",
-          "type": "NullableMilestoneReference",
-          "required": false
-        },
-        {
           "name": "cycle",
           "type": "NullableCycleReference",
           "required": false
@@ -10192,6 +9803,23 @@
         {
           "name": "subscribers",
           "type": "[UserReference!]",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
+        }
+      ],
+      "advancedFields": [
+        {
+          "name": "descriptionData",
+          "type": "JsonString",
+          "required": false
+        },
+        {
+          "name": "milestone",
+          "type": "NullableMilestoneReference",
           "required": false
         },
         {
@@ -10247,11 +9875,6 @@
         {
           "name": "snoozedUntilAt",
           "type": "NullableDateTime",
-          "required": false
-        },
-        {
-          "name": "view",
-          "type": "ResultView",
           "required": false
         }
       ],
@@ -10451,25 +10074,12 @@
         "addLabels",
         "removeLabels",
         "description",
-        "descriptionData",
         "priority",
         "estimate",
         "project",
-        "milestone",
         "cycle",
         "labels",
         "subscribers",
-        "delegate",
-        "lastAppliedTemplateId",
-        "slaType",
-        "slaBreachesAt",
-        "slaStartedAt",
-        "sortOrder",
-        "subIssueSortOrder",
-        "prioritySortOrder",
-        "autoClosedByParentClosing",
-        "snoozedBy",
-        "snoozedUntilAt",
         "view"
       ],
       "action": "update"
@@ -10794,6 +10404,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -11018,6 +10629,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": []
@@ -11162,6 +10774,7 @@
           "required": true
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -11370,6 +10983,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": []
@@ -11629,6 +11243,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -11940,6 +11555,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -12167,6 +11783,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": []
@@ -12474,6 +12091,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -12816,6 +12434,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -13149,6 +12768,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": []
@@ -13314,6 +12934,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -13523,6 +13144,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": []
@@ -13667,6 +13289,7 @@
           "required": true
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -13933,6 +13556,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": []
@@ -14079,6 +13703,7 @@
           "required": true
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -14189,6 +13814,7 @@
           "required": true
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -14278,30 +13904,10 @@
             ],
             "description": "Calendar date YYYY-MM-DD; null clears it."
           },
-          "targetDateResolution": {
-            "type": "string",
-            "enum": [
-              "month",
-              "quarter",
-              "halfYear",
-              "year"
-            ]
-          },
           "owner": {
             "type": "string",
             "description": "User email, exact name, display name, \"me\", or a user UUID.",
             "minLength": 1
-          },
-          "leadTeam": {
-            "type": "string",
-            "description": "Team key such as ABC, or a team UUID.",
-            "minLength": 1
-          },
-          "sortOrder": {
-            "type": "number"
-          },
-          "prioritySortOrder": {
-            "type": "number"
           },
           "priority": {
             "type": "integer",
@@ -14318,42 +13924,6 @@
             "description": "One or more exact label names or label UUIDs.",
             "minItems": 1
           },
-          "id": {
-            "type": "string",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "customIdentifier": {
-            "type": "string",
-            "minLength": 1
-          },
-          "frequencyResolution": {
-            "type": "string",
-            "enum": [
-              "daily",
-              "weekly"
-            ]
-          },
-          "updateReminderFrequency": {
-            "type": "number"
-          },
-          "updateReminderFrequencyInWeeks": {
-            "type": "number"
-          },
-          "updateRemindersDay": {
-            "type": "string",
-            "enum": [
-              "Sunday",
-              "Monday",
-              "Tuesday",
-              "Wednesday",
-              "Thursday",
-              "Friday",
-              "Saturday"
-            ]
-          },
-          "updateRemindersHour": {
-            "type": "number"
-          },
           "view": {
             "type": "string",
             "enum": [
@@ -14361,6 +13931,11 @@
               "full"
             ],
             "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false,
@@ -14384,7 +13959,7 @@
     "purpose": "Create or update an initiative.",
     "kind": "mutation",
     "help": {
-      "signature": "save_initiative(initiative?: InitiativeReference, name?: String, description?: String, content?: String, icon?: String, color?: Color, status?: InitiativeStatus, targetDate?: NullableDate, targetDateResolution?: DateResolutionType, owner?: UserReference, leadTeam?: TeamReference, sortOrder?: Float, prioritySortOrder?: Float, priority?: Priority, labels?: [LabelReference!], id?: UUID, customIdentifier?: String, frequencyResolution?: FrequencyResolutionType, updateReminderFrequency?: Float, updateReminderFrequencyInWeeks?: Float, updateRemindersDay?: Day, updateRemindersHour?: Float, view?: ResultView)",
+      "signature": "save_initiative(initiative?: InitiativeReference, name?: String, description?: String, content?: String, icon?: String, color?: Color, status?: InitiativeStatus, targetDate?: NullableDate, owner?: UserReference, priority?: Priority, labels?: [LabelReference!], view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "save_initiative",
@@ -14401,20 +13976,9 @@
         "color",
         "status",
         "targetDate",
-        "targetDateResolution",
         "owner",
-        "leadTeam",
-        "sortOrder",
-        "prioritySortOrder",
         "priority",
         "labels",
-        "id",
-        "customIdentifier",
-        "frequencyResolution",
-        "updateReminderFrequency",
-        "updateReminderFrequencyInWeeks",
-        "updateRemindersDay",
-        "updateRemindersHour",
         "view"
       ]
     },
@@ -14777,13 +14341,30 @@
           "required": false
         },
         {
-          "name": "targetDateResolution",
-          "type": "DateResolutionType",
+          "name": "owner",
+          "type": "UserReference",
           "required": false
         },
         {
-          "name": "owner",
-          "type": "UserReference",
+          "name": "priority",
+          "type": "Priority",
+          "required": false
+        },
+        {
+          "name": "labels",
+          "type": "[LabelReference!]",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
+        }
+      ],
+      "advancedFields": [
+        {
+          "name": "targetDateResolution",
+          "type": "DateResolutionType",
           "required": false
         },
         {
@@ -14799,16 +14380,6 @@
         {
           "name": "prioritySortOrder",
           "type": "Float",
-          "required": false
-        },
-        {
-          "name": "priority",
-          "type": "Priority",
-          "required": false
-        },
-        {
-          "name": "labels",
-          "type": "[LabelReference!]",
           "required": false
         },
         {
@@ -14844,11 +14415,6 @@
         {
           "name": "updateRemindersHour",
           "type": "Float",
-          "required": false
-        },
-        {
-          "name": "view",
-          "type": "ResultView",
           "required": false
         }
       ],
@@ -14979,6 +14545,10 @@
           ]
         }
       ],
+      "strictRawArguments": true,
+      "example": {
+        "name": "Platform"
+      },
       "variants": [
         {
           "fields": [
@@ -15155,11 +14725,7 @@
             }
           ]
         }
-      ],
-      "strictRawArguments": true,
-      "example": {
-        "name": "Platform"
-      }
+      ]
     },
     "result": {
       "category": "singular",
@@ -15180,20 +14746,9 @@
         "color",
         "status",
         "targetDate",
-        "targetDateResolution",
         "owner",
-        "leadTeam",
-        "sortOrder",
-        "prioritySortOrder",
         "priority",
         "labels",
-        "id",
-        "customIdentifier",
-        "frequencyResolution",
-        "updateReminderFrequency",
-        "updateReminderFrequencyInWeeks",
-        "updateRemindersDay",
-        "updateRemindersHour",
         "view"
       ],
       "action": "save",
@@ -15549,6 +15104,7 @@
           "required": false
         }
       ],
+      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -15593,6 +15149,11 @@
           ]
         }
       ],
+      "strictRawArguments": true,
+      "example": {
+        "name": "Beta",
+        "project": "project-id"
+      },
       "variants": [
         {
           "fields": [
@@ -15664,12 +15225,7 @@
             }
           ]
         }
-      ],
-      "strictRawArguments": true,
-      "example": {
-        "name": "Beta",
-        "project": "project-id"
-      }
+      ]
     },
     "result": {
       "category": "singular",
@@ -15755,15 +15311,6 @@
             "description": "Calendar date, YYYY-MM-DD.",
             "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
           },
-          "startDateResolution": {
-            "type": "string",
-            "enum": [
-              "month",
-              "quarter",
-              "halfYear",
-              "year"
-            ]
-          },
           "targetDate": {
             "anyOf": [
               {
@@ -15776,15 +15323,6 @@
             ],
             "description": "Calendar date YYYY-MM-DD; null clears it."
           },
-          "targetDateResolution": {
-            "type": "string",
-            "enum": [
-              "month",
-              "quarter",
-              "halfYear",
-              "year"
-            ]
-          },
           "status": {
             "type": "string",
             "description": "Exact project status name, or a project status UUID.",
@@ -15795,20 +15333,6 @@
             "description": "User email, exact name, display name, \"me\", or a user UUID.",
             "minLength": 1
           },
-          "leadTeam": {
-            "type": "string",
-            "description": "Team key such as ABC, or a team UUID.",
-            "minLength": 1
-          },
-          "members": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            },
-            "description": "One or more exact user references.",
-            "minItems": 1
-          },
           "labels": {
             "type": "array",
             "items": {
@@ -15818,109 +15342,6 @@
             "description": "One or more exact label names or label UUIDs.",
             "minItems": 1
           },
-          "convertedFromIssue": {
-            "type": "string",
-            "description": "Issue identifier such as ABC-123, or an issue UUID.",
-            "minLength": 1
-          },
-          "lastAppliedTemplateId": {
-            "type": "string",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "sortOrder": {
-            "type": "number"
-          },
-          "prioritySortOrder": {
-            "type": "number"
-          },
-          "canceledAt": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Null clears it."
-          },
-          "completedAt": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Null clears it."
-          },
-          "projectUpdateRemindersPausedUntilAt": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Null clears it."
-          },
-          "slackIssueComments": {
-            "type": "boolean"
-          },
-          "slackIssueStatuses": {
-            "type": "boolean"
-          },
-          "slackNewIssue": {
-            "type": "boolean"
-          },
-          "slackChannelName": {
-            "type": "string",
-            "minLength": 1
-          },
-          "templateId": {
-            "type": "string",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "useDefaultTemplate": {
-            "type": "boolean"
-          },
-          "id": {
-            "type": "string",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "frequencyResolution": {
-            "type": "string",
-            "enum": [
-              "daily",
-              "weekly"
-            ]
-          },
-          "updateReminderFrequency": {
-            "type": "number"
-          },
-          "updateReminderFrequencyInWeeks": {
-            "type": "number"
-          },
-          "updateRemindersDay": {
-            "type": "string",
-            "enum": [
-              "Sunday",
-              "Monday",
-              "Tuesday",
-              "Wednesday",
-              "Thursday",
-              "Friday",
-              "Saturday"
-            ]
-          },
-          "updateRemindersHour": {
-            "type": "number"
-          },
           "view": {
             "type": "string",
             "enum": [
@@ -15928,6 +15349,11 @@
               "full"
             ],
             "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false,
@@ -15952,7 +15378,7 @@
     "purpose": "Create or update a project.",
     "kind": "mutation",
     "help": {
-      "signature": "save_project(project?: ProjectReference, name?: String, teams?: [TeamReference!], description?: String, content?: String, icon?: String, color?: Color, priority?: Priority, startDate?: Date, startDateResolution?: DateResolutionType, targetDate?: NullableDate, targetDateResolution?: DateResolutionType, status?: ProjectStatusReference, lead?: UserReference, leadTeam?: TeamReference, members?: [UserReference!], labels?: [LabelReference!], convertedFromIssue?: IssueReference, lastAppliedTemplateId?: UUID, sortOrder?: Float, prioritySortOrder?: Float, canceledAt?: NullableDateTime, completedAt?: NullableDateTime, projectUpdateRemindersPausedUntilAt?: NullableDateTime, slackIssueComments?: Boolean, slackIssueStatuses?: Boolean, slackNewIssue?: Boolean, slackChannelName?: String, templateId?: UUID, useDefaultTemplate?: Boolean, id?: UUID, frequencyResolution?: FrequencyResolutionType, updateReminderFrequency?: Float, updateReminderFrequencyInWeeks?: Float, updateRemindersDay?: Day, updateRemindersHour?: Float, view?: ResultView)",
+      "signature": "save_project(project?: ProjectReference, name?: String, teams?: [TeamReference!], description?: String, content?: String, icon?: String, color?: Color, priority?: Priority, startDate?: Date, targetDate?: NullableDate, status?: ProjectStatusReference, lead?: UserReference, labels?: [LabelReference!], view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "save_project",
@@ -15973,33 +15399,10 @@
         "color",
         "priority",
         "startDate",
-        "startDateResolution",
         "targetDate",
-        "targetDateResolution",
         "status",
         "lead",
-        "leadTeam",
-        "members",
         "labels",
-        "convertedFromIssue",
-        "lastAppliedTemplateId",
-        "sortOrder",
-        "prioritySortOrder",
-        "canceledAt",
-        "completedAt",
-        "projectUpdateRemindersPausedUntilAt",
-        "slackIssueComments",
-        "slackIssueStatuses",
-        "slackNewIssue",
-        "slackChannelName",
-        "templateId",
-        "useDefaultTemplate",
-        "id",
-        "frequencyResolution",
-        "updateReminderFrequency",
-        "updateReminderFrequencyInWeeks",
-        "updateRemindersDay",
-        "updateRemindersHour",
         "view"
       ]
     },
@@ -16500,18 +15903,8 @@
           "required": false
         },
         {
-          "name": "startDateResolution",
-          "type": "DateResolutionType",
-          "required": false
-        },
-        {
           "name": "targetDate",
           "type": "NullableDate",
-          "required": false
-        },
-        {
-          "name": "targetDateResolution",
-          "type": "DateResolutionType",
           "required": false
         },
         {
@@ -16525,6 +15918,28 @@
           "required": false
         },
         {
+          "name": "labels",
+          "type": "[LabelReference!]",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
+        }
+      ],
+      "advancedFields": [
+        {
+          "name": "startDateResolution",
+          "type": "DateResolutionType",
+          "required": false
+        },
+        {
+          "name": "targetDateResolution",
+          "type": "DateResolutionType",
+          "required": false
+        },
+        {
           "name": "leadTeam",
           "type": "TeamReference",
           "required": false
@@ -16532,11 +15947,6 @@
         {
           "name": "members",
           "type": "[UserReference!]",
-          "required": false
-        },
-        {
-          "name": "labels",
-          "type": "[LabelReference!]",
           "required": false
         },
         {
@@ -16632,11 +16042,6 @@
         {
           "name": "updateRemindersHour",
           "type": "Float",
-          "required": false
-        },
-        {
-          "name": "view",
-          "type": "ResultView",
           "required": false
         }
       ],
@@ -16834,6 +16239,13 @@
           ]
         }
       ],
+      "strictRawArguments": true,
+      "example": {
+        "name": "Platform",
+        "teams": [
+          "team-id"
+        ]
+      },
       "variants": [
         {
           "fields": [
@@ -17097,14 +16509,7 @@
             }
           ]
         }
-      ],
-      "strictRawArguments": true,
-      "example": {
-        "name": "Platform",
-        "teams": [
-          "team-id"
-        ]
-      }
+      ]
     },
     "result": {
       "category": "singular",
@@ -17126,33 +16531,10 @@
         "color",
         "priority",
         "startDate",
-        "startDateResolution",
         "targetDate",
-        "targetDateResolution",
         "status",
         "lead",
-        "leadTeam",
-        "members",
         "labels",
-        "convertedFromIssue",
-        "lastAppliedTemplateId",
-        "sortOrder",
-        "prioritySortOrder",
-        "canceledAt",
-        "completedAt",
-        "projectUpdateRemindersPausedUntilAt",
-        "slackIssueComments",
-        "slackIssueStatuses",
-        "slackNewIssue",
-        "slackChannelName",
-        "templateId",
-        "useDefaultTemplate",
-        "id",
-        "frequencyResolution",
-        "updateReminderFrequency",
-        "updateReminderFrequencyInWeeks",
-        "updateRemindersDay",
-        "updateRemindersHour",
         "view"
       ],
       "action": "save",

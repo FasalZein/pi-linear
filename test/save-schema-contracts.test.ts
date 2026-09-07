@@ -52,9 +52,9 @@ const SAVE_CASES = [
     tool: 'linear_save_initiative',
     create: { name: 'Platform' },
     update: { initiative: 'Platform', description: 'New scope' },
-    updateOnly: { initiative: 'Platform', frequencyResolution: 'weekly' },
-    createOnly: { initiative: 'Platform', id: UUID },
-    invalidCreate: { name: 'Platform', frequencyResolution: 'weekly' },
+    updateOnly: { initiative: 'Platform', advanced: { frequencyResolution: 'weekly' } },
+    createOnly: { initiative: 'Platform', advanced: { id: UUID } },
+    invalidCreate: { name: 'Platform', advanced: { frequencyResolution: 'weekly' } },
     missingCreate: {},
   },
   {
@@ -70,9 +70,9 @@ const SAVE_CASES = [
     tool: 'linear_save_project',
     create: { name: 'Roadmap', teams: [UUID] },
     update: { project: 'Roadmap', description: 'New scope' },
-    updateOnly: { project: 'Roadmap', completedAt: null },
-    createOnly: { project: 'Roadmap', templateId: UUID },
-    invalidCreate: { name: 'Roadmap', teams: [UUID], completedAt: null },
+    updateOnly: { project: 'Roadmap', advanced: { completedAt: null } },
+    createOnly: { project: 'Roadmap', advanced: { templateId: UUID } },
+    invalidCreate: { name: 'Roadmap', teams: [UUID], advanced: { completedAt: null } },
     missingCreate: { name: 'Roadmap' },
   },
 ] as const;
@@ -141,9 +141,9 @@ describe('closed create and update save schemas', () => {
 
   it('publishes the dated live field union on one closed root object', () => {
     const expected = {
-      linear_save_initiative: ['initiative', 'name', 'description', 'content', 'icon', 'color', 'status', 'targetDate', 'targetDateResolution', 'owner', 'leadTeam', 'sortOrder', 'prioritySortOrder', 'priority', 'labels', 'id', 'customIdentifier', 'frequencyResolution', 'updateReminderFrequency', 'updateReminderFrequencyInWeeks', 'updateRemindersDay', 'updateRemindersHour'],
-      linear_save_milestone: ['milestone', 'name', 'project', 'description', 'descriptionData', 'targetDate', 'sortOrder', 'id'],
-      linear_save_project: ['project', 'name', 'teams', 'description', 'content', 'icon', 'color', 'priority', 'startDate', 'startDateResolution', 'targetDate', 'targetDateResolution', 'status', 'lead', 'leadTeam', 'members', 'labels', 'convertedFromIssue', 'lastAppliedTemplateId', 'sortOrder', 'prioritySortOrder', 'canceledAt', 'completedAt', 'projectUpdateRemindersPausedUntilAt', 'slackIssueComments', 'slackIssueStatuses', 'slackNewIssue', 'slackChannelName', 'templateId', 'useDefaultTemplate', 'id', 'frequencyResolution', 'updateReminderFrequency', 'updateReminderFrequencyInWeeks', 'updateRemindersDay', 'updateRemindersHour'],
+      linear_save_initiative: ['initiative', 'name', 'description', 'content', 'icon', 'color', 'status', 'targetDate', 'owner', 'priority', 'labels', 'view', 'advanced'],
+      linear_save_milestone: ['milestone', 'name', 'project', 'description', 'descriptionData', 'targetDate', 'sortOrder', 'id', 'view'],
+      linear_save_project: ['project', 'name', 'teams', 'description', 'content', 'icon', 'color', 'priority', 'startDate', 'targetDate', 'status', 'lead', 'labels', 'view', 'advanced'],
     };
 
     for (const [toolName, fields] of Object.entries(expected)) {
@@ -165,8 +165,9 @@ describe('closed create and update save schemas', () => {
       linear_save_project: { create: ['name', 'teams'], identity: 'project', createForbidden: ['project', 'canceledAt', 'completedAt', 'projectUpdateRemindersPausedUntilAt', 'slackIssueComments', 'slackIssueStatuses', 'slackNewIssue', 'frequencyResolution', 'updateReminderFrequency', 'updateReminderFrequencyInWeeks', 'updateRemindersDay', 'updateRemindersHour'], updateForbidden: ['slackChannelName', 'templateId', 'useDefaultTemplate', 'id'] },
     } as const;
     for (const [toolName, rule] of Object.entries(expected)) {
-      const [create, update] = canonicalOperation(operations[toolName.slice('linear_'.length)]!).variants!;
-      const published = Object.keys(schema(toolName).properties);
+      const contract = canonicalOperation(operations[toolName.slice('linear_'.length)]!);
+      const [create, update] = contract.variants!;
+      const published = [...Object.keys(contract.fields), ...Object.keys(contract.advanced ?? {})];
 
       // The partition itself, read from the contract the gate enforces.
       expect(create.branches[0]).toEqual(rule.create);
@@ -177,12 +178,14 @@ describe('closed create and update save schemas', () => {
 
       // And the gate refuses each forbidden field, naming it. The identity is excluded:
       // supplying it is what selects update mode, so it is a mode switch, not a violation.
+      const withField = (base: CompatibilityObject, field: string, value: string): CompatibilityObject =>
+        field in (contract.advanced ?? {}) ? { ...base, advanced: { [field]: value } } : { ...base, [field]: value };
       for (const field of rule.createForbidden.filter((name) => name !== rule.identity)) {
-        const args = Object.fromEntries([...rule.create, field].map((name) => [name, 'x']));
-        expect(() => strictGate(toolName, args), `${toolName} create must refuse ${field}`).toThrow(field);
+        const base = Object.fromEntries(rule.create.map((name) => [name, 'x']));
+        expect(() => strictGate(toolName, withField(base, field, 'x')), `${toolName} create must refuse ${field}`).toThrow(field);
       }
       for (const field of rule.updateForbidden) {
-        expect(() => strictGate(toolName, { [rule.identity]: 'x', [field]: 'x' }), `${toolName} update must refuse ${field}`).toThrow(field);
+        expect(() => strictGate(toolName, withField({ [rule.identity]: 'x' }, field, 'x')), `${toolName} update must refuse ${field}`).toThrow(field);
       }
 
       // The published schema carries the required half only.
@@ -201,12 +204,12 @@ describe('mode-specific field ownership', () => {
 
   it('publishes exact dated document and label fields without unsupported extras', () => {
     const expected = {
-      linear_create_document: ['title', 'content', 'icon', 'color', 'issue', 'team', 'project', 'initiative', 'cycle', 'releaseId', 'resourceFolderId', 'lastAppliedTemplateId', 'owner', 'subscribers', 'sortOrder', 'id'],
-      linear_update_document: ['document', 'title', 'content', 'icon', 'color', 'issue', 'team', 'project', 'initiative', 'cycle', 'releaseId', 'resourceFolderId', 'lastAppliedTemplateId', 'owner', 'subscribers', 'sortOrder', 'hiddenAt'],
-      linear_create_issue_label: ['name', 'team', 'description', 'color', 'isGroup', 'parentId', 'retiredAt', 'replaceTeamLabels', 'id'],
-      linear_update_issue_label: ['label', 'name', 'description', 'color', 'isGroup', 'parentId', 'retiredAt', 'replaceTeamLabels'],
-      linear_create_project_label: ['name', 'description', 'color', 'isGroup', 'parentId', 'retiredAt'],
-      linear_update_project_label: ['label', 'name', 'description', 'color', 'isGroup', 'parentId', 'retiredAt'],
+      linear_create_document: ['title', 'content', 'icon', 'color', 'issue', 'team', 'project', 'initiative', 'cycle', 'releaseId', 'resourceFolderId', 'lastAppliedTemplateId', 'owner', 'subscribers', 'sortOrder', 'id', 'view'],
+      linear_update_document: ['document', 'title', 'content', 'icon', 'color', 'issue', 'team', 'project', 'initiative', 'cycle', 'releaseId', 'resourceFolderId', 'lastAppliedTemplateId', 'owner', 'subscribers', 'sortOrder', 'hiddenAt', 'view'],
+      linear_create_issue_label: ['name', 'team', 'description', 'color', 'isGroup', 'parentId', 'retiredAt', 'replaceTeamLabels', 'id', 'view'],
+      linear_update_issue_label: ['label', 'name', 'description', 'color', 'isGroup', 'parentId', 'retiredAt', 'replaceTeamLabels', 'view'],
+      linear_create_project_label: ['name', 'description', 'color', 'isGroup', 'parentId', 'retiredAt', 'view'],
+      linear_update_project_label: ['label', 'name', 'description', 'color', 'isGroup', 'parentId', 'retiredAt', 'view'],
     };
     for (const [tool, fields] of Object.entries(expected)) {
       expect(Object.keys(schema(tool).properties)).toEqual(fields);
@@ -224,14 +227,15 @@ describe('mode-specific field ownership', () => {
   it('accepts dated live fields and rejects unsupported extras', () => {
     for (const field of ['leadTeam', 'prioritySortOrder', 'priority', 'labels']) {
       const value = field === 'priority' ? 2 : field === 'prioritySortOrder' ? 1.5 : field === 'labels' ? [UUID] : UUID;
-      expect(accepts('linear_save_initiative', { name: 'Initiative', [field]: value })).toBe(true);
-      expect(accepts('linear_save_initiative', { initiative: 'Initiative', [field]: value })).toBe(true);
+      const fieldArgs = ['priority', 'labels'].includes(field) ? { [field]: value } : { advanced: { [field]: value } };
+      expect(accepts('linear_save_initiative', { name: 'Initiative', ...fieldArgs })).toBe(true);
+      expect(accepts('linear_save_initiative', { initiative: 'Initiative', ...fieldArgs })).toBe(true);
     }
-    expect(accepts('linear_save_initiative', { initiative: 'Initiative', customIdentifier: 'PLAT' })).toBe(true);
+    expect(accepts('linear_save_initiative', { initiative: 'Initiative', advanced: { customIdentifier: 'PLAT' } })).toBe(true);
     // Create mode forbids customIdentifier; the gate owns that rule now, not the schema.
-    expect(strictAccepts('linear_save_initiative', { name: 'Initiative', customIdentifier: 'PLAT' })).toBe(false);
-    expect(accepts('linear_save_project', { name: 'Project', teams: [UUID], leadTeam: UUID })).toBe(true);
-    expect(accepts('linear_save_project', { project: 'Project', leadTeam: UUID })).toBe(true);
+    expect(strictAccepts('linear_save_initiative', { name: 'Initiative', advanced: { customIdentifier: 'PLAT' } })).toBe(false);
+    expect(accepts('linear_save_project', { name: 'Project', teams: [UUID], advanced: { leadTeam: UUID } })).toBe(true);
+    expect(accepts('linear_save_project', { project: 'Project', advanced: { leadTeam: UUID } })).toBe(true);
     expect(accepts('linear_create_document', { title: 'Plan', owner: UUID })).toBe(true);
     expect(accepts('linear_update_document', { document: 'Plan', owner: UUID })).toBe(true);
     expect(accepts('linear_save_initiative', { name: 'Initiative', health: 'onTrack' })).toBe(false);

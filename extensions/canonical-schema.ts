@@ -4,7 +4,10 @@ export type CanonicalVariant = {
 };
 
 export type CanonicalOperation = {
+  /** Common fields published directly in the typed tool schema. */
   fields: Readonly<Record<string, string>>;
+  /** Rare fields accepted only inside the typed tool's advanced object. */
+  advanced?: Readonly<Record<string, string>>;
   branches: readonly (readonly string[])[];
   /** Require exactly one branch, rather than at least one branch. */
   exclusiveBranches?: true;

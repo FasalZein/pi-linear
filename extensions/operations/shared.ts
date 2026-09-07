@@ -325,6 +325,8 @@ type ParameterFieldDecision = {
 	name: string;
 	/** Canonical fields follow declaration order. */
 	canonical?: string;
+	/** Rare canonical fields stay available only through the closed advanced tail. */
+	tier?: "advanced";
 	canonicalBranches?: readonly number[];
 	compatibilityRequirements?: readonly CompatibilityRequirementRole[];
 	card?: ParameterCardRole;
@@ -479,8 +481,10 @@ export function operationParameterDecision(
 	decision: OperationParameterDecision,
 ): ProjectedParameterDecision {
 	const canonicalFields: Record<string, string> = {};
+	const advancedFields: Record<string, string> = {};
 	for (const field of decision.fields) {
-		if (field.canonical) canonicalFields[field.name] = field.canonical;
+		if (!field.canonical) continue;
+		(field.tier === "advanced" ? advancedFields : canonicalFields)[field.name] = field.canonical;
 	}
 	const acceptedParameters = orderedParameters(decision.fields, "accepted");
 	const legacyByBranch = groupedParameters(decision.fields, "legacy");
@@ -492,6 +496,7 @@ export function operationParameterDecision(
 		fields: canonicalFields,
 		branches: canonicalBranches(decision.fields, decision.requirements.canonicalBranches),
 	};
+	if (Object.keys(advancedFields).length) canonical.advanced = advancedFields;
 	if (decision.requirements.exclusiveCanonical) canonical.exclusiveBranches = true;
 	const projected: ProjectedParameterDecision = {
 		canonical,
@@ -705,6 +710,7 @@ type TypedSaveParameterField = {
 	name: string;
 	type: string;
 	canonicalOrder: number;
+	tier?: "advanced";
 	mode: SaveParameterMode;
 	requiredOnCreate?: true;
 	compatibilityCard?: true;
@@ -771,7 +777,10 @@ function saveParameterProjections(
 	const updateFields = typed.filter((field) => field.kind === "identity" || field.mode !== "create");
 	const updateContent = updateFields.filter((field) => field.kind === "typed");
 	const fields: Record<string, string> = {};
-	for (const field of typed) fields[field.name] = field.type;
+	const advanced: Record<string, string> = {};
+	for (const field of typed) {
+		(field.kind === "typed" && field.tier === "advanced" ? advanced : fields)[field.name] = field.type;
+	}
 	const createBranch = createRequired.map(({ name }) => name);
 	const updateBranches = updateContent.map(({ name }) => [identity, name]);
 	const pathVariants = (
@@ -793,15 +802,17 @@ function saveParameterProjections(
 		branch.mode = "create";
 		return branch;
 	};
+	const canonical: CanonicalOperation = {
+		fields,
+		branches: [createBranch, ...updateBranches],
+		variants: [
+			{ fields: createFields.map(({ name }) => name), branches: [createBranch] },
+			{ fields: updateFields.map(({ name }) => name), branches: updateBranches },
+		],
+	};
+	if (Object.keys(advanced).length) canonical.advanced = advanced;
 	return {
-		canonical: {
-			fields,
-			branches: [createBranch, ...updateBranches],
-			variants: [
-				{ fields: createFields.map(({ name }) => name), branches: [createBranch] },
-				{ fields: updateFields.map(({ name }) => name), branches: updateBranches },
-			],
-		},
+		canonical,
 		compatibilityBranches: [
 			compatibilityCreateBranch([primaryCreateField.name]),
 			compatibilityCreateBranch([`input.${primaryCreateField.name}`]),

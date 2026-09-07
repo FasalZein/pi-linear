@@ -1,12 +1,16 @@
 import { formatInvocation, parameterVariants, type LinearOperation } from './operations';
 import type { CompatibilityObject } from './operation-types';
+import { canonicalOperation } from './canonical';
+import { flattenAdvancedArguments } from './advanced-arguments';
+import { normalizeReferenceArguments } from './operations/reference-language';
 
 function validParameterSummary(
   operation: LinearOperation,
   display: 'canonical-fields' | 'parameter-card',
 ): string {
   if (display === 'canonical-fields') {
-    return `canonical fields ${Object.keys(operation.canonical.fields).join(', ')}`;
+    const canonical = canonicalOperation(operation);
+    return `canonical fields ${[...Object.keys(canonical.fields), ...(Object.keys(canonical.advanced ?? {}).length ? ['advanced'] : [])].join(', ')}`;
   }
   return operation.parameters.map(({ name, type, required }) =>
     `${name}: ${type}${required ? ' (required)' : ' (optional)'}`,
@@ -20,17 +24,21 @@ export function validateOperationVariables(
   variables: CompatibilityObject,
   display: 'canonical-fields' | 'parameter-card',
 ): void {
+  const effectiveVariables = normalizeReferenceArguments(
+    operation.name,
+    flattenAdvancedArguments(operation.name, canonicalOperation(operation), variables),
+  );
   const variants = parameterVariants(operation, requestedName);
   const valid = new Set(variants.flatMap((variant) => variant.map(({ name }) => name)));
   const accepted = variants.some((variant) => {
     const variantKeys = new Set(variant.map(({ name }) => name));
-    return variant.every(({ name, required }) => !required || name in variables)
-      && Object.keys(variables).every((name) => variantKeys.has(name));
+    return variant.every(({ name, required }) => !required || name in effectiveVariables)
+      && Object.keys(effectiveVariables).every((name) => variantKeys.has(name));
   });
   const validParameters = validParameterSummary(operation, display);
   if (accepted) {
     try {
-      operation.validateVariables?.(variables);
+      operation.validateVariables?.(effectiveVariables);
       return;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -41,11 +49,11 @@ export function validateOperationVariables(
   }
 
   const missing = operation.parameters
-    .filter(({ name, required }) => required && !(name in variables))
+    .filter(({ name, required }) => required && !(name in effectiveVariables))
     .map(({ name }) => name);
-  const unknown = Object.keys(variables).filter((name) => !valid.has(name));
+  const unknown = Object.keys(effectiveVariables).filter((name) => !valid.has(name));
   const problems = [
-    ...(operation.requiresVariables && !Object.keys(variables).length ? ['at least one parameter is required'] : []),
+    ...(operation.requiresVariables && !Object.keys(effectiveVariables).length ? ['at least one parameter is required'] : []),
     ...(missing.length ? [`missing ${missing.join(', ')}`] : []),
     ...(unknown.length ? [`unknown ${unknown.join(', ')}`] : []),
   ].join('; ') || 'parameters do not match one accepted shape';

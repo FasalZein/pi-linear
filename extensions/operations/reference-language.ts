@@ -147,14 +147,19 @@ function contractVariants(
 /** AEO-825 contract projection: each reference concept publishes one typed spelling. */
 export function referenceContract(name: string, canonical: CanonicalOperation): CanonicalOperation {
   const renames = operationReferenceRenames(name);
-  const fields = Object.fromEntries(Object.entries(canonical.fields).map(([field, type]) => {
-    const rename = renames[field];
-    return rename ? [rename.name, rename.type] : [field, type];
-  }));
+  const projectFields = (fields: Readonly<Record<string, string>>) => Object.fromEntries(
+    Object.entries(fields).map(([field, type]) => {
+      const rename = renames[field];
+      return rename ? [rename.name, rename.type] : [field, type];
+    }),
+  );
+  const fields = projectFields(canonical.fields);
+  const advanced = projectFields(canonical.advanced ?? {});
   const projected: CanonicalOperation = {
     fields,
     branches: canonical.branches.map((branch) => branch.map((field) => canonicalName(field, renames))),
   };
+  if (Object.keys(advanced).length) projected.advanced = advanced;
   if (canonical.exclusiveBranches) projected.exclusiveBranches = true;
   const variants = contractVariants(canonical.variants, renames);
   if (variants) projected.variants = variants;
@@ -202,7 +207,8 @@ export function canonicalReferenceFields(
     projected.set(projectedField.name, projectedField);
   }
   for (const [oldName, rename] of Object.entries(renames)) {
-    if (!(oldName in canonical.fields) || projected.has(rename.name)) continue;
+    if (!(oldName in canonical.fields) && !(oldName in (canonical.advanced ?? {}))) continue;
+    if (projected.has(rename.name)) continue;
     const type = authoredReferenceType(rename.type);
     if (type) projected.set(rename.name, { name: rename.name, type });
   }

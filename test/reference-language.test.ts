@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { typedLinearTools } from '../extensions/typed-tools';
+import { canonicalOperation } from '../extensions/canonical';
+import { operations } from '../extensions/operations';
 import { executeTyped } from './helpers/typed-execution';
 import { isolateLinearCredentials } from './helpers/credentials';
 import type { CompatibilityObject } from '../extensions/operation-types';
@@ -30,9 +32,9 @@ const CONTRACTED_REFERENCE_FIELDS = {
   save_initiative: { initiativeId: 'initiative', labelIds: 'labels', leadTeamId: 'leadTeam', ownerId: 'owner' },
 } as const;
 
-function schemaFields(operation: string): string[] {
-  const tool = typedLinearTools().find(({ name }) => name === `linear_${operation}`) as any;
-  return Object.keys(tool.parameters.properties);
+function canonicalFields(operation: string): string[] {
+  const contract = canonicalOperation(operations[operation]!);
+  return [...Object.keys(contract.fields), ...Object.keys(contract.advanced ?? {})];
 }
 
 function stubGraphql(responder: (query: string, variables: CompatibilityObject) => CompatibilityObject) {
@@ -53,9 +55,9 @@ afterEach(() => {
 });
 
 describe('AEO-825 contracted reference language', () => {
-  it('publishes each new reference word and removes its old spelling', () => {
+  it('keeps each new reference word in the common or advanced contract and removes its old spelling', () => {
     for (const [operation, renames] of Object.entries(CONTRACTED_REFERENCE_FIELDS)) {
-      const fields = schemaFields(operation);
+      const fields = canonicalFields(operation);
       for (const [oldName, newName] of Object.entries(renames)) {
         expect(fields, `${operation}.${newName}`).toContain(newName);
         expect(fields, `${operation}.${oldName}`).not.toContain(oldName);
@@ -115,7 +117,7 @@ describe('AEO-825 contracted reference language', () => {
       name: 'Lean references',
       teams: ['AEO'],
       lead: 'me',
-      members: ['sam@example.com'],
+      advanced: { members: ['sam@example.com'] },
       labels: ['Roadmap'],
       status: 'Started',
     });

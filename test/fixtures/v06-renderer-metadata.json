@@ -39,7 +39,8 @@
       "doNotSubscribeToIssue",
       "createOnSyncedSlackThread",
       "createdAt",
-      "id"
+      "id",
+      "view"
     ],
     "action": "create",
     "targetFields": [
@@ -60,7 +61,8 @@
       "body",
       "bodyData",
       "quotedText",
-      "skipEditedAt"
+      "skipEditedAt",
+      "view"
     ],
     "action": "update"
   },
@@ -102,7 +104,8 @@
       "filterData",
       "projectFilterData",
       "initiativeFilterData",
-      "feedItemFilterData"
+      "feedItemFilterData",
+      "view"
     ],
     "action": "create"
   },
@@ -118,7 +121,8 @@
       "filterData",
       "projectFilterData",
       "initiativeFilterData",
-      "feedItemFilterData"
+      "feedItemFilterData",
+      "view"
     ],
     "action": "update"
   },
@@ -126,7 +130,8 @@
     "entityKind": "view",
     "callFields": [
       "viewId",
-      "preferences"
+      "preferences",
+      "view"
     ],
     "action": "set"
   },
@@ -164,7 +169,8 @@
       "startsAt",
       "endsAt",
       "name",
-      "description"
+      "description",
+      "view"
     ],
     "action": "create",
     "targetFields": [
@@ -179,7 +185,8 @@
       "description",
       "startsAt",
       "endsAt",
-      "completedAt"
+      "completedAt",
+      "view"
     ],
     "action": "update"
   },
@@ -230,7 +237,8 @@
       "owner",
       "subscribers",
       "sortOrder",
-      "id"
+      "id",
+      "view"
     ],
     "action": "create"
   },
@@ -253,7 +261,8 @@
       "owner",
       "subscribers",
       "sortOrder",
-      "hiddenAt"
+      "hiddenAt",
+      "view"
     ],
     "action": "update",
     "targetFields": [
@@ -319,7 +328,8 @@
       "parentId",
       "retiredAt",
       "replaceTeamLabels",
-      "id"
+      "id",
+      "view"
     ],
     "action": "create"
   },
@@ -333,7 +343,8 @@
       "isGroup",
       "parentId",
       "retiredAt",
-      "replaceTeamLabels"
+      "replaceTeamLabels",
+      "view"
     ],
     "action": "update"
   },
@@ -360,7 +371,8 @@
     "callFields": [
       "issue",
       "relatedIssue",
-      "type"
+      "type",
+      "view"
     ],
     "action": "create",
     "targetFields": [
@@ -374,7 +386,8 @@
       "id",
       "type",
       "issue",
-      "relatedIssue"
+      "relatedIssue",
+      "view"
     ],
     "action": "update"
   },
@@ -384,7 +397,8 @@
       "relationId",
       "issue",
       "relatedIssue",
-      "type"
+      "type",
+      "view"
     ],
     "action": "delete",
     "targetFields": [
@@ -459,33 +473,13 @@
       "assignee",
       "dueDate",
       "description",
-      "descriptionData",
       "priority",
       "estimate",
       "project",
-      "milestone",
       "cycle",
       "labels",
       "subscribers",
-      "delegate",
-      "lastAppliedTemplateId",
-      "slaType",
-      "slaBreachesAt",
-      "slaStartedAt",
-      "sortOrder",
-      "subIssueSortOrder",
-      "prioritySortOrder",
-      "templateId",
-      "useDefaultTemplate",
-      "preserveSortOrderOnCreate",
-      "referenceCommentId",
-      "sourceCommentId",
-      "sourcePullRequestCommentId",
-      "createAsUser",
-      "displayIconUrl",
-      "completedAt",
-      "createdAt",
-      "id"
+      "view"
     ],
     "action": "create"
   },
@@ -502,25 +496,13 @@
       "addLabels",
       "removeLabels",
       "description",
-      "descriptionData",
       "priority",
       "estimate",
       "project",
-      "milestone",
       "cycle",
       "labels",
       "subscribers",
-      "delegate",
-      "lastAppliedTemplateId",
-      "slaType",
-      "slaBreachesAt",
-      "slaStartedAt",
-      "sortOrder",
-      "subIssueSortOrder",
-      "prioritySortOrder",
-      "autoClosedByParentClosing",
-      "snoozedBy",
-      "snoozedUntilAt"
+      "view"
     ],
     "action": "update"
   },
@@ -600,7 +582,8 @@
       "color",
       "isGroup",
       "parentId",
-      "retiredAt"
+      "retiredAt",
+      "view"
     ],
     "action": "create"
   },
@@ -613,7 +596,8 @@
       "color",
       "isGroup",
       "parentId",
-      "retiredAt"
+      "retiredAt",
+      "view"
     ],
     "action": "update"
   },
@@ -644,7 +628,8 @@
       "anchorType",
       "relatedAnchorType",
       "milestone",
-      "relatedMilestone"
+      "relatedMilestone",
+      "view"
     ],
     "action": "create"
   },
@@ -658,7 +643,8 @@
       "project",
       "relatedProject",
       "milestone",
-      "relatedMilestone"
+      "relatedMilestone",
+      "view"
     ],
     "action": "update"
   },
@@ -763,20 +749,10 @@
       "color",
       "status",
       "targetDate",
-      "targetDateResolution",
       "owner",
-      "leadTeam",
-      "sortOrder",
-      "prioritySortOrder",
       "priority",
       "labels",
-      "id",
-      "customIdentifier",
-      "frequencyResolution",
-      "updateReminderFrequency",
-      "updateReminderFrequencyInWeeks",
-      "updateRemindersDay",
-      "updateRemindersHour"
+      "view"
     ],
     "action": "save",
     "targetFields": [
@@ -794,7 +770,8 @@
       "descriptionData",
       "targetDate",
       "sortOrder",
-      "id"
+      "id",
+      "view"
     ],
     "action": "save",
     "targetFields": [
@@ -815,33 +792,11 @@
       "color",
       "priority",
       "startDate",
-      "startDateResolution",
       "targetDate",
-      "targetDateResolution",
       "status",
       "lead",
-      "leadTeam",
-      "members",
       "labels",
-      "convertedFromIssue",
-      "lastAppliedTemplateId",
-      "sortOrder",
-      "prioritySortOrder",
-      "canceledAt",
-      "completedAt",
-      "projectUpdateRemindersPausedUntilAt",
-      "slackIssueComments",
-      "slackIssueStatuses",
-      "slackNewIssue",
-      "slackChannelName",
-      "templateId",
-      "useDefaultTemplate",
-      "id",
-      "frequencyResolution",
-      "updateReminderFrequency",
-      "updateReminderFrequencyInWeeks",
-      "updateRemindersDay",
-      "updateRemindersHour"
+      "view"
     ],
     "action": "save",
     "targetFields": [
