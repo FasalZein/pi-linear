@@ -21,10 +21,8 @@ import { requireJsonObject, type JsonValue } from './json';
 import {
   BATCH_HELP_EXAMPLE,
   BATCH_PHASED_HELP_EXAMPLE,
-  formatInvocation,
   getOperation,
   getOperationDefinition,
-  parameterVariants,
   type LinearOperation,
 } from './operations';
 import type {
@@ -52,6 +50,7 @@ import {
 import { assertMutationAllowed, type MutationMode } from './safety';
 import { projection } from './selections';
 import { verifyOperationResult } from './operation-plan';
+import { validateOperationVariables } from './operation-validation';
 
 export const BATCH_PURPOSE = 'Batch independent reads with read-only operations, or use explicit phases for one ordinary mutation, grouped issue creates, or one guarded relation delete.';
 
@@ -79,47 +78,6 @@ function isAlias(key: string): boolean {
 
 function isPathNumber(value: string | number): value is number {
   return Object.prototype.toString.call(value) === '[object Number]';
-}
-
-function parameterList(operation: LinearOperation): string {
-  return operation.parameters.map(({ name, type, required }) =>
-    `${name}: ${type}${required ? ' (required)' : ' (optional)'}`,
-  ).join(', ');
-}
-
-function validateVariables(
-  operation: LinearOperation,
-  requestedName: string,
-  variables: CompatibilityObject,
-): void {
-  const variants = parameterVariants(operation, requestedName);
-  const valid = new Set(variants.flatMap((variant) => variant.map(({ name }) => name)));
-  const validVariant = variants.find((variant) => {
-    const variantKeys = new Set(variant.map(({ name }) => name));
-    return variant.every(({ name, required }) => !required || name in variables)
-      && Object.keys(variables).every((name) => variantKeys.has(name));
-  });
-  if (validVariant) {
-    try {
-      operation.validateVariables?.(variables);
-      return;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(
-        `Invalid parameters for "${operation.name}": ${message}. Valid parameters: ${parameterList(operation)}. Example: ${formatInvocation(operation.example)}.`,
-      );
-    }
-  }
-  const missing = operation.parameters.filter(({ name, required }) => required && !(name in variables)).map(({ name }) => name);
-  const unknown = Object.keys(variables).filter((name) => !valid.has(name));
-  const problems = [
-    ...(operation.requiresVariables && !Object.keys(variables).length ? ['at least one parameter is required'] : []),
-    ...(missing.length ? [`missing ${missing.join(', ')}`] : []),
-    ...(unknown.length ? [`unknown ${unknown.join(', ')}`] : []),
-  ].join('; ') || 'parameters do not match one accepted shape';
-  throw new Error(
-    `Invalid parameters for "${operation.name}": ${problems}. Valid parameters: ${parameterList(operation)}. Example: ${formatInvocation(operation.example)}.`,
-  );
 }
 
 type CompiledLookup = {
@@ -426,7 +384,7 @@ async function planEntry(
     throw new Error(`Batch entry "${entry.key}" must be a ${expectedKind} operation.`);
   }
   assertOperationAllowed(operation, entry.variables, mode);
-  validateVariables(operation, entry.operation, entry.variables);
+  validateOperationVariables(operation, entry.operation, entry.variables, 'parameter-card');
   const factory = definition.preparation.plan;
   if (!factory) throw new Error(`Batch entry "${entry.key}" is missing its pure operation plan.`);
   let plan: OperationPlan;
