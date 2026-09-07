@@ -1,0 +1,178 @@
+{
+  "create_comment": [
+    {
+      "root": "commentCreate",
+      "entityPath": "comment",
+      "bytes": 791
+    }
+  ],
+  "update_comment": [
+    {
+      "root": "commentUpdate",
+      "entityPath": "comment",
+      "bytes": 791
+    }
+  ],
+  "create_view": [
+    {
+      "root": "customViewCreate",
+      "entityPath": "customView",
+      "bytes": 731
+    }
+  ],
+  "update_view": [
+    {
+      "root": "customViewUpdate",
+      "entityPath": "customView",
+      "bytes": 731
+    }
+  ],
+  "set_view_preferences": [
+    {
+      "root": "viewPreferencesCreate",
+      "entityPath": "viewPreferences",
+      "bytes": 577
+    }
+  ],
+  "create_cycle": [
+    {
+      "root": "cycleCreate",
+      "entityPath": "cycle",
+      "bytes": 643
+    }
+  ],
+  "update_cycle": [
+    {
+      "root": "cycleUpdate",
+      "entityPath": "cycle",
+      "bytes": 643
+    }
+  ],
+  "create_document": [
+    {
+      "root": "documentCreate",
+      "entityPath": "document",
+      "bytes": 956
+    }
+  ],
+  "update_document": [
+    {
+      "root": "documentUpdate",
+      "entityPath": "document",
+      "bytes": 956
+    }
+  ],
+  "create_issue_label": [
+    {
+      "root": "issueLabelCreate",
+      "entityPath": "issueLabel",
+      "bytes": 753
+    }
+  ],
+  "update_issue_label": [
+    {
+      "root": "issueLabelUpdate",
+      "entityPath": "issueLabel",
+      "bytes": 753
+    }
+  ],
+  "create_issue_relation": [
+    {
+      "root": "issueRelationCreate",
+      "entityPath": "issueRelation",
+      "bytes": 852
+    }
+  ],
+  "update_issue_relation": [
+    {
+      "root": "issueRelationUpdate",
+      "entityPath": "issueRelation",
+      "bytes": 852
+    }
+  ],
+  "delete_issue_relation": [
+    {
+      "root": "issueRelationDelete",
+      "entityPath": null,
+      "bytes": 395
+    }
+  ],
+  "create_issue": [
+    {
+      "root": "issueCreate",
+      "entityPath": "issue",
+      "bytes": 953
+    }
+  ],
+  "update_issue": [
+    {
+      "root": "issueUpdate",
+      "entityPath": "issue",
+      "bytes": 953
+    }
+  ],
+  "create_project_label": [
+    {
+      "root": "projectLabelCreate",
+      "entityPath": "projectLabel",
+      "bytes": 671
+    }
+  ],
+  "update_project_label": [
+    {
+      "root": "projectLabelUpdate",
+      "entityPath": "projectLabel",
+      "bytes": 671
+    }
+  ],
+  "create_project_relation": [
+    {
+      "root": "projectRelationCreate",
+      "entityPath": "projectRelation",
+      "bytes": 1013
+    }
+  ],
+  "update_project_relation": [
+    {
+      "root": "projectRelationUpdate",
+      "entityPath": "projectRelation",
+      "bytes": 1013
+    }
+  ],
+  "save_initiative": [
+    {
+      "root": "initiativeCreate",
+      "entityPath": "initiative",
+      "bytes": 645
+    },
+    {
+      "root": "initiativeUpdate",
+      "entityPath": "initiative",
+      "bytes": 645
+    }
+  ],
+  "save_milestone": [
+    {
+      "root": "projectMilestoneCreate",
+      "entityPath": "projectMilestone",
+      "bytes": 665
+    },
+    {
+      "root": "projectMilestoneUpdate",
+      "entityPath": "projectMilestone",
+      "bytes": 665
+    }
+  ],
+  "save_project": [
+    {
+      "root": "projectCreate",
+      "entityPath": "project",
+      "bytes": 561
+    },
+    {
+      "root": "projectUpdate",
+      "entityPath": "project",
+      "bytes": 561
+    }
+  ]
+}

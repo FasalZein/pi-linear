@@ -64,7 +64,6 @@ export const initiativeReads: readonly OperationDefinition[] = ([
 			variables: { initiative: "Platform" },
 		},
 		document: getDocument("GetInitiative", "initiative", projection("initiative", "detail")),
-		resolverPaths: { initiative: "resolveNamedEntityReference" },
 		plan(v) {
 			const requested = String(v.initiative ?? v.initiativeId);
 			return {
@@ -119,7 +118,6 @@ addSaveOperation({
 	updateRoot: "initiativeUpdate",
 	createType: "InitiativeCreateInput",
 	updateType: "InitiativeUpdateInput",
-	resolverPaths: { initiativeId: "resolveNamedEntityReference" },
 	example: { name: "Platform" },
 }),
 ];

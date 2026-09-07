@@ -439,7 +439,7 @@ describe('model-facing budget warnings', () => {
     ]);
   });
 
-  it('preserves successful read telemetry when the batch mutation transport throws', async () => {
+  it('preserves successful read telemetry when a batch mutation transport failure is attributed', async () => {
     process.env.LINEAR_API_KEY = 'test-key';
     const issue = { id: '11111111-1111-4111-8111-111111111111', identifier: 'AEO-370', title: 'Telemetry' };
     const fetch = vi.fn()
@@ -449,17 +449,23 @@ describe('model-facing budget warnings', () => {
       .mockRejectedValueOnce(new Error('mutation transport failed'));
     vi.stubGlobal('fetch', fetch);
 
-    const error = await executeBatchLegacy({
+    const result = await executeBatchLegacy({
       operation: 'batch',
+      telemetry: 'always',
       variables: {
         reads: [{ key: 'read', operation: 'get_issue', variables: { issue: issue.id } }],
         mutations: [{ key: 'change', operation: 'update_issue', variables: { issue: issue.id, title: 'Updated' } }],
       },
-    }, undefined, undefined, { hasUI: false }).catch((cause: unknown) => cause);
+    }, undefined, undefined, { hasUI: false });
 
-    expect(linearErrorTelemetry(error)).toEqual([
-      { phase: 'read', attempt: 1, headers: { 'X-RateLimit-Endpoint-Name': 'batch-read' } },
-    ]);
+    expect(result.details).toMatchObject({
+      data: { read: { issue } },
+      errors: [{ key: 'change', path: ['change'], message: expect.stringMatching(/outcome is unknown/i) }],
+      meta: {
+        requests: { read: 1, mutation: 1 },
+        rateLimit: { responses: [{ phase: 'read', attempt: 1, 'X-RateLimit-Endpoint-Name': 'batch-read' }] },
+      },
+    });
   });
 
   it('preserves read and mutation response telemetry when a mutation GraphQL error is classified', async () => {

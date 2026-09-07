@@ -63,7 +63,6 @@ export const issueLabels: readonly OperationDefinition[] = ([
 		purpose: "List issue labels.",
 		pageSize: 50,
 		filterType: "IssueLabelFilter",
-						resolverPaths: { team: "resolveTeamReference" },
 		plan: (v) => {
 			const ref = v.team ?? v.teamKey ?? v.teamId;
 			return {
@@ -118,7 +117,6 @@ export const issueLabels: readonly OperationDefinition[] = ([
 				throw new Error("canonical fields or nested input require name");
 			}
 		},
-		resolverPaths: { team: "resolveTeamReference" },
 		plan(v) {
 			const rawInput = object(v.input);
 			const replaceTeamLabels = v.replaceTeamLabels ?? rawInput?.replaceTeamLabels;

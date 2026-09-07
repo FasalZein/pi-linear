@@ -1,6 +1,11 @@
 import { Kind, parse, type SelectionSetNode } from 'graphql';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { operationDocuments, operations } from '../extensions/operations';
+import {
+  operationDefinitions,
+  operationDocuments,
+  operations,
+  parameterVariants,
+} from '../extensions/operations';
 import { executeOperation, validateMutationResult } from '../extensions/runtime';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
@@ -53,6 +58,30 @@ function selectsPath(selectionSet: SelectionSetNode, path: readonly string[]): b
 }
 
 describe('mutation document result contracts', () => {
+  it('publishes an optional view control on every mutation without making it mutation content', () => {
+    for (const definition of operationDefinitions.filter(({ safety }) => safety.mutation)) {
+      expect(definition.canonical.fields.find(({ name }) => name === 'view')).toEqual({
+        name: 'view',
+        type: 'ResultView',
+        required: false,
+      });
+      expect(definition.compatibility.fields.find(({ name }) => name === 'view')).toEqual({
+        name: 'view',
+        type: 'ResultView',
+        required: false,
+      });
+      expect(definition.canonical.branches.every(({ all }) => !all.includes('view'))).toBe(true);
+      expect(definition.compatibility.branches.every(({ all }) => !all.includes('view'))).toBe(true);
+      expect(definition.canonical.variants?.every(({ fields, branches }) =>
+        fields.includes('view') && branches.every(({ all }) => !all.includes('view'))) ?? true).toBe(true);
+      const operation = operations[definition.name]!;
+      for (const requestedName of [definition.name, ...operation.aliases]) {
+        expect(parameterVariants(operation, requestedName).every((card) =>
+          card.some(({ name }) => name === 'view'))).toBe(true);
+      }
+    }
+  });
+
   it('co-locates one executable expectation with every current named mutation root', () => {
     const actual: Record<string, Record<string, string | null>> = {};
 
@@ -178,6 +207,22 @@ describe('mutation document result contracts', () => {
     for (const operation of Object.values(operations)) {
       expect(operationDocuments(operation)).toEqual(operation.variants?.map(({ document }) => document) ?? [operation.document]);
     }
+  });
+
+  it('does not let a save identity plus view satisfy the update change requirement', async () => {
+    delete process.env.LINEAR_API_KEY;
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const tool = typedLinearTools().find(({ name }) => name === 'linear_save_project')! as any;
+
+    await expect(tool.execute(
+      'call-1',
+      { projectId: '55555555-5555-4555-8555-555555555555', view: 'full' },
+      undefined,
+      undefined,
+      { hasUI: false },
+    )).rejects.toThrow('linear_save_project" in update mode requires projectId plus at least one field to change');
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
 

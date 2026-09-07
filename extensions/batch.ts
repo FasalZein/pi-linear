@@ -18,13 +18,12 @@ import {
   type LinearRateLimitSnapshot,
 } from './client';
 import { requireJsonObject, type JsonValue } from './json';
+import { mutationAcknowledgement } from './mutation-acknowledgement';
 import {
   BATCH_HELP_EXAMPLE,
   BATCH_PHASED_HELP_EXAMPLE,
-  formatInvocation,
   getOperation,
   getOperationDefinition,
-  parameterVariants,
   type LinearOperation,
 } from './operations';
 import type {
@@ -52,8 +51,9 @@ import {
 import { assertMutationAllowed, type MutationMode } from './safety';
 import { projection } from './selections';
 import { verifyOperationResult } from './operation-plan';
+import { validateOperationVariables } from './operation-validation';
 
-export const BATCH_PURPOSE = 'Batch independent reads with read-only operations, or use explicit phases for one ordinary mutation, grouped issue creates, or one guarded relation delete.';
+export const BATCH_PURPOSE = 'Batch independent reads, or run several ordinary mutations sequentially after all-entry preflight. Stop at the first failure; grouped issue creates stay transactional.';
 
 const ALIAS = /^[_A-Za-z][_0-9A-Za-z]*$/;
 const FORBIDDEN_OPERATIONS = new Set(['help', 'batch']);
@@ -79,47 +79,6 @@ function isAlias(key: string): boolean {
 
 function isPathNumber(value: string | number): value is number {
   return Object.prototype.toString.call(value) === '[object Number]';
-}
-
-function parameterList(operation: LinearOperation): string {
-  return operation.parameters.map(({ name, type, required }) =>
-    `${name}: ${type}${required ? ' (required)' : ' (optional)'}`,
-  ).join(', ');
-}
-
-function validateVariables(
-  operation: LinearOperation,
-  requestedName: string,
-  variables: CompatibilityObject,
-): void {
-  const variants = parameterVariants(operation, requestedName);
-  const valid = new Set(variants.flatMap((variant) => variant.map(({ name }) => name)));
-  const validVariant = variants.find((variant) => {
-    const variantKeys = new Set(variant.map(({ name }) => name));
-    return variant.every(({ name, required }) => !required || name in variables)
-      && Object.keys(variables).every((name) => variantKeys.has(name));
-  });
-  if (validVariant) {
-    try {
-      operation.validateVariables?.(variables);
-      return;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(
-        `Invalid parameters for "${operation.name}": ${message}. Valid parameters: ${parameterList(operation)}. Example: ${formatInvocation(operation.example)}.`,
-      );
-    }
-  }
-  const missing = operation.parameters.filter(({ name, required }) => required && !(name in variables)).map(({ name }) => name);
-  const unknown = Object.keys(variables).filter((name) => !valid.has(name));
-  const problems = [
-    ...(operation.requiresVariables && !Object.keys(variables).length ? ['at least one parameter is required'] : []),
-    ...(missing.length ? [`missing ${missing.join(', ')}`] : []),
-    ...(unknown.length ? [`unknown ${unknown.join(', ')}`] : []),
-  ].join('; ') || 'parameters do not match one accepted shape';
-  throw new Error(
-    `Invalid parameters for "${operation.name}": ${problems}. Valid parameters: ${parameterList(operation)}. Example: ${formatInvocation(operation.example)}.`,
-  );
 }
 
 type CompiledLookup = {
@@ -426,7 +385,7 @@ async function planEntry(
     throw new Error(`Batch entry "${entry.key}" must be a ${expectedKind} operation.`);
   }
   assertOperationAllowed(operation, entry.variables, mode);
-  validateVariables(operation, entry.operation, entry.variables);
+  validateOperationVariables(operation, entry.operation, entry.variables, 'parameter-card');
   const factory = definition.preparation.plan;
   if (!factory) throw new Error(`Batch entry "${entry.key}" is missing its pure operation plan.`);
   let plan: OperationPlan;
@@ -471,6 +430,13 @@ async function planEntry(
   };
 }
 
+function batchEntryResult(entry: PlannedEntry, mapped: JsonObject): JsonObject {
+  return entry.prepared?.acknowledgement
+    ?? (entry.variant && entry.prepared?.resultView !== 'full'
+      ? mutationAcknowledgement(entry.operationName, mapped, entry.variant)
+      : mapped);
+}
+
 function collectAlias(
   entry: PlannedEntry,
   raw: JsonObject,
@@ -506,8 +472,7 @@ function collectAlias(
     errors.push(failed);
     return;
   }
-  const acknowledgement = entry.prepared?.acknowledgement;
-  data[entry.key] = acknowledgement ?? mapped;
+  data[entry.key] = batchEntryResult(entry, mapped);
 }
 
 export type BatchError = {
@@ -543,12 +508,14 @@ async function executeStructuredGraphQLPhase(
   query: string,
   variables: CompatibilityObject,
   phase: 'read' | 'mutation',
+  retryRateLimit = true,
 ): Promise<StructuredGraphQLPhase> {
   try {
     return {
       raw: await linearGraphQLWithContext(network, query, variables, {
         throwResponseErrors: true,
         phase,
+        retryRateLimit,
       }),
       errors: [],
     };
@@ -665,7 +632,12 @@ function failTransaction(keys: readonly string[], message: string): BatchError[]
 }
 
 function collectTransactionalCreates(
-  plans: Array<{ key: string; uuid: string }>,
+  plans: Array<{
+    key: string;
+    uuid: string;
+    view?: 'summary' | 'full';
+    variant?: GraphQLDocumentVariant;
+  }>,
   raw: CompatibilityObject,
   pathErrors: ReturnType<typeof linearGraphQLErrors>,
   data: JsonObject,
@@ -748,10 +720,14 @@ function collectTransactionalCreates(
         key: plan.key,
         path: error.path,
         message: error.message,
-        partial: mapped,
+        partial: plan.view === 'full' || !plan.variant
+          ? mapped
+          : mutationAcknowledgement('create_issue', mapped, plan.variant),
       });
     } else {
-      data[plan.key] = mapped;
+      data[plan.key] = plan.view === 'full' || !plan.variant
+        ? mapped
+        : mutationAcknowledgement('create_issue', mapped, plan.variant);
     }
   }
 }
@@ -812,11 +788,8 @@ async function executeBatchWithTelemetry(
   const parsed = parseEntries(requireJsonObject(params.variables ?? {}, 'Batch variables'));
   const createFlags = parsed.mutations.map((entry) => isIssueCreateEntry(entry));
   const transactional = parsed.mutations.length > 1 && createFlags.every(Boolean);
-  if (parsed.mutations.length > 1 && !transactional) {
-    if (createFlags.some(Boolean)) {
-      throw new Error('Batch rejects transactional creates mixed with other mutations.');
-    }
-    throw new Error('Batch permits one ordinary named mutation.');
+  if (parsed.mutations.length > 1 && !transactional && createFlags.some(Boolean)) {
+    throw new Error('Batch rejects transactional creates mixed with other mutations.');
   }
 
   let reads: PlannedEntry[];
@@ -927,7 +900,13 @@ async function executeBatchWithTelemetry(
         throw new Error(`Batch entry "${entry.key}" is missing a prepared create input.`);
       }
       const uuid = randomUUID();
-      return { key: entry.key, uuid, input: { ...input, id: uuid } };
+      return {
+        key: entry.key,
+        uuid,
+        input: { ...input, id: uuid },
+        view: entry.prepared?.resultView,
+        variant: entry.variant,
+      };
     });
     assertMutationAllowed(ISSUE_BATCH_CREATE_DOCUMENT, mode, ['issueBatchCreate']);
     mutationRequests = 1;
@@ -961,12 +940,41 @@ async function executeBatchWithTelemetry(
     );
   }
 
-  if (mutations.length) {
-    const mutation = mutations[0]!;
-    const query = mergeDocuments(OperationTypeNode.MUTATION, 'BatchMutation', [parse(mutation.document)]);
+  const preparedMutations = mutations.map((mutation) => ({
+    mutation,
+    query: mergeDocuments(OperationTypeNode.MUTATION, 'BatchMutation', [parse(mutation.document)]),
+  }));
+  for (const { mutation, query } of preparedMutations) {
     assertMutationAllowed(query, mode, [mutation.root]);
-    mutationRequests = 1;
-    const phase = await executeStructuredGraphQLPhase(network, query, mutation.variables, 'mutation');
+  }
+
+  const skipped: string[] = [];
+  for (const [index, { mutation, query }] of preparedMutations.entries()) {
+    if (signal?.aborted) {
+      errors.push({
+        key: mutation.key,
+        path: [mutation.key],
+        message: 'Batch mutation phase was cancelled before this request was sent.',
+      });
+      skipped.push(...preparedMutations.slice(index + 1).map(({ mutation: later }) => later.key));
+      break;
+    }
+
+    mutationRequests += 1;
+    let phase: Awaited<ReturnType<typeof executeStructuredGraphQLPhase>>;
+    try {
+      phase = await executeStructuredGraphQLPhase(network, query, mutation.variables, 'mutation', false);
+    } catch (error) {
+      const detail = error instanceof Error ? ` ${error.message}` : '';
+      const message = signal?.aborted
+        ? `Batch mutation request was cancelled after it started. Its outcome is unknown because it may have reached Linear. Do not retry this mutation blindly.${detail}`
+        : `Batch mutation request failed after it started. Its outcome is unknown because it may have reached Linear. Do not retry this mutation blindly.${detail}`;
+      errors.push({ key: mutation.key, path: [mutation.key], message });
+      skipped.push(...preparedMutations.slice(index + 1).map(({ mutation: later }) => later.key));
+      break;
+    }
+
+    const beforeErrorCount = errors.length;
     if (phase.errors.length) {
       const owner: GraphQLFailureOwner = {
         entry: mutation,
@@ -974,10 +982,25 @@ async function executeBatchWithTelemetry(
         failureMessage: attributableFailureMessage(mutation),
       };
       const alias = phase.raw[mutation.key];
-      if (alias != null) owner.partial = { [mutation.root]: alias };
+      if (alias != null && !mutation.prepared?.acknowledgement) {
+        const partial = { [mutation.root]: alias };
+        try {
+          if (mutation.prepared) verifyOperationResult(mutation.prepared, partial);
+          if (mutation.variant?.mutationResult) {
+            validateMutationResult(mutation.operationName, partial, mutation.variant);
+          }
+          owner.partial = batchEntryResult(mutation, partial);
+        } catch {
+          owner.partial = partial;
+        }
+      }
       classifyStructuredGraphQLErrors(phase.errors, [owner], [owner], errors);
     } else {
       collectAlias(mutation, phase.raw, [], data, errors);
+    }
+    if (errors.length > beforeErrorCount) {
+      skipped.push(...preparedMutations.slice(index + 1).map(({ mutation: later }) => later.key));
+      break;
     }
   }
 
@@ -985,7 +1008,7 @@ async function executeBatchWithTelemetry(
     requestedKeys,
     data,
     errors,
-    [],
+    skipped,
     { read: readRequests, mutation: mutationRequests },
     aliasCount,
     params.sink,

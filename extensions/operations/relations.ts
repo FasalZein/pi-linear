@@ -122,10 +122,6 @@ export const issueRelations: readonly OperationDefinition[] = ([
 		selection: `issueRelation { ${projection("issueRelation", "detail")} }`,
 				example: { issue: "AEO-258", relatedIssue: "AEO-259", type: "related" },
 		aliases: ["create_relation"],
-						resolverPaths: {
-			issue: "resolveIssueReference",
-			relatedIssue: "resolveIssueReference",
-		},
 		plan(v) {
 			const a = issueReference(v);
 			const b = String(v.relatedIssue ?? v.relatedIssueId);
@@ -162,10 +158,6 @@ export const issueRelations: readonly OperationDefinition[] = ([
 		selection: `issueRelation { ${projection("issueRelation", "detail")} }`,
 						example: { id: "relation-id", type: "blocks" },
 		idKey: "id",
-		resolverPaths: {
-			issueId: "resolveIssueReference",
-			relatedIssueId: "resolveIssueReference",
-		},
 		plan(v) {
 			const input = mergedInput(v, ["id"]);
 			const issueRef = isCompatibilityString(input.issueId) ? input.issueId : undefined;

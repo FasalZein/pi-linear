@@ -1,7 +1,7 @@
 import { Kind, parse } from "graphql";
 import { describe, expect, it } from "vitest";
 import { resolveRequest } from "../extensions/api";
-import { BATCH_MUTATION_ROOTS, operationDocuments, operations } from "../extensions/operations";
+import { BATCH_MUTATION_ROOTS, operationDefinitions, operationDocuments, operations } from "../extensions/operations";
 import {
 	SAFE_NAMED_MUTATION_ROOTS,
 	getMutationFields,
@@ -181,16 +181,20 @@ describe("v0.4 operation inventory", () => {
 		}
 	});
 
-	it("declares preparation paths for every public human reference parameter", () => {
-		for (const operation of Object.values(operations)) {
-			for (const parameter of operation.parameters.filter(({ type }) =>
-				type.endsWith("Reference"),
-			)) {
-				expect(
-					operation.resolverPaths?.[parameter.name],
-					`${operation.name}.${parameter.name}`,
-				).toBeTruthy();
+	it("declares the exact resolver label for every authored reference field", () => {
+		const expectedLabel = (type: string): string => {
+			const base = type.replace(/^Nullable/, "").replace(/Reference$/, "");
+			if (["Issue", "Team", "State", "User"].includes(base)) {
+				return `resolve${base}Reference`;
 			}
+			if (base === "DocumentId") return "resolveDocumentReference";
+			return "resolveNamedEntityReference";
+		};
+		for (const operation of operationDefinitions) {
+			const expected = Object.fromEntries(
+				operation.preparation.referenceFields.map(({ name, type }) => [name, expectedLabel(type)]),
+			);
+			expect(operation.preparation.resolverPaths, operation.name).toEqual(expected);
 		}
 	});
 });

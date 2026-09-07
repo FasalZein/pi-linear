@@ -318,6 +318,14 @@
           "id": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -426,7 +434,7 @@
     "purpose": "Create a comment on an issue or another supported target.",
     "kind": "mutation",
     "help": {
-      "signature": "create_comment(issue?: IssueReference, project?: ProjectReference, initiative?: InitiativeReference, projectUpdateId?: UUID, initiativeUpdateId?: UUID, postId?: UUID, documentContentId?: UUID, parentId?: UUID, body?: String, bodyData?: JsonObject, quotedText?: String, doNotSubscribeToIssue?: Boolean, createOnSyncedSlackThread?: Boolean, createdAt?: DateTime, id?: UUID)",
+      "signature": "create_comment(issue?: IssueReference, project?: ProjectReference, initiative?: InitiativeReference, projectUpdateId?: UUID, initiativeUpdateId?: UUID, postId?: UUID, documentContentId?: UUID, parentId?: UUID, body?: String, bodyData?: JsonObject, quotedText?: String, doNotSubscribeToIssue?: Boolean, createOnSyncedSlackThread?: Boolean, createdAt?: DateTime, id?: UUID, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "create_comment",
@@ -450,7 +458,8 @@
         "doNotSubscribeToIssue",
         "createOnSyncedSlackThread",
         "createdAt",
-        "id"
+        "id",
+        "view"
       ]
     },
     "compatibility": {
@@ -466,6 +475,11 @@
         {
           "name": "body",
           "type": "String",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -590,6 +604,11 @@
           "name": "input",
           "type": "Input",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "legacyBranches": [
@@ -603,6 +622,11 @@
             "name": "body",
             "type": "String",
             "required": true
+          },
+          {
+            "name": "view",
+            "type": "ResultView",
+            "required": false
           }
         ],
         [
@@ -624,6 +648,11 @@
             "name": "body",
             "type": "String",
             "required": true
+          },
+          {
+            "name": "view",
+            "type": "ResultView",
+            "required": false
           }
         ]
       },
@@ -639,8 +668,8 @@
       "resolverPaths": {
         "issue": "resolveIssueReference",
         "issueId": "resolveIssueReference",
-        "project": "resolveProjectReference",
-        "initiative": "resolveInitiativeReference"
+        "project": "resolveNamedEntityReference",
+        "initiative": "resolveNamedEntityReference"
       },
       "requiresVariables": true,
       "semanticException": "comment-value-types"
@@ -665,8 +694,8 @@
       "resolverPaths": {
         "issue": "resolveIssueReference",
         "issueId": "resolveIssueReference",
-        "project": "resolveProjectReference",
-        "initiative": "resolveInitiativeReference"
+        "project": "resolveNamedEntityReference",
+        "initiative": "resolveNamedEntityReference"
       }
     },
     "safety": {
@@ -748,6 +777,11 @@
         {
           "name": "id",
           "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -880,7 +914,8 @@
         "doNotSubscribeToIssue",
         "createOnSyncedSlackThread",
         "createdAt",
-        "id"
+        "id",
+        "view"
       ],
       "action": "create",
       "targetFields": [
@@ -925,6 +960,14 @@
           },
           "skipEditedAt": {
             "type": "boolean"
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -955,7 +998,7 @@
     "purpose": "Update a comment by id.",
     "kind": "mutation",
     "help": {
-      "signature": "update_comment(id: String, body?: String, bodyData?: JsonObject, quotedText?: String, skipEditedAt?: Boolean)",
+      "signature": "update_comment(id: String, body?: String, bodyData?: JsonObject, quotedText?: String, skipEditedAt?: Boolean, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "update_comment",
@@ -969,7 +1012,8 @@
         "body",
         "bodyData",
         "quotedText",
-        "skipEditedAt"
+        "skipEditedAt",
+        "view"
       ]
     },
     "compatibility": {
@@ -1003,6 +1047,11 @@
         {
           "name": "input",
           "type": "Input",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -1095,6 +1144,11 @@
           "name": "skipEditedAt",
           "type": "Boolean",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -1137,7 +1191,8 @@
         "body",
         "bodyData",
         "quotedText",
-        "skipEditedAt"
+        "skipEditedAt",
+        "view"
       ],
       "action": "update"
     }
@@ -1541,6 +1596,14 @@
             },
             "description": "Linear view filter object.",
             "minProperties": 1
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -1553,7 +1616,7 @@
     "purpose": "Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData.",
     "kind": "mutation",
     "help": {
-      "signature": "create_view(name: String, team?: TeamReference, description?: String, icon?: String, color?: Color, shared?: Boolean, filterData?: FilterData, projectFilterData?: FilterData, initiativeFilterData?: FilterData, feedItemFilterData?: FilterData)",
+      "signature": "create_view(name: String, team?: TeamReference, description?: String, icon?: String, color?: Color, shared?: Boolean, filterData?: FilterData, projectFilterData?: FilterData, initiativeFilterData?: FilterData, feedItemFilterData?: FilterData, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "create_view",
@@ -1578,7 +1641,8 @@
         "filterData",
         "projectFilterData",
         "initiativeFilterData",
-        "feedItemFilterData"
+        "feedItemFilterData",
+        "view"
       ]
     },
     "compatibility": {
@@ -1612,6 +1676,11 @@
         {
           "name": "team",
           "type": "TeamReference",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -1681,6 +1750,11 @@
         {
           "name": "shared",
           "type": "String",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -1779,6 +1853,11 @@
           "name": "feedItemFilterData",
           "type": "FilterData",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -1819,7 +1898,8 @@
         "filterData",
         "projectFilterData",
         "initiativeFilterData",
-        "feedItemFilterData"
+        "feedItemFilterData",
+        "view"
       ],
       "action": "create"
     }
@@ -1888,6 +1968,14 @@
             },
             "description": "Linear view filter object.",
             "minProperties": 1
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -1953,7 +2041,7 @@
     "purpose": "Update a custom view.",
     "kind": "mutation",
     "help": {
-      "signature": "update_view(id: String, name?: String, description?: String, icon?: String, color?: Color, shared?: Boolean, filterData?: FilterData, projectFilterData?: FilterData, initiativeFilterData?: FilterData, feedItemFilterData?: FilterData)",
+      "signature": "update_view(id: String, name?: String, description?: String, icon?: String, color?: Color, shared?: Boolean, filterData?: FilterData, projectFilterData?: FilterData, initiativeFilterData?: FilterData, feedItemFilterData?: FilterData, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "update_view",
@@ -1972,7 +2060,8 @@
         "filterData",
         "projectFilterData",
         "initiativeFilterData",
-        "feedItemFilterData"
+        "feedItemFilterData",
+        "view"
       ]
     },
     "compatibility": {
@@ -1986,6 +2075,11 @@
         {
           "name": "input",
           "type": "Input",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -2050,6 +2144,11 @@
         {
           "name": "input",
           "type": "String",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -2142,6 +2241,11 @@
           "name": "feedItemFilterData",
           "type": "FilterData",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -2225,7 +2329,8 @@
         "filterData",
         "projectFilterData",
         "initiativeFilterData",
-        "feedItemFilterData"
+        "feedItemFilterData",
+        "view"
       ],
       "action": "update"
     }
@@ -2301,6 +2406,14 @@
             "minProperties": 1,
             "description": "View preference object.",
             "~optional": true
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -2314,7 +2427,7 @@
     "purpose": "Set preferences for a custom view.",
     "kind": "mutation",
     "help": {
-      "signature": "set_view_preferences(viewId: String, preferences: Preferences)",
+      "signature": "set_view_preferences(viewId: String, preferences: Preferences, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "set_view_preferences",
@@ -2327,7 +2440,8 @@
       },
       "callFields": [
         "viewId",
-        "preferences"
+        "preferences",
+        "view"
       ]
     },
     "compatibility": {
@@ -2342,6 +2456,11 @@
           "name": "preferences",
           "type": "Object",
           "required": true
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -2402,6 +2521,11 @@
           "name": "preferences",
           "type": "Preferences",
           "required": true
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -2431,7 +2555,8 @@
       "entityKind": "view",
       "callFields": [
         "viewId",
-        "preferences"
+        "preferences",
+        "view"
       ],
       "action": "set"
     }
@@ -2891,6 +3016,14 @@
           "description": {
             "type": "string",
             "minLength": 1
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -2905,7 +3038,7 @@
     "purpose": "Create a cycle.",
     "kind": "mutation",
     "help": {
-      "signature": "create_cycle(team: TeamReference, startsAt: DateTime, endsAt: DateTime, name?: String, description?: String)",
+      "signature": "create_cycle(team: TeamReference, startsAt: DateTime, endsAt: DateTime, name?: String, description?: String, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "create_cycle",
@@ -2920,7 +3053,8 @@
         "startsAt",
         "endsAt",
         "name",
-        "description"
+        "description",
+        "view"
       ]
     },
     "compatibility": {
@@ -2940,6 +3074,11 @@
           "name": "endsAt",
           "type": "DateTime",
           "required": true
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -2990,6 +3129,11 @@
           "name": "endsAt",
           "type": "String",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "legacyBranches": [
@@ -3018,6 +3162,11 @@
             "name": "description",
             "type": "String",
             "required": false
+          },
+          {
+            "name": "view",
+            "type": "ResultView",
+            "required": false
           }
         ],
         [
@@ -3044,6 +3193,11 @@
           {
             "name": "description",
             "type": "String",
+            "required": false
+          },
+          {
+            "name": "view",
+            "type": "ResultView",
             "required": false
           }
         ]
@@ -3116,6 +3270,11 @@
           "name": "description",
           "type": "String",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -3148,7 +3307,8 @@
         "startsAt",
         "endsAt",
         "name",
-        "description"
+        "description",
+        "view"
       ],
       "action": "create",
       "targetFields": [
@@ -3192,6 +3352,14 @@
             "type": "string",
             "description": "ISO 8601 date-time.",
             "minLength": 1
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -3233,7 +3401,7 @@
     "purpose": "Update a cycle.",
     "kind": "mutation",
     "help": {
-      "signature": "update_cycle(cycle: CycleReference, name?: String, description?: String, startsAt?: DateTime, endsAt?: DateTime, completedAt?: DateTime)",
+      "signature": "update_cycle(cycle: CycleReference, name?: String, description?: String, startsAt?: DateTime, endsAt?: DateTime, completedAt?: DateTime, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "update_cycle",
@@ -3248,7 +3416,8 @@
         "description",
         "startsAt",
         "endsAt",
-        "completedAt"
+        "completedAt",
+        "view"
       ]
     },
     "compatibility": {
@@ -3283,6 +3452,11 @@
           "name": "completedAt",
           "type": "String",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -3305,7 +3479,7 @@
       "document": "mutation UpdateCycle($id: String! $input: CycleUpdateInput!) {\n    cycleUpdate(id: $id, input: $input) { success cycle { \n  id name number description startsAt endsAt completedAt archivedAt autoArchivedAt isActive isFuture\n  isPast isNext isPrevious progress createdAt updatedAt team { id key name }\n } }\n  }",
       "pagination": null,
       "resolverPaths": {
-        "cycle": "resolveCycleReference"
+        "cycle": "resolveNamedEntityReference"
       },
       "requiresVariables": true,
       "semanticException": null
@@ -3328,7 +3502,7 @@
     },
     "preparation": {
       "resolverPaths": {
-        "cycle": "resolveCycleReference"
+        "cycle": "resolveNamedEntityReference"
       }
     },
     "safety": {
@@ -3365,6 +3539,11 @@
         {
           "name": "completedAt",
           "type": "DateTime",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -3421,7 +3600,8 @@
         "description",
         "startsAt",
         "endsAt",
-        "completedAt"
+        "completedAt",
+        "view"
       ],
       "action": "update"
     }
@@ -3506,7 +3686,7 @@
               "summary",
               "full"
             ],
-            "description": "Lists default to summary; single records to full."
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false
@@ -3733,7 +3913,7 @@
               "summary",
               "full"
             ],
-            "description": "Lists default to summary; single records to full."
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -3952,6 +4132,14 @@
           "id": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -3964,7 +4152,7 @@
     "purpose": "Create a document.",
     "kind": "mutation",
     "help": {
-      "signature": "create_document(title: String, content?: String, icon?: String, color?: Color, issue?: IssueReference, team?: TeamReference, project?: ProjectReference, initiative?: InitiativeReference, cycle?: CycleReference, releaseId?: UUID, resourceFolderId?: UUID, lastAppliedTemplateId?: UUID, owner?: UserReference, subscribers?: [UserReference!], sortOrder?: Float, id?: UUID)",
+      "signature": "create_document(title: String, content?: String, icon?: String, color?: Color, issue?: IssueReference, team?: TeamReference, project?: ProjectReference, initiative?: InitiativeReference, cycle?: CycleReference, releaseId?: UUID, resourceFolderId?: UUID, lastAppliedTemplateId?: UUID, owner?: UserReference, subscribers?: [UserReference!], sortOrder?: Float, id?: UUID, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "create_document",
@@ -3989,7 +4177,8 @@
         "owner",
         "subscribers",
         "sortOrder",
-        "id"
+        "id",
+        "view"
       ]
     },
     "compatibility": {
@@ -4003,6 +4192,11 @@
         {
           "name": "input",
           "type": "Input",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -4105,6 +4299,11 @@
           "name": "input",
           "type": "String",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "legacyBranches": [
@@ -4127,16 +4326,13 @@
       "document": "mutation CreateDocument($input: DocumentCreateInput!) {\n    documentCreate(input: $input) { success document { \n  id title content color icon slugId sortOrder hiddenAt trashed summary archivedAt createdAt updatedAt url\n  team { id key name } project { id name } issue { id identifier title } initiative { id name }\n } }\n  }",
       "pagination": null,
       "resolverPaths": {
-        "issueId": "resolveIssueReference",
-        "teamKey": "resolveTeamReference",
-        "teamId": "resolveTeamReference",
         "issue": "resolveIssueReference",
+        "teamKey": "resolveTeamReference",
         "team": "resolveTeamReference",
-        "project": "resolveProjectReference",
-        "initiative": "resolveInitiativeReference",
-        "cycle": "resolveCycleReference",
-        "owner": "resolveUserReference",
-        "subscribers": "resolveUserReference"
+        "project": "resolveNamedEntityReference",
+        "initiative": "resolveNamedEntityReference",
+        "cycle": "resolveNamedEntityReference",
+        "owner": "resolveUserReference"
       },
       "requiresVariables": true,
       "semanticException": "nested-title-type"
@@ -4159,16 +4355,13 @@
     },
     "preparation": {
       "resolverPaths": {
-        "issueId": "resolveIssueReference",
-        "teamKey": "resolveTeamReference",
-        "teamId": "resolveTeamReference",
         "issue": "resolveIssueReference",
+        "teamKey": "resolveTeamReference",
         "team": "resolveTeamReference",
-        "project": "resolveProjectReference",
-        "initiative": "resolveInitiativeReference",
-        "cycle": "resolveCycleReference",
-        "owner": "resolveUserReference",
-        "subscribers": "resolveUserReference"
+        "project": "resolveNamedEntityReference",
+        "initiative": "resolveNamedEntityReference",
+        "cycle": "resolveNamedEntityReference",
+        "owner": "resolveUserReference"
       }
     },
     "safety": {
@@ -4256,6 +4449,11 @@
           "name": "id",
           "type": "UUID",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -4296,7 +4494,8 @@
         "owner",
         "subscribers",
         "sortOrder",
-        "id"
+        "id",
+        "view"
       ],
       "action": "create"
     }
@@ -4397,6 +4596,14 @@
               }
             ],
             "description": "Null clears it."
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -4504,7 +4711,7 @@
     "purpose": "Update a document.",
     "kind": "mutation",
     "help": {
-      "signature": "update_document(document: DocumentReference, title?: String, content?: String, icon?: String, color?: Color, issue?: IssueReference, team?: TeamReference, project?: ProjectReference, initiative?: InitiativeReference, cycle?: CycleReference, releaseId?: UUID, resourceFolderId?: UUID, lastAppliedTemplateId?: UUID, owner?: UserReference, subscribers?: [UserReference!], sortOrder?: Float, hiddenAt?: NullableDateTime)",
+      "signature": "update_document(document: DocumentReference, title?: String, content?: String, icon?: String, color?: Color, issue?: IssueReference, team?: TeamReference, project?: ProjectReference, initiative?: InitiativeReference, cycle?: CycleReference, releaseId?: UUID, resourceFolderId?: UUID, lastAppliedTemplateId?: UUID, owner?: UserReference, subscribers?: [UserReference!], sortOrder?: Float, hiddenAt?: NullableDateTime, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "update_document",
@@ -4530,7 +4737,8 @@
         "owner",
         "subscribers",
         "sortOrder",
-        "hiddenAt"
+        "hiddenAt",
+        "view"
       ]
     },
     "compatibility": {
@@ -4544,6 +4752,11 @@
         {
           "name": "input",
           "type": "Input",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -4654,6 +4867,11 @@
           "name": "input",
           "type": "String",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "legacyBranches": null,
@@ -4669,16 +4887,13 @@
       "pagination": null,
       "resolverPaths": {
         "documentId": "resolveDocumentReference",
-        "issueId": "resolveIssueReference",
-        "teamKey": "resolveTeamReference",
-        "teamId": "resolveTeamReference",
         "issue": "resolveIssueReference",
+        "teamKey": "resolveTeamReference",
         "team": "resolveTeamReference",
-        "project": "resolveProjectReference",
-        "initiative": "resolveInitiativeReference",
-        "cycle": "resolveCycleReference",
-        "owner": "resolveUserReference",
-        "subscribers": "resolveUserReference"
+        "project": "resolveNamedEntityReference",
+        "initiative": "resolveNamedEntityReference",
+        "cycle": "resolveNamedEntityReference",
+        "owner": "resolveUserReference"
       },
       "requiresVariables": true,
       "semanticException": null
@@ -4702,16 +4917,13 @@
     "preparation": {
       "resolverPaths": {
         "documentId": "resolveDocumentReference",
-        "issueId": "resolveIssueReference",
-        "teamKey": "resolveTeamReference",
-        "teamId": "resolveTeamReference",
         "issue": "resolveIssueReference",
+        "teamKey": "resolveTeamReference",
         "team": "resolveTeamReference",
-        "project": "resolveProjectReference",
-        "initiative": "resolveInitiativeReference",
-        "cycle": "resolveCycleReference",
-        "owner": "resolveUserReference",
-        "subscribers": "resolveUserReference"
+        "project": "resolveNamedEntityReference",
+        "initiative": "resolveNamedEntityReference",
+        "cycle": "resolveNamedEntityReference",
+        "owner": "resolveUserReference"
       }
     },
     "safety": {
@@ -4803,6 +5015,11 @@
         {
           "name": "hiddenAt",
           "type": "NullableDateTime",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -4936,7 +5153,8 @@
         "owner",
         "subscribers",
         "sortOrder",
-        "hiddenAt"
+        "hiddenAt",
+        "view"
       ],
       "action": "update",
       "targetFields": [
@@ -5689,6 +5907,14 @@
           "id": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -5701,7 +5927,7 @@
     "purpose": "Create an issue label.",
     "kind": "mutation",
     "help": {
-      "signature": "create_issue_label(name: String, team?: TeamReference, description?: String, color?: Color, isGroup?: Boolean, parentId?: UUID, retiredAt?: DateTime, replaceTeamLabels?: Boolean, id?: UUID)",
+      "signature": "create_issue_label(name: String, team?: TeamReference, description?: String, color?: Color, isGroup?: Boolean, parentId?: UUID, retiredAt?: DateTime, replaceTeamLabels?: Boolean, id?: UUID, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "create_issue_label",
@@ -5719,7 +5945,8 @@
         "parentId",
         "retiredAt",
         "replaceTeamLabels",
-        "id"
+        "id",
+        "view"
       ]
     },
     "compatibility": {
@@ -5738,6 +5965,11 @@
         {
           "name": "input",
           "type": "Input",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -5809,6 +6041,11 @@
         {
           "name": "input",
           "type": "String",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -5908,6 +6145,11 @@
           "name": "id",
           "type": "UUID",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -5941,7 +6183,8 @@
         "parentId",
         "retiredAt",
         "replaceTeamLabels",
-        "id"
+        "id",
+        "view"
       ],
       "action": "create"
     }
@@ -5994,6 +6237,14 @@
           },
           "replaceTeamLabels": {
             "type": "boolean"
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -6047,7 +6298,7 @@
     "purpose": "Update an issue label.",
     "kind": "mutation",
     "help": {
-      "signature": "update_issue_label(label: LabelReference, name?: String, description?: String, color?: Color, isGroup?: Boolean, parentId?: UUID, retiredAt?: NullableDateTime, replaceTeamLabels?: Boolean)",
+      "signature": "update_issue_label(label: LabelReference, name?: String, description?: String, color?: Color, isGroup?: Boolean, parentId?: UUID, retiredAt?: NullableDateTime, replaceTeamLabels?: Boolean, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "update_issue_label",
@@ -6064,7 +6315,8 @@
         "isGroup",
         "parentId",
         "retiredAt",
-        "replaceTeamLabels"
+        "replaceTeamLabels",
+        "view"
       ]
     },
     "compatibility": {
@@ -6078,6 +6330,11 @@
         {
           "name": "input",
           "type": "Input",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -6133,6 +6390,11 @@
           "name": "input",
           "type": "String",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "legacyBranches": null,
@@ -6147,7 +6409,7 @@
       "document": "mutation UpdateIssueLabel($id: String!, $input: IssueLabelUpdateInput!, $replaceTeamLabels: Boolean) {\n  issueLabelUpdate(id: $id, input: $input, replaceTeamLabels: $replaceTeamLabels) {\n    success\n    issueLabel { \n  id name description color isGroup createdAt updatedAt retiredAt\n  team { id key name } parent { id name }\n }\n  }\n}",
       "pagination": null,
       "resolverPaths": {
-        "label": "resolveIssueLabelReference"
+        "label": "resolveNamedEntityReference"
       },
       "requiresVariables": true,
       "semanticException": null
@@ -6170,7 +6432,7 @@
     },
     "preparation": {
       "resolverPaths": {
-        "label": "resolveIssueLabelReference"
+        "label": "resolveNamedEntityReference"
       }
     },
     "safety": {
@@ -6217,6 +6479,11 @@
         {
           "name": "replaceTeamLabels",
           "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -6287,7 +6554,8 @@
         "isGroup",
         "parentId",
         "retiredAt",
-        "replaceTeamLabels"
+        "replaceTeamLabels",
+        "view"
       ],
       "action": "update"
     }
@@ -6514,6 +6782,14 @@
               "related",
               "similar"
             ]
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -6528,7 +6804,7 @@
     "purpose": "Create a relation between two issues.",
     "kind": "mutation",
     "help": {
-      "signature": "create_issue_relation(issue: IssueReference, relatedIssue: IssueReference, type: IssueRelationType)",
+      "signature": "create_issue_relation(issue: IssueReference, relatedIssue: IssueReference, type: IssueRelationType, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "create_issue_relation",
@@ -6541,7 +6817,8 @@
       "callFields": [
         "issue",
         "relatedIssue",
-        "type"
+        "type",
+        "view"
       ]
     },
     "compatibility": {
@@ -6563,6 +6840,11 @@
           "name": "type",
           "type": "IssueRelationType",
           "required": true
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -6605,6 +6887,11 @@
             "name": "type",
             "type": "IssueRelationType",
             "required": true
+          },
+          {
+            "name": "view",
+            "type": "ResultView",
+            "required": false
           }
         ]
       ],
@@ -6624,6 +6911,11 @@
             "name": "type",
             "type": "IssueRelationType",
             "required": true
+          },
+          {
+            "name": "view",
+            "type": "ResultView",
+            "required": false
           }
         ]
       },
@@ -6686,6 +6978,11 @@
           "name": "type",
           "type": "IssueRelationType",
           "required": true
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -6716,7 +7013,8 @@
       "callFields": [
         "issue",
         "relatedIssue",
-        "type"
+        "type",
+        "view"
       ],
       "action": "create",
       "targetFields": [
@@ -6756,6 +7054,14 @@
             "type": "string",
             "description": "Issue identifier such as ABC-123, or an issue UUID.",
             "minLength": 1
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -6785,7 +7091,7 @@
     "purpose": "Update an issue relation.",
     "kind": "mutation",
     "help": {
-      "signature": "update_issue_relation(id: String, type?: IssueRelationType, issue?: IssueReference, relatedIssue?: IssueReference)",
+      "signature": "update_issue_relation(id: String, type?: IssueRelationType, issue?: IssueReference, relatedIssue?: IssueReference, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "update_issue_relation",
@@ -6798,7 +7104,8 @@
         "id",
         "type",
         "issue",
-        "relatedIssue"
+        "relatedIssue",
+        "view"
       ]
     },
     "compatibility": {
@@ -6812,6 +7119,11 @@
         {
           "name": "input",
           "type": "Input",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -6847,6 +7159,11 @@
           "name": "input",
           "type": "String",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "legacyBranches": null,
@@ -6861,8 +7178,6 @@
       "document": "mutation UpdateIssueRelation($id: String! $input: IssueRelationUpdateInput!) {\n    issueRelationUpdate(id: $id, input: $input) { success issueRelation { \n  id createdAt updatedAt type issue { id identifier title } relatedIssue { id identifier title }\n } }\n  }",
       "pagination": null,
       "resolverPaths": {
-        "issueId": "resolveIssueReference",
-        "relatedIssueId": "resolveIssueReference",
         "issue": "resolveIssueReference",
         "relatedIssue": "resolveIssueReference"
       },
@@ -6887,8 +7202,6 @@
     },
     "preparation": {
       "resolverPaths": {
-        "issueId": "resolveIssueReference",
-        "relatedIssueId": "resolveIssueReference",
         "issue": "resolveIssueReference",
         "relatedIssue": "resolveIssueReference"
       }
@@ -6917,6 +7230,11 @@
         {
           "name": "relatedIssue",
           "type": "IssueReference",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -6959,7 +7277,8 @@
         "id",
         "type",
         "issue",
-        "relatedIssue"
+        "relatedIssue",
+        "view"
       ],
       "action": "update"
     }
@@ -6995,6 +7314,14 @@
               "related",
               "similar"
             ]
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -7010,7 +7337,7 @@
     "purpose": "Delete one issue relation after exact relation and endpoint verification.",
     "kind": "mutation",
     "help": {
-      "signature": "delete_issue_relation(relationId: UUID, issue: IssueReference, relatedIssue: IssueReference, type: IssueRelationType)",
+      "signature": "delete_issue_relation(relationId: UUID, issue: IssueReference, relatedIssue: IssueReference, type: IssueRelationType, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "delete_issue_relation",
@@ -7025,7 +7352,8 @@
         "relationId",
         "issue",
         "relatedIssue",
-        "type"
+        "type",
+        "view"
       ]
     },
     "compatibility": {
@@ -7050,6 +7378,11 @@
           "name": "type",
           "type": "IssueRelationType",
           "required": true
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -7076,7 +7409,10 @@
       },
       "document": "mutation DeleteIssueRelation($id: String!) {\n  issueRelationDelete(id: $id) { success }\n}",
       "pagination": null,
-      "resolverPaths": {},
+      "resolverPaths": {
+        "issue": "resolveIssueReference",
+        "relatedIssue": "resolveIssueReference"
+      },
       "requiresVariables": true,
       "semanticException": "The relation guard must be an exact UUID; issue endpoints accept exact issue references."
     },
@@ -7095,7 +7431,10 @@
       ]
     },
     "preparation": {
-      "resolverPaths": {}
+      "resolverPaths": {
+        "issue": "resolveIssueReference",
+        "relatedIssue": "resolveIssueReference"
+      }
     },
     "safety": {
       "namedInputPolicy": "guarded-destructive",
@@ -7122,6 +7461,11 @@
           "name": "type",
           "type": "IssueRelationType",
           "required": true
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -7155,7 +7499,8 @@
         "relationId",
         "issue",
         "relatedIssue",
-        "type"
+        "type",
+        "view"
       ],
       "action": "delete",
       "targetFields": [
@@ -7528,7 +7873,7 @@
               "summary",
               "full"
             ],
-            "description": "Lists default to summary; single records to full."
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false
@@ -7798,7 +8143,6 @@
         "team": "resolveTeamReference",
         "state": "resolveStateReference",
         "assignee": "resolveUserReference",
-        "projectId": "resolveNamedEntityReference",
         "project": "resolveNamedEntityReference"
       },
       "requiresVariables": false,
@@ -7818,7 +8162,6 @@
         "team": "resolveTeamReference",
         "state": "resolveStateReference",
         "assignee": "resolveUserReference",
-        "projectId": "resolveNamedEntityReference",
         "project": "resolveNamedEntityReference"
       }
     },
@@ -7976,7 +8319,7 @@
               "summary",
               "full"
             ],
-            "description": "Lists default to summary; single records to full."
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -8308,6 +8651,14 @@
           "id": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -8331,7 +8682,7 @@
     "purpose": "Create an issue. A parent reference supplies the team when team is omitted.",
     "kind": "mutation",
     "help": {
-      "signature": "create_issue(title: String, team?: TeamReference, parent?: IssueReference, state?: StateReference, assignee?: UserReference, dueDate?: Date, description?: String, descriptionData?: JsonString, priority?: Priority, estimate?: Int, project?: ProjectReference, milestone?: MilestoneReference, cycle?: CycleReference, labels?: [LabelReference!], subscribers?: [UserReference!], delegate?: UserReference, lastAppliedTemplateId?: UUID, slaType?: SlaDayCountType, slaBreachesAt?: NullableDateTime, slaStartedAt?: NullableDateTime, sortOrder?: Float, subIssueSortOrder?: Float, prioritySortOrder?: Float, templateId?: UUID, useDefaultTemplate?: Boolean, preserveSortOrderOnCreate?: Boolean, referenceCommentId?: UUID, sourceCommentId?: UUID, sourcePullRequestCommentId?: UUID, createAsUser?: String, displayIconUrl?: Url, completedAt?: NullableDateTime, createdAt?: DateTime, id?: UUID)",
+      "signature": "create_issue(title: String, team?: TeamReference, parent?: IssueReference, state?: StateReference, assignee?: UserReference, dueDate?: Date, description?: String, descriptionData?: JsonString, priority?: Priority, estimate?: Int, project?: ProjectReference, milestone?: MilestoneReference, cycle?: CycleReference, labels?: [LabelReference!], subscribers?: [UserReference!], delegate?: UserReference, lastAppliedTemplateId?: UUID, slaType?: SlaDayCountType, slaBreachesAt?: NullableDateTime, slaStartedAt?: NullableDateTime, sortOrder?: Float, subIssueSortOrder?: Float, prioritySortOrder?: Float, templateId?: UUID, useDefaultTemplate?: Boolean, preserveSortOrderOnCreate?: Boolean, referenceCommentId?: UUID, sourceCommentId?: UUID, sourcePullRequestCommentId?: UUID, createAsUser?: String, displayIconUrl?: Url, completedAt?: NullableDateTime, createdAt?: DateTime, id?: UUID, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "create_issue",
@@ -8374,7 +8725,8 @@
         "displayIconUrl",
         "completedAt",
         "createdAt",
-        "id"
+        "id",
+        "view"
       ]
     },
     "compatibility": {
@@ -8408,6 +8760,11 @@
         {
           "name": "input",
           "type": "Input",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -8649,6 +9006,11 @@
           "name": "input",
           "type": "Input",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "legacyBranches": [
@@ -8681,11 +9043,8 @@
         "assignee": "resolveUserReference",
         "assigneeId": "resolveUserReference",
         "project": "resolveNamedEntityReference",
-        "projectId": "resolveNamedEntityReference",
-        "milestone": "resolveProjectMilestoneReference",
-        "cycle": "resolveCycleReference",
-        "labels": "resolveIssueLabelReference",
-        "subscribers": "resolveUserReference",
+        "milestone": "resolveNamedEntityReference",
+        "cycle": "resolveNamedEntityReference",
         "delegate": "resolveUserReference"
       },
       "requiresVariables": true,
@@ -8719,11 +9078,8 @@
         "assignee": "resolveUserReference",
         "assigneeId": "resolveUserReference",
         "project": "resolveNamedEntityReference",
-        "projectId": "resolveNamedEntityReference",
-        "milestone": "resolveProjectMilestoneReference",
-        "cycle": "resolveCycleReference",
-        "labels": "resolveIssueLabelReference",
-        "subscribers": "resolveUserReference",
+        "milestone": "resolveNamedEntityReference",
+        "cycle": "resolveNamedEntityReference",
         "delegate": "resolveUserReference"
       }
     },
@@ -8902,6 +9258,11 @@
           "name": "id",
           "type": "UUID",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -8967,7 +9328,8 @@
         "displayIconUrl",
         "completedAt",
         "createdAt",
-        "id"
+        "id",
+        "view"
       ],
       "action": "create"
     }
@@ -9194,6 +9556,14 @@
               }
             ],
             "description": "Null clears it."
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -9373,7 +9743,7 @@
     "purpose": "Update an issue by exact identifier or UUID.",
     "kind": "mutation",
     "help": {
-      "signature": "update_issue(issue: IssueReference, title?: String, state?: StateReference, assignee?: NullableUserReference, parent?: NullableIssueReference, team?: TeamReference, dueDate?: NullableDate, addLabels?: [LabelReference!], removeLabels?: [LabelReference!], description?: String, descriptionData?: JsonString, priority?: Priority, estimate?: Int, project?: NullableProjectReference, milestone?: NullableMilestoneReference, cycle?: NullableCycleReference, labels?: [LabelReference!], subscribers?: [UserReference!], delegate?: UserReference, lastAppliedTemplateId?: UUID, slaType?: SlaDayCountType, slaBreachesAt?: NullableDateTime, slaStartedAt?: NullableDateTime, sortOrder?: Float, subIssueSortOrder?: Float, prioritySortOrder?: Float, autoClosedByParentClosing?: Boolean, snoozedBy?: UserReference, snoozedUntilAt?: NullableDateTime)",
+      "signature": "update_issue(issue: IssueReference, title?: String, state?: StateReference, assignee?: NullableUserReference, parent?: NullableIssueReference, team?: TeamReference, dueDate?: NullableDate, addLabels?: [LabelReference!], removeLabels?: [LabelReference!], description?: String, descriptionData?: JsonString, priority?: Priority, estimate?: Int, project?: NullableProjectReference, milestone?: NullableMilestoneReference, cycle?: NullableCycleReference, labels?: [LabelReference!], subscribers?: [UserReference!], delegate?: UserReference, lastAppliedTemplateId?: UUID, slaType?: SlaDayCountType, slaBreachesAt?: NullableDateTime, slaStartedAt?: NullableDateTime, sortOrder?: Float, subIssueSortOrder?: Float, prioritySortOrder?: Float, autoClosedByParentClosing?: Boolean, snoozedBy?: UserReference, snoozedUntilAt?: NullableDateTime, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "update_issue",
@@ -9411,7 +9781,8 @@
         "prioritySortOrder",
         "autoClosedByParentClosing",
         "snoozedBy",
-        "snoozedUntilAt"
+        "snoozedUntilAt",
+        "view"
       ]
     },
     "compatibility": {
@@ -9442,6 +9813,11 @@
         {
           "name": "input",
           "type": "Input",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -9633,6 +10009,11 @@
           "name": "input",
           "type": "Input",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "legacyBranches": null,
@@ -9647,6 +10028,11 @@
             "name": "stateId",
             "type": "String",
             "required": true
+          },
+          {
+            "name": "view",
+            "type": "ResultView",
+            "required": false
           }
         ]
       },
@@ -9668,15 +10054,10 @@
         "assigneeId": "resolveUserReference",
         "parent": "resolveIssueReference",
         "parentId": "resolveIssueReference",
-        "teamId": "resolveTeamReference",
         "team": "resolveTeamReference",
-        "project": "resolveProjectReference",
-        "addLabels": "resolveIssueLabelReference",
-        "removeLabels": "resolveIssueLabelReference",
-        "milestone": "resolveProjectMilestoneReference",
-        "cycle": "resolveCycleReference",
-        "labels": "resolveIssueLabelReference",
-        "subscribers": "resolveUserReference",
+        "project": "resolveNamedEntityReference",
+        "milestone": "resolveNamedEntityReference",
+        "cycle": "resolveNamedEntityReference",
         "delegate": "resolveUserReference",
         "snoozedBy": "resolveUserReference"
       },
@@ -9709,15 +10090,10 @@
         "assigneeId": "resolveUserReference",
         "parent": "resolveIssueReference",
         "parentId": "resolveIssueReference",
-        "teamId": "resolveTeamReference",
         "team": "resolveTeamReference",
-        "project": "resolveProjectReference",
-        "addLabels": "resolveIssueLabelReference",
-        "removeLabels": "resolveIssueLabelReference",
-        "milestone": "resolveProjectMilestoneReference",
-        "cycle": "resolveCycleReference",
-        "labels": "resolveIssueLabelReference",
-        "subscribers": "resolveUserReference",
+        "project": "resolveNamedEntityReference",
+        "milestone": "resolveNamedEntityReference",
+        "cycle": "resolveNamedEntityReference",
         "delegate": "resolveUserReference",
         "snoozedBy": "resolveUserReference"
       }
@@ -9871,6 +10247,11 @@
         {
           "name": "snoozedUntilAt",
           "type": "NullableDateTime",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -10088,7 +10469,8 @@
         "prioritySortOrder",
         "autoClosedByParentClosing",
         "snoozedBy",
-        "snoozedUntilAt"
+        "snoozedUntilAt",
+        "view"
       ],
       "action": "update"
     }
@@ -10154,7 +10536,7 @@
               "summary",
               "full"
             ],
-            "description": "Lists default to summary; single records to full."
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -11056,6 +11438,14 @@
             "type": "string",
             "description": "ISO 8601 date-time.",
             "minLength": 1
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -11068,7 +11458,7 @@
     "purpose": "Create a project label.",
     "kind": "mutation",
     "help": {
-      "signature": "create_project_label(name: String, description?: String, color?: Color, isGroup?: Boolean, parentId?: UUID, retiredAt?: DateTime)",
+      "signature": "create_project_label(name: String, description?: String, color?: Color, isGroup?: Boolean, parentId?: UUID, retiredAt?: DateTime, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "create_project_label",
@@ -11082,7 +11472,8 @@
         "color",
         "isGroup",
         "parentId",
-        "retiredAt"
+        "retiredAt",
+        "view"
       ]
     },
     "compatibility": {
@@ -11096,6 +11487,11 @@
         {
           "name": "input",
           "type": "Input",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -11142,6 +11538,11 @@
         {
           "name": "input",
           "type": "String",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -11221,6 +11622,11 @@
           "name": "retiredAt",
           "type": "DateTime",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -11250,7 +11656,8 @@
         "color",
         "isGroup",
         "parentId",
-        "retiredAt"
+        "retiredAt",
+        "view"
       ],
       "action": "create"
     }
@@ -11300,6 +11707,14 @@
               }
             ],
             "description": "Null clears it."
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -11347,7 +11762,7 @@
     "purpose": "Update a project label.",
     "kind": "mutation",
     "help": {
-      "signature": "update_project_label(label: LabelReference, name?: String, description?: String, color?: Color, isGroup?: Boolean, parentId?: UUID, retiredAt?: NullableDateTime)",
+      "signature": "update_project_label(label: LabelReference, name?: String, description?: String, color?: Color, isGroup?: Boolean, parentId?: UUID, retiredAt?: NullableDateTime, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "update_project_label",
@@ -11363,7 +11778,8 @@
         "color",
         "isGroup",
         "parentId",
-        "retiredAt"
+        "retiredAt",
+        "view"
       ]
     },
     "compatibility": {
@@ -11377,6 +11793,11 @@
         {
           "name": "input",
           "type": "Input",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -11427,6 +11848,11 @@
           "name": "input",
           "type": "String",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "legacyBranches": null,
@@ -11441,7 +11867,7 @@
       "document": "mutation UpdateProjectLabel($id: String! $input: ProjectLabelUpdateInput!) {\n    projectLabelUpdate(id: $id, input: $input) { success projectLabel { \n  id name description color isGroup createdAt updatedAt retiredAt parent { id name }\n } }\n  }",
       "pagination": null,
       "resolverPaths": {
-        "label": "resolveProjectLabelReference"
+        "label": "resolveNamedEntityReference"
       },
       "requiresVariables": true,
       "semanticException": null
@@ -11464,7 +11890,7 @@
     },
     "preparation": {
       "resolverPaths": {
-        "label": "resolveProjectLabelReference"
+        "label": "resolveNamedEntityReference"
       }
     },
     "safety": {
@@ -11506,6 +11932,11 @@
         {
           "name": "retiredAt",
           "type": "NullableDateTime",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -11569,7 +12000,8 @@
         "color",
         "isGroup",
         "parentId",
-        "retiredAt"
+        "retiredAt",
+        "view"
       ],
       "action": "update"
     }
@@ -11809,6 +12241,14 @@
             "type": "string",
             "description": "Exact milestone name, or a milestone UUID.",
             "minLength": 1
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -11825,7 +12265,7 @@
     "purpose": "Create a relation between two projects.",
     "kind": "mutation",
     "help": {
-      "signature": "create_project_relation(project: ProjectReference, relatedProject: ProjectReference, type: String, anchorType: String, relatedAnchorType: String, milestone?: MilestoneReference, relatedMilestone?: MilestoneReference)",
+      "signature": "create_project_relation(project: ProjectReference, relatedProject: ProjectReference, type: String, anchorType: String, relatedAnchorType: String, milestone?: MilestoneReference, relatedMilestone?: MilestoneReference, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "create_project_relation",
@@ -11844,7 +12284,8 @@
         "anchorType",
         "relatedAnchorType",
         "milestone",
-        "relatedMilestone"
+        "relatedMilestone",
+        "view"
       ]
     },
     "compatibility": {
@@ -11874,6 +12315,11 @@
           "name": "relatedAnchorType",
           "type": "String",
           "required": true
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -11927,6 +12373,11 @@
           "name": "input",
           "type": "String",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "legacyBranches": null,
@@ -11944,10 +12395,10 @@
       "document": "mutation CreateProjectRelation($input: ProjectRelationCreateInput!) {\n    projectRelationCreate(input: $input) { success projectRelation { \n  id createdAt updatedAt type anchorType relatedAnchorType project { id name }\n  projectMilestone { id name } relatedProject { id name } relatedProjectMilestone { id name }\n } }\n  }",
       "pagination": null,
       "resolverPaths": {
-        "project": "resolveProjectReference",
-        "relatedProject": "resolveProjectReference",
-        "milestone": "resolveProjectMilestoneReference",
-        "relatedMilestone": "resolveProjectMilestoneReference"
+        "project": "resolveNamedEntityReference",
+        "relatedProject": "resolveNamedEntityReference",
+        "milestone": "resolveNamedEntityReference",
+        "relatedMilestone": "resolveNamedEntityReference"
       },
       "requiresVariables": true,
       "semanticException": null
@@ -11970,10 +12421,10 @@
     },
     "preparation": {
       "resolverPaths": {
-        "project": "resolveProjectReference",
-        "relatedProject": "resolveProjectReference",
-        "milestone": "resolveProjectMilestoneReference",
-        "relatedMilestone": "resolveProjectMilestoneReference"
+        "project": "resolveNamedEntityReference",
+        "relatedProject": "resolveNamedEntityReference",
+        "milestone": "resolveNamedEntityReference",
+        "relatedMilestone": "resolveNamedEntityReference"
       }
     },
     "safety": {
@@ -12016,6 +12467,11 @@
           "name": "relatedMilestone",
           "type": "MilestoneReference",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "branches": [
@@ -12054,7 +12510,8 @@
         "anchorType",
         "relatedAnchorType",
         "milestone",
-        "relatedMilestone"
+        "relatedMilestone",
+        "view"
       ],
       "action": "create"
     }
@@ -12103,6 +12560,14 @@
             "type": "string",
             "description": "Exact milestone name, or a milestone UUID.",
             "minLength": 1
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -12156,7 +12621,7 @@
     "purpose": "Update a project relation.",
     "kind": "mutation",
     "help": {
-      "signature": "update_project_relation(id: String, type?: String, anchorType?: String, relatedAnchorType?: String, project?: ProjectReference, relatedProject?: ProjectReference, milestone?: MilestoneReference, relatedMilestone?: MilestoneReference)",
+      "signature": "update_project_relation(id: String, type?: String, anchorType?: String, relatedAnchorType?: String, project?: ProjectReference, relatedProject?: ProjectReference, milestone?: MilestoneReference, relatedMilestone?: MilestoneReference, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "update_project_relation",
@@ -12173,7 +12638,8 @@
         "project",
         "relatedProject",
         "milestone",
-        "relatedMilestone"
+        "relatedMilestone",
+        "view"
       ]
     },
     "compatibility": {
@@ -12187,6 +12653,11 @@
         {
           "name": "input",
           "type": "Input",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -12242,6 +12713,11 @@
           "name": "input",
           "type": "String",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "legacyBranches": null,
@@ -12256,10 +12732,10 @@
       "document": "mutation UpdateProjectRelation($id: String! $input: ProjectRelationUpdateInput!) {\n    projectRelationUpdate(id: $id, input: $input) { success projectRelation { \n  id createdAt updatedAt type anchorType relatedAnchorType project { id name }\n  projectMilestone { id name } relatedProject { id name } relatedProjectMilestone { id name }\n } }\n  }",
       "pagination": null,
       "resolverPaths": {
-        "project": "resolveProjectReference",
-        "relatedProject": "resolveProjectReference",
-        "milestone": "resolveProjectMilestoneReference",
-        "relatedMilestone": "resolveProjectMilestoneReference"
+        "project": "resolveNamedEntityReference",
+        "relatedProject": "resolveNamedEntityReference",
+        "milestone": "resolveNamedEntityReference",
+        "relatedMilestone": "resolveNamedEntityReference"
       },
       "requiresVariables": true,
       "semanticException": null
@@ -12282,10 +12758,10 @@
     },
     "preparation": {
       "resolverPaths": {
-        "project": "resolveProjectReference",
-        "relatedProject": "resolveProjectReference",
-        "milestone": "resolveProjectMilestoneReference",
-        "relatedMilestone": "resolveProjectMilestoneReference"
+        "project": "resolveNamedEntityReference",
+        "relatedProject": "resolveNamedEntityReference",
+        "milestone": "resolveNamedEntityReference",
+        "relatedMilestone": "resolveNamedEntityReference"
       }
     },
     "safety": {
@@ -12332,6 +12808,11 @@
         {
           "name": "relatedMilestone",
           "type": "MilestoneReference",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -12402,7 +12883,8 @@
         "project",
         "relatedProject",
         "milestone",
-        "relatedMilestone"
+        "relatedMilestone",
+        "view"
       ],
       "action": "update"
     }
@@ -12492,7 +12974,7 @@
               "summary",
               "full"
             ],
-            "description": "Lists default to summary; single records to full."
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false
@@ -12724,7 +13206,7 @@
               "summary",
               "full"
             ],
-            "description": "Lists default to summary; single records to full."
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -13871,6 +14353,14 @@
           },
           "updateRemindersHour": {
             "type": "number"
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -13894,7 +14384,7 @@
     "purpose": "Create or update an initiative.",
     "kind": "mutation",
     "help": {
-      "signature": "save_initiative(initiative?: InitiativeReference, name?: String, description?: String, content?: String, icon?: String, color?: Color, status?: InitiativeStatus, targetDate?: NullableDate, targetDateResolution?: DateResolutionType, owner?: UserReference, leadTeam?: TeamReference, sortOrder?: Float, prioritySortOrder?: Float, priority?: Priority, labels?: [LabelReference!], id?: UUID, customIdentifier?: String, frequencyResolution?: FrequencyResolutionType, updateReminderFrequency?: Float, updateReminderFrequencyInWeeks?: Float, updateRemindersDay?: Day, updateRemindersHour?: Float)",
+      "signature": "save_initiative(initiative?: InitiativeReference, name?: String, description?: String, content?: String, icon?: String, color?: Color, status?: InitiativeStatus, targetDate?: NullableDate, targetDateResolution?: DateResolutionType, owner?: UserReference, leadTeam?: TeamReference, sortOrder?: Float, prioritySortOrder?: Float, priority?: Priority, labels?: [LabelReference!], id?: UUID, customIdentifier?: String, frequencyResolution?: FrequencyResolutionType, updateReminderFrequency?: Float, updateReminderFrequencyInWeeks?: Float, updateRemindersDay?: Day, updateRemindersHour?: Float, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "save_initiative",
@@ -13924,7 +14414,8 @@
         "updateReminderFrequency",
         "updateReminderFrequencyInWeeks",
         "updateRemindersDay",
-        "updateRemindersHour"
+        "updateRemindersHour",
+        "view"
       ]
     },
     "compatibility": {
@@ -13946,6 +14437,11 @@
         {
           "name": "input",
           "type": "Input",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -14172,6 +14668,11 @@
           "name": "input",
           "type": "String",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "legacyBranches": null,
@@ -14185,9 +14686,7 @@
       "document": "mutation CreateInitiative($input: InitiativeCreateInput!) {\n    initiativeCreate(input: $input) { success initiative { \n  id name description content status color icon targetDate targetDateResolution sortOrder health\n  completedAt startedAt archivedAt trashed createdAt updatedAt url owner { id name email }\n } }\n  }",
       "pagination": null,
       "resolverPaths": {
-        "initiativeId": "resolveNamedEntityReference",
         "initiative": "resolveNamedEntityReference",
-        "labels": "resolveInitiativeLabelReference",
         "leadTeam": "resolveTeamReference",
         "owner": "resolveUserReference"
       },
@@ -14226,9 +14725,7 @@
     },
     "preparation": {
       "resolverPaths": {
-        "initiativeId": "resolveNamedEntityReference",
         "initiative": "resolveNamedEntityReference",
-        "labels": "resolveInitiativeLabelReference",
         "leadTeam": "resolveTeamReference",
         "owner": "resolveUserReference"
       }
@@ -14347,6 +14844,11 @@
         {
           "name": "updateRemindersHour",
           "type": "Float",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -14494,7 +14996,8 @@
             "prioritySortOrder",
             "priority",
             "labels",
-            "id"
+            "id",
+            "view"
           ],
           "branches": [
             {
@@ -14526,7 +15029,8 @@
             "updateReminderFrequency",
             "updateReminderFrequencyInWeeks",
             "updateRemindersDay",
-            "updateRemindersHour"
+            "updateRemindersHour",
+            "view"
           ],
           "branches": [
             {
@@ -14689,7 +15193,8 @@
         "updateReminderFrequency",
         "updateReminderFrequencyInWeeks",
         "updateRemindersDay",
-        "updateRemindersHour"
+        "updateRemindersHour",
+        "view"
       ],
       "action": "save",
       "targetFields": [
@@ -14748,6 +15253,14 @@
           "id": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -14772,7 +15285,7 @@
     "purpose": "Create or update a milestone.",
     "kind": "mutation",
     "help": {
-      "signature": "save_milestone(milestone?: MilestoneReference, name?: String, project?: ProjectReference, description?: String, descriptionData?: JsonString, targetDate?: NullableDate, sortOrder?: Float, id?: UUID)",
+      "signature": "save_milestone(milestone?: MilestoneReference, name?: String, project?: ProjectReference, description?: String, descriptionData?: JsonString, targetDate?: NullableDate, sortOrder?: Float, id?: UUID, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "save_milestone",
@@ -14789,7 +15302,8 @@
         "descriptionData",
         "targetDate",
         "sortOrder",
-        "id"
+        "id",
+        "view"
       ]
     },
     "compatibility": {
@@ -14816,6 +15330,11 @@
         {
           "name": "input",
           "type": "Input",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -14917,6 +15436,11 @@
           "name": "input",
           "type": "String",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "legacyBranches": null,
@@ -14931,8 +15455,6 @@
       "document": "mutation CreateMilestone($input: ProjectMilestoneCreateInput!) {\n    projectMilestoneCreate(input: $input) { success projectMilestone { \n  id name description status progress targetDate sortOrder createdAt updatedAt project { id name url }\n } }\n  }",
       "pagination": null,
       "resolverPaths": {
-        "milestoneId": "resolveNamedEntityReference",
-        "projectId": "resolveNamedEntityReference",
         "milestone": "resolveNamedEntityReference",
         "project": "resolveNamedEntityReference"
       },
@@ -14971,8 +15493,6 @@
     },
     "preparation": {
       "resolverPaths": {
-        "milestoneId": "resolveNamedEntityReference",
-        "projectId": "resolveNamedEntityReference",
         "milestone": "resolveNamedEntityReference",
         "project": "resolveNamedEntityReference"
       }
@@ -15021,6 +15541,11 @@
         {
           "name": "id",
           "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -15077,7 +15602,8 @@
             "descriptionData",
             "targetDate",
             "sortOrder",
-            "id"
+            "id",
+            "view"
           ],
           "branches": [
             {
@@ -15096,7 +15622,8 @@
             "description",
             "descriptionData",
             "targetDate",
-            "sortOrder"
+            "sortOrder",
+            "view"
           ],
           "branches": [
             {
@@ -15162,7 +15689,8 @@
         "descriptionData",
         "targetDate",
         "sortOrder",
-        "id"
+        "id",
+        "view"
       ],
       "action": "save",
       "targetFields": [
@@ -15392,6 +15920,14 @@
           },
           "updateRemindersHour": {
             "type": "number"
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
           }
         },
         "additionalProperties": false,
@@ -15416,7 +15952,7 @@
     "purpose": "Create or update a project.",
     "kind": "mutation",
     "help": {
-      "signature": "save_project(project?: ProjectReference, name?: String, teams?: [TeamReference!], description?: String, content?: String, icon?: String, color?: Color, priority?: Priority, startDate?: Date, startDateResolution?: DateResolutionType, targetDate?: NullableDate, targetDateResolution?: DateResolutionType, status?: ProjectStatusReference, lead?: UserReference, leadTeam?: TeamReference, members?: [UserReference!], labels?: [LabelReference!], convertedFromIssue?: IssueReference, lastAppliedTemplateId?: UUID, sortOrder?: Float, prioritySortOrder?: Float, canceledAt?: NullableDateTime, completedAt?: NullableDateTime, projectUpdateRemindersPausedUntilAt?: NullableDateTime, slackIssueComments?: Boolean, slackIssueStatuses?: Boolean, slackNewIssue?: Boolean, slackChannelName?: String, templateId?: UUID, useDefaultTemplate?: Boolean, id?: UUID, frequencyResolution?: FrequencyResolutionType, updateReminderFrequency?: Float, updateReminderFrequencyInWeeks?: Float, updateRemindersDay?: Day, updateRemindersHour?: Float)",
+      "signature": "save_project(project?: ProjectReference, name?: String, teams?: [TeamReference!], description?: String, content?: String, icon?: String, color?: Color, priority?: Priority, startDate?: Date, startDateResolution?: DateResolutionType, targetDate?: NullableDate, targetDateResolution?: DateResolutionType, status?: ProjectStatusReference, lead?: UserReference, leadTeam?: TeamReference, members?: [UserReference!], labels?: [LabelReference!], convertedFromIssue?: IssueReference, lastAppliedTemplateId?: UUID, sortOrder?: Float, prioritySortOrder?: Float, canceledAt?: NullableDateTime, completedAt?: NullableDateTime, projectUpdateRemindersPausedUntilAt?: NullableDateTime, slackIssueComments?: Boolean, slackIssueStatuses?: Boolean, slackNewIssue?: Boolean, slackChannelName?: String, templateId?: UUID, useDefaultTemplate?: Boolean, id?: UUID, frequencyResolution?: FrequencyResolutionType, updateReminderFrequency?: Float, updateReminderFrequencyInWeeks?: Float, updateRemindersDay?: Day, updateRemindersHour?: Float, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "save_project",
@@ -15463,7 +15999,8 @@
         "updateReminderFrequency",
         "updateReminderFrequencyInWeeks",
         "updateRemindersDay",
-        "updateRemindersHour"
+        "updateRemindersHour",
+        "view"
       ]
     },
     "compatibility": {
@@ -15485,6 +16022,11 @@
         {
           "name": "input",
           "type": "Input",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -15837,6 +16379,11 @@
           "name": "input",
           "type": "String",
           "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
         }
       ],
       "legacyBranches": null,
@@ -15853,16 +16400,11 @@
       "document": "mutation CreateProject($input: ProjectCreateInput! $slackChannelName: String) {\n    projectCreate(input: $input, slackChannelName: $slackChannelName) { success project { \n  id name description color icon state priority slugId startDate targetDate completedAt\n  canceledAt health progress startedAt archivedAt trashed priorityLabel createdAt updatedAt url\n  teams(first: 10) { nodes { id key name } pageInfo { hasNextPage endCursor } }\n  lead { id name email } members(first: 10) { nodes { id name email } pageInfo { hasNextPage endCursor } } status { id name }\n  content\n } }\n  }",
       "pagination": null,
       "resolverPaths": {
-        "projectId": "resolveNamedEntityReference",
-        "convertedFromIssueId": "resolveIssueReference",
         "project": "resolveNamedEntityReference",
-        "teams": "resolveTeamReference",
         "convertedFromIssue": "resolveIssueReference",
-        "labels": "resolveProjectLabelReference",
         "lead": "resolveUserReference",
         "leadTeam": "resolveTeamReference",
-        "members": "resolveUserReference",
-        "status": "resolveProjectStatusReference"
+        "status": "resolveNamedEntityReference"
       },
       "requiresVariables": true,
       "semanticException": "save-value-types"
@@ -15899,16 +16441,11 @@
     },
     "preparation": {
       "resolverPaths": {
-        "projectId": "resolveNamedEntityReference",
-        "convertedFromIssueId": "resolveIssueReference",
         "project": "resolveNamedEntityReference",
-        "teams": "resolveTeamReference",
         "convertedFromIssue": "resolveIssueReference",
-        "labels": "resolveProjectLabelReference",
         "lead": "resolveUserReference",
         "leadTeam": "resolveTeamReference",
-        "members": "resolveUserReference",
-        "status": "resolveProjectStatusReference"
+        "status": "resolveNamedEntityReference"
       }
     },
     "safety": {
@@ -16095,6 +16632,11 @@
         {
           "name": "updateRemindersHour",
           "type": "Float",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
           "required": false
         }
       ],
@@ -16318,7 +16860,8 @@
             "slackChannelName",
             "templateId",
             "useDefaultTemplate",
-            "id"
+            "id",
+            "view"
           ],
           "branches": [
             {
@@ -16362,7 +16905,8 @@
             "updateReminderFrequency",
             "updateReminderFrequencyInWeeks",
             "updateRemindersDay",
-            "updateRemindersHour"
+            "updateRemindersHour",
+            "view"
           ],
           "branches": [
             {
@@ -16608,7 +17152,8 @@
         "updateReminderFrequency",
         "updateReminderFrequencyInWeeks",
         "updateRemindersDay",
-        "updateRemindersHour"
+        "updateRemindersHour",
+        "view"
       ],
       "action": "save",
       "targetFields": [

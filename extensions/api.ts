@@ -5,12 +5,10 @@ import { Compile } from 'typebox/compile';
 import { Kind, parse, type FragmentDefinitionNode, type SelectionSetNode } from 'graphql';
 import {
   DOMAINS,
-  formatInvocation,
   getOperation,
   getOperationDefinition,
   operationDefinitions,
   operationsForDomain,
-  parameterVariants,
   type LinearOperation,
   type OperationDomain,
 } from './operations';
@@ -41,6 +39,7 @@ import { LINEAR_BATCH_HELP, LINEAR_GRAPHQL_HELP, exceptionalToolDefinitions } fr
 import type { MutationMode } from './safety';
 import { LINEAR_TOOL_DESCRIPTION } from './generated/operation-catalog';
 import { assertBatchPhaseCombination, executeBatch } from './batch';
+import { validateOperationVariables } from './operation-validation';
 import {
   GET_RESULT_HELP,
   childPointer,
@@ -63,46 +62,6 @@ const NATURAL_SEARCH_REMOVED = 'Natural search was removed. The operation catalo
 const definitionDomainSet = new Set(operationDefinitions.map(({ domain }) => domain));
 const DEFINITION_DOMAINS = DOMAINS.filter((domain) => definitionDomainSet.has(domain));
 
-function canonicalFieldList(operation: LinearOperation): string {
-  return Object.keys(operation.canonical.fields).join(', ');
-}
-
-function validateVariables(
-  operation: LinearOperation,
-  requestedName: string,
-  variables: JsonObject,
-): void {
-  const variants = parameterVariants(operation, requestedName);
-  const valid = new Set(variants.flatMap((variant) => variant.map(({ name }) => name)));
-  const acceptedVariant = variants.find((variant) => {
-    const variantKeys = new Set(variant.map(({ name }) => name));
-    return variant.every(({ name, required }) => !required || name in variables)
-      && Object.keys(variables).every((name) => variantKeys.has(name));
-  });
-  if (acceptedVariant) {
-    try {
-      operation.validateVariables?.(variables);
-      return;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(
-        `Invalid parameters for "${operation.name}": ${message}. Valid parameters: canonical fields ${canonicalFieldList(operation)}. Example: ${formatInvocation(operation.example)}.`,
-      );
-    }
-  }
-
-  const missing = operation.parameters.filter(({ name, required }) => required && !(name in variables)).map(({ name }) => name);
-  const unknown = Object.keys(variables).filter((name) => !valid.has(name));
-  const problems = [
-    ...(operation.requiresVariables && !Object.keys(variables).length ? ['at least one parameter is required'] : []),
-    ...(missing.length ? [`missing ${missing.join(', ')}`] : []),
-    ...(unknown.length ? [`unknown ${unknown.join(', ')}`] : []),
-  ].join('; ') || 'parameters do not match one accepted shape';
-  throw new Error(
-    `Invalid parameters for "${operation.name}": ${problems}. Valid parameters: canonical fields ${canonicalFieldList(operation)}. Example: ${formatInvocation(operation.example)}.`,
-  );
-}
-
 export function resolveRequest(params: {
   operation?: string;
   query?: string;
@@ -114,7 +73,7 @@ export function resolveRequest(params: {
 
     const operation = getOperation(params.operation);
     assertOperationAllowed(operation, params.variables ?? {}, mode);
-    validateVariables(operation, params.operation, params.variables ?? {});
+    validateOperationVariables(operation, params.operation, params.variables ?? {}, 'canonical-fields');
     return { query: operation.document, named: true, operation };
   } catch (error) {
     throw redactError(error, activeSecrets());

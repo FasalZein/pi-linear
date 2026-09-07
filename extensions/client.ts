@@ -291,6 +291,7 @@ export type LinearGraphQLOptions = {
   preserveUnusableRoot?: boolean;
   throwResponseErrors?: boolean;
   phase?: 'read' | 'mutation';
+  retryRateLimit?: boolean;
 };
 
 export type LinearTransport = typeof fetch;
@@ -368,7 +369,7 @@ export async function linearGraphQLWithContext(
       // Use the HTTP status below for non-JSON responses.
     }
 
-    const retryHttp = response.status === 429;
+    const retryHttp = response.status === 429 && options?.retryRateLimit !== false;
     const retryGraphQL = response.status === 400 && isSearchRead && rateLimited(body.errors);
     if (attempt === 0 && (retryHttp || retryGraphQL)) {
       try {

@@ -43,6 +43,43 @@ async function treeDigest(root: string): Promise<string> {
   return hash.digest('hex');
 }
 
+async function generatedResolverProbe(
+  relativePath: string,
+  oldText: string,
+  newText: string,
+  operationName: string,
+  fieldName: string,
+  expectedLabel: string,
+): Promise<void> {
+  const parent = await mkdtemp(join(tmpdir(), 'linear-resolver-probe-'));
+  const copy = join(parent, basename(process.cwd()));
+  try {
+    await cp(process.cwd(), copy, {
+      recursive: true,
+      filter: (source) => !source.endsWith('/.git') && !source.endsWith('/node_modules'),
+    });
+    await symlink(join(process.cwd(), 'node_modules'), join(copy, 'node_modules'), 'dir');
+    const path = join(copy, relativePath);
+    const source = await readFile(path, 'utf8');
+    expect(source.split(oldText)).toHaveLength(2);
+    await writeFile(path, source.replace(oldText, newText));
+    const result = spawnSync('npm', ['run', 'generate'], {
+      cwd: copy,
+      encoding: 'utf8',
+      env: { ...process.env, CI: '1' },
+      timeout: 30_000,
+    });
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+    const generated = JSON.parse(
+      await readFile(join(copy, 'extensions/generated/operation-contracts.json'), 'utf8'),
+    ) as Array<{ name: string; preparation: { resolverPaths: Record<string, string> } }>;
+    expect(generated.find(({ name }) => name === operationName)?.preparation.resolverPaths[fieldName])
+      .toBe(expectedLabel);
+  } finally {
+    await rm(parent, { recursive: true, force: true });
+  }
+}
+
 async function staleSourceProbe(relativePath: string, oldText: string, newText: string): Promise<void> {
   const parent = await mkdtemp(join(tmpdir(), 'linear-generation-probe-'));
   const copy = join(parent, basename(process.cwd()));
@@ -175,6 +212,17 @@ describe('generated products', () => {
     await staleSourceProbe(path, oldText, newText);
   }, 60_000);
 
+  it('generates a resolver declaration when an authored field becomes a Reference type', async () => {
+    await generatedResolverProbe(
+      'extensions/operations/comments.ts',
+      '{ name: "after", canonical: "String" },',
+      '{ name: "after", canonical: "TeamReference" },',
+      'list_comments',
+      'after',
+      'resolveTeamReference',
+    );
+  }, 60_000);
+
   it('keeps exact runtime typed-tool metadata in every generated contract', () => {
     const generated = new Map(contracts.map(({ name, tool }) => [name, tool]));
     for (const runtime of typedLinearTools()) {
@@ -221,7 +269,23 @@ describe('generated products', () => {
     expect(createIssue.compatibility.fields.map(({ name }) => name)).toContain('input');
   });
 
+  it('keeps hand-authored resolver labels out of Operation sources', async () => {
+    const directory = join(process.cwd(), 'extensions/operations');
+    const sourceFiles = (await readdir(directory))
+      .filter((name) => name.endsWith('.ts') && !['index.ts', 'shared.ts'].includes(name));
+    for (const name of sourceFiles) {
+      expect(await readFile(join(directory, name), 'utf8'), name).not.toContain('resolverPaths');
+    }
+  });
+
   it('serializes exhaustive compatibility and GraphQL products', () => {
+    for (const definition of operationDefinitions) {
+      const projected = contractProjection(definition);
+      expect(projected.preparation.resolverPaths, definition.name)
+        .toEqual(definition.preparation.resolverPaths);
+      expect(projected.compatibility.resolverPaths, definition.name)
+        .toEqual(definition.preparation.resolverPaths);
+    }
     const createComment = contractProjection(operationDefinitions.find(({ name }) => name === 'create_comment')!);
     expect(createComment.compatibility).toMatchObject({
       operationAliases: ['add_comment'],

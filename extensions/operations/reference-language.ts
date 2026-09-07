@@ -1,5 +1,11 @@
 import type { CanonicalOperation, CanonicalVariant } from '../canonical-schema';
-import type { CompatibilityObject, CompatibilityValue, LookupPlan, OperationPlan } from '../operation-types';
+import type {
+  CompatibilityObject,
+  CompatibilityValue,
+  LookupPlan,
+  OperationPlan,
+  OperationReferenceField,
+} from '../operation-types';
 import { isCompatibilityObject, isCompatibilityString } from '../operation-types';
 import { issueLookup, namedEntityLookup, teamLookup, userLookup, type LookupNamedKind } from '../operation-plan';
 
@@ -174,17 +180,33 @@ export function canonicalReferenceExample(name: string, example: CompatibilityOb
   return Object.fromEntries(Object.entries(example).map(([field, value]) => [renames[field]?.name ?? field, value]));
 }
 
-export function canonicalReferenceResolverPaths(
+function authoredReferenceType(type: string): OperationReferenceField['type'] | undefined {
+  return type.endsWith('Reference') ? type as OperationReferenceField['type'] : undefined;
+}
+
+/** Project authored reference metadata through the canonical rename table. */
+export function canonicalReferenceFields(
   name: string,
-  paths: Readonly<Record<string, string>>,
-) {
-  const projected = { ...paths };
-  for (const [oldName, rename] of Object.entries(operationReferenceRenames(name))) {
-    const resolver = paths[oldName];
-    if (resolver) projected[rename.name] = resolver;
-    else if (rename.resolver) projected[rename.name] = `resolve${rename.resolver[0]!.toUpperCase()}${rename.resolver.slice(1)}Reference`;
+  fields: readonly OperationReferenceField[],
+  canonical: CanonicalOperation,
+): readonly OperationReferenceField[] {
+  const renames = operationReferenceRenames(name);
+  const projected = new Map<string, OperationReferenceField>();
+  for (const field of fields) {
+    const rename = renames[field.name];
+    const type = rename ? authoredReferenceType(rename.type) ?? field.type : field.type;
+    const projectedField = { name: rename?.name ?? field.name, type };
+    if (projected.has(projectedField.name)) {
+      throw new Error(`Duplicate reference field ${projectedField.name}.`);
+    }
+    projected.set(projectedField.name, projectedField);
   }
-  return projected;
+  for (const [oldName, rename] of Object.entries(renames)) {
+    if (!(oldName in canonical.fields) || projected.has(rename.name)) continue;
+    const type = authoredReferenceType(rename.type);
+    if (type) projected.set(rename.name, { name: rename.name, type });
+  }
+  return [...projected.values()];
 }
 
 export function normalizeReferenceArguments(

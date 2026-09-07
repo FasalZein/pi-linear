@@ -61,7 +61,6 @@ export const milestoneReads: readonly OperationDefinition[] = ([
 			"projectMilestone",
 			projection("milestone", "detail"),
 		),
-		resolverPaths: { milestone: "resolveNamedEntityReference" },
 		plan(v) {
 			const requested = String(v.milestone ?? v.milestoneId);
 			return {
@@ -101,10 +100,6 @@ addSaveOperation({
 	updateRoot: "projectMilestoneUpdate",
 	createType: "ProjectMilestoneCreateInput",
 	updateType: "ProjectMilestoneUpdateInput",
-	resolverPaths: {
-		milestoneId: "resolveNamedEntityReference",
-		projectId: "resolveNamedEntityReference",
-	},
 	example: { name: "Beta", projectId: "project-id" },
 }),
 ];
