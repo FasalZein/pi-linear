@@ -99,396 +99,45 @@ export const initiativeReads: readonly OperationDefinition[] = ([
 export const initiativeSaves: readonly OperationDefinition[] = [
 addSaveOperation({
 	name: "save_initiative",
-	compatibilityBranches: [
-		{
-			"all": [
-				"name"
-			],
-			"forbidden": [
-				"initiativeId",
-				"customIdentifier",
-				"input.customIdentifier",
-				"frequencyResolution",
-				"input.frequencyResolution",
-				"trashed",
-				"input.trashed",
-				"updateReminderFrequency",
-				"input.updateReminderFrequency",
-				"updateReminderFrequencyInWeeks",
-				"input.updateReminderFrequencyInWeeks",
-				"updateRemindersDay",
-				"input.updateRemindersDay",
-				"updateRemindersHour",
-				"input.updateRemindersHour"
-			],
-			"mode": "create"
-		},
-		{
-			"all": [
-				"input.name"
-			],
-			"forbidden": [
-				"initiativeId",
-				"customIdentifier",
-				"input.customIdentifier",
-				"frequencyResolution",
-				"input.frequencyResolution",
-				"trashed",
-				"input.trashed",
-				"updateReminderFrequency",
-				"input.updateReminderFrequency",
-				"updateReminderFrequencyInWeeks",
-				"input.updateReminderFrequencyInWeeks",
-				"updateRemindersDay",
-				"input.updateRemindersDay",
-				"updateRemindersHour",
-				"input.updateRemindersHour"
-			],
-			"mode": "create"
-		},
-		{
-			"all": [
-				"initiativeId"
-			],
-			"atLeastOneOf": [
-				"color",
-				"input.color",
-				"content",
-				"input.content",
-				"description",
-				"input.description",
-				"icon",
-				"input.icon",
-				"labelIds",
-				"input.labelIds",
-				"leadTeamId",
-				"input.leadTeamId",
-				"name",
-				"input.name",
-				"ownerId",
-				"input.ownerId",
-				"priority",
-				"input.priority",
-				"prioritySortOrder",
-				"input.prioritySortOrder",
-				"sortOrder",
-				"input.sortOrder",
-				"status",
-				"input.status",
-				"targetDate",
-				"input.targetDate",
-				"targetDateResolution",
-				"input.targetDateResolution",
-				"customIdentifier",
-				"input.customIdentifier",
-				"frequencyResolution",
-				"input.frequencyResolution",
-				"trashed",
-				"input.trashed",
-				"updateReminderFrequency",
-				"input.updateReminderFrequency",
-				"updateReminderFrequencyInWeeks",
-				"input.updateReminderFrequencyInWeeks",
-				"updateRemindersDay",
-				"input.updateRemindersDay",
-				"updateRemindersHour",
-				"input.updateRemindersHour"
-			],
-			"atLeastOneOfMessage": "No initiative update fields were provided.",
-			"forbidden": [
-				"id",
-				"input.id"
-			],
-			"mode": "update"
-		}
-	],
-	semanticException: "save-value-types",
-	renderTargetFields: [
-		"initiativeId",
-		"name"
-	],
-	canonical: {
-		"fields": {
-			"initiativeId": "InitiativeReference",
-			"name": "String",
-			"description": "String",
-			"content": "String",
-			"icon": "String",
-			"color": "Color",
-			"status": "InitiativeStatus",
-			"targetDate": "NullableDate",
-			"targetDateResolution": "DateResolutionType",
-			"ownerId": "UUID",
-			"leadTeamId": "UUID",
-			"sortOrder": "Float",
-			"prioritySortOrder": "Float",
-			"priority": "Priority",
-			"labelIds": "[UUID!]",
-			"id": "UUID",
-			"customIdentifier": "String",
-			"frequencyResolution": "FrequencyResolutionType",
-			"updateReminderFrequency": "Float",
-			"updateReminderFrequencyInWeeks": "Float",
-			"updateRemindersDay": "Day",
-			"updateRemindersHour": "Float"
-		},
-		"branches": [
-			[
-				"name"
-			],
-			[
-				"initiativeId",
-				"name"
-			],
-			[
-				"initiativeId",
-				"description"
-			],
-			[
-				"initiativeId",
-				"content"
-			],
-			[
-				"initiativeId",
-				"icon"
-			],
-			[
-				"initiativeId",
-				"color"
-			],
-			[
-				"initiativeId",
-				"status"
-			],
-			[
-				"initiativeId",
-				"targetDate"
-			],
-			[
-				"initiativeId",
-				"targetDateResolution"
-			],
-			[
-				"initiativeId",
-				"ownerId"
-			],
-			[
-				"initiativeId",
-				"leadTeamId"
-			],
-			[
-				"initiativeId",
-				"sortOrder"
-			],
-			[
-				"initiativeId",
-				"prioritySortOrder"
-			],
-			[
-				"initiativeId",
-				"priority"
-			],
-			[
-				"initiativeId",
-				"labelIds"
-			],
-			[
-				"initiativeId",
-				"customIdentifier"
-			],
-			[
-				"initiativeId",
-				"frequencyResolution"
-			],
-			[
-				"initiativeId",
-				"updateReminderFrequency"
-			],
-			[
-				"initiativeId",
-				"updateReminderFrequencyInWeeks"
-			],
-			[
-				"initiativeId",
-				"updateRemindersDay"
-			],
-			[
-				"initiativeId",
-				"updateRemindersHour"
-			]
+	parameterDecision: {
+		identity: { kind: "identity", name: "initiativeId", type: "InitiativeReference", canonicalOrder: 0 },
+		fields: [
+			{ kind: "typed", name: "color", type: "Color", canonicalOrder: 5, mode: "both" },
+			{ kind: "typed", name: "content", type: "String", canonicalOrder: 3, mode: "both" },
+			{ kind: "typed", name: "description", type: "String", canonicalOrder: 2, mode: "both" },
+			{ kind: "typed", name: "icon", type: "String", canonicalOrder: 4, mode: "both" },
+			{ kind: "typed", name: "id", type: "UUID", canonicalOrder: 15, mode: "create" },
+			{ kind: "typed", name: "labelIds", type: "[UUID!]", canonicalOrder: 14, mode: "both" },
+			{ kind: "typed", name: "leadTeamId", type: "UUID", canonicalOrder: 10, mode: "both" },
+			{ kind: "typed", name: "name", type: "String", canonicalOrder: 1, mode: "both", requiredOnCreate: true, compatibilityCard: true, renderTarget: true },
+			{ kind: "typed", name: "ownerId", type: "UUID", canonicalOrder: 9, mode: "both" },
+			{ kind: "typed", name: "priority", type: "Priority", canonicalOrder: 13, mode: "both" },
+			{ kind: "typed", name: "prioritySortOrder", type: "Float", canonicalOrder: 12, mode: "both" },
+			{ kind: "typed", name: "sortOrder", type: "Float", canonicalOrder: 11, mode: "both" },
+			{ kind: "typed", name: "status", type: "InitiativeStatus", canonicalOrder: 6, mode: "both" },
+			{ kind: "typed", name: "targetDate", type: "NullableDate", canonicalOrder: 7, mode: "both" },
+			{ kind: "typed", name: "targetDateResolution", type: "DateResolutionType", canonicalOrder: 8, mode: "both" },
+			{ kind: "typed", name: "customIdentifier", type: "String", canonicalOrder: 16, mode: "update" },
+			{ kind: "typed", name: "frequencyResolution", type: "FrequencyResolutionType", canonicalOrder: 17, mode: "update" },
+			{ kind: "compatibility", name: "trashed", mode: "update" },
+			{ kind: "typed", name: "updateReminderFrequency", type: "Float", canonicalOrder: 18, mode: "update" },
+			{ kind: "typed", name: "updateReminderFrequencyInWeeks", type: "Float", canonicalOrder: 19, mode: "update" },
+			{ kind: "typed", name: "updateRemindersDay", type: "Day", canonicalOrder: 20, mode: "update" },
+			{ kind: "typed", name: "updateRemindersHour", type: "Float", canonicalOrder: 21, mode: "update" },
 		],
-		"variants": [
-			{
-				"fields": [
-					"name",
-					"description",
-					"content",
-					"icon",
-					"color",
-					"status",
-					"targetDate",
-					"targetDateResolution",
-					"ownerId",
-					"leadTeamId",
-					"sortOrder",
-					"prioritySortOrder",
-					"priority",
-					"labelIds",
-					"id"
-				],
-				"branches": [
-					[
-						"name"
-					]
-				]
-			},
-			{
-				"fields": [
-					"initiativeId",
-					"name",
-					"description",
-					"content",
-					"icon",
-					"color",
-					"status",
-					"targetDate",
-					"targetDateResolution",
-					"ownerId",
-					"leadTeamId",
-					"sortOrder",
-					"prioritySortOrder",
-					"priority",
-					"labelIds",
-					"customIdentifier",
-					"frequencyResolution",
-					"updateReminderFrequency",
-					"updateReminderFrequencyInWeeks",
-					"updateRemindersDay",
-					"updateRemindersHour"
-				],
-				"branches": [
-					[
-						"initiativeId",
-						"name"
-					],
-					[
-						"initiativeId",
-						"description"
-					],
-					[
-						"initiativeId",
-						"content"
-					],
-					[
-						"initiativeId",
-						"icon"
-					],
-					[
-						"initiativeId",
-						"color"
-					],
-					[
-						"initiativeId",
-						"status"
-					],
-					[
-						"initiativeId",
-						"targetDate"
-					],
-					[
-						"initiativeId",
-						"targetDateResolution"
-					],
-					[
-						"initiativeId",
-						"ownerId"
-					],
-					[
-						"initiativeId",
-						"leadTeamId"
-					],
-					[
-						"initiativeId",
-						"sortOrder"
-					],
-					[
-						"initiativeId",
-						"prioritySortOrder"
-					],
-					[
-						"initiativeId",
-						"priority"
-					],
-					[
-						"initiativeId",
-						"labelIds"
-					],
-					[
-						"initiativeId",
-						"customIdentifier"
-					],
-					[
-						"initiativeId",
-						"frequencyResolution"
-					],
-					[
-						"initiativeId",
-						"updateReminderFrequency"
-					],
-					[
-						"initiativeId",
-						"updateReminderFrequencyInWeeks"
-					],
-					[
-						"initiativeId",
-						"updateRemindersDay"
-					],
-					[
-						"initiativeId",
-						"updateRemindersHour"
-					]
-				]
-			}
-		]
 	},
+	semanticException: "save-value-types",
 	domain: "initiatives",
 	entity: "Initiative",
 	noun: "initiative",
 	entityKind: "initiative",
 	documentName: "Initiative",
 	selection: projection("initiative", "detail"),
-	idKey: "initiativeId",
 	createRoot: "initiativeCreate",
 	updateRoot: "initiativeUpdate",
 	createType: "InitiativeCreateInput",
 	updateType: "InitiativeUpdateInput",
 	resolverPaths: { initiativeId: "resolveNamedEntityReference" },
-	parameters: [
-		"initiativeId",
-		"color",
-		"content",
-		"description",
-		"icon",
-		"id",
-		"labelIds",
-		"leadTeamId",
-		"name",
-		"ownerId",
-		"priority",
-		"prioritySortOrder",
-		"sortOrder",
-		"status",
-		"targetDate",
-		"targetDateResolution",
-		"customIdentifier",
-		"frequencyResolution",
-		"trashed",
-		"updateReminderFrequency",
-		"updateReminderFrequencyInWeeks",
-		"updateRemindersDay",
-		"updateRemindersHour",
-		"input",
-	].map((n) => p(n)),
 	example: { name: "Platform" },
 }),
 ];

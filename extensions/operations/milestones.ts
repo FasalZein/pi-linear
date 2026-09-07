@@ -96,170 +96,25 @@ export const milestoneReads: readonly OperationDefinition[] = ([
 export const milestoneSaves: readonly OperationDefinition[] = [
 addSaveOperation({
 	name: "save_milestone",
-	compatibilityBranches: [
-		{
-			"all": [
-				"name"
-			],
-			"atLeastOneOf": [
-				"projectId",
-				"input.projectId"
-			],
-			"forbidden": [
-				"milestoneId"
-			],
-			"mode": "create"
-		},
-		{
-			"all": [
-				"input.name"
-			],
-			"atLeastOneOf": [
-				"projectId",
-				"input.projectId"
-			],
-			"forbidden": [
-				"milestoneId"
-			],
-			"mode": "create"
-		},
-		{
-			"all": [
-				"milestoneId"
-			],
-			"atLeastOneOf": [
-				"description",
-				"input.description",
-				"descriptionData",
-				"input.descriptionData",
-				"name",
-				"input.name",
-				"projectId",
-				"input.projectId",
-				"sortOrder",
-				"input.sortOrder",
-				"targetDate",
-				"input.targetDate"
-			],
-			"atLeastOneOfMessage": "No milestone update fields were provided.",
-			"forbidden": [
-				"id",
-				"input.id"
-			],
-			"mode": "update"
-		}
-	],
-	semanticException: "save-value-types",
-	renderTargetFields: [
-		"milestoneId",
-		"name",
-		"projectId"
-	],
-	canonical: {
-		"fields": {
-			"milestoneId": "MilestoneReference",
-			"name": "String",
-			"projectId": "ProjectReference",
-			"description": "String",
-			"descriptionData": "JsonString",
-			"targetDate": "NullableDate",
-			"sortOrder": "Float",
-			"id": "UUID"
-		},
-		"branches": [
-			[
-				"name",
-				"projectId"
-			],
-			[
-				"milestoneId",
-				"name"
-			],
-			[
-				"milestoneId",
-				"projectId"
-			],
-			[
-				"milestoneId",
-				"description"
-			],
-			[
-				"milestoneId",
-				"descriptionData"
-			],
-			[
-				"milestoneId",
-				"targetDate"
-			],
-			[
-				"milestoneId",
-				"sortOrder"
-			]
+	parameterDecision: {
+		identity: { kind: "identity", name: "milestoneId", type: "MilestoneReference", canonicalOrder: 0 },
+		fields: [
+			{ kind: "typed", name: "description", type: "String", canonicalOrder: 3, mode: "both" },
+			{ kind: "typed", name: "descriptionData", type: "JsonString", canonicalOrder: 4, mode: "both" },
+			{ kind: "typed", name: "id", type: "UUID", canonicalOrder: 7, mode: "create" },
+			{ kind: "typed", name: "name", type: "String", canonicalOrder: 1, mode: "both", requiredOnCreate: true, compatibilityCard: true, renderTarget: true },
+			{ kind: "typed", name: "projectId", type: "ProjectReference", canonicalOrder: 2, mode: "both", requiredOnCreate: true, compatibilityCard: true, renderTarget: true },
+			{ kind: "typed", name: "sortOrder", type: "Float", canonicalOrder: 6, mode: "both" },
+			{ kind: "typed", name: "targetDate", type: "NullableDate", canonicalOrder: 5, mode: "both" },
 		],
-		"variants": [
-			{
-				"fields": [
-					"name",
-					"projectId",
-					"description",
-					"descriptionData",
-					"targetDate",
-					"sortOrder",
-					"id"
-				],
-				"branches": [
-					[
-						"name",
-						"projectId"
-					]
-				]
-			},
-			{
-				"fields": [
-					"milestoneId",
-					"name",
-					"projectId",
-					"description",
-					"descriptionData",
-					"targetDate",
-					"sortOrder"
-				],
-				"branches": [
-					[
-						"milestoneId",
-						"name"
-					],
-					[
-						"milestoneId",
-						"projectId"
-					],
-					[
-						"milestoneId",
-						"description"
-					],
-					[
-						"milestoneId",
-						"descriptionData"
-					],
-					[
-						"milestoneId",
-						"targetDate"
-					],
-					[
-						"milestoneId",
-						"sortOrder"
-					]
-				]
-			}
-		]
 	},
+	semanticException: "save-value-types",
 	domain: "milestones",
 	entity: "ProjectMilestone",
 	noun: "milestone",
 	entityKind: "projectMilestone",
 	documentName: "Milestone",
 	selection: projection("milestone", "detail"),
-	idKey: "milestoneId",
 	createRoot: "projectMilestoneCreate",
 	updateRoot: "projectMilestoneUpdate",
 	createType: "ProjectMilestoneCreateInput",
@@ -268,17 +123,6 @@ addSaveOperation({
 		milestoneId: "resolveNamedEntityReference",
 		projectId: "resolveNamedEntityReference",
 	},
-	parameters: [
-		"milestoneId",
-		"description",
-		"descriptionData",
-		"id",
-		"name",
-		"projectId",
-		"sortOrder",
-		"targetDate",
-		"input",
-	].map((n) => p(n)),
 	example: { name: "Beta", projectId: "project-id" },
 }),
 ];

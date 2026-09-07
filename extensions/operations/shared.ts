@@ -22,6 +22,7 @@ import {
 	type OperationParameter,
 	type PaginationMetadata,
 	type ParsedOperationPlanFactory,
+	type RequirementBranch,
 } from "../operation-types";
 import type { CanonicalOperation } from "../canonical-schema";
 import { defineOperation } from "../operation-definition";
@@ -489,25 +490,163 @@ export function simpleMutation(config: {
 	};
 }
 
-// Save operations use one definition and select the create or update document at runtime.
+type SaveParameterMode = "create" | "update" | "both";
+
+type SaveIdentityParameter = {
+	kind: "identity";
+	name: string;
+	type: string;
+	canonicalOrder: number;
+};
+
+type TypedSaveParameterField = {
+	kind: "typed";
+	name: string;
+	type: string;
+	canonicalOrder: number;
+	mode: SaveParameterMode;
+	requiredOnCreate?: true;
+	compatibilityCard?: true;
+	renderTarget?: true;
+};
+
+type CompatibilitySaveParameterField = {
+	kind: "compatibility";
+	name: string;
+	mode: SaveParameterMode;
+};
+
+export type SaveParameterDecision = {
+	identity: SaveIdentityParameter;
+	/** Fields stay in compatibility-card order. canonicalOrder projects typed field order. */
+	fields: readonly (TypedSaveParameterField | CompatibilitySaveParameterField)[];
+};
+
+type SaveParameterProjections = {
+	canonical: CanonicalOperation;
+	compatibilityBranches: readonly RequirementBranch[];
+	card: readonly OperationParameter[];
+	accepted: readonly OperationParameter[];
+	identity: string;
+	renderTargetFields: readonly string[];
+};
+
+function saveParameterProjections(
+	decision: SaveParameterDecision,
+	noun: string,
+): SaveParameterProjections {
+	const compatibilityFields = [decision.identity, ...decision.fields];
+	const names = new Set<string>();
+	const canonicalOrders = new Set<number>();
+	for (const field of compatibilityFields) {
+		if (names.has(field.name)) throw new Error(`Duplicate save parameter ${field.name}.`);
+		names.add(field.name);
+		if (field.kind === "compatibility") continue;
+		if (canonicalOrders.has(field.canonicalOrder)) {
+			throw new Error(`Duplicate canonical save parameter order ${field.canonicalOrder}.`);
+		}
+		canonicalOrders.add(field.canonicalOrder);
+	}
+	const typed = compatibilityFields
+		.filter((field): field is SaveIdentityParameter | TypedSaveParameterField =>
+			field.kind !== "compatibility",
+		)
+		.slice()
+		.sort((left, right) => left.canonicalOrder - right.canonicalOrder);
+	const identity = decision.identity.name;
+	const createRequired = typed.filter(
+		(field): field is TypedSaveParameterField =>
+			field.kind === "typed" && field.requiredOnCreate === true,
+	);
+	if (!createRequired.length) throw new Error(`Save ${noun} must declare a create requirement.`);
+	const createFields = typed.filter((field) => field.kind === "typed" && field.mode !== "update");
+	const updateFields = typed.filter((field) => field.kind === "identity" || field.mode !== "create");
+	const updateContent = updateFields.filter((field) => field.kind === "typed");
+	const fields: Record<string, string> = {};
+	for (const field of typed) fields[field.name] = field.type;
+	const createBranch = createRequired.map(({ name }) => name);
+	const updateBranches = updateContent.map(({ name }) => [identity, name]);
+	const pathVariants = (
+		field: SaveIdentityParameter | TypedSaveParameterField | CompatibilitySaveParameterField,
+	) => field.kind === "identity" ? [field.name] : [field.name, `input.${field.name}`];
+	const createForbidden = [
+		decision.identity,
+		...decision.fields.filter((field) => field.mode === "update"),
+	].flatMap(pathVariants);
+	const updateForbidden = decision.fields
+		.filter((field) => field.mode === "create")
+		.flatMap(pathVariants);
+	const primaryCreateField = createRequired[0]!;
+	const additionalCreateRequirements = createRequired.slice(1).flatMap(pathVariants);
+	const compatibilityCreateBranch = (all: readonly string[]): RequirementBranch => {
+		const branch: RequirementBranch = { all };
+		if (additionalCreateRequirements.length) branch.atLeastOneOf = additionalCreateRequirements;
+		branch.forbidden = createForbidden;
+		branch.mode = "create";
+		return branch;
+	};
+	return {
+		canonical: {
+			fields,
+			branches: [createBranch, ...updateBranches],
+			variants: [
+				{ fields: createFields.map(({ name }) => name), branches: [createBranch] },
+				{ fields: updateFields.map(({ name }) => name), branches: updateBranches },
+			],
+		},
+		compatibilityBranches: [
+			compatibilityCreateBranch([primaryCreateField.name]),
+			compatibilityCreateBranch([`input.${primaryCreateField.name}`]),
+			{
+				all: [identity],
+				atLeastOneOf: decision.fields
+					.filter((field) => field.mode !== "create")
+					.flatMap(pathVariants),
+				atLeastOneOfMessage: `No ${noun} update fields were provided.`,
+				forbidden: updateForbidden,
+				mode: "update",
+			},
+		],
+		card: [
+			p(decision.identity.name, decision.identity.type),
+			...decision.fields
+				.filter((field): field is TypedSaveParameterField =>
+					field.kind === "typed" && field.compatibilityCard === true,
+				)
+				.map((field) => p(field.name, field.type)),
+			input,
+		],
+		accepted: [...compatibilityFields.map(({ name }) => p(name)), p("input")],
+		identity,
+		renderTargetFields: [
+			decision.identity.name,
+			...decision.fields
+				.filter((field): field is TypedSaveParameterField =>
+					field.kind === "typed" && field.renderTarget === true,
+				)
+				.map(({ name }) => name),
+		],
+	};
+}
+
+// Save operations use one parameter decision and select the create or update document at runtime.
 export function addSaveOperation(config: {
 	name: string;
-	canonical: CanonicalOperation;
+	parameterDecision: SaveParameterDecision;
 	domain: OperationDomain;
 	entity: string;
 	noun: string;
 	entityKind: "project" | "initiative" | "projectMilestone";
 	documentName: string;
 	selection: string;
-	idKey: string;
 	createRoot: string;
 	updateRoot: string;
 	createType: string;
 	updateType: string;
-	parameters: readonly OperationParameter[];
 	example: CompatibilityObject;
 	resolverPaths?: Readonly<{ [name: string]: string }>;
-} & OperationSourceExtras) {
+} & Omit<OperationSourceExtras, "compatibilityBranches" | "renderTargetFields">) {
+	const parameters = saveParameterProjections(config.parameterDecision, config.noun);
 	const entityPath = config.entity[0]!.toLowerCase() + config.entity.slice(1);
 	const baseCreateDocument = mutationDocument(
 		`Create${config.documentName}`,
@@ -539,10 +678,10 @@ export function addSaveOperation(config: {
 	// Requirement branches own save mode, required content, and forbidden fields.
 	// This named exception checks non-empty and value-type semantics only.
 	const validateSaveSemantics = (v: CompatibilityObject) => {
-		const reference = v[config.idKey];
+		const reference = v[parameters.identity];
 		const update = isCompatibilityString(reference) && reference.length > 0;
 		if (update) return;
-		const prepared = mergedInput(v, [config.idKey]);
+		const prepared = mergedInput(v, [parameters.identity]);
 		if (!isCompatibilityString(prepared.name) || !prepared.name.trim())
 			throw new Error(
 				`${config.entity} name is required for ${config.createRoot} (name).`,
@@ -560,27 +699,20 @@ export function addSaveOperation(config: {
 				"teamIds is required for projectCreate and must be a non-empty array.",
 			);
 	};
-	const cardParameters =
-		config.name === "save_project"
-			? [p("projectId", "ProjectReference"), p("name"), input]
-			: config.name === "save_initiative"
-				? [p("initiativeId", "InitiativeReference"), p("name"), input]
-				: [
-						p("milestoneId", "MilestoneReference"),
-						p("name"),
-						p("projectId", "ProjectReference"),
-						input,
-					];
 	return defineOperation({
-		...sourceExtras(config),
+		...sourceExtras({
+			...config,
+			compatibilityBranches: parameters.compatibilityBranches,
+			renderTargetFields: parameters.renderTargetFields,
+		}),
 		name: config.name,
 		resultCategory: "singular",
-		canonical: config.canonical,
+		canonical: parameters.canonical,
 		aliases: [`create_${config.name.slice(5)}`, `update_${config.name.slice(5)}`],
 		domain: config.domain,
 		purpose: `Create or update ${/^[aeiou]/i.test(config.noun) ? "an" : "a"} ${config.noun}.`,
-		parameters: cardParameters,
-		acceptedParameters: config.parameters,
+		parameters: parameters.card,
+		acceptedParameters: parameters.accepted,
 		example: { operation: config.name, variables: config.example },
 		document: createDocument,
 		variants: [createVariant, updateVariant],
@@ -589,9 +721,9 @@ export function addSaveOperation(config: {
 		validateVariables: validateSaveSemantics,
 		plan(v) {
 			validateSaveSemantics(v);
-			const reference = v[config.idKey];
+			const reference = v[parameters.identity];
 			const update = isCompatibilityString(reference) && reference.length > 0;
-			const prepared = mergedInput(v, [config.idKey]);
+			const prepared = mergedInput(v, [parameters.identity]);
 			const projectReference = config.name === "save_milestone" && isCompatibilityString(prepared.projectId)
 				? prepared.projectId
 				: undefined;
