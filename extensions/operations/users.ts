@@ -65,7 +65,6 @@ export const users: readonly OperationDefinition[] = ([
 		purpose: "Get a user by me, UUID, email, name, or display name.",
 						example: { operation: "get_user", variables: { user: "me" } },
 		document: getDocument("GetUser", "user", projection("user", "detail")),
-		resolverPaths: { user: "resolveUserReference" },
 		plan(v) {
 			const requested = String(v.user ?? v.userId);
 			return {

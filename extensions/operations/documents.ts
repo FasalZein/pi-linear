@@ -76,7 +76,6 @@ export const documents: readonly OperationDefinition[] = ([
 			variables: { document: "Planning notes" },
 		},
 		document: getDocument("GetDocument", "document", projection("document", "detail")),
-		resolverPaths: { document: "resolveNamedEntityReference" },
 		plan(v) {
 			const requested = String(v.document ?? v.documentId);
 			const reference = requested.trim();
@@ -102,8 +101,8 @@ export const documents: readonly OperationDefinition[] = ([
 			{ name: "content", canonical: "String", accepted: { order: 1 } },
 			{ name: "icon", canonical: "String", accepted: { order: 3 } },
 			{ name: "color", canonical: "Color", accepted: { order: 0 } },
-			{ name: "issueId", canonical: "IssueReference", accepted: { order: 6 } },
-			{ name: "teamId", canonical: "TeamReference", accepted: { order: 14 } },
+			{ name: "issueId", canonical: "IssueReference", accepted: { order: 6 }, reference: { order: 0 } },
+			{ name: "teamId", canonical: "TeamReference", accepted: { order: 14 }, reference: { order: 2 } },
 			{ name: "projectId", canonical: "UUID", accepted: { order: 9 } },
 			{ name: "initiativeId", canonical: "UUID", accepted: { order: 5 } },
 			{ name: "cycleId", canonical: "UUID", accepted: { order: 2 } },
@@ -115,7 +114,7 @@ export const documents: readonly OperationDefinition[] = ([
 			{ name: "sortOrder", canonical: "Float", accepted: { order: 12 } },
 			{ name: "id", canonical: "UUID", accepted: { order: 4 } },
 			{ name: "input", card: { order: 1, type: "Input" }, accepted: { order: 17 }, legacy: [{ order: 0, type: "DocumentCreateInput", required: true, branch: 0 }] },
-			{ name: "teamKey", accepted: { order: 15 } },
+			{ name: "teamKey", accepted: { order: 15 }, reference: { type: "TeamReference", order: 1 } },
 		],
 		requirements: {
 			canonicalBranches: 1,
@@ -136,11 +135,6 @@ export const documents: readonly OperationDefinition[] = ([
 			) {
 				throw new Error("canonical fields or nested input require title");
 			}
-		},
-		resolverPaths: {
-			issueId: "resolveIssueReference",
-			teamKey: "resolveTeamReference",
-			teamId: "resolveTeamReference",
 		},
 		plan(v) {
 			const input = mergedInput(v, ["teamKey"]);
@@ -176,13 +170,13 @@ export const documents: readonly OperationDefinition[] = ([
 		name: "update_document",
 		...operationParameterDecision({
 		fields: [
-			{ name: "document", canonical: "DocumentReference", canonicalBranches: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15] },
+			{ name: "document", canonical: "DocumentReference", canonicalBranches: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], reference: { name: "documentId", type: "DocumentIdReference", order: 0 } },
 			{ name: "title", canonical: "String", canonicalBranches: [0], accepted: { order: 17 } },
 			{ name: "content", canonical: "String", canonicalBranches: [1], accepted: { order: 2 } },
 			{ name: "icon", canonical: "String", canonicalBranches: [2], accepted: { order: 5 } },
 			{ name: "color", canonical: "Color", canonicalBranches: [3], accepted: { order: 1 } },
-			{ name: "issueId", canonical: "IssueReference", canonicalBranches: [4], accepted: { order: 7 } },
-			{ name: "teamId", canonical: "TeamReference", canonicalBranches: [5], accepted: { order: 15 } },
+			{ name: "issueId", canonical: "IssueReference", canonicalBranches: [4], accepted: { order: 7 }, reference: { order: 1 } },
+			{ name: "teamId", canonical: "TeamReference", canonicalBranches: [5], accepted: { order: 15 }, reference: { order: 3 } },
 			{ name: "projectId", canonical: "UUID", canonicalBranches: [6], accepted: { order: 10 } },
 			{ name: "initiativeId", canonical: "UUID", canonicalBranches: [7], accepted: { order: 6 } },
 			{ name: "cycleId", canonical: "UUID", canonicalBranches: [8], accepted: { order: 3 } },
@@ -195,7 +189,7 @@ export const documents: readonly OperationDefinition[] = ([
 			{ name: "hiddenAt", canonical: "NullableDateTime", canonicalBranches: [15], accepted: { order: 4 } },
 			{ name: "documentId", compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, type: "DocumentReference", required: true }, accepted: { order: 0 } },
 			{ name: "input", card: { order: 1, type: "Input" }, accepted: { order: 19 } },
-			{ name: "teamKey", accepted: { order: 16 } },
+			{ name: "teamKey", accepted: { order: 16 }, reference: { type: "TeamReference", order: 2 } },
 			{ name: "trashed", accepted: { order: 18 } },
 		],
 		requirements: {
@@ -212,12 +206,6 @@ export const documents: readonly OperationDefinition[] = ([
 						example: { documentId: "document-id", title: "Updated notes" },
 		canonicalExample: { document: "document-id", title: "Updated notes" },
 		idKey: "documentId",
-		resolverPaths: {
-			documentId: "resolveDocumentReference",
-			issueId: "resolveIssueReference",
-			teamKey: "resolveTeamReference",
-			teamId: "resolveTeamReference",
-		},
 		plan(v) {
 			const requested = String(v.document ?? v.documentId);
 			const input = mergedInput(v, ["document", "documentId", "teamKey"]);

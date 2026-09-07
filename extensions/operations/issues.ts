@@ -259,11 +259,6 @@ export const issues: readonly OperationDefinition[] = ([
 		sortType: "IssueSortInput",
 		sortKeys: ISSUE_SORT_KEYS,
 		example: { assignee: "me", stateType: "started" },
-						resolverPaths: {
-			team: "resolveTeamReference",
-			state: "resolveStateReference",
-			assignee: "resolveUserReference",
-		},
 		validateVariables(variables) {
 			if (variables.issues !== undefined) parseIssueReferenceSet(variables.issues);
 			const state = variables.state ?? variables.stateName;
@@ -339,7 +334,6 @@ export const issues: readonly OperationDefinition[] = ([
 		purpose: "Get one issue by exact identifier or UUID.",
 						example: { operation: "get_issue", variables: { issue: "AEO-258" } },
 		document: getDocument("GetIssue", "issue", projection("issue", "detail")),
-		resolverPaths: { issue: "resolveIssueReference" },
 		plan(v) {
 			const ref = requireIssueReference(issueReference(v));
 			return pureQueryPlan({
@@ -354,10 +348,10 @@ export const issues: readonly OperationDefinition[] = ([
 		...operationParameterDecision({
 		fields: [
 			{ name: "title", canonical: "String", canonicalBranches: [0,1], compatibilityRequirements: [{"branch":0,"kind":"all","order":0},{"branch":1,"kind":"all","order":0,"input":true}], card: { order: 0, required: true }, accepted: { order: 2 } },
-			{ name: "team", canonical: "TeamReference", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":0},{"branch":1,"kind":"atLeastOne","order":0}], card: { order: 2 }, accepted: { order: 36 } },
-			{ name: "parent", canonical: "IssueReference", canonicalBranches: [1], compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":3},{"branch":1,"kind":"atLeastOne","order":3}], card: { order: 1 }, accepted: { order: 35 } },
-			{ name: "state", canonical: "StateReference", card: { order: 3 }, accepted: { order: 37 } },
-			{ name: "assignee", canonical: "UserReference", card: { order: 4 }, accepted: { order: 38 } },
+			{ name: "team", canonical: "TeamReference", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":0},{"branch":1,"kind":"atLeastOne","order":0}], card: { order: 2 }, accepted: { order: 36 }, reference: { order: 2 } },
+			{ name: "parent", canonical: "IssueReference", canonicalBranches: [1], compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":3},{"branch":1,"kind":"atLeastOne","order":3}], card: { order: 1 }, accepted: { order: 35 }, reference: { order: 0 } },
+			{ name: "state", canonical: "StateReference", card: { order: 3 }, accepted: { order: 37 }, reference: { order: 5 } },
+			{ name: "assignee", canonical: "UserReference", card: { order: 4 }, accepted: { order: 38 }, reference: { order: 7 } },
 			{ name: "dueDate", canonical: "Date", accepted: { order: 12 } },
 			{ name: "description", canonical: "String", accepted: { order: 3 } },
 			{ name: "descriptionData", canonical: "JsonString", accepted: { order: 10 } },
@@ -388,11 +382,11 @@ export const issues: readonly OperationDefinition[] = ([
 			{ name: "createdAt", canonical: "DateTime", accepted: { order: 7 } },
 			{ name: "id", canonical: "UUID", accepted: { order: 14 } },
 			{ name: "input", card: { order: 5, type: "Input" }, accepted: { order: 41, type: "Input" }, legacy: [{ order: 0, type: "IssueCreateInput", required: true, branch: 0 }] },
-			{ name: "teamId", compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":2},{"branch":0,"kind":"atLeastOne","order":4,"input":true},{"branch":1,"kind":"atLeastOne","order":2},{"branch":1,"kind":"atLeastOne","order":4,"input":true}], accepted: { order: 0 } },
-			{ name: "teamKey", compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":1},{"branch":1,"kind":"atLeastOne","order":1}], accepted: { order: 1 } },
-			{ name: "assigneeId", accepted: { order: 4 } },
-			{ name: "parentId", compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":5,"input":true},{"branch":1,"kind":"atLeastOne","order":5,"input":true}], accepted: { order: 17 } },
-			{ name: "stateId", accepted: { order: 30 } },
+			{ name: "teamId", compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":2},{"branch":0,"kind":"atLeastOne","order":4,"input":true},{"branch":1,"kind":"atLeastOne","order":2},{"branch":1,"kind":"atLeastOne","order":4,"input":true}], accepted: { order: 0 }, reference: { type: "TeamReference", order: 4 } },
+			{ name: "teamKey", compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":1},{"branch":1,"kind":"atLeastOne","order":1}], accepted: { order: 1 }, reference: { type: "TeamReference", order: 3 } },
+			{ name: "assigneeId", accepted: { order: 4 }, reference: { type: "UserReference", order: 8 } },
+			{ name: "parentId", compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":5,"input":true},{"branch":1,"kind":"atLeastOne","order":5,"input":true}], accepted: { order: 17 }, reference: { type: "IssueReference", order: 1 } },
+			{ name: "stateId", accepted: { order: 30 }, reference: { type: "StateReference", order: 6 } },
 			{ name: "project", accepted: { order: 39, type: "ProjectReference" } },
 			{ name: "labels", accepted: { order: 40, type: "[UUID!]" } },
 		],
@@ -445,29 +439,18 @@ export const issues: readonly OperationDefinition[] = ([
 				);
 			}
 		},
-		resolverPaths: {
-			parent: "resolveIssueReference",
-			parentId: "resolveIssueReference",
-			team: "resolveTeamReference",
-			teamKey: "resolveTeamReference",
-			teamId: "resolveTeamReference",
-			state: "resolveStateReference",
-			stateId: "resolveStateReference",
-			assignee: "resolveUserReference",
-			assigneeId: "resolveUserReference",
-		},
 		plan: createIssuePlan,
 	}),
 	simpleMutation({
 		name: "update_issue",
 		...operationParameterDecision({
 		fields: [
-			{ name: "issue", canonical: "IssueReference", canonicalBranches: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true }, accepted: { order: 0 } },
+			{ name: "issue", canonical: "IssueReference", canonicalBranches: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true }, accepted: { order: 0 }, reference: { order: 0 } },
 			{ name: "title", canonical: "String", canonicalBranches: [0], accepted: { order: 5 } },
-			{ name: "state", canonical: "StateReference", canonicalBranches: [1], card: { order: 1 }, accepted: { order: 2 } },
-			{ name: "assignee", canonical: "NullableUserReference", canonicalBranches: [2], card: { order: 2, type: "UserReference" }, accepted: { order: 3 } },
-			{ name: "parent", canonical: "NullableIssueReference", canonicalBranches: [3], card: { order: 3, type: "IssueReference" }, accepted: { order: 4 } },
-			{ name: "teamId", canonical: "TeamReference", canonicalBranches: [4], accepted: { order: 32 } },
+			{ name: "state", canonical: "StateReference", canonicalBranches: [1], card: { order: 1 }, accepted: { order: 2 }, reference: { order: 2 } },
+			{ name: "assignee", canonical: "NullableUserReference", canonicalBranches: [2], card: { order: 2, type: "UserReference" }, accepted: { order: 3 }, reference: { order: 4 } },
+			{ name: "parent", canonical: "NullableIssueReference", canonicalBranches: [3], card: { order: 3, type: "IssueReference" }, accepted: { order: 4 }, reference: { order: 6 } },
+			{ name: "teamId", canonical: "TeamReference", canonicalBranches: [4], accepted: { order: 32 }, reference: { order: 8 } },
 			{ name: "dueDate", canonical: "NullableDate", canonicalBranches: [5], accepted: { order: 10 } },
 			{ name: "addedLabelIds", canonical: "[UUID!]", canonicalBranches: [6], accepted: { order: 11 } },
 			{ name: "removedLabelIds", canonical: "[UUID!]", canonicalBranches: [7], accepted: { order: 23 } },
@@ -492,10 +475,10 @@ export const issues: readonly OperationDefinition[] = ([
 			{ name: "snoozedById", canonical: "UUID", canonicalBranches: [26], accepted: { order: 27 } },
 			{ name: "snoozedUntilAt", canonical: "NullableDateTime", canonicalBranches: [27], accepted: { order: 28 } },
 			{ name: "input", card: { order: 4, type: "Input" }, accepted: { order: 34, type: "Input" } },
-			{ name: "issueId", compatibilityRequirements: [{"branch":1,"kind":"all","order":0}], accepted: { order: 1 }, aliases: [{ order: 0, required: true, operation: "update_issue_state" }] },
-			{ name: "stateId", compatibilityRequirements: [{"branch":1,"kind":"all","order":1}], accepted: { order: 8 }, aliases: [{ order: 1, required: true, operation: "update_issue_state" }] },
-			{ name: "assigneeId", accepted: { order: 9 } },
-			{ name: "parentId", accepted: { order: 19 } },
+			{ name: "issueId", compatibilityRequirements: [{"branch":1,"kind":"all","order":0}], accepted: { order: 1 }, aliases: [{ order: 0, required: true, operation: "update_issue_state" }], reference: { type: "IssueReference", order: 1 } },
+			{ name: "stateId", compatibilityRequirements: [{"branch":1,"kind":"all","order":1}], accepted: { order: 8 }, aliases: [{ order: 1, required: true, operation: "update_issue_state" }], reference: { type: "StateReference", order: 3 } },
+			{ name: "assigneeId", accepted: { order: 9 }, reference: { type: "UserReference", order: 5 } },
+			{ name: "parentId", accepted: { order: 19 }, reference: { type: "IssueReference", order: 7 } },
 			{ name: "trashed", accepted: { order: 33 } },
 		],
 		requirements: {
@@ -511,17 +494,6 @@ export const issues: readonly OperationDefinition[] = ([
 		idKey: "issue",
 						example: { issue: "AEO-258", state: "Backlog" },
 		aliases: ["update_issue_state"],
-				resolverPaths: {
-			issue: "resolveIssueReference",
-			issueId: "resolveIssueReference",
-			state: "resolveStateReference",
-			stateId: "resolveStateReference",
-			assignee: "resolveUserReference",
-			assigneeId: "resolveUserReference",
-			parent: "resolveIssueReference",
-			parentId: "resolveIssueReference",
-			teamId: "resolveTeamReference",
-		},
 		plan: updateIssuePlan,
 	}),
 	listOperation({
@@ -565,7 +537,6 @@ export const issues: readonly OperationDefinition[] = ([
 		pageSize: 20,
 		filterType: "IssueFilter",
 		totalCount: true,
-						resolverPaths: { team: "resolveTeamReference" },
 		example: { term: "authentication" },
 		extras: "$term: String! $includeComments: Boolean $teamId: String",
 		extraArgs: "term: $term includeComments: $includeComments teamId: $teamId",

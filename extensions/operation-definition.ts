@@ -8,6 +8,7 @@ import type {
   OperationDefinition,
   OperationDocumentDefinition,
   OperationPlanFactory,
+  OperationReferenceField,
   OperationSource,
   ParsedOperationPlanFactory,
   RequirementBranch,
@@ -23,6 +24,24 @@ function operationVariables(name: string, variables: JsonValue | undefined): Com
 function actionAndEntity(name: string) {
   const [action, ...parts] = name.split('_');
   return { action: action ?? name, entity: parts.join('_') || name };
+}
+
+const DIRECT_REFERENCE_CONCEPTS = new Set(['Issue', 'Team', 'State', 'User']);
+
+function resolverLabel(type: OperationReferenceField['type']): string {
+  const concept = type.replace(/^Nullable/, '').replace(/Reference$/, '');
+  if (DIRECT_REFERENCE_CONCEPTS.has(concept)) return `resolve${concept}Reference`;
+  if (concept === 'DocumentId') return 'resolveDocumentReference';
+  return 'resolveNamedEntityReference';
+}
+
+function resolverPaths(fields: readonly OperationReferenceField[]) {
+  const names = new Set<string>();
+  return Object.fromEntries(fields.map((field) => {
+    if (names.has(field.name)) throw new Error(`Duplicate reference field ${field.name}.`);
+    names.add(field.name);
+    return [field.name, resolverLabel(field.type)];
+  }));
 }
 
 /** Projected from the operation name; a source definition may override it. */
@@ -190,6 +209,7 @@ export function defineOperation(operation: OperationSource): OperationDefinition
     required: canonical.branches.length > 0
       && canonical.branches.every((branch) => branch.includes(name)),
   }));
+  const generatedResolverPaths = resolverPaths(operation.referenceFields);
   const compatibility: OperationCompatibilityDefinition = {
     operationAliases: operation.aliases,
     fields: operation.parameters,
@@ -202,7 +222,7 @@ export function defineOperation(operation: OperationSource): OperationDefinition
   assignOptional(compatibility, 'aliasFields', operation.aliasParameters);
   assignOptional(compatibility, 'inventoryDocuments', operation.inventoryDocuments);
   assignOptional(compatibility, 'pagination', operation.pagination);
-  assignOptional(compatibility, 'resolverPaths', operation.resolverPaths);
+  if (operation.referenceFields.length) compatibility.resolverPaths = generatedResolverPaths;
   if (requiresVariables) compatibility.requiresVariables = true;
   if (operation.validateVariables) {
     compatibility.semanticException = operation.semanticException
@@ -259,7 +279,8 @@ export function defineOperation(operation: OperationSource): OperationDefinition
     kind,
     compatibility,
     preparation: {
-      resolverPaths: operation.resolverPaths ?? {},
+      referenceFields: operation.referenceFields,
+      resolverPaths: generatedResolverPaths,
     },
     safety: {
       namedInputPolicy: operation.namedInputPolicy ?? 'non-destructive',

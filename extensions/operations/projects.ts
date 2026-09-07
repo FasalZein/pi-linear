@@ -66,7 +66,6 @@ export const projectReads: readonly OperationDefinition[] = ([
 		purpose: "Get a project by exact name or UUID.",
 						example: { operation: "get_project", variables: { project: "Platform" } },
 		document: getDocument("GetProject", "project", projection("project", "detail")),
-		resolverPaths: { project: "resolveNamedEntityReference" },
 		plan(v) {
 			const requested = String(v.project ?? v.projectId);
 			const reference = requested.trim();
@@ -146,10 +145,6 @@ addSaveOperation({
 	updateRoot: "projectUpdate",
 	createType: "ProjectCreateInput",
 	updateType: "ProjectUpdateInput",
-	resolverPaths: {
-		projectId: "resolveNamedEntityReference",
-		convertedFromIssueId: "resolveIssueReference",
-	},
 	example: { name: "Platform", teamIds: ["team-id"] },
 }),
 ];

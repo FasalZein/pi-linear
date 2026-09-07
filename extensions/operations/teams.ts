@@ -56,7 +56,6 @@ export const teams: readonly OperationDefinition[] = ([
 		purpose: "Get a team by exact key or UUID.",
 						example: { operation: "get_team", variables: { team: "AEO" } },
 		document: getDocument("GetTeam", "team", projection("team", "detail")),
-		resolverPaths: { team: "resolveTeamReference" },
 		plan(v) {
 			const requested = String(v.team ?? v.teamId);
 			return {

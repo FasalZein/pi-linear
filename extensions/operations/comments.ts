@@ -133,7 +133,6 @@ export const comments: readonly OperationDefinition[] = ([
 		pageSize: 20,
 		filterType: "CommentFilter",
 				example: { issue: "AEO-258" },
-		resolverPaths: { issue: "resolveIssueReference" },
 		plan: (variables) => {
 			const requested = issueReference(variables);
 			return {
@@ -168,7 +167,7 @@ export const comments: readonly OperationDefinition[] = ([
 			{ name: "createOnSyncedSlackThread", canonical: "Boolean", accepted: { order: 3 } },
 			{ name: "createdAt", canonical: "DateTime", accepted: { order: 4 } },
 			{ name: "id", canonical: "UUID", accepted: { order: 7 } },
-			{ name: "issueId", compatibilityRequirements: [{"branch":0,"kind":"exactlyOne","group":0,"order":1},{"branch":0,"kind":"exactlyOne","group":0,"order":9,"input":true}], accepted: { order: 10 }, legacy: [{ order: 0, required: true, branch: 0 }], aliases: [{ order: 0, required: true, operation: "add_comment" }] },
+			{ name: "issueId", compatibilityRequirements: [{"branch":0,"kind":"exactlyOne","group":0,"order":1},{"branch":0,"kind":"exactlyOne","group":0,"order":9,"input":true}], accepted: { order: 10 }, legacy: [{ order: 0, required: true, branch: 0 }], aliases: [{ order: 0, required: true, operation: "add_comment" }], reference: { type: "IssueReference" } },
 			{ name: "input", accepted: { order: 16, type: "Input" }, legacy: [{ order: 0, type: "CommentCreateInput", required: true, branch: 1 }] },
 		],
 		requirements: {
@@ -195,10 +194,6 @@ export const comments: readonly OperationDefinition[] = ([
 		selection: `comment { ${projection("comment", "detail")} }`,
 						example: { issue: "AEO-258", body: "Comment text" },
 		aliases: ["add_comment"],
-						resolverPaths: {
-			issue: "resolveIssueReference",
-			issueId: "resolveIssueReference",
-		},
 		validateVariables: validateCommentCreateSemantics,
 		plan(variables) {
 			validateCommentCreateSemantics(variables);
