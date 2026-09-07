@@ -1,6 +1,5 @@
 import { userLookup } from "../operation-plan";
 import { projection } from "../selections";
-import { p } from "../operation-types";
 import type {
 	OperationSource,
 	OperationDefinition,
@@ -19,29 +18,22 @@ export const users: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_users",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": []
-				}
-			],
-			canonical: {
-				"fields": {
-					"includeDisabled": "Boolean",
-					"sort": "[UserSort!]",
-					"after": "String",
-					"before": "String",
-					"first": "Int",
-					"last": "Int",
-					"includeArchived": "Boolean",
-					"orderBy": "PaginationOrderBy",
-					"filter": "Filter"
-				},
-				"branches": [
-					[]
-				]
-			},
-			parameters: [p("includeDisabled", "Boolean")],
-		}),
+		fields: [
+			{ name: "includeDisabled", canonical: "Boolean", card: { order: 0 } },
+			{ name: "sort", canonical: "[UserSort!]" },
+			{ name: "after", canonical: "String" },
+			{ name: "before", canonical: "String" },
+			{ name: "first", canonical: "Int" },
+			{ name: "last", canonical: "Int" },
+			{ name: "includeArchived", canonical: "Boolean" },
+			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			{ name: "filter", canonical: "Filter" },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 				renderEmpty: workspaceEmpty("users", "user", false),
 				domain: "users",
 		root: "users",
@@ -59,31 +51,15 @@ export const users: readonly OperationDefinition[] = ([
 		name: "get_user",
 		resultCategory: "singular",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"user"
-					]
-				},
-				{
-					"all": [
-						"userId"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"user": "UserReference"
-				},
-				"branches": [
-					[
-						"user"
-					]
-				]
-			},
-			parameters: [p("user", "UserReference", true)],
-			legacyParameters: [[p("userId", "String", true)]],
-		}),
+		fields: [
+			{ name: "user", canonical: "UserReference", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true } },
+			{ name: "userId", compatibilityRequirements: [{"branch":1,"kind":"all","order":0}], legacy: [{ order: 0, required: true, branch: 0 }] },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{},{}],
+		},
+	}),
 						aliases: [],
 		domain: "users",
 		purpose: "Get a user by me, UUID, email, name, or display name.",

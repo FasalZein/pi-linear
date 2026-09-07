@@ -5,7 +5,6 @@ import {
 	isCompatibilityString,
 	mergeFilters,
 	mergedInput,
-	p,
 	paginationVariables,
 } from "../operation-types";
 import type {
@@ -15,14 +14,12 @@ import type {
 } from "../operation-types";
 import { defineOperation } from "../operation-definition";
 import {
-	input,
 	issueTarget,
 	issueReference,
 	object,
 	listOperation,
 	simpleMutation,
 	operationParameterDecision,
-	operationFieldDecision,
 } from "./shared";
 
 
@@ -55,31 +52,7 @@ const COMMENT_UPDATE_INPUT_FIELDS = [
 	"resolvingUserId",
 	"subscriberIds",
 ] as const;
-const COMMENT_UPDATE_COMPATIBILITY_FIELDS = ["body", "bodyData", "quotedText"] as const;
-const commentUpdateInput = [
-	...COMMENT_UPDATE_COMPATIBILITY_FIELDS.map((name) => p(name)),
-	p("skipEditedAt", "Boolean"),
-];
 
-const createCommentFields = operationFieldDecision([
-	{ name: "issue", canonical: "IssueReference", card: {"order":0,"type":"IssueReference"}, accepted: {"order":0,"type":"String"} },
-	{ name: "projectId", canonical: "UUID", accepted: {"order":13,"type":"String"} },
-	{ name: "initiativeId", canonical: "UUID", accepted: {"order":8,"type":"String"} },
-	{ name: "projectUpdateId", canonical: "UUID", accepted: {"order":14,"type":"String"} },
-	{ name: "initiativeUpdateId", canonical: "UUID", accepted: {"order":9,"type":"String"} },
-	{ name: "postId", canonical: "UUID", accepted: {"order":12,"type":"String"} },
-	{ name: "documentContentId", canonical: "UUID", accepted: {"order":6,"type":"String"} },
-	{ name: "parentId", canonical: "UUID", accepted: {"order":11,"type":"String"} },
-	{ name: "body", canonical: "String", card: {"order":1,"type":"String"}, accepted: {"order":1,"type":"String"}, legacy: [{"branch":0,"order":1,"type":"String","required":true}], aliases: [{"operation":"add_comment","order":1,"type":"String","required":true}] },
-	{ name: "bodyData", canonical: "JsonObject", accepted: {"order":2,"type":"String"} },
-	{ name: "quotedText", canonical: "String", accepted: {"order":15,"type":"String"} },
-	{ name: "doNotSubscribeToIssue", canonical: "Boolean", accepted: {"order":5,"type":"String"} },
-	{ name: "createOnSyncedSlackThread", canonical: "Boolean", accepted: {"order":3,"type":"String"} },
-	{ name: "createdAt", canonical: "DateTime", accepted: {"order":4,"type":"String"} },
-	{ name: "id", canonical: "UUID", accepted: {"order":7,"type":"String"} },
-	{ name: "issueId", accepted: {"order":10,"type":"String"}, legacy: [{"branch":0,"order":0,"type":"String","required":true}], aliases: [{"operation":"add_comment","order":0,"type":"String","required":true}] },
-	{ name: "input", accepted: {"order":16,"type":"Input"}, legacy: [{"branch":1,"order":0,"type":"CommentCreateInput","required":true}] },
-]);
 
 function has(value: CompatibilityObject, key: string): boolean {
 	return Object.prototype.hasOwnProperty.call(value, key) && value[key] !== undefined;
@@ -129,28 +102,21 @@ export const comments: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_comments",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": []
-				}
-			],
-			canonical: {
-				"fields": {
-					"issue": "IssueReference",
-					"after": "String",
-					"before": "String",
-					"first": "Int",
-					"last": "Int",
-					"includeArchived": "Boolean",
-					"orderBy": "PaginationOrderBy",
-					"filter": "Filter"
-				},
-				"branches": [
-					[]
-				]
-			},
-			parameters: [p("issue", "IssueReference")],
-		}),
+		fields: [
+			{ name: "issue", canonical: "IssueReference", card: { order: 0 } },
+			{ name: "after", canonical: "String" },
+			{ name: "before", canonical: "String" },
+			{ name: "first", canonical: "Int" },
+			{ name: "last", canonical: "Int" },
+			{ name: "includeArchived", canonical: "Boolean" },
+			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			{ name: "filter", canonical: "Filter" },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 				renderTargetFields: [
 			"issue"
 		],
@@ -186,117 +152,31 @@ export const comments: readonly OperationDefinition[] = ([
 	simpleMutation({
 		name: "create_comment",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [],
-					"exactlyOneOf": [
-						[
-							"issue",
-							"issueId",
-							"projectId",
-							"initiativeId",
-							"projectUpdateId",
-							"initiativeUpdateId",
-							"postId",
-							"documentContentId",
-							"parentId",
-							"input.issueId",
-							"input.projectId",
-							"input.initiativeId",
-							"input.projectUpdateId",
-							"input.initiativeUpdateId",
-							"input.postId",
-							"input.documentContentId",
-							"input.parentId"
-						],
-						[
-							"body",
-							"bodyData",
-							"input.body",
-							"input.bodyData"
-						]
-					],
-					"exactlyOneOfMessages": [
-						"exactly one comment target is required",
-						"exactly one of body or bodyData is required"
-					]
-				}
-			],
-			canonical: {
-				"fields": createCommentFields.canonical,
-				"branches": [
-					[
-						"issue",
-						"body"
-					],
-					[
-						"issue",
-						"bodyData"
-					],
-					[
-						"projectId",
-						"body"
-					],
-					[
-						"projectId",
-						"bodyData"
-					],
-					[
-						"initiativeId",
-						"body"
-					],
-					[
-						"initiativeId",
-						"bodyData"
-					],
-					[
-						"projectUpdateId",
-						"body"
-					],
-					[
-						"projectUpdateId",
-						"bodyData"
-					],
-					[
-						"initiativeUpdateId",
-						"body"
-					],
-					[
-						"initiativeUpdateId",
-						"bodyData"
-					],
-					[
-						"postId",
-						"body"
-					],
-					[
-						"postId",
-						"bodyData"
-					],
-					[
-						"documentContentId",
-						"body"
-					],
-					[
-						"documentContentId",
-						"bodyData"
-					],
-					[
-						"parentId",
-						"body"
-					],
-					[
-						"parentId",
-						"bodyData"
-					]
-				],
-				"exclusiveBranches": true
-			},
-			parameters: createCommentFields.card,
-			acceptedParameters: createCommentFields.accepted,
-			legacyParameters: createCommentFields.legacy,
-			aliasParameters: createCommentFields.aliases,
-		}),
+		fields: [
+			{ name: "issue", canonical: "IssueReference", canonicalBranches: [0,1], compatibilityRequirements: [{"branch":0,"kind":"exactlyOne","group":0,"order":0}], card: { order: 0 }, accepted: { order: 0 } },
+			{ name: "projectId", canonical: "UUID", canonicalBranches: [2,3], compatibilityRequirements: [{"branch":0,"kind":"exactlyOne","group":0,"order":2},{"branch":0,"kind":"exactlyOne","group":0,"order":10,"input":true}], accepted: { order: 13 } },
+			{ name: "initiativeId", canonical: "UUID", canonicalBranches: [4,5], compatibilityRequirements: [{"branch":0,"kind":"exactlyOne","group":0,"order":3},{"branch":0,"kind":"exactlyOne","group":0,"order":11,"input":true}], accepted: { order: 8 } },
+			{ name: "projectUpdateId", canonical: "UUID", canonicalBranches: [6,7], compatibilityRequirements: [{"branch":0,"kind":"exactlyOne","group":0,"order":4},{"branch":0,"kind":"exactlyOne","group":0,"order":12,"input":true}], accepted: { order: 14 } },
+			{ name: "initiativeUpdateId", canonical: "UUID", canonicalBranches: [8,9], compatibilityRequirements: [{"branch":0,"kind":"exactlyOne","group":0,"order":5},{"branch":0,"kind":"exactlyOne","group":0,"order":13,"input":true}], accepted: { order: 9 } },
+			{ name: "postId", canonical: "UUID", canonicalBranches: [10,11], compatibilityRequirements: [{"branch":0,"kind":"exactlyOne","group":0,"order":6},{"branch":0,"kind":"exactlyOne","group":0,"order":14,"input":true}], accepted: { order: 12 } },
+			{ name: "documentContentId", canonical: "UUID", canonicalBranches: [12,13], compatibilityRequirements: [{"branch":0,"kind":"exactlyOne","group":0,"order":7},{"branch":0,"kind":"exactlyOne","group":0,"order":15,"input":true}], accepted: { order: 6 } },
+			{ name: "parentId", canonical: "UUID", canonicalBranches: [14,15], compatibilityRequirements: [{"branch":0,"kind":"exactlyOne","group":0,"order":8},{"branch":0,"kind":"exactlyOne","group":0,"order":16,"input":true}], accepted: { order: 11 } },
+			{ name: "body", canonical: "String", canonicalBranches: [0,2,4,6,8,10,12,14], compatibilityRequirements: [{"branch":0,"kind":"exactlyOne","group":1,"order":0},{"branch":0,"kind":"exactlyOne","group":1,"order":2,"input":true}], card: { order: 1 }, accepted: { order: 1 }, legacy: [{ order: 1, required: true, branch: 0 }], aliases: [{ order: 1, required: true, operation: "add_comment" }] },
+			{ name: "bodyData", canonical: "JsonObject", canonicalBranches: [1,3,5,7,9,11,13,15], compatibilityRequirements: [{"branch":0,"kind":"exactlyOne","group":1,"order":1},{"branch":0,"kind":"exactlyOne","group":1,"order":3,"input":true}], accepted: { order: 2 } },
+			{ name: "quotedText", canonical: "String", accepted: { order: 15 } },
+			{ name: "doNotSubscribeToIssue", canonical: "Boolean", accepted: { order: 5 } },
+			{ name: "createOnSyncedSlackThread", canonical: "Boolean", accepted: { order: 3 } },
+			{ name: "createdAt", canonical: "DateTime", accepted: { order: 4 } },
+			{ name: "id", canonical: "UUID", accepted: { order: 7 } },
+			{ name: "issueId", compatibilityRequirements: [{"branch":0,"kind":"exactlyOne","group":0,"order":1},{"branch":0,"kind":"exactlyOne","group":0,"order":9,"input":true}], accepted: { order: 10 }, legacy: [{ order: 0, required: true, branch: 0 }], aliases: [{ order: 0, required: true, operation: "add_comment" }] },
+			{ name: "input", accepted: { order: 16, type: "Input" }, legacy: [{ order: 0, type: "CommentCreateInput", required: true, branch: 1 }] },
+		],
+		requirements: {
+			canonicalBranches: 16,
+			compatibilityBranches: [{"exactlyOneGroups":2,"exactlyOneOfMessages":["exactly one comment target is required","exactly one of body or bodyData is required"]}],
+			exclusiveCanonical: true,
+		},
+	}),
 				semanticException: "comment-value-types",
 		renderTargetFields: [
 			"issue",
@@ -338,55 +218,23 @@ export const comments: readonly OperationDefinition[] = ([
 	simpleMutation({
 		name: "update_comment",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"id"
-					],
-					"atLeastOneOf": [
-						"body",
-						"bodyData",
-						"quotedText",
-						"doNotSubscribeToIssue",
-						"resolvingUserId",
-						"resolvingCommentId",
-						"subscriberIds",
-						"input.body",
-						"input.bodyData",
-						"input.quotedText",
-						"input.doNotSubscribeToIssue",
-						"input.resolvingUserId",
-						"input.resolvingCommentId",
-						"input.subscriberIds"
-					],
-					"atLeastOneOfMessage": "at least one comment update field is required"
-				}
-			],
-			canonical: {
-				"fields": {
-					"id": "String",
-					"body": "String",
-					"bodyData": "JsonObject",
-					"quotedText": "String",
-					"skipEditedAt": "Boolean"
-				},
-				"branches": [
-					[
-						"id",
-						"body"
-					],
-					[
-						"id",
-						"bodyData"
-					],
-					[
-						"id",
-						"quotedText"
-					]
-				]
-			},
-			parameters: [p("id", "String", true), ...commentUpdateInput, input],
-		}),
+		fields: [
+			{ name: "id", canonical: "String", canonicalBranches: [0,1,2], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true } },
+			{ name: "body", canonical: "String", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":0},{"branch":0,"kind":"atLeastOne","order":7,"input":true}], card: { order: 1 } },
+			{ name: "bodyData", canonical: "JsonObject", canonicalBranches: [1], compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":1},{"branch":0,"kind":"atLeastOne","order":8,"input":true}], card: { order: 2, type: "String" } },
+			{ name: "quotedText", canonical: "String", canonicalBranches: [2], compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":2},{"branch":0,"kind":"atLeastOne","order":9,"input":true}], card: { order: 3 } },
+			{ name: "skipEditedAt", canonical: "Boolean", card: { order: 4 } },
+			{ name: "input", card: { order: 5, type: "Input" } },
+			{ name: "doNotSubscribeToIssue", compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":3},{"branch":0,"kind":"atLeastOne","order":10,"input":true}] },
+			{ name: "resolvingUserId", compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":4},{"branch":0,"kind":"atLeastOne","order":11,"input":true}] },
+			{ name: "resolvingCommentId", compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":5},{"branch":0,"kind":"atLeastOne","order":12,"input":true}] },
+			{ name: "subscriberIds", compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":6},{"branch":0,"kind":"atLeastOne","order":13,"input":true}] },
+		],
+		requirements: {
+			canonicalBranches: 3,
+			compatibilityBranches: [{"atLeastOneOfMessage":"at least one comment update field is required"}],
+		},
+	}),
 				semanticException: "comment-value-types",
 				domain: "comments",
 		purpose: "Update a comment by id.",

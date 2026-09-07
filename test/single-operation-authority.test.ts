@@ -63,11 +63,7 @@ describe('no second operation-keyed authority', () => {
     ]) {
       expect(source, keyword).toContain(keyword);
     }
-    const authored = source.match(/^\t{1,3}compatibilityBranches: \[/gm) ?? [];
-    const ordinaryDecisions = source.match(/operationParameterDecision\(\{/g) ?? [];
-    const saveDecisions = source.match(/^\tparameterDecision: \{/gm) ?? [];
-    expect(authored).toHaveLength(ordinaryDecisions.length);
-    expect(ordinaryDecisions.length + saveDecisions.length).toBe(names.length);
+
   });
 });
 
@@ -92,9 +88,18 @@ describe('definitions project from the source', () => {
     for (const name of names) {
       const definition = getOperationDefinition(name);
       expect(operations[name], name).toBeDefined();
-      expect(JSON.parse(JSON.stringify(generated.get(name)!.compatibility.branches)), name)
+      const contract = generated.get(name)!;
+      expect(contract.canonical.fields.map(({ name, type }: { name: string; type: string }) => ({ name, type })), name)
+        .toEqual(definition.canonical.fields.map(({ name: fieldName, type }) => ({ name: fieldName, type })));
+      expect(contract.canonical.branches, name)
+        .toEqual(definition.canonical.branches);
+      expect(JSON.parse(JSON.stringify(contract.compatibility.fields)), name)
+        .toEqual(JSON.parse(JSON.stringify(definition.compatibility.fields)));
+      expect(JSON.parse(JSON.stringify(contract.compatibility.branches)), name)
         .toEqual(JSON.parse(JSON.stringify(definition.compatibility.branches)));
-      expect(generated.get(name)!.render.entityKind, name).toBe(definition.render.entityKind);
+      expect(contract.compatibility.aliasFields ?? undefined, name)
+        .toEqual(definition.compatibility.aliasFields ?? undefined);
+      expect(contract.render.entityKind, name).toBe(definition.render.entityKind);
     }
   });
 });

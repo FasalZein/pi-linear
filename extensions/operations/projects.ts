@@ -1,7 +1,6 @@
 import { isLinearUrlSlug } from "../client";
 import { namedEntityLookup, pureQueryPlan } from "../operation-plan";
 import { projection } from "../selections";
-import { p } from "../operation-types";
 import type {
 	OperationSource,
 	OperationDefinition,
@@ -22,27 +21,22 @@ export const projectReads: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_projects",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": []
-				}
-			],
-			canonical: {
-				"fields": {
-					"sort": "[ProjectSort!]",
-					"after": "String",
-					"before": "String",
-					"first": "Int",
-					"last": "Int",
-					"includeArchived": "Boolean",
-					"orderBy": "PaginationOrderBy",
-					"filter": "Filter"
-				},
-				"branches": [
-					[]
-				]
-			},
-		}),
+		fields: [
+			{ name: "sort", canonical: "[ProjectSort!]" },
+			{ name: "after", canonical: "String" },
+			{ name: "before", canonical: "String" },
+			{ name: "first", canonical: "Int" },
+			{ name: "last", canonical: "Int" },
+			{ name: "includeArchived", canonical: "Boolean" },
+			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			{ name: "filter", canonical: "Filter" },
+			{ name: "view", canonical: "ResultView" },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 				renderEmpty: workspaceEmpty("projects", "project"),
 				domain: "projects",
 		root: "projects",
@@ -57,31 +51,16 @@ export const projectReads: readonly OperationDefinition[] = ([
 	withGetResultView({
 		name: "get_project",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"project"
-					]
-				},
-				{
-					"all": [
-						"projectId"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"project": "ProjectReference"
-				},
-				"branches": [
-					[
-						"project"
-					]
-				]
-			},
-			parameters: [p("project", "ProjectReference", true)],
-			legacyParameters: [[p("projectId", "String", true)]],
-		}),
+		fields: [
+			{ name: "project", canonical: "ProjectReference", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true } },
+			{ name: "view", canonical: "ResultView" },
+			{ name: "projectId", compatibilityRequirements: [{"branch":1,"kind":"all","order":0}], legacy: [{ order: 0, required: true, branch: 0 }] },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{},{}],
+		},
+	}),
 						aliases: [],
 		domain: "projects",
 		purpose: "Get a project by exact name or UUID.",

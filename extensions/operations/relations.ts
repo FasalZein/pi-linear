@@ -3,7 +3,6 @@ import { issueLookup, issueRelationLookup } from "../operation-plan";
 import {
 	isCompatibilityString,
 	mergedInput,
-	p,
 } from "../operation-types";
 import type {
 	CompatibilityObject,
@@ -13,7 +12,6 @@ import type {
 } from "../operation-types";
 import { defineOperation } from "../operation-definition";
 import {
-	input,
 	issueTarget,
 	issueReference,
 	workspaceEmpty,
@@ -77,25 +75,19 @@ export const issueRelations: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_issue_relations",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": []
-				}
-			],
-			canonical: {
-				"fields": {
-					"after": "String",
-					"before": "String",
-					"first": "Int",
-					"last": "Int",
-					"includeArchived": "Boolean",
-					"orderBy": "PaginationOrderBy"
-				},
-				"branches": [
-					[]
-				]
-			},
-		}),
+		fields: [
+			{ name: "after", canonical: "String" },
+			{ name: "before", canonical: "String" },
+			{ name: "first", canonical: "Int" },
+			{ name: "last", canonical: "Int" },
+			{ name: "includeArchived", canonical: "Boolean" },
+			{ name: "orderBy", canonical: "PaginationOrderBy" },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 				renderEmpty: workspaceEmpty("issue relations", "issue relation"),
 				domain: "relations",
 		root: "issueRelations",
@@ -106,63 +98,18 @@ export const issueRelations: readonly OperationDefinition[] = ([
 	simpleMutation({
 		name: "create_issue_relation",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"issue",
-						"relatedIssue",
-						"type"
-					]
-				},
-				{
-					"all": [
-						"issueId",
-						"relatedIssueId",
-						"type"
-					]
-				},
-				{
-					"all": [
-						"issueId",
-						"relatedIssueId",
-						"type"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"issue": "IssueReference",
-					"relatedIssue": "IssueReference",
-					"type": "IssueRelationType"
-				},
-				"branches": [
-					[
-						"issue",
-						"relatedIssue",
-						"type"
-					]
-				]
-			},
-			parameters: [
-				p("issue", "IssueReference", true),
-				p("relatedIssue", "IssueReference", true),
-				p("type", "IssueRelationType", true),
-			],
-			legacyParameters: [
-				[
-					p("issueId", "String", true),
-					p("relatedIssueId", "String", true),
-					p("type", "IssueRelationType", true),
-				],
-			],
-			aliasParameters: {
-				create_relation: [
-					p("issueId", "String", true),
-					p("relatedIssueId", "String", true),
-					p("type", "IssueRelationType", true),
-				],
-			},
-		}),
+		fields: [
+			{ name: "issue", canonical: "IssueReference", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true } },
+			{ name: "relatedIssue", canonical: "IssueReference", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":1}], card: { order: 1, required: true } },
+			{ name: "type", canonical: "IssueRelationType", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":2},{"branch":1,"kind":"all","order":2},{"branch":2,"kind":"all","order":2}], card: { order: 2, required: true }, legacy: [{ order: 2, type: "IssueRelationType", required: true, branch: 0 }], aliases: [{ order: 2, type: "IssueRelationType", required: true, operation: "create_relation" }] },
+			{ name: "issueId", compatibilityRequirements: [{"branch":1,"kind":"all","order":0},{"branch":2,"kind":"all","order":0}], legacy: [{ order: 0, required: true, branch: 0 }], aliases: [{ order: 0, required: true, operation: "create_relation" }] },
+			{ name: "relatedIssueId", compatibilityRequirements: [{"branch":1,"kind":"all","order":1},{"branch":2,"kind":"all","order":1}], legacy: [{ order: 1, required: true, branch: 0 }], aliases: [{ order: 1, required: true, operation: "create_relation" }] },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{},{},{}],
+		},
+	}),
 				renderTargetFields: [
 			"issue",
 			"relatedIssue"
@@ -195,44 +142,18 @@ export const issueRelations: readonly OperationDefinition[] = ([
 	simpleMutation({
 		name: "update_issue_relation",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"id"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"id": "String",
-					"type": "IssueRelationType",
-					"issueId": "IssueReference",
-					"relatedIssueId": "IssueReference"
-				},
-				"branches": [
-					[
-						"id",
-						"type"
-					],
-					[
-						"id",
-						"issueId"
-					],
-					[
-						"id",
-						"relatedIssueId"
-					]
-				]
-			},
-			parameters: [p("id", "String", true), input],
-			acceptedParameters: [
-				"id",
-				"type",
-				"issueId",
-				"relatedIssueId",
-				"input",
-			].map((n) => p(n)),
-		}),
+		fields: [
+			{ name: "id", canonical: "String", canonicalBranches: [0,1,2], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true }, accepted: { order: 0 } },
+			{ name: "type", canonical: "IssueRelationType", canonicalBranches: [0], accepted: { order: 1 } },
+			{ name: "issueId", canonical: "IssueReference", canonicalBranches: [1], accepted: { order: 2 } },
+			{ name: "relatedIssueId", canonical: "IssueReference", canonicalBranches: [2], accepted: { order: 3 } },
+			{ name: "input", card: { order: 1, type: "Input" }, accepted: { order: 4 } },
+		],
+		requirements: {
+			canonicalBranches: 3,
+			compatibilityBranches: [{}],
+		},
+	}),
 						domain: "relations",
 		purpose: "Update an issue relation.",
 		root: "issueRelationUpdate",
@@ -271,23 +192,17 @@ export const issueRelations: readonly OperationDefinition[] = ([
 	{
 		name: "delete_issue_relation",
 		...operationParameterDecision({
-			compatibilityBranches: [{ all: ["relationId", "issueId", "relatedIssueId", "type"] }],
-			canonical: {
-				fields: {
-					relationId: "UUID",
-					issueId: "UUID",
-					relatedIssueId: "UUID",
-					type: "IssueRelationType",
-				},
-				branches: [["relationId", "issueId", "relatedIssueId", "type"]],
-			},
-			parameters: [
-				p("relationId", "UUID", true),
-				p("issueId", "UUID", true),
-				p("relatedIssueId", "UUID", true),
-				p("type", "IssueRelationType", true),
-			],
-		}),
+		fields: [
+			{ name: "relationId", canonical: "UUID", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true } },
+			{ name: "issueId", canonical: "UUID", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":1}], card: { order: 1, required: true } },
+			{ name: "relatedIssueId", canonical: "UUID", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":2}], card: { order: 2, required: true } },
+			{ name: "type", canonical: "IssueRelationType", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":3}], card: { order: 3, required: true } },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 						aliases: [],
 		domain: "relations",
 		purpose: "Delete one issue relation after exact relation and endpoint verification.",
@@ -335,25 +250,19 @@ export const projectRelations: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_project_relations",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": []
-				}
-			],
-			canonical: {
-				"fields": {
-					"after": "String",
-					"before": "String",
-					"first": "Int",
-					"last": "Int",
-					"includeArchived": "Boolean",
-					"orderBy": "PaginationOrderBy"
-				},
-				"branches": [
-					[]
-				]
-			},
-		}),
+		fields: [
+			{ name: "after", canonical: "String" },
+			{ name: "before", canonical: "String" },
+			{ name: "first", canonical: "Int" },
+			{ name: "last", canonical: "Int" },
+			{ name: "includeArchived", canonical: "Boolean" },
+			{ name: "orderBy", canonical: "PaginationOrderBy" },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 				renderEmpty: workspaceEmpty("project relations", "project relation"),
 				domain: "relations",
 		root: "projectRelations",
@@ -364,55 +273,21 @@ export const projectRelations: readonly OperationDefinition[] = ([
 	simpleMutation({
 		name: "create_project_relation",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"projectId",
-						"relatedProjectId",
-						"type",
-						"anchorType",
-						"relatedAnchorType"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"projectId": "String",
-					"relatedProjectId": "String",
-					"type": "String",
-					"anchorType": "String",
-					"relatedAnchorType": "String",
-					"projectMilestoneId": "UUID",
-					"relatedProjectMilestoneId": "UUID"
-				},
-				"branches": [
-					[
-						"projectId",
-						"relatedProjectId",
-						"type",
-						"anchorType",
-						"relatedAnchorType"
-					]
-				]
-			},
-			parameters: [
-				p("projectId", "String", true),
-				p("relatedProjectId", "String", true),
-				p("type", "String", true),
-				p("anchorType", "String", true),
-				p("relatedAnchorType", "String", true),
-			],
-			acceptedParameters: [
-				"projectId",
-				"relatedProjectId",
-				"type",
-				"anchorType",
-				"relatedAnchorType",
-				"projectMilestoneId",
-				"relatedProjectMilestoneId",
-				"input",
-			].map((n) => p(n)),
-		}),
+		fields: [
+			{ name: "projectId", canonical: "String", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true }, accepted: { order: 0 } },
+			{ name: "relatedProjectId", canonical: "String", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":1}], card: { order: 1, required: true }, accepted: { order: 1 } },
+			{ name: "type", canonical: "String", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":2}], card: { order: 2, required: true }, accepted: { order: 2 } },
+			{ name: "anchorType", canonical: "String", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":3}], card: { order: 3, required: true }, accepted: { order: 3 } },
+			{ name: "relatedAnchorType", canonical: "String", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":4}], card: { order: 4, required: true }, accepted: { order: 4 } },
+			{ name: "projectMilestoneId", canonical: "UUID", accepted: { order: 5 } },
+			{ name: "relatedProjectMilestoneId", canonical: "UUID", accepted: { order: 6 } },
+			{ name: "input", accepted: { order: 7 } },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 						domain: "relations",
 		purpose: "Create a relation between two projects.",
 		root: "projectRelationCreate",
@@ -429,68 +304,22 @@ export const projectRelations: readonly OperationDefinition[] = ([
 	simpleMutation({
 		name: "update_project_relation",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"id"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"id": "String",
-					"type": "String",
-					"anchorType": "String",
-					"relatedAnchorType": "String",
-					"projectId": "UUID",
-					"relatedProjectId": "UUID",
-					"projectMilestoneId": "UUID",
-					"relatedProjectMilestoneId": "UUID"
-				},
-				"branches": [
-					[
-						"id",
-						"type"
-					],
-					[
-						"id",
-						"anchorType"
-					],
-					[
-						"id",
-						"relatedAnchorType"
-					],
-					[
-						"id",
-						"projectId"
-					],
-					[
-						"id",
-						"relatedProjectId"
-					],
-					[
-						"id",
-						"projectMilestoneId"
-					],
-					[
-						"id",
-						"relatedProjectMilestoneId"
-					]
-				]
-			},
-			parameters: [p("id", "String", true), input],
-			acceptedParameters: [
-				"id",
-				"type",
-				"projectId",
-				"relatedProjectId",
-				"anchorType",
-				"relatedAnchorType",
-				"projectMilestoneId",
-				"relatedProjectMilestoneId",
-				"input",
-			].map((n) => p(n)),
-		}),
+		fields: [
+			{ name: "id", canonical: "String", canonicalBranches: [0,1,2,3,4,5,6], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true }, accepted: { order: 0 } },
+			{ name: "type", canonical: "String", canonicalBranches: [0], accepted: { order: 1 } },
+			{ name: "anchorType", canonical: "String", canonicalBranches: [1], accepted: { order: 4 } },
+			{ name: "relatedAnchorType", canonical: "String", canonicalBranches: [2], accepted: { order: 5 } },
+			{ name: "projectId", canonical: "UUID", canonicalBranches: [3], accepted: { order: 2 } },
+			{ name: "relatedProjectId", canonical: "UUID", canonicalBranches: [4], accepted: { order: 3 } },
+			{ name: "projectMilestoneId", canonical: "UUID", canonicalBranches: [5], accepted: { order: 6 } },
+			{ name: "relatedProjectMilestoneId", canonical: "UUID", canonicalBranches: [6], accepted: { order: 7 } },
+			{ name: "input", card: { order: 1, type: "Input" }, accepted: { order: 8 } },
+		],
+		requirements: {
+			canonicalBranches: 7,
+			compatibilityBranches: [{}],
+		},
+	}),
 						domain: "relations",
 		purpose: "Update a project relation.",
 		root: "projectRelationUpdate",

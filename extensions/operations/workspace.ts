@@ -1,6 +1,5 @@
 import { credentialStore } from "../credential-store";
 import { projection } from "../selections";
-import { p } from "../operation-types";
 import type {
 	OperationSource,
 	OperationDefinition,
@@ -16,26 +15,20 @@ export const issueStatuses: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_issue_statuses",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": []
-				}
-			],
-			canonical: {
-				"fields": {
-					"after": "String",
-					"before": "String",
-					"first": "Int",
-					"last": "Int",
-					"includeArchived": "Boolean",
-					"orderBy": "PaginationOrderBy",
-					"filter": "Filter"
-				},
-				"branches": [
-					[]
-				]
-			},
-		}),
+		fields: [
+			{ name: "after", canonical: "String" },
+			{ name: "before", canonical: "String" },
+			{ name: "first", canonical: "Int" },
+			{ name: "last", canonical: "Int" },
+			{ name: "includeArchived", canonical: "Boolean" },
+			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			{ name: "filter", canonical: "Filter" },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 				renderKind: "issue_status",
 		renderEmpty: workspaceEmpty("issue statuses", "issue status", false),
 				domain: "workspace",
@@ -55,25 +48,14 @@ export const workspaceSwitch: readonly OperationDefinition[] = ([
 		name: "switch_workspace",
 		resultCategory: "local",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"name"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"name": "String"
-				},
-				"branches": [
-					[
-						"name"
-					]
-				]
-			},
-			parameters: [p("name", "String", true)],
-		}),
+		fields: [
+			{ name: "name", canonical: "String", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true } },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 				renderKind: "workspace",
 				aliases: [],
 		domain: "workspace",

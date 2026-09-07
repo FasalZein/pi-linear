@@ -5,7 +5,6 @@ import {
 	isCompatibilityString,
 	mergeFilters,
 	mergedInput,
-	p,
 	paginationVariables,
 } from "../operation-types";
 import type {
@@ -14,9 +13,6 @@ import type {
 } from "../operation-types";
 import { defineOperation } from "../operation-definition";
 import {
-	pagination,
-	input,
-	filter,
 	object,
 	workspaceEmpty,
 	listOperation,
@@ -42,35 +38,23 @@ export const issueLabels: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_issue_labels",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": []
-				}
-			],
-			canonical: {
-				"fields": {
-					"team": "TeamReference",
-					"after": "String",
-					"before": "String",
-					"first": "Int",
-					"last": "Int",
-					"includeArchived": "Boolean",
-					"orderBy": "PaginationOrderBy",
-					"filter": "Filter"
-				},
-				"branches": [
-					[]
-				]
-			},
-			parameters: [p("team", "TeamReference")],
-			acceptedParameters: [
-				p("team"),
-				p("teamId"),
-				p("teamKey"),
-				...pagination,
-				filter,
-			],
-		}),
+		fields: [
+			{ name: "team", canonical: "TeamReference", card: { order: 0 }, accepted: { order: 0 } },
+			{ name: "after", canonical: "String", accepted: { order: 3 } },
+			{ name: "before", canonical: "String", accepted: { order: 4 } },
+			{ name: "first", canonical: "Int", accepted: { order: 5, type: "Int" } },
+			{ name: "last", canonical: "Int", accepted: { order: 6, type: "Int" } },
+			{ name: "includeArchived", canonical: "Boolean", accepted: { order: 7, type: "Boolean" } },
+			{ name: "orderBy", canonical: "PaginationOrderBy", accepted: { order: 8, type: "PaginationOrderBy" } },
+			{ name: "filter", canonical: "Filter", accepted: { order: 9, type: "Filter" } },
+			{ name: "teamId", accepted: { order: 1 } },
+			{ name: "teamKey", accepted: { order: 2 } },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 				renderKind: "label",
 		renderEmpty: workspaceEmpty("issue labels", "issue label"),
 				domain: "labels",
@@ -98,50 +82,25 @@ export const issueLabels: readonly OperationDefinition[] = ([
 	simpleMutation({
 		name: "create_issue_label",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [],
-					"atLeastOneOf": [
-						"name",
-						"input.name"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"name": "String",
-					"team": "TeamReference",
-					"description": "String",
-					"color": "Color",
-					"isGroup": "Boolean",
-					"parentId": "UUID",
-					"retiredAt": "DateTime",
-					"replaceTeamLabels": "Boolean",
-					"id": "UUID"
-				},
-				"branches": [
-					[
-						"name"
-					]
-				]
-			},
-			parameters: [p("name", "String", true), p("team", "TeamReference"), input],
-			acceptedParameters: [
-				"name",
-				"color",
-				"description",
-				"id",
-				"isGroup",
-				"parentId",
-				"retiredAt",
-				"team",
-				"teamId",
-				"teamKey",
-				"replaceTeamLabels",
-				"input",
-			].map((n) => p(n)),
-			legacyParameters: [[p("input", "IssueLabelCreateInput", true)]],
-		}),
+		fields: [
+			{ name: "name", canonical: "String", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":0},{"branch":0,"kind":"atLeastOne","order":1,"input":true}], card: { order: 0, required: true }, accepted: { order: 0 } },
+			{ name: "team", canonical: "TeamReference", card: { order: 1 }, accepted: { order: 7 } },
+			{ name: "description", canonical: "String", accepted: { order: 2 } },
+			{ name: "color", canonical: "Color", accepted: { order: 1 } },
+			{ name: "isGroup", canonical: "Boolean", accepted: { order: 4 } },
+			{ name: "parentId", canonical: "UUID", accepted: { order: 5 } },
+			{ name: "retiredAt", canonical: "DateTime", accepted: { order: 6 } },
+			{ name: "replaceTeamLabels", canonical: "Boolean", accepted: { order: 10 } },
+			{ name: "id", canonical: "UUID", accepted: { order: 3 } },
+			{ name: "input", card: { order: 2, type: "Input" }, accepted: { order: 11 }, legacy: [{ order: 0, type: "IssueLabelCreateInput", required: true, branch: 0 }] },
+			{ name: "teamId", accepted: { order: 8 } },
+			{ name: "teamKey", accepted: { order: 9 } },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 				semanticException: "nested-name-type",
 		renderKind: "label",
 				domain: "labels",
@@ -184,68 +143,22 @@ export const issueLabels: readonly OperationDefinition[] = ([
 	simpleMutation({
 		name: "update_issue_label",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"id"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"id": "String",
-					"name": "String",
-					"description": "String",
-					"color": "Color",
-					"isGroup": "Boolean",
-					"parentId": "UUID",
-					"retiredAt": "NullableDateTime",
-					"replaceTeamLabels": "Boolean"
-				},
-				"branches": [
-					[
-						"id",
-						"name"
-					],
-					[
-						"id",
-						"description"
-					],
-					[
-						"id",
-						"color"
-					],
-					[
-						"id",
-						"isGroup"
-					],
-					[
-						"id",
-						"parentId"
-					],
-					[
-						"id",
-						"retiredAt"
-					],
-					[
-						"id",
-						"replaceTeamLabels"
-					]
-				]
-			},
-			parameters: [p("id", "String", true), input],
-			acceptedParameters: [
-				"id",
-				"name",
-				"description",
-				"color",
-				"parentId",
-				"isGroup",
-				"retiredAt",
-				"replaceTeamLabels",
-				"input",
-			].map((n) => p(n)),
-		}),
+		fields: [
+			{ name: "id", canonical: "String", canonicalBranches: [0,1,2,3,4,5,6], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true }, accepted: { order: 0 } },
+			{ name: "name", canonical: "String", canonicalBranches: [0], accepted: { order: 1 } },
+			{ name: "description", canonical: "String", canonicalBranches: [1], accepted: { order: 2 } },
+			{ name: "color", canonical: "Color", canonicalBranches: [2], accepted: { order: 3 } },
+			{ name: "isGroup", canonical: "Boolean", canonicalBranches: [3], accepted: { order: 5 } },
+			{ name: "parentId", canonical: "UUID", canonicalBranches: [4], accepted: { order: 4 } },
+			{ name: "retiredAt", canonical: "NullableDateTime", canonicalBranches: [5], accepted: { order: 6 } },
+			{ name: "replaceTeamLabels", canonical: "Boolean", canonicalBranches: [6], accepted: { order: 7 } },
+			{ name: "input", card: { order: 1, type: "Input" }, accepted: { order: 8 } },
+		],
+		requirements: {
+			canonicalBranches: 7,
+			compatibilityBranches: [{}],
+		},
+	}),
 				renderKind: "label",
 				domain: "labels",
 		purpose: "Update an issue label.",
@@ -272,26 +185,20 @@ export const projectLabels: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_project_labels",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": []
-				}
-			],
-			canonical: {
-				"fields": {
-					"after": "String",
-					"before": "String",
-					"first": "Int",
-					"last": "Int",
-					"includeArchived": "Boolean",
-					"orderBy": "PaginationOrderBy",
-					"filter": "Filter"
-				},
-				"branches": [
-					[]
-				]
-			},
-		}),
+		fields: [
+			{ name: "after", canonical: "String" },
+			{ name: "before", canonical: "String" },
+			{ name: "first", canonical: "Int" },
+			{ name: "last", canonical: "Int" },
+			{ name: "includeArchived", canonical: "Boolean" },
+			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			{ name: "filter", canonical: "Filter" },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 				renderKind: "label",
 		renderEmpty: workspaceEmpty("project labels", "project label"),
 				domain: "labels",
@@ -304,42 +211,20 @@ export const projectLabels: readonly OperationDefinition[] = ([
 	simpleMutation({
 		name: "create_project_label",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [],
-					"atLeastOneOf": [
-						"name",
-						"input.name"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"name": "String",
-					"description": "String",
-					"color": "Color",
-					"isGroup": "Boolean",
-					"parentId": "UUID",
-					"retiredAt": "DateTime"
-				},
-				"branches": [
-					[
-						"name"
-					]
-				]
-			},
-			parameters: [p("name", "String", true), input],
-			acceptedParameters: [
-				"name",
-				"description",
-				"color",
-				"parentId",
-				"isGroup",
-				"retiredAt",
-				"input",
-			].map((n) => p(n)),
-			legacyParameters: [[p("input", "ProjectLabelCreateInput", true)]],
-		}),
+		fields: [
+			{ name: "name", canonical: "String", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":0},{"branch":0,"kind":"atLeastOne","order":1,"input":true}], card: { order: 0, required: true }, accepted: { order: 0 } },
+			{ name: "description", canonical: "String", accepted: { order: 1 } },
+			{ name: "color", canonical: "Color", accepted: { order: 2 } },
+			{ name: "isGroup", canonical: "Boolean", accepted: { order: 4 } },
+			{ name: "parentId", canonical: "UUID", accepted: { order: 3 } },
+			{ name: "retiredAt", canonical: "DateTime", accepted: { order: 5 } },
+			{ name: "input", card: { order: 1, type: "Input" }, accepted: { order: 6 }, legacy: [{ order: 0, type: "ProjectLabelCreateInput", required: true, branch: 0 }] },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 				semanticException: "nested-name-type",
 		renderKind: "label",
 				domain: "labels",
@@ -360,62 +245,21 @@ export const projectLabels: readonly OperationDefinition[] = ([
 	simpleMutation({
 		name: "update_project_label",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"id"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"id": "String",
-					"name": "String",
-					"description": "String",
-					"color": "Color",
-					"isGroup": "Boolean",
-					"parentId": "UUID",
-					"retiredAt": "NullableDateTime"
-				},
-				"branches": [
-					[
-						"id",
-						"name"
-					],
-					[
-						"id",
-						"description"
-					],
-					[
-						"id",
-						"color"
-					],
-					[
-						"id",
-						"isGroup"
-					],
-					[
-						"id",
-						"parentId"
-					],
-					[
-						"id",
-						"retiredAt"
-					]
-				]
-			},
-			parameters: [p("id", "String", true), input],
-			acceptedParameters: [
-				"id",
-				"name",
-				"description",
-				"color",
-				"parentId",
-				"isGroup",
-				"retiredAt",
-				"input",
-			].map((n) => p(n)),
-		}),
+		fields: [
+			{ name: "id", canonical: "String", canonicalBranches: [0,1,2,3,4,5], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true }, accepted: { order: 0 } },
+			{ name: "name", canonical: "String", canonicalBranches: [0], accepted: { order: 1 } },
+			{ name: "description", canonical: "String", canonicalBranches: [1], accepted: { order: 2 } },
+			{ name: "color", canonical: "Color", canonicalBranches: [2], accepted: { order: 3 } },
+			{ name: "isGroup", canonical: "Boolean", canonicalBranches: [3], accepted: { order: 5 } },
+			{ name: "parentId", canonical: "UUID", canonicalBranches: [4], accepted: { order: 4 } },
+			{ name: "retiredAt", canonical: "NullableDateTime", canonicalBranches: [5], accepted: { order: 6 } },
+			{ name: "input", card: { order: 1, type: "Input" }, accepted: { order: 7 } },
+		],
+		requirements: {
+			canonicalBranches: 6,
+			compatibilityBranches: [{}],
+		},
+	}),
 				renderKind: "label",
 				domain: "labels",
 		purpose: "Update a project label.",

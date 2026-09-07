@@ -305,78 +305,185 @@ export function workspaceEmpty(
 	};
 }
 
-type OperationParameterDecision = Pick<OperationSource, "canonical" | "compatibilityBranches"> &
-	Partial<
-		Pick<
-			OperationSource,
-			"parameters" | "acceptedParameters" | "legacyParameters" | "aliasParameters"
-		>
-	>;
-
-/** Project one authored parameter decision into the operation builder contract. */
-export function operationParameterDecision<const T extends OperationParameterDecision>(decision: T): T {
-	return { ...decision };
-}
+type ProjectedParameterDecision = Pick<
+	OperationSource,
+	"canonical" | "compatibilityBranches" | "parameters"
+> & Partial<Pick<OperationSource, "acceptedParameters" | "legacyParameters" | "aliasParameters">>;
 
 type ParameterCardRole = {
 	order: number;
-	type: string;
+	type?: string;
 	required?: true;
 };
+
+type CompatibilityRequirementRole =
+	| { branch: number; kind: "all" | "atLeastOne" | "forbidden"; order: number; input?: true }
+	| { branch: number; kind: "exactlyOne"; group: number; order: number; input?: true };
 
 type ParameterFieldDecision = {
 	name: string;
 	/** Canonical fields follow declaration order. */
 	canonical?: string;
+	canonicalBranches?: readonly number[];
+	compatibilityRequirements?: readonly CompatibilityRequirementRole[];
 	card?: ParameterCardRole;
 	accepted?: ParameterCardRole;
 	legacy?: readonly (ParameterCardRole & { branch: number })[];
 	aliases?: readonly (ParameterCardRole & { operation: string })[];
 };
 
-type OperationFieldProjections = {
-	canonical: Readonly<Record<string, string>>;
-	card: readonly OperationParameter[];
-	accepted: readonly OperationParameter[];
-	legacy: readonly (readonly OperationParameter[])[];
-	aliases: Readonly<Record<string, readonly OperationParameter[]>>;
+type CompatibilityRequirementMetadata = Pick<
+	RequirementBranch,
+	"atLeastOneOfMessage" | "exactlyOneOfMessages" | "mode"
+> & { exactlyOneGroups?: number };
+
+type OperationParameterDecision = {
+	fields: readonly ParameterFieldDecision[];
+	requirements: {
+		canonicalBranches: number;
+		compatibilityBranches: readonly CompatibilityRequirementMetadata[];
+		exclusiveCanonical?: true;
+	};
 };
 
-/** Project field cards from one field declaration table. */
-export function operationFieldDecision(
+function parameterFromRole(
+	field: ParameterFieldDecision,
+	role: ParameterCardRole,
+	inheritCanonical: boolean,
+): OperationParameter {
+	return p(field.name, role.type ?? (inheritCanonical ? field.canonical : undefined), role.required);
+}
+
+function orderedParameters(
 	fields: readonly ParameterFieldDecision[],
-): OperationFieldProjections {
-	const card = (role: ParameterCardRole, name: string) => p(name, role.type, role.required);
-	const canonical: Record<string, string> = {};
+	roleName: "card" | "accepted",
+): OperationParameter[] {
+	return fields
+		.flatMap((field) => {
+			const role = field[roleName];
+			return role ? [{ field, role }] : [];
+		})
+		.sort((left, right) => left.role.order - right.role.order)
+		.map(({ field, role }) => parameterFromRole(field, role, roleName === "card"));
+}
+
+function groupedParameters(
+	fields: readonly ParameterFieldDecision[],
+	roleName: "legacy" | "aliases",
+): Readonly<Record<string, readonly OperationParameter[]>> {
+	const grouped: Record<string, { order: number; parameter: OperationParameter }[]> = {};
 	for (const field of fields) {
-		if (field.canonical) canonical[field.name] = field.canonical;
+		for (const role of field[roleName] ?? []) {
+			const key = "branch" in role ? String(role.branch) : role.operation;
+			(grouped[key] ??= []).push({ order: role.order, parameter: parameterFromRole(field, role, false) });
+		}
 	}
-	const projectRole = (role: "card" | "accepted") => fields
-		.filter((field): field is ParameterFieldDecision & Record<typeof role, ParameterCardRole> =>
-			field[role] !== undefined,
-		)
-		.slice()
-		.sort((left, right) => left[role].order - right[role].order)
-		.map((field) => card(field[role], field.name));
-	const legacyEntries: { branch: number; order: number; parameter: OperationParameter }[] = [];
-	const aliasEntries: { operation: string; order: number; parameter: OperationParameter }[] = [];
+	return Object.fromEntries(
+		Object.entries(grouped).map(([key, values]) => [
+			key,
+			values.sort((left, right) => left.order - right.order).map(({ parameter }) => parameter),
+		]),
+	);
+}
+
+function canonicalBranches(
+	fields: readonly ParameterFieldDecision[],
+	count: number,
+): string[][] {
+	const branches = Array.from({ length: count }, () => [] as string[]);
 	for (const field of fields) {
-		for (const role of field.legacy ?? []) {
-			legacyEntries.push({ branch: role.branch, order: role.order, parameter: card(role, field.name) });
-		}
-		for (const role of field.aliases ?? []) {
-			aliasEntries.push({ operation: role.operation, order: role.order, parameter: card(role, field.name) });
-		}
+		for (const branch of field.canonicalBranches ?? []) branches[branch]!.push(field.name);
 	}
-	const legacy: OperationParameter[][] = [];
-	for (const entry of legacyEntries.sort((left, right) => left.branch - right.branch || left.order - right.order)) {
-		(legacy[entry.branch] ??= []).push(entry.parameter);
+	return branches;
+}
+
+function compatibilityPaths(
+	fields: readonly ParameterFieldDecision[],
+	branch: number,
+	kind: CompatibilityRequirementRole["kind"],
+	group?: number,
+): string[] {
+	return fields.flatMap((field) => (field.compatibilityRequirements ?? [])
+		.filter((role) => role.branch === branch && role.kind === kind &&
+			(role.kind !== "exactlyOne" || role.group === group))
+		.map((role) => ({ order: role.order, path: role.input ? `input.${field.name}` : field.name })))
+		.sort((left, right) => left.order - right.order)
+		.map(({ path }) => path);
+}
+
+function addAtLeastOne(
+	branch: RequirementBranch,
+	paths: readonly string[],
+	message: string | undefined,
+): void {
+	if (paths.length) branch.atLeastOneOf = paths;
+	if (message) branch.atLeastOneOfMessage = message;
+}
+
+function addExactlyOne(
+	branch: RequirementBranch,
+	groups: readonly (readonly string[])[],
+	messages: readonly string[] | undefined,
+): void {
+	if (groups.length) branch.exactlyOneOf = groups;
+	if (messages) branch.exactlyOneOfMessages = messages;
+}
+
+function addForbidden(branch: RequirementBranch, paths: readonly string[]): void {
+	if (paths.length) branch.forbidden = paths;
+}
+
+function compatibilityBranches(
+	fields: readonly ParameterFieldDecision[],
+	metadata: readonly CompatibilityRequirementMetadata[],
+): RequirementBranch[] {
+	return metadata.map((details, index) => {
+		const branch: RequirementBranch = { all: compatibilityPaths(fields, index, "all") };
+		addAtLeastOne(
+			branch,
+			compatibilityPaths(fields, index, "atLeastOne"),
+			details.atLeastOneOfMessage,
+		);
+		const groups = Array.from({ length: details.exactlyOneGroups ?? 0 }, (_, group) =>
+			compatibilityPaths(fields, index, "exactlyOne", group));
+		addExactlyOne(branch, groups, details.exactlyOneOfMessages);
+		addForbidden(branch, compatibilityPaths(fields, index, "forbidden"));
+		if (details.mode) branch.mode = details.mode;
+		return branch;
+	});
+}
+
+/** Project every runtime parameter card and branch from one authored decision. */
+export function operationParameterDecision(
+	decision: OperationParameterDecision,
+): ProjectedParameterDecision {
+	const canonicalFields: Record<string, string> = {};
+	for (const field of decision.fields) {
+		if (field.canonical) canonicalFields[field.name] = field.canonical;
 	}
-	const aliases: Record<string, OperationParameter[]> = {};
-	for (const entry of aliasEntries.sort((left, right) => left.order - right.order)) {
-		(aliases[entry.operation] ??= []).push(entry.parameter);
-	}
-	return { canonical, card: projectRole("card"), accepted: projectRole("accepted"), legacy, aliases };
+	const acceptedParameters = orderedParameters(decision.fields, "accepted");
+	const legacyByBranch = groupedParameters(decision.fields, "legacy");
+	const aliasParameters = groupedParameters(decision.fields, "aliases");
+	const legacyParameters = Object.keys(legacyByBranch)
+		.sort((left, right) => Number(left) - Number(right))
+		.map((key) => legacyByBranch[key]!);
+	const canonical: CanonicalOperation = {
+		fields: canonicalFields,
+		branches: canonicalBranches(decision.fields, decision.requirements.canonicalBranches),
+	};
+	if (decision.requirements.exclusiveCanonical) canonical.exclusiveBranches = true;
+	const projected: ProjectedParameterDecision = {
+		canonical,
+		compatibilityBranches: compatibilityBranches(
+			decision.fields,
+			decision.requirements.compatibilityBranches,
+		),
+		parameters: orderedParameters(decision.fields, "card"),
+	};
+	if (acceptedParameters.length) projected.acceptedParameters = acceptedParameters;
+	if (legacyParameters.length) projected.legacyParameters = legacyParameters;
+	if (Object.keys(aliasParameters).length) projected.aliasParameters = aliasParameters;
+	return projected;
 }
 
 /** Per-operation authority carried by every source definition. */
@@ -605,14 +712,12 @@ type SaveParameterProjections = {
 	renderTargetFields: readonly string[];
 };
 
-function saveParameterProjections(
-	decision: SaveParameterDecision,
-	noun: string,
-): SaveParameterProjections {
-	const compatibilityFields = [decision.identity, ...decision.fields];
+function validateSaveParameterFields(
+	fields: readonly (SaveIdentityParameter | TypedSaveParameterField | CompatibilitySaveParameterField)[],
+): void {
 	const names = new Set<string>();
 	const canonicalOrders = new Set<number>();
-	for (const field of compatibilityFields) {
+	for (const field of fields) {
 		if (names.has(field.name)) throw new Error(`Duplicate save parameter ${field.name}.`);
 		names.add(field.name);
 		if (field.kind === "compatibility") continue;
@@ -621,6 +726,14 @@ function saveParameterProjections(
 		}
 		canonicalOrders.add(field.canonicalOrder);
 	}
+}
+
+function saveParameterProjections(
+	decision: SaveParameterDecision,
+	noun: string,
+): SaveParameterProjections {
+	const compatibilityFields = [decision.identity, ...decision.fields];
+	validateSaveParameterFields(compatibilityFields);
 	const typed = compatibilityFields
 		.filter((field): field is SaveIdentityParameter | TypedSaveParameterField =>
 			field.kind !== "compatibility",

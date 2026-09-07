@@ -1,6 +1,5 @@
 import { teamLookup } from "../operation-plan";
 import { projection } from "../selections";
-import { p } from "../operation-types";
 import type {
 	OperationSource,
 	OperationDefinition,
@@ -17,26 +16,20 @@ export const teams: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_teams",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": []
-				}
-			],
-			canonical: {
-				"fields": {
-					"after": "String",
-					"before": "String",
-					"first": "Int",
-					"last": "Int",
-					"includeArchived": "Boolean",
-					"orderBy": "PaginationOrderBy",
-					"filter": "Filter"
-				},
-				"branches": [
-					[]
-				]
-			},
-		}),
+		fields: [
+			{ name: "after", canonical: "String" },
+			{ name: "before", canonical: "String" },
+			{ name: "first", canonical: "Int" },
+			{ name: "last", canonical: "Int" },
+			{ name: "includeArchived", canonical: "Boolean" },
+			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			{ name: "filter", canonical: "Filter" },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 				renderEmpty: workspaceEmpty("teams", "team", false),
 				domain: "teams",
 		root: "teams",
@@ -49,31 +42,15 @@ export const teams: readonly OperationDefinition[] = ([
 		name: "get_team",
 		resultCategory: "singular",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"team"
-					]
-				},
-				{
-					"all": [
-						"teamId"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"team": "TeamReference"
-				},
-				"branches": [
-					[
-						"team"
-					]
-				]
-			},
-			parameters: [p("team", "TeamReference", true)],
-			legacyParameters: [[p("teamId", "String", true)]],
-		}),
+		fields: [
+			{ name: "team", canonical: "TeamReference", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true } },
+			{ name: "teamId", compatibilityRequirements: [{"branch":1,"kind":"all","order":0}], legacy: [{ order: 0, required: true, branch: 0 }] },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{},{}],
+		},
+	}),
 						aliases: [],
 		domain: "teams",
 		purpose: "Get a team by exact key or UUID.",

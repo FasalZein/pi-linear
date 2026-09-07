@@ -1,6 +1,5 @@
 import { namedEntityLookup } from "../operation-plan";
 import { projection } from "../selections";
-import { p } from "../operation-types";
 import type {
 	OperationSource,
 	OperationDefinition,
@@ -18,26 +17,20 @@ export const milestoneReads: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_milestones",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": []
-				}
-			],
-			canonical: {
-				"fields": {
-					"after": "String",
-					"before": "String",
-					"first": "Int",
-					"last": "Int",
-					"includeArchived": "Boolean",
-					"orderBy": "PaginationOrderBy",
-					"filter": "Filter"
-				},
-				"branches": [
-					[]
-				]
-			},
-		}),
+		fields: [
+			{ name: "after", canonical: "String" },
+			{ name: "before", canonical: "String" },
+			{ name: "first", canonical: "Int" },
+			{ name: "last", canonical: "Int" },
+			{ name: "includeArchived", canonical: "Boolean" },
+			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			{ name: "filter", canonical: "Filter" },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 				renderEmpty: workspaceEmpty("milestones", "milestone"),
 				domain: "milestones",
 		root: "projectMilestones",
@@ -50,31 +43,15 @@ export const milestoneReads: readonly OperationDefinition[] = ([
 		name: "get_milestone",
 		resultCategory: "singular",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"milestone"
-					]
-				},
-				{
-					"all": [
-						"milestoneId"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"milestone": "MilestoneReference"
-				},
-				"branches": [
-					[
-						"milestone"
-					]
-				]
-			},
-			parameters: [p("milestone", "MilestoneReference", true)],
-			legacyParameters: [[p("milestoneId", "String", true)]],
-		}),
+		fields: [
+			{ name: "milestone", canonical: "MilestoneReference", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true } },
+			{ name: "milestoneId", compatibilityRequirements: [{"branch":1,"kind":"all","order":0}], legacy: [{ order: 0, required: true, branch: 0 }] },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{},{}],
+		},
+	}),
 						aliases: [],
 		domain: "milestones",
 		purpose: "Get a milestone by exact name or UUID.",

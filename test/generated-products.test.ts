@@ -102,8 +102,8 @@ describe('generated products', () => {
     [
       'compatibility branch',
       'extensions/operations/comments.ts',
-      'name: "list_comments",\n\t\t...operationParameterDecision({\n\t\t\tcompatibilityBranches: [\n\t\t\t\t{\n\t\t\t\t\t"all": []',
-      'name: "list_comments",\n\t\t...operationParameterDecision({\n\t\t\tcompatibilityBranches: [\n\t\t\t\t{\n\t\t\t\t\t"all": ["issue"]',
+      '{ name: "issue", canonical: "IssueReference", card: { order: 0 } },',
+      '{ name: "issue", canonical: "IssueReference", compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0 } },',
     ],
     [
       'mutation root',
@@ -120,8 +120,8 @@ describe('generated products', () => {
     [
       'canonical field type',
       'extensions/operations/comments.ts',
-      '\t\t\t\t\t"issue": "IssueReference",',
-      '\t\t\t\t\t"issue": "Float",',
+      '{ name: "issue", canonical: "IssueReference", card: { order: 0 } },',
+      '{ name: "issue", canonical: "Float", card: { order: 0 } },',
     ],
     [
       'renderer kind',

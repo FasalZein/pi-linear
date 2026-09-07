@@ -3,7 +3,6 @@ import { projection } from "../selections";
 import {
 	mergeFilters,
 	mergedInput,
-	p,
 	paginationVariables,
 } from "../operation-types";
 import type {
@@ -12,8 +11,6 @@ import type {
 } from "../operation-types";
 import { defineOperation } from "../operation-definition";
 import {
-	pagination,
-	filter,
 	object,
 	isUuid,
 	getDocument,
@@ -27,35 +24,23 @@ export const cycles: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_cycles",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": []
-				}
-			],
-			canonical: {
-				"fields": {
-					"team": "TeamReference",
-					"after": "String",
-					"before": "String",
-					"first": "Int",
-					"last": "Int",
-					"includeArchived": "Boolean",
-					"orderBy": "PaginationOrderBy",
-					"filter": "Filter"
-				},
-				"branches": [
-					[]
-				]
-			},
-			parameters: [p("team", "TeamReference")],
-			acceptedParameters: [
-				p("team"),
-				p("teamId"),
-				p("teamKey"),
-				...pagination,
-				filter,
-			],
-		}),
+		fields: [
+			{ name: "team", canonical: "TeamReference", card: { order: 0 }, accepted: { order: 0 } },
+			{ name: "after", canonical: "String", accepted: { order: 3 } },
+			{ name: "before", canonical: "String", accepted: { order: 4 } },
+			{ name: "first", canonical: "Int", accepted: { order: 5, type: "Int" } },
+			{ name: "last", canonical: "Int", accepted: { order: 6, type: "Int" } },
+			{ name: "includeArchived", canonical: "Boolean", accepted: { order: 7, type: "Boolean" } },
+			{ name: "orderBy", canonical: "PaginationOrderBy", accepted: { order: 8, type: "PaginationOrderBy" } },
+			{ name: "filter", canonical: "Filter", accepted: { order: 9, type: "Filter" } },
+			{ name: "teamId", accepted: { order: 1 } },
+			{ name: "teamKey", accepted: { order: 2 } },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 				renderEmpty: workspaceEmpty("cycles", "cycle"),
 				domain: "cycles",
 		root: "cycles",
@@ -81,31 +66,15 @@ export const cycles: readonly OperationDefinition[] = ([
 		name: "get_cycle",
 		resultCategory: "singular",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"cycle"
-					]
-				},
-				{
-					"all": [
-						"id"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"cycle": "CycleReference"
-				},
-				"branches": [
-					[
-						"cycle"
-					]
-				]
-			},
-			parameters: [p("cycle", "CycleReference", true)],
-			legacyParameters: [[p("id", "String", true)]],
-		}),
+		fields: [
+			{ name: "cycle", canonical: "CycleReference", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true } },
+			{ name: "id", compatibilityRequirements: [{"branch":1,"kind":"all","order":0}], legacy: [{ order: 0, required: true, branch: 0 }] },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{},{}],
+		},
+	}),
 						aliases: [],
 		domain: "cycles",
 		purpose: "Get a cycle by exact name or UUID.",
@@ -135,74 +104,20 @@ export const cycles: readonly OperationDefinition[] = ([
 	simpleMutation({
 		name: "create_cycle",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"team",
-						"startsAt",
-						"endsAt"
-					]
-				},
-				{
-					"all": [
-						"teamId",
-						"startsAt",
-						"endsAt"
-					]
-				},
-				{
-					"all": [
-						"teamKey",
-						"startsAt",
-						"endsAt"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"team": "TeamReference",
-					"startsAt": "DateTime",
-					"endsAt": "DateTime",
-					"name": "String",
-					"description": "String"
-				},
-				"branches": [
-					[
-						"team",
-						"startsAt",
-						"endsAt"
-					]
-				]
-			},
-			parameters: [
-				p("team", "TeamReference", true),
-				p("startsAt", "DateTime", true),
-				p("endsAt", "DateTime", true),
-			],
-			acceptedParameters: [
-				"team",
-				"name",
-				"description",
-				"startsAt",
-				"endsAt",
-			].map((n) => p(n)),
-			legacyParameters: [
-				[
-					p("teamId", "String", true),
-					p("startsAt", "DateTime", true),
-					p("endsAt", "DateTime", true),
-					p("name"),
-					p("description"),
-				],
-				[
-					p("teamKey", "String", true),
-					p("startsAt", "DateTime", true),
-					p("endsAt", "DateTime", true),
-					p("name"),
-					p("description"),
-				],
-			],
-		}),
+		fields: [
+			{ name: "team", canonical: "TeamReference", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true }, accepted: { order: 0 } },
+			{ name: "startsAt", canonical: "DateTime", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":1},{"branch":1,"kind":"all","order":1},{"branch":2,"kind":"all","order":1}], card: { order: 1, required: true }, accepted: { order: 3 }, legacy: [{ order: 1, type: "DateTime", required: true, branch: 0 }, { order: 1, type: "DateTime", required: true, branch: 1 }] },
+			{ name: "endsAt", canonical: "DateTime", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":2},{"branch":1,"kind":"all","order":2},{"branch":2,"kind":"all","order":2}], card: { order: 2, required: true }, accepted: { order: 4 }, legacy: [{ order: 2, type: "DateTime", required: true, branch: 0 }, { order: 2, type: "DateTime", required: true, branch: 1 }] },
+			{ name: "name", canonical: "String", accepted: { order: 1 }, legacy: [{ order: 3, branch: 0 }, { order: 3, branch: 1 }] },
+			{ name: "description", canonical: "String", accepted: { order: 2 }, legacy: [{ order: 4, branch: 0 }, { order: 4, branch: 1 }] },
+			{ name: "teamId", compatibilityRequirements: [{"branch":1,"kind":"all","order":0}], legacy: [{ order: 0, required: true, branch: 0 }] },
+			{ name: "teamKey", compatibilityRequirements: [{"branch":2,"kind":"all","order":0}], legacy: [{ order: 0, required: true, branch: 1 }] },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{},{},{}],
+		},
+	}),
 				renderTargetFields: [
 			"team"
 		],
@@ -230,54 +145,19 @@ export const cycles: readonly OperationDefinition[] = ([
 	simpleMutation({
 		name: "update_cycle",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"id"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"id": "String",
-					"name": "String",
-					"description": "String",
-					"startsAt": "DateTime",
-					"endsAt": "DateTime",
-					"completedAt": "DateTime"
-				},
-				"branches": [
-					[
-						"id",
-						"name"
-					],
-					[
-						"id",
-						"description"
-					],
-					[
-						"id",
-						"startsAt"
-					],
-					[
-						"id",
-						"endsAt"
-					],
-					[
-						"id",
-						"completedAt"
-					]
-				]
-			},
-			parameters: [
-				p("id", "String", true),
-				p("name"),
-				p("description"),
-				p("startsAt"),
-				p("endsAt"),
-				p("completedAt"),
-			],
-		}),
+		fields: [
+			{ name: "id", canonical: "String", canonicalBranches: [0,1,2,3,4], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true } },
+			{ name: "name", canonical: "String", canonicalBranches: [0], card: { order: 1 } },
+			{ name: "description", canonical: "String", canonicalBranches: [1], card: { order: 2 } },
+			{ name: "startsAt", canonical: "DateTime", canonicalBranches: [2], card: { order: 3, type: "String" } },
+			{ name: "endsAt", canonical: "DateTime", canonicalBranches: [3], card: { order: 4, type: "String" } },
+			{ name: "completedAt", canonical: "DateTime", canonicalBranches: [4], card: { order: 5, type: "String" } },
+		],
+		requirements: {
+			canonicalBranches: 5,
+			compatibilityBranches: [{}],
+		},
+	}),
 						domain: "cycles",
 		purpose: "Update a cycle.",
 		root: "cycleUpdate",

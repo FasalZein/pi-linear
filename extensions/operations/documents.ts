@@ -4,7 +4,6 @@ import { documentLookup, issueLookup, namedEntityLookup, pureQueryPlan, teamLook
 import {
 	isCompatibilityString,
 	mergedInput,
-	p,
 } from "../operation-types";
 import type {
 	CompatibilityObject,
@@ -14,7 +13,6 @@ import type {
 import { defineOperation } from "../operation-definition";
 import {
 	DOCUMENT_SORT_KEYS,
-	input,
 	issueTarget,
 	object,
 	isUuid,
@@ -30,27 +28,22 @@ export const documents: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_documents",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": []
-				}
-			],
-			canonical: {
-				"fields": {
-					"sort": "[DocumentSort!]",
-					"after": "String",
-					"before": "String",
-					"first": "Int",
-					"last": "Int",
-					"includeArchived": "Boolean",
-					"orderBy": "PaginationOrderBy",
-					"filter": "Filter"
-				},
-				"branches": [
-					[]
-				]
-			},
-		}),
+		fields: [
+			{ name: "sort", canonical: "[DocumentSort!]" },
+			{ name: "after", canonical: "String" },
+			{ name: "before", canonical: "String" },
+			{ name: "first", canonical: "Int" },
+			{ name: "last", canonical: "Int" },
+			{ name: "includeArchived", canonical: "Boolean" },
+			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			{ name: "filter", canonical: "Filter" },
+			{ name: "view", canonical: "ResultView" },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 				renderEmpty: workspaceEmpty("documents", "document"),
 				domain: "documents",
 		root: "documents",
@@ -65,31 +58,16 @@ export const documents: readonly OperationDefinition[] = ([
 	withGetResultView({
 		name: "get_document",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"document"
-					]
-				},
-				{
-					"all": [
-						"documentId"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"document": "DocumentReference"
-				},
-				"branches": [
-					[
-						"document"
-					]
-				]
-			},
-			parameters: [p("document", "DocumentReference", true)],
-			legacyParameters: [[p("documentId", "String", true)]],
-		}),
+		fields: [
+			{ name: "document", canonical: "DocumentReference", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true } },
+			{ name: "view", canonical: "ResultView" },
+			{ name: "documentId", compatibilityRequirements: [{"branch":1,"kind":"all","order":0}], legacy: [{ order: 0, required: true, branch: 0 }] },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{},{}],
+		},
+	}),
 						aliases: [],
 		domain: "documents",
 		purpose: "Get a document by exact title or UUID.",
@@ -119,63 +97,31 @@ export const documents: readonly OperationDefinition[] = ([
 	simpleMutation({
 		name: "create_document",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [],
-					"atLeastOneOf": [
-						"title",
-						"input.title"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"title": "String",
-					"content": "String",
-					"icon": "String",
-					"color": "Color",
-					"issueId": "IssueReference",
-					"teamId": "TeamReference",
-					"projectId": "UUID",
-					"initiativeId": "UUID",
-					"cycleId": "UUID",
-					"releaseId": "UUID",
-					"resourceFolderId": "UUID",
-					"lastAppliedTemplateId": "UUID",
-					"ownerId": "UUID",
-					"subscriberIds": "[UUID!]",
-					"sortOrder": "Float",
-					"id": "UUID"
-				},
-				"branches": [
-					[
-						"title"
-					]
-				]
-			},
-			parameters: [p("title", "String", true), input],
-			acceptedParameters: [
-				"color",
-				"content",
-				"cycleId",
-				"icon",
-				"id",
-				"initiativeId",
-				"issueId",
-				"lastAppliedTemplateId",
-				"ownerId",
-				"projectId",
-				"releaseId",
-				"resourceFolderId",
-				"sortOrder",
-				"subscriberIds",
-				"teamId",
-				"teamKey",
-				"title",
-				"input",
-			].map((n) => p(n)),
-			legacyParameters: [[p("input", "DocumentCreateInput", true)]],
-		}),
+		fields: [
+			{ name: "title", canonical: "String", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":0},{"branch":0,"kind":"atLeastOne","order":1,"input":true}], card: { order: 0, required: true }, accepted: { order: 16 } },
+			{ name: "content", canonical: "String", accepted: { order: 1 } },
+			{ name: "icon", canonical: "String", accepted: { order: 3 } },
+			{ name: "color", canonical: "Color", accepted: { order: 0 } },
+			{ name: "issueId", canonical: "IssueReference", accepted: { order: 6 } },
+			{ name: "teamId", canonical: "TeamReference", accepted: { order: 14 } },
+			{ name: "projectId", canonical: "UUID", accepted: { order: 9 } },
+			{ name: "initiativeId", canonical: "UUID", accepted: { order: 5 } },
+			{ name: "cycleId", canonical: "UUID", accepted: { order: 2 } },
+			{ name: "releaseId", canonical: "UUID", accepted: { order: 10 } },
+			{ name: "resourceFolderId", canonical: "UUID", accepted: { order: 11 } },
+			{ name: "lastAppliedTemplateId", canonical: "UUID", accepted: { order: 7 } },
+			{ name: "ownerId", canonical: "UUID", accepted: { order: 8 } },
+			{ name: "subscriberIds", canonical: "[UUID!]", accepted: { order: 13 } },
+			{ name: "sortOrder", canonical: "Float", accepted: { order: 12 } },
+			{ name: "id", canonical: "UUID", accepted: { order: 4 } },
+			{ name: "input", card: { order: 1, type: "Input" }, accepted: { order: 17 }, legacy: [{ order: 0, type: "DocumentCreateInput", required: true, branch: 0 }] },
+			{ name: "teamKey", accepted: { order: 15 } },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 				semanticException: "nested-title-type",
 				domain: "documents",
 		purpose: "Create a document.",
@@ -229,124 +175,34 @@ export const documents: readonly OperationDefinition[] = ([
 	simpleMutation({
 		name: "update_document",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"documentId"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"document": "DocumentReference",
-					"title": "String",
-					"content": "String",
-					"icon": "String",
-					"color": "Color",
-					"issueId": "IssueReference",
-					"teamId": "TeamReference",
-					"projectId": "UUID",
-					"initiativeId": "UUID",
-					"cycleId": "UUID",
-					"releaseId": "UUID",
-					"resourceFolderId": "UUID",
-					"lastAppliedTemplateId": "UUID",
-					"ownerId": "UUID",
-					"subscriberIds": "[UUID!]",
-					"sortOrder": "Float",
-					"hiddenAt": "NullableDateTime"
-				},
-				"branches": [
-					[
-						"document",
-						"title"
-					],
-					[
-						"document",
-						"content"
-					],
-					[
-						"document",
-						"icon"
-					],
-					[
-						"document",
-						"color"
-					],
-					[
-						"document",
-						"issueId"
-					],
-					[
-						"document",
-						"teamId"
-					],
-					[
-						"document",
-						"projectId"
-					],
-					[
-						"document",
-						"initiativeId"
-					],
-					[
-						"document",
-						"cycleId"
-					],
-					[
-						"document",
-						"releaseId"
-					],
-					[
-						"document",
-						"resourceFolderId"
-					],
-					[
-						"document",
-						"lastAppliedTemplateId"
-					],
-					[
-						"document",
-						"ownerId"
-					],
-					[
-						"document",
-						"subscriberIds"
-					],
-					[
-						"document",
-						"sortOrder"
-					],
-					[
-						"document",
-						"hiddenAt"
-					]
-				]
-			},
-			parameters: [p("documentId", "DocumentReference", true), input],
-			acceptedParameters: [
-				"documentId",
-				"color",
-				"content",
-				"cycleId",
-				"hiddenAt",
-				"icon",
-				"initiativeId",
-				"issueId",
-				"lastAppliedTemplateId",
-				"ownerId",
-				"projectId",
-				"releaseId",
-				"resourceFolderId",
-				"sortOrder",
-				"subscriberIds",
-				"teamId",
-				"teamKey",
-				"title",
-				"trashed",
-				"input",
-			].map((n) => p(n)),
-		}),
+		fields: [
+			{ name: "document", canonical: "DocumentReference", canonicalBranches: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15] },
+			{ name: "title", canonical: "String", canonicalBranches: [0], accepted: { order: 17 } },
+			{ name: "content", canonical: "String", canonicalBranches: [1], accepted: { order: 2 } },
+			{ name: "icon", canonical: "String", canonicalBranches: [2], accepted: { order: 5 } },
+			{ name: "color", canonical: "Color", canonicalBranches: [3], accepted: { order: 1 } },
+			{ name: "issueId", canonical: "IssueReference", canonicalBranches: [4], accepted: { order: 7 } },
+			{ name: "teamId", canonical: "TeamReference", canonicalBranches: [5], accepted: { order: 15 } },
+			{ name: "projectId", canonical: "UUID", canonicalBranches: [6], accepted: { order: 10 } },
+			{ name: "initiativeId", canonical: "UUID", canonicalBranches: [7], accepted: { order: 6 } },
+			{ name: "cycleId", canonical: "UUID", canonicalBranches: [8], accepted: { order: 3 } },
+			{ name: "releaseId", canonical: "UUID", canonicalBranches: [9], accepted: { order: 11 } },
+			{ name: "resourceFolderId", canonical: "UUID", canonicalBranches: [10], accepted: { order: 12 } },
+			{ name: "lastAppliedTemplateId", canonical: "UUID", canonicalBranches: [11], accepted: { order: 8 } },
+			{ name: "ownerId", canonical: "UUID", canonicalBranches: [12], accepted: { order: 9 } },
+			{ name: "subscriberIds", canonical: "[UUID!]", canonicalBranches: [13], accepted: { order: 14 } },
+			{ name: "sortOrder", canonical: "Float", canonicalBranches: [14], accepted: { order: 13 } },
+			{ name: "hiddenAt", canonical: "NullableDateTime", canonicalBranches: [15], accepted: { order: 4 } },
+			{ name: "documentId", compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, type: "DocumentReference", required: true }, accepted: { order: 0 } },
+			{ name: "input", card: { order: 1, type: "Input" }, accepted: { order: 19 } },
+			{ name: "teamKey", accepted: { order: 16 } },
+			{ name: "trashed", accepted: { order: 18 } },
+		],
+		requirements: {
+			canonicalBranches: 16,
+			compatibilityBranches: [{}],
+		},
+	}),
 						renderTargetFields: ["document", "documentId"],
 		domain: "documents",
 		purpose: "Update a document.",

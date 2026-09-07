@@ -2,7 +2,6 @@ import { projection } from "../selections";
 import { pureMutationPlan, pureQueryPlan, teamLookup } from "../operation-plan";
 import {
 	mergedInput,
-	p,
 } from "../operation-types";
 import type {
 	OperationSource,
@@ -10,7 +9,6 @@ import type {
 } from "../operation-types";
 import { defineOperation } from "../operation-definition";
 import {
-	input,
 	getDocument,
 	workspaceEmpty,
 	listOperation,
@@ -22,26 +20,20 @@ export const views: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_views",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": []
-				}
-			],
-			canonical: {
-				"fields": {
-					"after": "String",
-					"before": "String",
-					"first": "Int",
-					"last": "Int",
-					"includeArchived": "Boolean",
-					"orderBy": "PaginationOrderBy",
-					"filter": "Filter"
-				},
-				"branches": [
-					[]
-				]
-			},
-		}),
+		fields: [
+			{ name: "after", canonical: "String" },
+			{ name: "before", canonical: "String" },
+			{ name: "first", canonical: "Int" },
+			{ name: "last", canonical: "Int" },
+			{ name: "includeArchived", canonical: "Boolean" },
+			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			{ name: "filter", canonical: "Filter" },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 				renderEmpty: workspaceEmpty("views", "view"),
 				domain: "views",
 		root: "customViews",
@@ -54,25 +46,14 @@ export const views: readonly OperationDefinition[] = ([
 		name: "get_view",
 		resultCategory: "singular",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"id"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"id": "String"
-				},
-				"branches": [
-					[
-						"id"
-					]
-				]
-			},
-			parameters: [p("id", "String", true)],
-		}),
+		fields: [
+			{ name: "id", canonical: "String", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true } },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 						aliases: [],
 		domain: "views",
 		purpose: "Get a custom view.",
@@ -85,57 +66,25 @@ export const views: readonly OperationDefinition[] = ([
 	simpleMutation({
 		name: "create_view",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"name"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"name": "String",
-					"team": "TeamReference",
-					"description": "String",
-					"icon": "String",
-					"color": "Color",
-					"shared": "Boolean",
-					"filterData": "FilterData",
-					"projectFilterData": "FilterData",
-					"initiativeFilterData": "FilterData",
-					"feedItemFilterData": "FilterData"
-				},
-				"branches": [
-					[
-						"name"
-					]
-				]
-			},
-			parameters: [
-				p("name", "String", true),
-				p("filterData", "Object"),
-				p("projectFilterData", "Object"),
-				p("initiativeFilterData", "Object"),
-				p("feedItemFilterData", "Object"),
-				p("team", "TeamReference"),
-			],
-			acceptedParameters: [
-				p("name", "String", true),
-				...[
-					"filterData",
-					"projectFilterData",
-					"initiativeFilterData",
-					"feedItemFilterData",
-					"team",
-					"teamId",
-					"teamKey",
-					"description",
-					"icon",
-					"color",
-					"shared",
-				].map((n) => p(n)),
-			],
-		}),
+		fields: [
+			{ name: "name", canonical: "String", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true }, accepted: { order: 0, required: true } },
+			{ name: "team", canonical: "TeamReference", card: { order: 5 }, accepted: { order: 5 } },
+			{ name: "description", canonical: "String", accepted: { order: 8 } },
+			{ name: "icon", canonical: "String", accepted: { order: 9 } },
+			{ name: "color", canonical: "Color", accepted: { order: 10 } },
+			{ name: "shared", canonical: "Boolean", accepted: { order: 11 } },
+			{ name: "filterData", canonical: "FilterData", card: { order: 1, type: "Object" }, accepted: { order: 1 } },
+			{ name: "projectFilterData", canonical: "FilterData", card: { order: 2, type: "Object" }, accepted: { order: 2 } },
+			{ name: "initiativeFilterData", canonical: "FilterData", card: { order: 3, type: "Object" }, accepted: { order: 3 } },
+			{ name: "feedItemFilterData", canonical: "FilterData", card: { order: 4, type: "Object" }, accepted: { order: 4 } },
+			{ name: "teamId", accepted: { order: 6 } },
+			{ name: "teamKey", accepted: { order: 7 } },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 						domain: "views",
 		purpose:
 			"Create a custom view using filterData, projectFilterData, initiativeFilterData, or feedItemFilterData.",
@@ -165,80 +114,24 @@ export const views: readonly OperationDefinition[] = ([
 	simpleMutation({
 		name: "update_view",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"id"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"id": "String",
-					"name": "String",
-					"description": "String",
-					"icon": "String",
-					"color": "Color",
-					"shared": "Boolean",
-					"filterData": "FilterData",
-					"projectFilterData": "FilterData",
-					"initiativeFilterData": "FilterData",
-					"feedItemFilterData": "FilterData"
-				},
-				"branches": [
-					[
-						"id",
-						"name"
-					],
-					[
-						"id",
-						"description"
-					],
-					[
-						"id",
-						"icon"
-					],
-					[
-						"id",
-						"color"
-					],
-					[
-						"id",
-						"shared"
-					],
-					[
-						"id",
-						"filterData"
-					],
-					[
-						"id",
-						"projectFilterData"
-					],
-					[
-						"id",
-						"initiativeFilterData"
-					],
-					[
-						"id",
-						"feedItemFilterData"
-					]
-				]
-			},
-			parameters: [p("id", "String", true), input],
-			acceptedParameters: [
-				"id",
-				"name",
-				"filterData",
-				"projectFilterData",
-				"initiativeFilterData",
-				"feedItemFilterData",
-				"description",
-				"icon",
-				"color",
-				"shared",
-				"input",
-			].map((n) => p(n)),
-		}),
+		fields: [
+			{ name: "id", canonical: "String", canonicalBranches: [0,1,2,3,4,5,6,7,8], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true }, accepted: { order: 0 } },
+			{ name: "name", canonical: "String", canonicalBranches: [0], accepted: { order: 1 } },
+			{ name: "description", canonical: "String", canonicalBranches: [1], accepted: { order: 6 } },
+			{ name: "icon", canonical: "String", canonicalBranches: [2], accepted: { order: 7 } },
+			{ name: "color", canonical: "Color", canonicalBranches: [3], accepted: { order: 8 } },
+			{ name: "shared", canonical: "Boolean", canonicalBranches: [4], accepted: { order: 9 } },
+			{ name: "filterData", canonical: "FilterData", canonicalBranches: [5], accepted: { order: 2 } },
+			{ name: "projectFilterData", canonical: "FilterData", canonicalBranches: [6], accepted: { order: 3 } },
+			{ name: "initiativeFilterData", canonical: "FilterData", canonicalBranches: [7], accepted: { order: 4 } },
+			{ name: "feedItemFilterData", canonical: "FilterData", canonicalBranches: [8], accepted: { order: 5 } },
+			{ name: "input", card: { order: 1, type: "Input" }, accepted: { order: 10 } },
+		],
+		requirements: {
+			canonicalBranches: 9,
+			compatibilityBranches: [{}],
+		},
+	}),
 						domain: "views",
 		purpose: "Update a custom view.",
 		root: "customViewUpdate",
@@ -250,28 +143,15 @@ export const views: readonly OperationDefinition[] = ([
 	simpleMutation({
 		name: "set_view_preferences",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"viewId",
-						"preferences"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"viewId": "String",
-					"preferences": "Preferences"
-				},
-				"branches": [
-					[
-						"viewId",
-						"preferences"
-					]
-				]
-			},
-			parameters: [p("viewId", "String", true), p("preferences", "Object", true)],
-		}),
+		fields: [
+			{ name: "viewId", canonical: "String", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true } },
+			{ name: "preferences", canonical: "Preferences", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":1}], card: { order: 1, type: "Object", required: true } },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 				renderKind: "view",
 				domain: "views",
 		purpose: "Set preferences for a custom view.",

@@ -1,6 +1,5 @@
 import { namedEntityLookup } from "../operation-plan";
 import { projection } from "../selections";
-import { p } from "../operation-types";
 import type {
 	OperationSource,
 	OperationDefinition,
@@ -19,27 +18,21 @@ export const initiativeReads: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_initiatives",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": []
-				}
-			],
-			canonical: {
-				"fields": {
-					"sort": "[InitiativeSort!]",
-					"after": "String",
-					"before": "String",
-					"first": "Int",
-					"last": "Int",
-					"includeArchived": "Boolean",
-					"orderBy": "PaginationOrderBy",
-					"filter": "Filter"
-				},
-				"branches": [
-					[]
-				]
-			},
-		}),
+		fields: [
+			{ name: "sort", canonical: "[InitiativeSort!]" },
+			{ name: "after", canonical: "String" },
+			{ name: "before", canonical: "String" },
+			{ name: "first", canonical: "Int" },
+			{ name: "last", canonical: "Int" },
+			{ name: "includeArchived", canonical: "Boolean" },
+			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			{ name: "filter", canonical: "Filter" },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{}],
+		},
+	}),
 				renderEmpty: workspaceEmpty("initiatives", "initiative"),
 				domain: "initiatives",
 		root: "initiatives",
@@ -54,31 +47,15 @@ export const initiativeReads: readonly OperationDefinition[] = ([
 		name: "get_initiative",
 		resultCategory: "singular",
 		...operationParameterDecision({
-			compatibilityBranches: [
-				{
-					"all": [
-						"initiative"
-					]
-				},
-				{
-					"all": [
-						"initiativeId"
-					]
-				}
-			],
-			canonical: {
-				"fields": {
-					"initiative": "InitiativeReference"
-				},
-				"branches": [
-					[
-						"initiative"
-					]
-				]
-			},
-			parameters: [p("initiative", "InitiativeReference", true)],
-			legacyParameters: [[p("initiativeId", "String", true)]],
-		}),
+		fields: [
+			{ name: "initiative", canonical: "InitiativeReference", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true } },
+			{ name: "initiativeId", compatibilityRequirements: [{"branch":1,"kind":"all","order":0}], legacy: [{ order: 0, required: true, branch: 0 }] },
+		],
+		requirements: {
+			canonicalBranches: 1,
+			compatibilityBranches: [{},{}],
+		},
+	}),
 						aliases: [],
 		domain: "initiatives",
 		purpose: "Get an initiative by exact name or UUID.",
