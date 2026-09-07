@@ -12,34 +12,38 @@ import {
 	listPrepare,
 	workspaceEmpty,
 	listOperation,
+	operationParameterDecision,
 } from "./shared";
 
 export const users: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_users",
-		compatibilityBranches: [
-			{
-				"all": []
-			}
-		],
-		renderEmpty: workspaceEmpty("users", "user", false),
-		canonical: {
-			"fields": {
-				"includeDisabled": "Boolean",
-				"sort": "[UserSort!]",
-				"after": "String",
-				"before": "String",
-				"first": "Int",
-				"last": "Int",
-				"includeArchived": "Boolean",
-				"orderBy": "PaginationOrderBy",
-				"filter": "Filter"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": []
+				}
+			],
+			canonical: {
+				"fields": {
+					"includeDisabled": "Boolean",
+					"sort": "[UserSort!]",
+					"after": "String",
+					"before": "String",
+					"first": "Int",
+					"last": "Int",
+					"includeArchived": "Boolean",
+					"orderBy": "PaginationOrderBy",
+					"filter": "Filter"
+				},
+				"branches": [
+					[]
+				]
 			},
-			"branches": [
-				[]
-			]
-		},
-		domain: "users",
+			parameters: [p("includeDisabled", "Boolean")],
+		}),
+				renderEmpty: workspaceEmpty("users", "user", false),
+				domain: "users",
 		root: "users",
 		selection: projection("user", "list"),
 		purpose: "List users.",
@@ -47,42 +51,43 @@ export const users: readonly OperationDefinition[] = ([
 		filterType: "UserFilter",
 		sortType: "UserSortInput",
 		sortKeys: USER_SORT_KEYS,
-		parameters: [p("includeDisabled", "Boolean")],
-		extras: "$includeDisabled: Boolean",
+				extras: "$includeDisabled: Boolean",
 		extraArgs: "includeDisabled: $includeDisabled",
 		plan: listPrepare(50, (v) => ({ includeDisabled: v.includeDisabled })),
 	}),
 	{
 		name: "get_user",
 		resultCategory: "singular",
-		compatibilityBranches: [
-			{
-				"all": [
-					"user"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [
+						"user"
+					]
+				},
+				{
+					"all": [
+						"userId"
+					]
+				}
+			],
+			canonical: {
+				"fields": {
+					"user": "UserReference"
+				},
+				"branches": [
+					[
+						"user"
+					]
 				]
 			},
-			{
-				"all": [
-					"userId"
-				]
-			}
-		],
-		canonical: {
-			"fields": {
-				"user": "UserReference"
-			},
-			"branches": [
-				[
-					"user"
-				]
-			]
-		},
-		aliases: [],
+			parameters: [p("user", "UserReference", true)],
+			legacyParameters: [[p("userId", "String", true)]],
+		}),
+						aliases: [],
 		domain: "users",
 		purpose: "Get a user by me, UUID, email, name, or display name.",
-		parameters: [p("user", "UserReference", true)],
-		legacyParameters: [[p("userId", "String", true)]],
-		example: { operation: "get_user", variables: { user: "me" } },
+						example: { operation: "get_user", variables: { user: "me" } },
 		document: getDocument("GetUser", "user", projection("user", "detail")),
 		resolverPaths: { user: "resolveUserReference" },
 		plan(v) {

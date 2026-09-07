@@ -305,6 +305,80 @@ export function workspaceEmpty(
 	};
 }
 
+type OperationParameterDecision = Pick<OperationSource, "canonical" | "compatibilityBranches"> &
+	Partial<
+		Pick<
+			OperationSource,
+			"parameters" | "acceptedParameters" | "legacyParameters" | "aliasParameters"
+		>
+	>;
+
+/** Project one authored parameter decision into the operation builder contract. */
+export function operationParameterDecision<const T extends OperationParameterDecision>(decision: T): T {
+	return { ...decision };
+}
+
+type ParameterCardRole = {
+	order: number;
+	type: string;
+	required?: true;
+};
+
+type ParameterFieldDecision = {
+	name: string;
+	/** Canonical fields follow declaration order. */
+	canonical?: string;
+	card?: ParameterCardRole;
+	accepted?: ParameterCardRole;
+	legacy?: readonly (ParameterCardRole & { branch: number })[];
+	aliases?: readonly (ParameterCardRole & { operation: string })[];
+};
+
+type OperationFieldProjections = {
+	canonical: Readonly<Record<string, string>>;
+	card: readonly OperationParameter[];
+	accepted: readonly OperationParameter[];
+	legacy: readonly (readonly OperationParameter[])[];
+	aliases: Readonly<Record<string, readonly OperationParameter[]>>;
+};
+
+/** Project field cards from one field declaration table. */
+export function operationFieldDecision(
+	fields: readonly ParameterFieldDecision[],
+): OperationFieldProjections {
+	const card = (role: ParameterCardRole, name: string) => p(name, role.type, role.required);
+	const canonical: Record<string, string> = {};
+	for (const field of fields) {
+		if (field.canonical) canonical[field.name] = field.canonical;
+	}
+	const projectRole = (role: "card" | "accepted") => fields
+		.filter((field): field is ParameterFieldDecision & Record<typeof role, ParameterCardRole> =>
+			field[role] !== undefined,
+		)
+		.slice()
+		.sort((left, right) => left[role].order - right[role].order)
+		.map((field) => card(field[role], field.name));
+	const legacyEntries: { branch: number; order: number; parameter: OperationParameter }[] = [];
+	const aliasEntries: { operation: string; order: number; parameter: OperationParameter }[] = [];
+	for (const field of fields) {
+		for (const role of field.legacy ?? []) {
+			legacyEntries.push({ branch: role.branch, order: role.order, parameter: card(role, field.name) });
+		}
+		for (const role of field.aliases ?? []) {
+			aliasEntries.push({ operation: role.operation, order: role.order, parameter: card(role, field.name) });
+		}
+	}
+	const legacy: OperationParameter[][] = [];
+	for (const entry of legacyEntries.sort((left, right) => left.branch - right.branch || left.order - right.order)) {
+		(legacy[entry.branch] ??= []).push(entry.parameter);
+	}
+	const aliases: Record<string, OperationParameter[]> = {};
+	for (const entry of aliasEntries.sort((left, right) => left.order - right.order)) {
+		(aliases[entry.operation] ??= []).push(entry.parameter);
+	}
+	return { canonical, card: projectRole("card"), accepted: projectRole("accepted"), legacy, aliases };
+}
+
 /** Per-operation authority carried by every source definition. */
 type OperationSourceExtras = Pick<
 	OperationSource,

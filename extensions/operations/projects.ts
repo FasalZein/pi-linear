@@ -15,33 +15,36 @@ import {
 	listOperation,
 	addSaveOperation,
 	withGetResultView,
+	operationParameterDecision,
 } from "./shared";
 
 export const projectReads: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_projects",
-		compatibilityBranches: [
-			{
-				"all": []
-			}
-		],
-		renderEmpty: workspaceEmpty("projects", "project"),
-		canonical: {
-			"fields": {
-				"sort": "[ProjectSort!]",
-				"after": "String",
-				"before": "String",
-				"first": "Int",
-				"last": "Int",
-				"includeArchived": "Boolean",
-				"orderBy": "PaginationOrderBy",
-				"filter": "Filter"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": []
+				}
+			],
+			canonical: {
+				"fields": {
+					"sort": "[ProjectSort!]",
+					"after": "String",
+					"before": "String",
+					"first": "Int",
+					"last": "Int",
+					"includeArchived": "Boolean",
+					"orderBy": "PaginationOrderBy",
+					"filter": "Filter"
+				},
+				"branches": [
+					[]
+				]
 			},
-			"branches": [
-				[]
-			]
-		},
-		domain: "projects",
+		}),
+				renderEmpty: workspaceEmpty("projects", "project"),
+				domain: "projects",
 		root: "projects",
 		selection: projection("project", "list"),
 		resultView: { entity: "project", defaultView: "summary" },
@@ -53,34 +56,36 @@ export const projectReads: readonly OperationDefinition[] = ([
 	}),
 	withGetResultView({
 		name: "get_project",
-		compatibilityBranches: [
-			{
-				"all": [
-					"project"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [
+						"project"
+					]
+				},
+				{
+					"all": [
+						"projectId"
+					]
+				}
+			],
+			canonical: {
+				"fields": {
+					"project": "ProjectReference"
+				},
+				"branches": [
+					[
+						"project"
+					]
 				]
 			},
-			{
-				"all": [
-					"projectId"
-				]
-			}
-		],
-		canonical: {
-			"fields": {
-				"project": "ProjectReference"
-			},
-			"branches": [
-				[
-					"project"
-				]
-			]
-		},
-		aliases: [],
+			parameters: [p("project", "ProjectReference", true)],
+			legacyParameters: [[p("projectId", "String", true)]],
+		}),
+						aliases: [],
 		domain: "projects",
 		purpose: "Get a project by exact name or UUID.",
-		parameters: [p("project", "ProjectReference", true)],
-		legacyParameters: [[p("projectId", "String", true)]],
-		example: { operation: "get_project", variables: { project: "Platform" } },
+						example: { operation: "get_project", variables: { project: "Platform" } },
 		document: getDocument("GetProject", "project", projection("project", "detail")),
 		resolverPaths: { project: "resolveNamedEntityReference" },
 		plan(v) {

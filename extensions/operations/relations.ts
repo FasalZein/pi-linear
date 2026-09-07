@@ -19,6 +19,7 @@ import {
 	workspaceEmpty,
 	listOperation,
 	simpleMutation,
+	operationParameterDecision,
 } from "./shared";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -75,26 +76,28 @@ function guardedDeletePreparation(
 export const issueRelations: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_issue_relations",
-		compatibilityBranches: [
-			{
-				"all": []
-			}
-		],
-		renderEmpty: workspaceEmpty("issue relations", "issue relation"),
-		canonical: {
-			"fields": {
-				"after": "String",
-				"before": "String",
-				"first": "Int",
-				"last": "Int",
-				"includeArchived": "Boolean",
-				"orderBy": "PaginationOrderBy"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": []
+				}
+			],
+			canonical: {
+				"fields": {
+					"after": "String",
+					"before": "String",
+					"first": "Int",
+					"last": "Int",
+					"includeArchived": "Boolean",
+					"orderBy": "PaginationOrderBy"
+				},
+				"branches": [
+					[]
+				]
 			},
-			"branches": [
-				[]
-			]
-		},
-		domain: "relations",
+		}),
+				renderEmpty: workspaceEmpty("issue relations", "issue relation"),
+				domain: "relations",
 		root: "issueRelations",
 		selection: projection("issueRelation", "list"),
 		purpose: "List issue relations.",
@@ -102,74 +105,76 @@ export const issueRelations: readonly OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "create_issue_relation",
-		compatibilityBranches: [
-			{
-				"all": [
-					"issue",
-					"relatedIssue",
-					"type"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [
+						"issue",
+						"relatedIssue",
+						"type"
+					]
+				},
+				{
+					"all": [
+						"issueId",
+						"relatedIssueId",
+						"type"
+					]
+				},
+				{
+					"all": [
+						"issueId",
+						"relatedIssueId",
+						"type"
+					]
+				}
+			],
+			canonical: {
+				"fields": {
+					"issue": "IssueReference",
+					"relatedIssue": "IssueReference",
+					"type": "IssueRelationType"
+				},
+				"branches": [
+					[
+						"issue",
+						"relatedIssue",
+						"type"
+					]
 				]
 			},
-			{
-				"all": [
-					"issueId",
-					"relatedIssueId",
-					"type"
-				]
+			parameters: [
+				p("issue", "IssueReference", true),
+				p("relatedIssue", "IssueReference", true),
+				p("type", "IssueRelationType", true),
+			],
+			legacyParameters: [
+				[
+					p("issueId", "String", true),
+					p("relatedIssueId", "String", true),
+					p("type", "IssueRelationType", true),
+				],
+			],
+			aliasParameters: {
+				create_relation: [
+					p("issueId", "String", true),
+					p("relatedIssueId", "String", true),
+					p("type", "IssueRelationType", true),
+				],
 			},
-			{
-				"all": [
-					"issueId",
-					"relatedIssueId",
-					"type"
-				]
-			}
-		],
-		renderTargetFields: [
+		}),
+				renderTargetFields: [
 			"issue",
 			"relatedIssue"
 		],
-		canonical: {
-			"fields": {
-				"issue": "IssueReference",
-				"relatedIssue": "IssueReference",
-				"type": "IssueRelationType"
-			},
-			"branches": [
-				[
-					"issue",
-					"relatedIssue",
-					"type"
-				]
-			]
-		},
-		domain: "relations",
+				domain: "relations",
 		purpose: "Create a relation between two issues.",
 		root: "issueRelationCreate",
 		inputType: "IssueRelationCreateInput",
 		selection: `issueRelation { ${projection("issueRelation", "detail")} }`,
-		parameters: [
-			p("issue", "IssueReference", true),
-			p("relatedIssue", "IssueReference", true),
-			p("type", "IssueRelationType", true),
-		],
-		example: { issue: "AEO-258", relatedIssue: "AEO-259", type: "related" },
+				example: { issue: "AEO-258", relatedIssue: "AEO-259", type: "related" },
 		aliases: ["create_relation"],
-		legacyParameters: [
-			[
-				p("issueId", "String", true),
-				p("relatedIssueId", "String", true),
-				p("type", "IssueRelationType", true),
-			],
-		],
-		aliasParameters: {
-			create_relation: [
-				p("issueId", "String", true),
-				p("relatedIssueId", "String", true),
-				p("type", "IssueRelationType", true),
-			],
-		},
-		resolverPaths: {
+						resolverPaths: {
 			issue: "resolveIssueReference",
 			relatedIssue: "resolveIssueReference",
 		},
@@ -189,49 +194,51 @@ export const issueRelations: readonly OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_issue_relation",
-		compatibilityBranches: [
-			{
-				"all": [
-					"id"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [
+						"id"
+					]
+				}
+			],
+			canonical: {
+				"fields": {
+					"id": "String",
+					"type": "IssueRelationType",
+					"issueId": "IssueReference",
+					"relatedIssueId": "IssueReference"
+				},
+				"branches": [
+					[
+						"id",
+						"type"
+					],
+					[
+						"id",
+						"issueId"
+					],
+					[
+						"id",
+						"relatedIssueId"
+					]
 				]
-			}
-		],
-		canonical: {
-			"fields": {
-				"id": "String",
-				"type": "IssueRelationType",
-				"issueId": "IssueReference",
-				"relatedIssueId": "IssueReference"
 			},
-			"branches": [
-				[
-					"id",
-					"type"
-				],
-				[
-					"id",
-					"issueId"
-				],
-				[
-					"id",
-					"relatedIssueId"
-				]
-			]
-		},
-		domain: "relations",
+			parameters: [p("id", "String", true), input],
+			acceptedParameters: [
+				"id",
+				"type",
+				"issueId",
+				"relatedIssueId",
+				"input",
+			].map((n) => p(n)),
+		}),
+						domain: "relations",
 		purpose: "Update an issue relation.",
 		root: "issueRelationUpdate",
 		inputType: "IssueRelationUpdateInput",
 		selection: `issueRelation { ${projection("issueRelation", "detail")} }`,
-		parameters: [p("id", "String", true), input],
-		acceptedParameters: [
-			"id",
-			"type",
-			"issueId",
-			"relatedIssueId",
-			"input",
-		].map((n) => p(n)),
-		example: { id: "relation-id", type: "blocks" },
+						example: { id: "relation-id", type: "blocks" },
 		idKey: "id",
 		resolverPaths: {
 			issueId: "resolveIssueReference",
@@ -263,28 +270,30 @@ export const issueRelations: readonly OperationDefinition[] = ([
 	}),
 	{
 		name: "delete_issue_relation",
-		compatibilityBranches: [{ all: ["relationId", "issueId", "relatedIssueId", "type"] }],
-		canonical: {
-			fields: {
-				relationId: "UUID",
-				issueId: "UUID",
-				relatedIssueId: "UUID",
-				type: "IssueRelationType",
+		...operationParameterDecision({
+			compatibilityBranches: [{ all: ["relationId", "issueId", "relatedIssueId", "type"] }],
+			canonical: {
+				fields: {
+					relationId: "UUID",
+					issueId: "UUID",
+					relatedIssueId: "UUID",
+					type: "IssueRelationType",
+				},
+				branches: [["relationId", "issueId", "relatedIssueId", "type"]],
 			},
-			branches: [["relationId", "issueId", "relatedIssueId", "type"]],
-		},
-		aliases: [],
+			parameters: [
+				p("relationId", "UUID", true),
+				p("issueId", "UUID", true),
+				p("relatedIssueId", "UUID", true),
+				p("type", "IssueRelationType", true),
+			],
+		}),
+						aliases: [],
 		domain: "relations",
 		purpose: "Delete one issue relation after exact relation and endpoint verification.",
 		resultCategory: "singular",
 		namedInputPolicy: "guarded-destructive",
-		parameters: [
-			p("relationId", "UUID", true),
-			p("issueId", "UUID", true),
-			p("relatedIssueId", "UUID", true),
-			p("type", "IssueRelationType", true),
-		],
-		example: {
+				example: {
 			operation: "delete_issue_relation",
 			variables: {
 				relationId: "33333333-3333-4333-8333-333333333333",
@@ -325,26 +334,28 @@ export const issueRelations: readonly OperationDefinition[] = ([
 export const projectRelations: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_project_relations",
-		compatibilityBranches: [
-			{
-				"all": []
-			}
-		],
-		renderEmpty: workspaceEmpty("project relations", "project relation"),
-		canonical: {
-			"fields": {
-				"after": "String",
-				"before": "String",
-				"first": "Int",
-				"last": "Int",
-				"includeArchived": "Boolean",
-				"orderBy": "PaginationOrderBy"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": []
+				}
+			],
+			canonical: {
+				"fields": {
+					"after": "String",
+					"before": "String",
+					"first": "Int",
+					"last": "Int",
+					"includeArchived": "Boolean",
+					"orderBy": "PaginationOrderBy"
+				},
+				"branches": [
+					[]
+				]
 			},
-			"branches": [
-				[]
-			]
-		},
-		domain: "relations",
+		}),
+				renderEmpty: workspaceEmpty("project relations", "project relation"),
+				domain: "relations",
 		root: "projectRelations",
 		selection: projection("projectRelation", "list"),
 		purpose: "List project relations.",
@@ -352,60 +363,62 @@ export const projectRelations: readonly OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "create_project_relation",
-		compatibilityBranches: [
-			{
-				"all": [
-					"projectId",
-					"relatedProjectId",
-					"type",
-					"anchorType",
-					"relatedAnchorType"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [
+						"projectId",
+						"relatedProjectId",
+						"type",
+						"anchorType",
+						"relatedAnchorType"
+					]
+				}
+			],
+			canonical: {
+				"fields": {
+					"projectId": "String",
+					"relatedProjectId": "String",
+					"type": "String",
+					"anchorType": "String",
+					"relatedAnchorType": "String",
+					"projectMilestoneId": "UUID",
+					"relatedProjectMilestoneId": "UUID"
+				},
+				"branches": [
+					[
+						"projectId",
+						"relatedProjectId",
+						"type",
+						"anchorType",
+						"relatedAnchorType"
+					]
 				]
-			}
-		],
-		canonical: {
-			"fields": {
-				"projectId": "String",
-				"relatedProjectId": "String",
-				"type": "String",
-				"anchorType": "String",
-				"relatedAnchorType": "String",
-				"projectMilestoneId": "UUID",
-				"relatedProjectMilestoneId": "UUID"
 			},
-			"branches": [
-				[
-					"projectId",
-					"relatedProjectId",
-					"type",
-					"anchorType",
-					"relatedAnchorType"
-				]
-			]
-		},
-		domain: "relations",
+			parameters: [
+				p("projectId", "String", true),
+				p("relatedProjectId", "String", true),
+				p("type", "String", true),
+				p("anchorType", "String", true),
+				p("relatedAnchorType", "String", true),
+			],
+			acceptedParameters: [
+				"projectId",
+				"relatedProjectId",
+				"type",
+				"anchorType",
+				"relatedAnchorType",
+				"projectMilestoneId",
+				"relatedProjectMilestoneId",
+				"input",
+			].map((n) => p(n)),
+		}),
+						domain: "relations",
 		purpose: "Create a relation between two projects.",
 		root: "projectRelationCreate",
 		inputType: "ProjectRelationCreateInput",
 		selection: `projectRelation { ${projection("projectRelation", "detail")} }`,
-		parameters: [
-			p("projectId", "String", true),
-			p("relatedProjectId", "String", true),
-			p("type", "String", true),
-			p("anchorType", "String", true),
-			p("relatedAnchorType", "String", true),
-		],
-		acceptedParameters: [
-			"projectId",
-			"relatedProjectId",
-			"type",
-			"anchorType",
-			"relatedAnchorType",
-			"projectMilestoneId",
-			"relatedProjectMilestoneId",
-			"input",
-		].map((n) => p(n)),
-		example: {
+						example: {
 			projectId: "project-id",
 			relatedProjectId: "other-project-id",
 			type: "related",
@@ -415,73 +428,75 @@ export const projectRelations: readonly OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_project_relation",
-		compatibilityBranches: [
-			{
-				"all": [
-					"id"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [
+						"id"
+					]
+				}
+			],
+			canonical: {
+				"fields": {
+					"id": "String",
+					"type": "String",
+					"anchorType": "String",
+					"relatedAnchorType": "String",
+					"projectId": "UUID",
+					"relatedProjectId": "UUID",
+					"projectMilestoneId": "UUID",
+					"relatedProjectMilestoneId": "UUID"
+				},
+				"branches": [
+					[
+						"id",
+						"type"
+					],
+					[
+						"id",
+						"anchorType"
+					],
+					[
+						"id",
+						"relatedAnchorType"
+					],
+					[
+						"id",
+						"projectId"
+					],
+					[
+						"id",
+						"relatedProjectId"
+					],
+					[
+						"id",
+						"projectMilestoneId"
+					],
+					[
+						"id",
+						"relatedProjectMilestoneId"
+					]
 				]
-			}
-		],
-		canonical: {
-			"fields": {
-				"id": "String",
-				"type": "String",
-				"anchorType": "String",
-				"relatedAnchorType": "String",
-				"projectId": "UUID",
-				"relatedProjectId": "UUID",
-				"projectMilestoneId": "UUID",
-				"relatedProjectMilestoneId": "UUID"
 			},
-			"branches": [
-				[
-					"id",
-					"type"
-				],
-				[
-					"id",
-					"anchorType"
-				],
-				[
-					"id",
-					"relatedAnchorType"
-				],
-				[
-					"id",
-					"projectId"
-				],
-				[
-					"id",
-					"relatedProjectId"
-				],
-				[
-					"id",
-					"projectMilestoneId"
-				],
-				[
-					"id",
-					"relatedProjectMilestoneId"
-				]
-			]
-		},
-		domain: "relations",
+			parameters: [p("id", "String", true), input],
+			acceptedParameters: [
+				"id",
+				"type",
+				"projectId",
+				"relatedProjectId",
+				"anchorType",
+				"relatedAnchorType",
+				"projectMilestoneId",
+				"relatedProjectMilestoneId",
+				"input",
+			].map((n) => p(n)),
+		}),
+						domain: "relations",
 		purpose: "Update a project relation.",
 		root: "projectRelationUpdate",
 		inputType: "ProjectRelationUpdateInput",
 		selection: `projectRelation { ${projection("projectRelation", "detail")} }`,
-		parameters: [p("id", "String", true), input],
-		acceptedParameters: [
-			"id",
-			"type",
-			"projectId",
-			"relatedProjectId",
-			"anchorType",
-			"relatedAnchorType",
-			"projectMilestoneId",
-			"relatedProjectMilestoneId",
-			"input",
-		].map((n) => p(n)),
-		example: { id: "relation-id", type: "related" },
+						example: { id: "relation-id", type: "related" },
 		idKey: "id",
 	}),
 ] satisfies OperationSource[]).map((operation) =>

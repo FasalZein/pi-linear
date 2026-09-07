@@ -12,33 +12,36 @@ import {
 	workspaceEmpty,
 	listOperation,
 	addSaveOperation,
+	operationParameterDecision,
 } from "./shared";
 
 export const initiativeReads: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_initiatives",
-		compatibilityBranches: [
-			{
-				"all": []
-			}
-		],
-		renderEmpty: workspaceEmpty("initiatives", "initiative"),
-		canonical: {
-			"fields": {
-				"sort": "[InitiativeSort!]",
-				"after": "String",
-				"before": "String",
-				"first": "Int",
-				"last": "Int",
-				"includeArchived": "Boolean",
-				"orderBy": "PaginationOrderBy",
-				"filter": "Filter"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": []
+				}
+			],
+			canonical: {
+				"fields": {
+					"sort": "[InitiativeSort!]",
+					"after": "String",
+					"before": "String",
+					"first": "Int",
+					"last": "Int",
+					"includeArchived": "Boolean",
+					"orderBy": "PaginationOrderBy",
+					"filter": "Filter"
+				},
+				"branches": [
+					[]
+				]
 			},
-			"branches": [
-				[]
-			]
-		},
-		domain: "initiatives",
+		}),
+				renderEmpty: workspaceEmpty("initiatives", "initiative"),
+				domain: "initiatives",
 		root: "initiatives",
 		selection: projection("initiative", "list"),
 		purpose: "List initiatives.",
@@ -50,34 +53,36 @@ export const initiativeReads: readonly OperationDefinition[] = ([
 	{
 		name: "get_initiative",
 		resultCategory: "singular",
-		compatibilityBranches: [
-			{
-				"all": [
-					"initiative"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [
+						"initiative"
+					]
+				},
+				{
+					"all": [
+						"initiativeId"
+					]
+				}
+			],
+			canonical: {
+				"fields": {
+					"initiative": "InitiativeReference"
+				},
+				"branches": [
+					[
+						"initiative"
+					]
 				]
 			},
-			{
-				"all": [
-					"initiativeId"
-				]
-			}
-		],
-		canonical: {
-			"fields": {
-				"initiative": "InitiativeReference"
-			},
-			"branches": [
-				[
-					"initiative"
-				]
-			]
-		},
-		aliases: [],
+			parameters: [p("initiative", "InitiativeReference", true)],
+			legacyParameters: [[p("initiativeId", "String", true)]],
+		}),
+						aliases: [],
 		domain: "initiatives",
 		purpose: "Get an initiative by exact name or UUID.",
-		parameters: [p("initiative", "InitiativeReference", true)],
-		legacyParameters: [[p("initiativeId", "String", true)]],
-		example: {
+						example: {
 			operation: "get_initiative",
 			variables: { initiative: "Platform" },
 		},

@@ -63,8 +63,11 @@ describe('no second operation-keyed authority', () => {
     ]) {
       expect(source, keyword).toContain(keyword);
     }
-    const authored = source.match(/^\t{1,2}compatibilityBranches: \[/gm) ?? [];
-    expect(authored).toHaveLength(names.length);
+    const authored = source.match(/^\t{1,3}compatibilityBranches: \[/gm) ?? [];
+    const ordinaryDecisions = source.match(/operationParameterDecision\(\{/g) ?? [];
+    const saveDecisions = source.match(/^\tparameterDecision: \{/gm) ?? [];
+    expect(authored).toHaveLength(ordinaryDecisions.length);
+    expect(ordinaryDecisions.length + saveDecisions.length).toBe(names.length);
   });
 });
 

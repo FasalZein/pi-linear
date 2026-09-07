@@ -11,32 +11,35 @@ import {
 	workspaceEmpty,
 	listOperation,
 	addSaveOperation,
+	operationParameterDecision,
 } from "./shared";
 
 export const milestoneReads: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_milestones",
-		compatibilityBranches: [
-			{
-				"all": []
-			}
-		],
-		renderEmpty: workspaceEmpty("milestones", "milestone"),
-		canonical: {
-			"fields": {
-				"after": "String",
-				"before": "String",
-				"first": "Int",
-				"last": "Int",
-				"includeArchived": "Boolean",
-				"orderBy": "PaginationOrderBy",
-				"filter": "Filter"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": []
+				}
+			],
+			canonical: {
+				"fields": {
+					"after": "String",
+					"before": "String",
+					"first": "Int",
+					"last": "Int",
+					"includeArchived": "Boolean",
+					"orderBy": "PaginationOrderBy",
+					"filter": "Filter"
+				},
+				"branches": [
+					[]
+				]
 			},
-			"branches": [
-				[]
-			]
-		},
-		domain: "milestones",
+		}),
+				renderEmpty: workspaceEmpty("milestones", "milestone"),
+				domain: "milestones",
 		root: "projectMilestones",
 		selection: projection("milestone", "list"),
 		purpose: "List project milestones.",
@@ -46,34 +49,36 @@ export const milestoneReads: readonly OperationDefinition[] = ([
 	{
 		name: "get_milestone",
 		resultCategory: "singular",
-		compatibilityBranches: [
-			{
-				"all": [
-					"milestone"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [
+						"milestone"
+					]
+				},
+				{
+					"all": [
+						"milestoneId"
+					]
+				}
+			],
+			canonical: {
+				"fields": {
+					"milestone": "MilestoneReference"
+				},
+				"branches": [
+					[
+						"milestone"
+					]
 				]
 			},
-			{
-				"all": [
-					"milestoneId"
-				]
-			}
-		],
-		canonical: {
-			"fields": {
-				"milestone": "MilestoneReference"
-			},
-			"branches": [
-				[
-					"milestone"
-				]
-			]
-		},
-		aliases: [],
+			parameters: [p("milestone", "MilestoneReference", true)],
+			legacyParameters: [[p("milestoneId", "String", true)]],
+		}),
+						aliases: [],
 		domain: "milestones",
 		purpose: "Get a milestone by exact name or UUID.",
-		parameters: [p("milestone", "MilestoneReference", true)],
-		legacyParameters: [[p("milestoneId", "String", true)]],
-		example: { operation: "get_milestone", variables: { milestone: "Beta" } },
+						example: { operation: "get_milestone", variables: { milestone: "Beta" } },
 		document: getDocument(
 			"GetMilestone",
 			"projectMilestone",

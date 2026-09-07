@@ -23,33 +23,36 @@ import {
 	listOperation,
 	simpleMutation,
 	withGetResultView,
+	operationParameterDecision,
 } from "./shared";
 
 export const documents: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_documents",
-		compatibilityBranches: [
-			{
-				"all": []
-			}
-		],
-		renderEmpty: workspaceEmpty("documents", "document"),
-		canonical: {
-			"fields": {
-				"sort": "[DocumentSort!]",
-				"after": "String",
-				"before": "String",
-				"first": "Int",
-				"last": "Int",
-				"includeArchived": "Boolean",
-				"orderBy": "PaginationOrderBy",
-				"filter": "Filter"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": []
+				}
+			],
+			canonical: {
+				"fields": {
+					"sort": "[DocumentSort!]",
+					"after": "String",
+					"before": "String",
+					"first": "Int",
+					"last": "Int",
+					"includeArchived": "Boolean",
+					"orderBy": "PaginationOrderBy",
+					"filter": "Filter"
+				},
+				"branches": [
+					[]
+				]
 			},
-			"branches": [
-				[]
-			]
-		},
-		domain: "documents",
+		}),
+				renderEmpty: workspaceEmpty("documents", "document"),
+				domain: "documents",
 		root: "documents",
 		selection: projection("document", "list"),
 		resultView: { entity: "document", defaultView: "summary" },
@@ -61,34 +64,36 @@ export const documents: readonly OperationDefinition[] = ([
 	}),
 	withGetResultView({
 		name: "get_document",
-		compatibilityBranches: [
-			{
-				"all": [
-					"document"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [
+						"document"
+					]
+				},
+				{
+					"all": [
+						"documentId"
+					]
+				}
+			],
+			canonical: {
+				"fields": {
+					"document": "DocumentReference"
+				},
+				"branches": [
+					[
+						"document"
+					]
 				]
 			},
-			{
-				"all": [
-					"documentId"
-				]
-			}
-		],
-		canonical: {
-			"fields": {
-				"document": "DocumentReference"
-			},
-			"branches": [
-				[
-					"document"
-				]
-			]
-		},
-		aliases: [],
+			parameters: [p("document", "DocumentReference", true)],
+			legacyParameters: [[p("documentId", "String", true)]],
+		}),
+						aliases: [],
 		domain: "documents",
 		purpose: "Get a document by exact title or UUID.",
-		parameters: [p("document", "DocumentReference", true)],
-		legacyParameters: [[p("documentId", "String", true)]],
-		example: {
+						example: {
 			operation: "get_document",
 			variables: { document: "Planning notes" },
 		},
@@ -113,69 +118,71 @@ export const documents: readonly OperationDefinition[] = ([
 	}, "document", "document", "GetDocument"),
 	simpleMutation({
 		name: "create_document",
-		compatibilityBranches: [
-			{
-				"all": [],
-				"atLeastOneOf": [
-					"title",
-					"input.title"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [],
+					"atLeastOneOf": [
+						"title",
+						"input.title"
+					]
+				}
+			],
+			canonical: {
+				"fields": {
+					"title": "String",
+					"content": "String",
+					"icon": "String",
+					"color": "Color",
+					"issueId": "IssueReference",
+					"teamId": "TeamReference",
+					"projectId": "UUID",
+					"initiativeId": "UUID",
+					"cycleId": "UUID",
+					"releaseId": "UUID",
+					"resourceFolderId": "UUID",
+					"lastAppliedTemplateId": "UUID",
+					"ownerId": "UUID",
+					"subscriberIds": "[UUID!]",
+					"sortOrder": "Float",
+					"id": "UUID"
+				},
+				"branches": [
+					[
+						"title"
+					]
 				]
-			}
-		],
-		semanticException: "nested-title-type",
-		canonical: {
-			"fields": {
-				"title": "String",
-				"content": "String",
-				"icon": "String",
-				"color": "Color",
-				"issueId": "IssueReference",
-				"teamId": "TeamReference",
-				"projectId": "UUID",
-				"initiativeId": "UUID",
-				"cycleId": "UUID",
-				"releaseId": "UUID",
-				"resourceFolderId": "UUID",
-				"lastAppliedTemplateId": "UUID",
-				"ownerId": "UUID",
-				"subscriberIds": "[UUID!]",
-				"sortOrder": "Float",
-				"id": "UUID"
 			},
-			"branches": [
-				[
-					"title"
-				]
-			]
-		},
-		domain: "documents",
+			parameters: [p("title", "String", true), input],
+			acceptedParameters: [
+				"color",
+				"content",
+				"cycleId",
+				"icon",
+				"id",
+				"initiativeId",
+				"issueId",
+				"lastAppliedTemplateId",
+				"ownerId",
+				"projectId",
+				"releaseId",
+				"resourceFolderId",
+				"sortOrder",
+				"subscriberIds",
+				"teamId",
+				"teamKey",
+				"title",
+				"input",
+			].map((n) => p(n)),
+			legacyParameters: [[p("input", "DocumentCreateInput", true)]],
+		}),
+				semanticException: "nested-title-type",
+				domain: "documents",
 		purpose: "Create a document.",
 		root: "documentCreate",
 		inputType: "DocumentCreateInput",
 		selection: `document { ${projection("document", "detail")} }`,
-		parameters: [p("title", "String", true), input],
-		acceptedParameters: [
-			"color",
-			"content",
-			"cycleId",
-			"icon",
-			"id",
-			"initiativeId",
-			"issueId",
-			"lastAppliedTemplateId",
-			"ownerId",
-			"projectId",
-			"releaseId",
-			"resourceFolderId",
-			"sortOrder",
-			"subscriberIds",
-			"teamId",
-			"teamKey",
-			"title",
-			"input",
-		].map((n) => p(n)),
-		legacyParameters: [[p("input", "DocumentCreateInput", true)]],
-		example: { title: "Planning notes", content: "Notes" },
+								example: { title: "Planning notes", content: "Notes" },
 		validateVariables(variables) {
 			if (
 				variables.input &&
@@ -221,130 +228,132 @@ export const documents: readonly OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_document",
-		compatibilityBranches: [
-			{
-				"all": [
-					"documentId"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [
+						"documentId"
+					]
+				}
+			],
+			canonical: {
+				"fields": {
+					"document": "DocumentReference",
+					"title": "String",
+					"content": "String",
+					"icon": "String",
+					"color": "Color",
+					"issueId": "IssueReference",
+					"teamId": "TeamReference",
+					"projectId": "UUID",
+					"initiativeId": "UUID",
+					"cycleId": "UUID",
+					"releaseId": "UUID",
+					"resourceFolderId": "UUID",
+					"lastAppliedTemplateId": "UUID",
+					"ownerId": "UUID",
+					"subscriberIds": "[UUID!]",
+					"sortOrder": "Float",
+					"hiddenAt": "NullableDateTime"
+				},
+				"branches": [
+					[
+						"document",
+						"title"
+					],
+					[
+						"document",
+						"content"
+					],
+					[
+						"document",
+						"icon"
+					],
+					[
+						"document",
+						"color"
+					],
+					[
+						"document",
+						"issueId"
+					],
+					[
+						"document",
+						"teamId"
+					],
+					[
+						"document",
+						"projectId"
+					],
+					[
+						"document",
+						"initiativeId"
+					],
+					[
+						"document",
+						"cycleId"
+					],
+					[
+						"document",
+						"releaseId"
+					],
+					[
+						"document",
+						"resourceFolderId"
+					],
+					[
+						"document",
+						"lastAppliedTemplateId"
+					],
+					[
+						"document",
+						"ownerId"
+					],
+					[
+						"document",
+						"subscriberIds"
+					],
+					[
+						"document",
+						"sortOrder"
+					],
+					[
+						"document",
+						"hiddenAt"
+					]
 				]
-			}
-		],
-		canonical: {
-			"fields": {
-				"document": "DocumentReference",
-				"title": "String",
-				"content": "String",
-				"icon": "String",
-				"color": "Color",
-				"issueId": "IssueReference",
-				"teamId": "TeamReference",
-				"projectId": "UUID",
-				"initiativeId": "UUID",
-				"cycleId": "UUID",
-				"releaseId": "UUID",
-				"resourceFolderId": "UUID",
-				"lastAppliedTemplateId": "UUID",
-				"ownerId": "UUID",
-				"subscriberIds": "[UUID!]",
-				"sortOrder": "Float",
-				"hiddenAt": "NullableDateTime"
 			},
-			"branches": [
-				[
-					"document",
-					"title"
-				],
-				[
-					"document",
-					"content"
-				],
-				[
-					"document",
-					"icon"
-				],
-				[
-					"document",
-					"color"
-				],
-				[
-					"document",
-					"issueId"
-				],
-				[
-					"document",
-					"teamId"
-				],
-				[
-					"document",
-					"projectId"
-				],
-				[
-					"document",
-					"initiativeId"
-				],
-				[
-					"document",
-					"cycleId"
-				],
-				[
-					"document",
-					"releaseId"
-				],
-				[
-					"document",
-					"resourceFolderId"
-				],
-				[
-					"document",
-					"lastAppliedTemplateId"
-				],
-				[
-					"document",
-					"ownerId"
-				],
-				[
-					"document",
-					"subscriberIds"
-				],
-				[
-					"document",
-					"sortOrder"
-				],
-				[
-					"document",
-					"hiddenAt"
-				]
-			]
-		},
-		renderTargetFields: ["document", "documentId"],
+			parameters: [p("documentId", "DocumentReference", true), input],
+			acceptedParameters: [
+				"documentId",
+				"color",
+				"content",
+				"cycleId",
+				"hiddenAt",
+				"icon",
+				"initiativeId",
+				"issueId",
+				"lastAppliedTemplateId",
+				"ownerId",
+				"projectId",
+				"releaseId",
+				"resourceFolderId",
+				"sortOrder",
+				"subscriberIds",
+				"teamId",
+				"teamKey",
+				"title",
+				"trashed",
+				"input",
+			].map((n) => p(n)),
+		}),
+						renderTargetFields: ["document", "documentId"],
 		domain: "documents",
 		purpose: "Update a document.",
 		root: "documentUpdate",
 		inputType: "DocumentUpdateInput",
 		selection: `document { ${projection("document", "detail")} }`,
-		parameters: [p("documentId", "DocumentReference", true), input],
-		acceptedParameters: [
-			"documentId",
-			"color",
-			"content",
-			"cycleId",
-			"hiddenAt",
-			"icon",
-			"initiativeId",
-			"issueId",
-			"lastAppliedTemplateId",
-			"ownerId",
-			"projectId",
-			"releaseId",
-			"resourceFolderId",
-			"sortOrder",
-			"subscriberIds",
-			"teamId",
-			"teamKey",
-			"title",
-			"trashed",
-			"input",
-		].map((n) => p(n)),
-		example: { documentId: "document-id", title: "Updated notes" },
+						example: { documentId: "document-id", title: "Updated notes" },
 		canonicalExample: { document: "document-id", title: "Updated notes" },
 		idKey: "documentId",
 		resolverPaths: {

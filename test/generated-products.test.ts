@@ -102,8 +102,8 @@ describe('generated products', () => {
     [
       'compatibility branch',
       'extensions/operations/comments.ts',
-      'name: "list_comments",\n\t\tcompatibilityBranches: [\n\t\t\t{\n\t\t\t\t"all": []',
-      'name: "list_comments",\n\t\tcompatibilityBranches: [\n\t\t\t{\n\t\t\t\t"all": ["issue"]',
+      'name: "list_comments",\n\t\t...operationParameterDecision({\n\t\t\tcompatibilityBranches: [\n\t\t\t\t{\n\t\t\t\t\t"all": []',
+      'name: "list_comments",\n\t\t...operationParameterDecision({\n\t\t\tcompatibilityBranches: [\n\t\t\t\t{\n\t\t\t\t\t"all": ["issue"]',
     ],
     [
       'mutation root',
@@ -120,8 +120,8 @@ describe('generated products', () => {
     [
       'canonical field type',
       'extensions/operations/comments.ts',
-      '\t\tcanonical: {\n\t\t\t"fields": {\n\t\t\t\t"issue": "IssueReference",\n\t\t\t\t"after": "String",\n\t\t\t\t"before": "String",\n\t\t\t\t"first": "Int",\n\t\t\t\t"last": "Int",\n\t\t\t\t"includeArchived": "Boolean",\n\t\t\t\t"orderBy": "PaginationOrderBy",\n\t\t\t\t"filter": "Filter"',
-      '\t\tcanonical: {\n\t\t\t"fields": {\n\t\t\t\t"issue": "Float",\n\t\t\t\t"after": "String",\n\t\t\t\t"before": "String",\n\t\t\t\t"first": "Int",\n\t\t\t\t"last": "Int",\n\t\t\t\t"includeArchived": "Boolean",\n\t\t\t\t"orderBy": "PaginationOrderBy",\n\t\t\t\t"filter": "Filter"',
+      '\t\t\t\t\t"issue": "IssueReference",',
+      '\t\t\t\t\t"issue": "Float",',
     ],
     [
       'renderer kind',

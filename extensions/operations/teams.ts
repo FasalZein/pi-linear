@@ -10,32 +10,35 @@ import {
 	getDocument,
 	workspaceEmpty,
 	listOperation,
+	operationParameterDecision,
 } from "./shared";
 
 export const teams: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_teams",
-		compatibilityBranches: [
-			{
-				"all": []
-			}
-		],
-		renderEmpty: workspaceEmpty("teams", "team", false),
-		canonical: {
-			"fields": {
-				"after": "String",
-				"before": "String",
-				"first": "Int",
-				"last": "Int",
-				"includeArchived": "Boolean",
-				"orderBy": "PaginationOrderBy",
-				"filter": "Filter"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": []
+				}
+			],
+			canonical: {
+				"fields": {
+					"after": "String",
+					"before": "String",
+					"first": "Int",
+					"last": "Int",
+					"includeArchived": "Boolean",
+					"orderBy": "PaginationOrderBy",
+					"filter": "Filter"
+				},
+				"branches": [
+					[]
+				]
 			},
-			"branches": [
-				[]
-			]
-		},
-		domain: "teams",
+		}),
+				renderEmpty: workspaceEmpty("teams", "team", false),
+				domain: "teams",
 		root: "teams",
 		selection: projection("team", "list"),
 		purpose: "List teams and workflow states.",
@@ -45,34 +48,36 @@ export const teams: readonly OperationDefinition[] = ([
 	{
 		name: "get_team",
 		resultCategory: "singular",
-		compatibilityBranches: [
-			{
-				"all": [
-					"team"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [
+						"team"
+					]
+				},
+				{
+					"all": [
+						"teamId"
+					]
+				}
+			],
+			canonical: {
+				"fields": {
+					"team": "TeamReference"
+				},
+				"branches": [
+					[
+						"team"
+					]
 				]
 			},
-			{
-				"all": [
-					"teamId"
-				]
-			}
-		],
-		canonical: {
-			"fields": {
-				"team": "TeamReference"
-			},
-			"branches": [
-				[
-					"team"
-				]
-			]
-		},
-		aliases: [],
+			parameters: [p("team", "TeamReference", true)],
+			legacyParameters: [[p("teamId", "String", true)]],
+		}),
+						aliases: [],
 		domain: "teams",
 		purpose: "Get a team by exact key or UUID.",
-		parameters: [p("team", "TeamReference", true)],
-		legacyParameters: [[p("teamId", "String", true)]],
-		example: { operation: "get_team", variables: { team: "AEO" } },
+						example: { operation: "get_team", variables: { team: "AEO" } },
 		document: getDocument("GetTeam", "team", projection("team", "detail")),
 		resolverPaths: { team: "resolveTeamReference" },
 		plan(v) {

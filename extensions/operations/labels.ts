@@ -21,6 +21,7 @@ import {
 	workspaceEmpty,
 	listOperation,
 	simpleMutation,
+	operationParameterDecision,
 } from "./shared";
 
 const createIssueLabelDocument = `mutation CreateIssueLabel($input: IssueLabelCreateInput!, $replaceTeamLabels: Boolean) {
@@ -40,43 +41,45 @@ const updateIssueLabelDocument = `mutation UpdateIssueLabel($id: String!, $input
 export const issueLabels: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_issue_labels",
-		compatibilityBranches: [
-			{
-				"all": []
-			}
-		],
-		renderKind: "label",
-		renderEmpty: workspaceEmpty("issue labels", "issue label"),
-		canonical: {
-			"fields": {
-				"team": "TeamReference",
-				"after": "String",
-				"before": "String",
-				"first": "Int",
-				"last": "Int",
-				"includeArchived": "Boolean",
-				"orderBy": "PaginationOrderBy",
-				"filter": "Filter"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": []
+				}
+			],
+			canonical: {
+				"fields": {
+					"team": "TeamReference",
+					"after": "String",
+					"before": "String",
+					"first": "Int",
+					"last": "Int",
+					"includeArchived": "Boolean",
+					"orderBy": "PaginationOrderBy",
+					"filter": "Filter"
+				},
+				"branches": [
+					[]
+				]
 			},
-			"branches": [
-				[]
-			]
-		},
-		domain: "labels",
+			parameters: [p("team", "TeamReference")],
+			acceptedParameters: [
+				p("team"),
+				p("teamId"),
+				p("teamKey"),
+				...pagination,
+				filter,
+			],
+		}),
+				renderKind: "label",
+		renderEmpty: workspaceEmpty("issue labels", "issue label"),
+				domain: "labels",
 		root: "issueLabels",
 		selection: projection("issueLabel", "list"),
 		purpose: "List issue labels.",
 		pageSize: 50,
 		filterType: "IssueLabelFilter",
-		parameters: [p("team", "TeamReference")],
-		acceptedParameters: [
-			p("team"),
-			p("teamId"),
-			p("teamKey"),
-			...pagination,
-			filter,
-		],
-		resolverPaths: { team: "resolveTeamReference" },
+						resolverPaths: { team: "resolveTeamReference" },
 		plan: (v) => {
 			const ref = v.team ?? v.teamKey ?? v.teamId;
 			return {
@@ -94,58 +97,60 @@ export const issueLabels: readonly OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "create_issue_label",
-		compatibilityBranches: [
-			{
-				"all": [],
-				"atLeastOneOf": [
-					"name",
-					"input.name"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [],
+					"atLeastOneOf": [
+						"name",
+						"input.name"
+					]
+				}
+			],
+			canonical: {
+				"fields": {
+					"name": "String",
+					"team": "TeamReference",
+					"description": "String",
+					"color": "Color",
+					"isGroup": "Boolean",
+					"parentId": "UUID",
+					"retiredAt": "DateTime",
+					"replaceTeamLabels": "Boolean",
+					"id": "UUID"
+				},
+				"branches": [
+					[
+						"name"
+					]
 				]
-			}
-		],
-		semanticException: "nested-name-type",
-		renderKind: "label",
-		canonical: {
-			"fields": {
-				"name": "String",
-				"team": "TeamReference",
-				"description": "String",
-				"color": "Color",
-				"isGroup": "Boolean",
-				"parentId": "UUID",
-				"retiredAt": "DateTime",
-				"replaceTeamLabels": "Boolean",
-				"id": "UUID"
 			},
-			"branches": [
-				[
-					"name"
-				]
-			]
-		},
-		domain: "labels",
+			parameters: [p("name", "String", true), p("team", "TeamReference"), input],
+			acceptedParameters: [
+				"name",
+				"color",
+				"description",
+				"id",
+				"isGroup",
+				"parentId",
+				"retiredAt",
+				"team",
+				"teamId",
+				"teamKey",
+				"replaceTeamLabels",
+				"input",
+			].map((n) => p(n)),
+			legacyParameters: [[p("input", "IssueLabelCreateInput", true)]],
+		}),
+				semanticException: "nested-name-type",
+		renderKind: "label",
+				domain: "labels",
 		purpose: "Create an issue label.",
 		root: "issueLabelCreate",
 		inputType: "IssueLabelCreateInput",
 		selection: `issueLabel { ${projection("issueLabel", "detail")} }`,
 		document: createIssueLabelDocument,
-		parameters: [p("name", "String", true), p("team", "TeamReference"), input],
-		acceptedParameters: [
-			"name",
-			"color",
-			"description",
-			"id",
-			"isGroup",
-			"parentId",
-			"retiredAt",
-			"team",
-			"teamId",
-			"teamKey",
-			"replaceTeamLabels",
-			"input",
-		].map((n) => p(n)),
-		legacyParameters: [[p("input", "IssueLabelCreateInput", true)]],
-		example: { name: "needs-review", color: "#ff0000" },
+								example: { name: "needs-review", color: "#ff0000" },
 		validateVariables(variables) {
 			if (
 				variables.input &&
@@ -178,75 +183,77 @@ export const issueLabels: readonly OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_issue_label",
-		compatibilityBranches: [
-			{
-				"all": [
-					"id"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [
+						"id"
+					]
+				}
+			],
+			canonical: {
+				"fields": {
+					"id": "String",
+					"name": "String",
+					"description": "String",
+					"color": "Color",
+					"isGroup": "Boolean",
+					"parentId": "UUID",
+					"retiredAt": "NullableDateTime",
+					"replaceTeamLabels": "Boolean"
+				},
+				"branches": [
+					[
+						"id",
+						"name"
+					],
+					[
+						"id",
+						"description"
+					],
+					[
+						"id",
+						"color"
+					],
+					[
+						"id",
+						"isGroup"
+					],
+					[
+						"id",
+						"parentId"
+					],
+					[
+						"id",
+						"retiredAt"
+					],
+					[
+						"id",
+						"replaceTeamLabels"
+					]
 				]
-			}
-		],
-		renderKind: "label",
-		canonical: {
-			"fields": {
-				"id": "String",
-				"name": "String",
-				"description": "String",
-				"color": "Color",
-				"isGroup": "Boolean",
-				"parentId": "UUID",
-				"retiredAt": "NullableDateTime",
-				"replaceTeamLabels": "Boolean"
 			},
-			"branches": [
-				[
-					"id",
-					"name"
-				],
-				[
-					"id",
-					"description"
-				],
-				[
-					"id",
-					"color"
-				],
-				[
-					"id",
-					"isGroup"
-				],
-				[
-					"id",
-					"parentId"
-				],
-				[
-					"id",
-					"retiredAt"
-				],
-				[
-					"id",
-					"replaceTeamLabels"
-				]
-			]
-		},
-		domain: "labels",
+			parameters: [p("id", "String", true), input],
+			acceptedParameters: [
+				"id",
+				"name",
+				"description",
+				"color",
+				"parentId",
+				"isGroup",
+				"retiredAt",
+				"replaceTeamLabels",
+				"input",
+			].map((n) => p(n)),
+		}),
+				renderKind: "label",
+				domain: "labels",
 		purpose: "Update an issue label.",
 		root: "issueLabelUpdate",
 		inputType: "IssueLabelUpdateInput",
 		selection: `issueLabel { ${projection("issueLabel", "detail")} }`,
 		document: updateIssueLabelDocument,
-		parameters: [p("id", "String", true), input],
-		acceptedParameters: [
-			"id",
-			"name",
-			"description",
-			"color",
-			"parentId",
-			"isGroup",
-			"retiredAt",
-			"replaceTeamLabels",
-			"input",
-		].map((n) => p(n)),
-		example: { id: "label-id", name: "review" },
+						example: { id: "label-id", name: "review" },
 		idKey: "id",
 		plan(v) {
 			const rawInput = object(v.input);
@@ -264,28 +271,30 @@ export const issueLabels: readonly OperationDefinition[] = ([
 export const projectLabels: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_project_labels",
-		compatibilityBranches: [
-			{
-				"all": []
-			}
-		],
-		renderKind: "label",
-		renderEmpty: workspaceEmpty("project labels", "project label"),
-		canonical: {
-			"fields": {
-				"after": "String",
-				"before": "String",
-				"first": "Int",
-				"last": "Int",
-				"includeArchived": "Boolean",
-				"orderBy": "PaginationOrderBy",
-				"filter": "Filter"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": []
+				}
+			],
+			canonical: {
+				"fields": {
+					"after": "String",
+					"before": "String",
+					"first": "Int",
+					"last": "Int",
+					"includeArchived": "Boolean",
+					"orderBy": "PaginationOrderBy",
+					"filter": "Filter"
+				},
+				"branches": [
+					[]
+				]
 			},
-			"branches": [
-				[]
-			]
-		},
-		domain: "labels",
+		}),
+				renderKind: "label",
+		renderEmpty: workspaceEmpty("project labels", "project label"),
+				domain: "labels",
 		root: "projectLabels",
 		selection: projection("projectLabel", "list"),
 		purpose: "List project labels.",
@@ -294,49 +303,51 @@ export const projectLabels: readonly OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "create_project_label",
-		compatibilityBranches: [
-			{
-				"all": [],
-				"atLeastOneOf": [
-					"name",
-					"input.name"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [],
+					"atLeastOneOf": [
+						"name",
+						"input.name"
+					]
+				}
+			],
+			canonical: {
+				"fields": {
+					"name": "String",
+					"description": "String",
+					"color": "Color",
+					"isGroup": "Boolean",
+					"parentId": "UUID",
+					"retiredAt": "DateTime"
+				},
+				"branches": [
+					[
+						"name"
+					]
 				]
-			}
-		],
-		semanticException: "nested-name-type",
-		renderKind: "label",
-		canonical: {
-			"fields": {
-				"name": "String",
-				"description": "String",
-				"color": "Color",
-				"isGroup": "Boolean",
-				"parentId": "UUID",
-				"retiredAt": "DateTime"
 			},
-			"branches": [
-				[
-					"name"
-				]
-			]
-		},
-		domain: "labels",
+			parameters: [p("name", "String", true), input],
+			acceptedParameters: [
+				"name",
+				"description",
+				"color",
+				"parentId",
+				"isGroup",
+				"retiredAt",
+				"input",
+			].map((n) => p(n)),
+			legacyParameters: [[p("input", "ProjectLabelCreateInput", true)]],
+		}),
+				semanticException: "nested-name-type",
+		renderKind: "label",
+				domain: "labels",
 		purpose: "Create a project label.",
 		root: "projectLabelCreate",
 		inputType: "ProjectLabelCreateInput",
 		selection: `projectLabel { ${projection("projectLabel", "detail")} }`,
-		parameters: [p("name", "String", true), input],
-		acceptedParameters: [
-			"name",
-			"description",
-			"color",
-			"parentId",
-			"isGroup",
-			"retiredAt",
-			"input",
-		].map((n) => p(n)),
-		legacyParameters: [[p("input", "ProjectLabelCreateInput", true)]],
-		example: { name: "Strategic" },
+								example: { name: "Strategic" },
 		validateVariables(variables) {
 			if (
 				variables.input &&
@@ -348,68 +359,70 @@ export const projectLabels: readonly OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_project_label",
-		compatibilityBranches: [
-			{
-				"all": [
-					"id"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [
+						"id"
+					]
+				}
+			],
+			canonical: {
+				"fields": {
+					"id": "String",
+					"name": "String",
+					"description": "String",
+					"color": "Color",
+					"isGroup": "Boolean",
+					"parentId": "UUID",
+					"retiredAt": "NullableDateTime"
+				},
+				"branches": [
+					[
+						"id",
+						"name"
+					],
+					[
+						"id",
+						"description"
+					],
+					[
+						"id",
+						"color"
+					],
+					[
+						"id",
+						"isGroup"
+					],
+					[
+						"id",
+						"parentId"
+					],
+					[
+						"id",
+						"retiredAt"
+					]
 				]
-			}
-		],
-		renderKind: "label",
-		canonical: {
-			"fields": {
-				"id": "String",
-				"name": "String",
-				"description": "String",
-				"color": "Color",
-				"isGroup": "Boolean",
-				"parentId": "UUID",
-				"retiredAt": "NullableDateTime"
 			},
-			"branches": [
-				[
-					"id",
-					"name"
-				],
-				[
-					"id",
-					"description"
-				],
-				[
-					"id",
-					"color"
-				],
-				[
-					"id",
-					"isGroup"
-				],
-				[
-					"id",
-					"parentId"
-				],
-				[
-					"id",
-					"retiredAt"
-				]
-			]
-		},
-		domain: "labels",
+			parameters: [p("id", "String", true), input],
+			acceptedParameters: [
+				"id",
+				"name",
+				"description",
+				"color",
+				"parentId",
+				"isGroup",
+				"retiredAt",
+				"input",
+			].map((n) => p(n)),
+		}),
+				renderKind: "label",
+				domain: "labels",
 		purpose: "Update a project label.",
 		root: "projectLabelUpdate",
 		inputType: "ProjectLabelUpdateInput",
 		selection: `projectLabel { ${projection("projectLabel", "detail")} }`,
-		parameters: [p("id", "String", true), input],
-		acceptedParameters: [
-			"id",
-			"name",
-			"description",
-			"color",
-			"parentId",
-			"isGroup",
-			"retiredAt",
-			"input",
-		].map((n) => p(n)),
-		example: { id: "label-id", name: "Strategy" },
+						example: { id: "label-id", name: "Strategy" },
 		idKey: "id",
 	}),
 ] satisfies OperationSource[]).map((operation) =>

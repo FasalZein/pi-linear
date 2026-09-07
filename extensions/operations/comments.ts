@@ -21,6 +21,8 @@ import {
 	object,
 	listOperation,
 	simpleMutation,
+	operationParameterDecision,
+	operationFieldDecision,
 } from "./shared";
 
 
@@ -44,9 +46,6 @@ const COMMENT_CREATE_INPUT_FIELDS = [
 	"quotedText",
 	"subscriberIds",
 ] as const;
-const COMMENT_CREATE_COMPATIBILITY_FIELDS = COMMENT_CREATE_INPUT_FIELDS.filter(
-	(field) => !["createAsUser", "displayIconUrl", "subscriberIds"].includes(field),
-);
 const COMMENT_UPDATE_INPUT_FIELDS = [
 	"body",
 	"bodyData",
@@ -57,11 +56,30 @@ const COMMENT_UPDATE_INPUT_FIELDS = [
 	"subscriberIds",
 ] as const;
 const COMMENT_UPDATE_COMPATIBILITY_FIELDS = ["body", "bodyData", "quotedText"] as const;
-const commentCreateInput = COMMENT_CREATE_COMPATIBILITY_FIELDS.map((name) => p(name));
 const commentUpdateInput = [
 	...COMMENT_UPDATE_COMPATIBILITY_FIELDS.map((name) => p(name)),
 	p("skipEditedAt", "Boolean"),
 ];
+
+const createCommentFields = operationFieldDecision([
+	{ name: "issue", canonical: "IssueReference", card: {"order":0,"type":"IssueReference"}, accepted: {"order":0,"type":"String"} },
+	{ name: "projectId", canonical: "UUID", accepted: {"order":13,"type":"String"} },
+	{ name: "initiativeId", canonical: "UUID", accepted: {"order":8,"type":"String"} },
+	{ name: "projectUpdateId", canonical: "UUID", accepted: {"order":14,"type":"String"} },
+	{ name: "initiativeUpdateId", canonical: "UUID", accepted: {"order":9,"type":"String"} },
+	{ name: "postId", canonical: "UUID", accepted: {"order":12,"type":"String"} },
+	{ name: "documentContentId", canonical: "UUID", accepted: {"order":6,"type":"String"} },
+	{ name: "parentId", canonical: "UUID", accepted: {"order":11,"type":"String"} },
+	{ name: "body", canonical: "String", card: {"order":1,"type":"String"}, accepted: {"order":1,"type":"String"}, legacy: [{"branch":0,"order":1,"type":"String","required":true}], aliases: [{"operation":"add_comment","order":1,"type":"String","required":true}] },
+	{ name: "bodyData", canonical: "JsonObject", accepted: {"order":2,"type":"String"} },
+	{ name: "quotedText", canonical: "String", accepted: {"order":15,"type":"String"} },
+	{ name: "doNotSubscribeToIssue", canonical: "Boolean", accepted: {"order":5,"type":"String"} },
+	{ name: "createOnSyncedSlackThread", canonical: "Boolean", accepted: {"order":3,"type":"String"} },
+	{ name: "createdAt", canonical: "DateTime", accepted: {"order":4,"type":"String"} },
+	{ name: "id", canonical: "UUID", accepted: {"order":7,"type":"String"} },
+	{ name: "issueId", accepted: {"order":10,"type":"String"}, legacy: [{"branch":0,"order":0,"type":"String","required":true}], aliases: [{"operation":"add_comment","order":0,"type":"String","required":true}] },
+	{ name: "input", accepted: {"order":16,"type":"Input"}, legacy: [{"branch":1,"order":0,"type":"CommentCreateInput","required":true}] },
+]);
 
 function has(value: CompatibilityObject, key: string): boolean {
 	return Object.prototype.hasOwnProperty.call(value, key) && value[key] !== undefined;
@@ -110,12 +128,30 @@ const updateCommentDocument = `mutation UpdateComment($id: String!, $input: Comm
 export const comments: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_comments",
-		compatibilityBranches: [
-			{
-				"all": []
-			}
-		],
-		renderTargetFields: [
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": []
+				}
+			],
+			canonical: {
+				"fields": {
+					"issue": "IssueReference",
+					"after": "String",
+					"before": "String",
+					"first": "Int",
+					"last": "Int",
+					"includeArchived": "Boolean",
+					"orderBy": "PaginationOrderBy",
+					"filter": "Filter"
+				},
+				"branches": [
+					[]
+				]
+			},
+			parameters: [p("issue", "IssueReference")],
+		}),
+				renderTargetFields: [
 			"issue"
 		],
 		renderEmpty: {
@@ -124,29 +160,13 @@ export const comments: readonly OperationDefinition[] = ([
 			"filteredFact": "The target has no comments.",
 			"filteredAction": "Check another target or add a comment."
 		},
-		canonical: {
-			"fields": {
-				"issue": "IssueReference",
-				"after": "String",
-				"before": "String",
-				"first": "Int",
-				"last": "Int",
-				"includeArchived": "Boolean",
-				"orderBy": "PaginationOrderBy",
-				"filter": "Filter"
-			},
-			"branches": [
-				[]
-			]
-		},
-		domain: "comments",
+				domain: "comments",
 		root: "comments",
 		selection: projection("comment", "list"),
 		purpose: "List comments, optionally for one exact issue.",
 		pageSize: 20,
 		filterType: "CommentFilter",
-		parameters: [p("issue", "IssueReference")],
-		example: { issue: "AEO-258" },
+				example: { issue: "AEO-258" },
 		resolverPaths: { issue: "resolveIssueReference" },
 		plan: (variables) => {
 			const requested = issueReference(variables);
@@ -165,43 +185,119 @@ export const comments: readonly OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "create_comment",
-		compatibilityBranches: [
-			{
-				"all": [],
-				"exactlyOneOf": [
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [],
+					"exactlyOneOf": [
+						[
+							"issue",
+							"issueId",
+							"projectId",
+							"initiativeId",
+							"projectUpdateId",
+							"initiativeUpdateId",
+							"postId",
+							"documentContentId",
+							"parentId",
+							"input.issueId",
+							"input.projectId",
+							"input.initiativeId",
+							"input.projectUpdateId",
+							"input.initiativeUpdateId",
+							"input.postId",
+							"input.documentContentId",
+							"input.parentId"
+						],
+						[
+							"body",
+							"bodyData",
+							"input.body",
+							"input.bodyData"
+						]
+					],
+					"exactlyOneOfMessages": [
+						"exactly one comment target is required",
+						"exactly one of body or bodyData is required"
+					]
+				}
+			],
+			canonical: {
+				"fields": createCommentFields.canonical,
+				"branches": [
 					[
 						"issue",
-						"issueId",
-						"projectId",
-						"initiativeId",
-						"projectUpdateId",
-						"initiativeUpdateId",
-						"postId",
-						"documentContentId",
-						"parentId",
-						"input.issueId",
-						"input.projectId",
-						"input.initiativeId",
-						"input.projectUpdateId",
-						"input.initiativeUpdateId",
-						"input.postId",
-						"input.documentContentId",
-						"input.parentId"
+						"body"
 					],
 					[
-						"body",
-						"bodyData",
-						"input.body",
-						"input.bodyData"
+						"issue",
+						"bodyData"
+					],
+					[
+						"projectId",
+						"body"
+					],
+					[
+						"projectId",
+						"bodyData"
+					],
+					[
+						"initiativeId",
+						"body"
+					],
+					[
+						"initiativeId",
+						"bodyData"
+					],
+					[
+						"projectUpdateId",
+						"body"
+					],
+					[
+						"projectUpdateId",
+						"bodyData"
+					],
+					[
+						"initiativeUpdateId",
+						"body"
+					],
+					[
+						"initiativeUpdateId",
+						"bodyData"
+					],
+					[
+						"postId",
+						"body"
+					],
+					[
+						"postId",
+						"bodyData"
+					],
+					[
+						"documentContentId",
+						"body"
+					],
+					[
+						"documentContentId",
+						"bodyData"
+					],
+					[
+						"parentId",
+						"body"
+					],
+					[
+						"parentId",
+						"bodyData"
 					]
 				],
-				"exactlyOneOfMessages": [
-					"exactly one comment target is required",
-					"exactly one of body or bodyData is required"
-				]
-			}
-		],
-		semanticException: "comment-value-types",
+				"exclusiveBranches": true
+			},
+			parameters: createCommentFields.card,
+			acceptedParameters: createCommentFields.accepted,
+			legacyParameters: createCommentFields.legacy,
+			aliasParameters: createCommentFields.aliases,
+		}),
+				semanticException: "comment-value-types",
 		renderTargetFields: [
 			"issue",
 			"projectId",
@@ -212,109 +308,14 @@ export const comments: readonly OperationDefinition[] = ([
 			"documentContentId",
 			"parentId"
 		],
-		canonical: {
-			"fields": {
-				"issue": "IssueReference",
-				"projectId": "UUID",
-				"initiativeId": "UUID",
-				"projectUpdateId": "UUID",
-				"initiativeUpdateId": "UUID",
-				"postId": "UUID",
-				"documentContentId": "UUID",
-				"parentId": "UUID",
-				"body": "String",
-				"bodyData": "JsonObject",
-				"quotedText": "String",
-				"doNotSubscribeToIssue": "Boolean",
-				"createOnSyncedSlackThread": "Boolean",
-				"createdAt": "DateTime",
-				"id": "UUID"
-			},
-			"branches": [
-				[
-					"issue",
-					"body"
-				],
-				[
-					"issue",
-					"bodyData"
-				],
-				[
-					"projectId",
-					"body"
-				],
-				[
-					"projectId",
-					"bodyData"
-				],
-				[
-					"initiativeId",
-					"body"
-				],
-				[
-					"initiativeId",
-					"bodyData"
-				],
-				[
-					"projectUpdateId",
-					"body"
-				],
-				[
-					"projectUpdateId",
-					"bodyData"
-				],
-				[
-					"initiativeUpdateId",
-					"body"
-				],
-				[
-					"initiativeUpdateId",
-					"bodyData"
-				],
-				[
-					"postId",
-					"body"
-				],
-				[
-					"postId",
-					"bodyData"
-				],
-				[
-					"documentContentId",
-					"body"
-				],
-				[
-					"documentContentId",
-					"bodyData"
-				],
-				[
-					"parentId",
-					"body"
-				],
-				[
-					"parentId",
-					"bodyData"
-				]
-			],
-			"exclusiveBranches": true
-		},
-		domain: "comments",
+				domain: "comments",
 		purpose: "Create a comment on an issue or another supported target.",
 		root: "commentCreate",
 		inputType: "CommentCreateInput",
 		selection: `comment { ${projection("comment", "detail")} }`,
-		parameters: [p("issue", "IssueReference"), p("body", "String")],
-		acceptedParameters: [p("issue"), ...commentCreateInput, input],
-		example: { issue: "AEO-258", body: "Comment text" },
+						example: { issue: "AEO-258", body: "Comment text" },
 		aliases: ["add_comment"],
-		legacyParameters: [
-			[p("issueId", "String", true), p("body", "String", true)],
-			[p("input", "CommentCreateInput", true)],
-		],
-		aliasParameters: {
-			add_comment: [p("issueId", "String", true), p("body", "String", true)],
-		},
-		resolverPaths: {
+						resolverPaths: {
 			issue: "resolveIssueReference",
 			issueId: "resolveIssueReference",
 		},
@@ -336,62 +337,64 @@ export const comments: readonly OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_comment",
-		compatibilityBranches: [
-			{
-				"all": [
-					"id"
-				],
-				"atLeastOneOf": [
-					"body",
-					"bodyData",
-					"quotedText",
-					"doNotSubscribeToIssue",
-					"resolvingUserId",
-					"resolvingCommentId",
-					"subscriberIds",
-					"input.body",
-					"input.bodyData",
-					"input.quotedText",
-					"input.doNotSubscribeToIssue",
-					"input.resolvingUserId",
-					"input.resolvingCommentId",
-					"input.subscriberIds"
-				],
-				"atLeastOneOfMessage": "at least one comment update field is required"
-			}
-		],
-		semanticException: "comment-value-types",
-		canonical: {
-			"fields": {
-				"id": "String",
-				"body": "String",
-				"bodyData": "JsonObject",
-				"quotedText": "String",
-				"skipEditedAt": "Boolean"
-			},
-			"branches": [
-				[
-					"id",
-					"body"
-				],
-				[
-					"id",
-					"bodyData"
-				],
-				[
-					"id",
-					"quotedText"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [
+						"id"
+					],
+					"atLeastOneOf": [
+						"body",
+						"bodyData",
+						"quotedText",
+						"doNotSubscribeToIssue",
+						"resolvingUserId",
+						"resolvingCommentId",
+						"subscriberIds",
+						"input.body",
+						"input.bodyData",
+						"input.quotedText",
+						"input.doNotSubscribeToIssue",
+						"input.resolvingUserId",
+						"input.resolvingCommentId",
+						"input.subscriberIds"
+					],
+					"atLeastOneOfMessage": "at least one comment update field is required"
+				}
+			],
+			canonical: {
+				"fields": {
+					"id": "String",
+					"body": "String",
+					"bodyData": "JsonObject",
+					"quotedText": "String",
+					"skipEditedAt": "Boolean"
+				},
+				"branches": [
+					[
+						"id",
+						"body"
+					],
+					[
+						"id",
+						"bodyData"
+					],
+					[
+						"id",
+						"quotedText"
+					]
 				]
-			]
-		},
-		domain: "comments",
+			},
+			parameters: [p("id", "String", true), ...commentUpdateInput, input],
+		}),
+				semanticException: "comment-value-types",
+				domain: "comments",
 		purpose: "Update a comment by id.",
 		root: "commentUpdate",
 		inputType: "CommentUpdateInput",
 		selection: `comment { ${projection("comment", "detail")} }`,
 		document: updateCommentDocument,
-		parameters: [p("id", "String", true), ...commentUpdateInput, input],
-		example: { id: "comment-id", body: "Updated text" },
+				example: { id: "comment-id", body: "Updated text" },
 		idKey: "id",
 		validateVariables: validateCommentUpdateSemantics,
 		plan(variables) {

@@ -29,7 +29,6 @@ import { defineOperation } from "../operation-definition";
 import {
 	ISSUE_SORT_KEYS,
 	pagination,
-	input,
 	filter,
 	sort,
 	issueTarget,
@@ -42,77 +41,93 @@ import {
 	linearSort,
 	simpleMutation,
 	withGetResultView,
+	operationParameterDecision,
+	operationFieldDecision,
 } from "./shared";
 
-const issueCreateFields = [
-	"teamId",
-	"teamKey",
-	"title",
-	"description",
-	"assigneeId",
-	"completedAt",
-	"createAsUser",
-	"createdAt",
-	"cycleId",
-	"delegateId",
-	"descriptionData",
-	"displayIconUrl",
-	"dueDate",
-	"estimate",
-	"id",
-	"labelIds",
-	"lastAppliedTemplateId",
-	"parentId",
-	"preserveSortOrderOnCreate",
-	"priority",
-	"prioritySortOrder",
-	"projectId",
-	"projectMilestoneId",
-	"referenceCommentId",
-	"slaBreachesAt",
-	"slaStartedAt",
-	"slaType",
-	"sortOrder",
-	"sourceCommentId",
-	"sourcePullRequestCommentId",
-	"stateId",
-	"subIssueSortOrder",
-	"subscriberIds",
-	"templateId",
-	"useDefaultTemplate",
-].map((name) => p(name));
+const createIssueFields = operationFieldDecision([
+	{ name: "title", canonical: "String", card: {"order":0,"type":"String","required":true}, accepted: {"order":2,"type":"String"} },
+	{ name: "team", canonical: "TeamReference", card: {"order":2,"type":"TeamReference"}, accepted: {"order":36,"type":"String"} },
+	{ name: "parent", canonical: "IssueReference", card: {"order":1,"type":"IssueReference"}, accepted: {"order":35,"type":"String"} },
+	{ name: "state", canonical: "StateReference", card: {"order":3,"type":"StateReference"}, accepted: {"order":37,"type":"String"} },
+	{ name: "assignee", canonical: "UserReference", card: {"order":4,"type":"UserReference"}, accepted: {"order":38,"type":"String"} },
+	{ name: "dueDate", canonical: "Date", accepted: {"order":12,"type":"String"} },
+	{ name: "description", canonical: "String", accepted: {"order":3,"type":"String"} },
+	{ name: "descriptionData", canonical: "JsonString", accepted: {"order":10,"type":"String"} },
+	{ name: "priority", canonical: "Priority", accepted: {"order":19,"type":"String"} },
+	{ name: "estimate", canonical: "Int", accepted: {"order":13,"type":"String"} },
+	{ name: "projectId", canonical: "UUID", accepted: {"order":21,"type":"String"} },
+	{ name: "projectMilestoneId", canonical: "UUID", accepted: {"order":22,"type":"String"} },
+	{ name: "cycleId", canonical: "UUID", accepted: {"order":8,"type":"String"} },
+	{ name: "labelIds", canonical: "[UUID!]", accepted: {"order":15,"type":"String"} },
+	{ name: "subscriberIds", canonical: "[UUID!]", accepted: {"order":32,"type":"String"} },
+	{ name: "delegateId", canonical: "UUID", accepted: {"order":9,"type":"String"} },
+	{ name: "lastAppliedTemplateId", canonical: "UUID", accepted: {"order":16,"type":"String"} },
+	{ name: "slaType", canonical: "SlaDayCountType", accepted: {"order":26,"type":"String"} },
+	{ name: "slaBreachesAt", canonical: "NullableDateTime", accepted: {"order":24,"type":"String"} },
+	{ name: "slaStartedAt", canonical: "NullableDateTime", accepted: {"order":25,"type":"String"} },
+	{ name: "sortOrder", canonical: "Float", accepted: {"order":27,"type":"String"} },
+	{ name: "subIssueSortOrder", canonical: "Float", accepted: {"order":31,"type":"String"} },
+	{ name: "prioritySortOrder", canonical: "Float", accepted: {"order":20,"type":"String"} },
+	{ name: "templateId", canonical: "UUID", accepted: {"order":33,"type":"String"} },
+	{ name: "useDefaultTemplate", canonical: "Boolean", accepted: {"order":34,"type":"String"} },
+	{ name: "preserveSortOrderOnCreate", canonical: "Boolean", accepted: {"order":18,"type":"String"} },
+	{ name: "referenceCommentId", canonical: "UUID", accepted: {"order":23,"type":"String"} },
+	{ name: "sourceCommentId", canonical: "UUID", accepted: {"order":28,"type":"String"} },
+	{ name: "sourcePullRequestCommentId", canonical: "UUID", accepted: {"order":29,"type":"String"} },
+	{ name: "createAsUser", canonical: "String", accepted: {"order":6,"type":"String"} },
+	{ name: "displayIconUrl", canonical: "Url", accepted: {"order":11,"type":"String"} },
+	{ name: "completedAt", canonical: "NullableDateTime", accepted: {"order":5,"type":"String"} },
+	{ name: "createdAt", canonical: "DateTime", accepted: {"order":7,"type":"String"} },
+	{ name: "id", canonical: "UUID", accepted: {"order":14,"type":"String"} },
+	{ name: "input", card: {"order":5,"type":"Input"}, accepted: {"order":41,"type":"Input"}, legacy: [{"branch":0,"order":0,"type":"IssueCreateInput","required":true}] },
+	{ name: "teamId", accepted: {"order":0,"type":"String"} },
+	{ name: "teamKey", accepted: {"order":1,"type":"String"} },
+	{ name: "assigneeId", accepted: {"order":4,"type":"String"} },
+	{ name: "parentId", accepted: {"order":17,"type":"String"} },
+	{ name: "stateId", accepted: {"order":30,"type":"String"} },
+	{ name: "project", accepted: {"order":39,"type":"ProjectReference"} },
+	{ name: "labels", accepted: {"order":40,"type":"[UUID!]"} },
+]);
 
-const issueUpdateFields = [
-	"title",
-	"description",
-	"priority",
-	"stateId",
-	"assigneeId",
-	"dueDate",
-	"addedLabelIds",
-	"autoClosedByParentClosing",
-	"cycleId",
-	"delegateId",
-	"descriptionData",
-	"estimate",
-	"labelIds",
-	"lastAppliedTemplateId",
-	"parentId",
-	"prioritySortOrder",
-	"projectId",
-	"projectMilestoneId",
-	"removedLabelIds",
-	"slaBreachesAt",
-	"slaStartedAt",
-	"slaType",
-	"snoozedById",
-	"snoozedUntilAt",
-	"sortOrder",
-	"subIssueSortOrder",
-	"subscriberIds",
-	"teamId",
-	"trashed",
-].map((name) => p(name));
+const updateIssueFields = operationFieldDecision([
+	{ name: "issue", canonical: "IssueReference", card: {"order":0,"type":"IssueReference","required":true}, accepted: {"order":0,"type":"String"} },
+	{ name: "title", canonical: "String", accepted: {"order":5,"type":"String"} },
+	{ name: "state", canonical: "StateReference", card: {"order":1,"type":"StateReference"}, accepted: {"order":2,"type":"String"} },
+	{ name: "assignee", canonical: "NullableUserReference", card: {"order":2,"type":"UserReference"}, accepted: {"order":3,"type":"String"} },
+	{ name: "parent", canonical: "NullableIssueReference", card: {"order":3,"type":"IssueReference"}, accepted: {"order":4,"type":"String"} },
+	{ name: "teamId", canonical: "TeamReference", accepted: {"order":32,"type":"String"} },
+	{ name: "dueDate", canonical: "NullableDate", accepted: {"order":10,"type":"String"} },
+	{ name: "addedLabelIds", canonical: "[UUID!]", accepted: {"order":11,"type":"String"} },
+	{ name: "removedLabelIds", canonical: "[UUID!]", accepted: {"order":23,"type":"String"} },
+	{ name: "description", canonical: "String", accepted: {"order":6,"type":"String"} },
+	{ name: "descriptionData", canonical: "JsonString", accepted: {"order":15,"type":"String"} },
+	{ name: "priority", canonical: "Priority", accepted: {"order":7,"type":"String"} },
+	{ name: "estimate", canonical: "Int", accepted: {"order":16,"type":"String"} },
+	{ name: "projectId", canonical: "NullableUUID", accepted: {"order":21,"type":"String"} },
+	{ name: "projectMilestoneId", canonical: "NullableUUID", accepted: {"order":22,"type":"String"} },
+	{ name: "cycleId", canonical: "NullableUUID", accepted: {"order":13,"type":"String"} },
+	{ name: "labelIds", canonical: "[UUID!]", accepted: {"order":17,"type":"String"} },
+	{ name: "subscriberIds", canonical: "[UUID!]", accepted: {"order":31,"type":"String"} },
+	{ name: "delegateId", canonical: "UUID", accepted: {"order":14,"type":"String"} },
+	{ name: "lastAppliedTemplateId", canonical: "UUID", accepted: {"order":18,"type":"String"} },
+	{ name: "slaType", canonical: "SlaDayCountType", accepted: {"order":26,"type":"String"} },
+	{ name: "slaBreachesAt", canonical: "NullableDateTime", accepted: {"order":24,"type":"String"} },
+	{ name: "slaStartedAt", canonical: "NullableDateTime", accepted: {"order":25,"type":"String"} },
+	{ name: "sortOrder", canonical: "Float", accepted: {"order":29,"type":"String"} },
+	{ name: "subIssueSortOrder", canonical: "Float", accepted: {"order":30,"type":"String"} },
+	{ name: "prioritySortOrder", canonical: "Float", accepted: {"order":20,"type":"String"} },
+	{ name: "autoClosedByParentClosing", canonical: "Boolean", accepted: {"order":12,"type":"String"} },
+	{ name: "snoozedById", canonical: "UUID", accepted: {"order":27,"type":"String"} },
+	{ name: "snoozedUntilAt", canonical: "NullableDateTime", accepted: {"order":28,"type":"String"} },
+	{ name: "input", card: {"order":4,"type":"Input"}, accepted: {"order":34,"type":"Input"} },
+	{ name: "issueId", accepted: {"order":1,"type":"String"}, aliases: [{"operation":"update_issue_state","order":0,"type":"String","required":true}] },
+	{ name: "stateId", accepted: {"order":8,"type":"String"}, aliases: [{"operation":"update_issue_state","order":1,"type":"String","required":true}] },
+	{ name: "assigneeId", accepted: {"order":9,"type":"String"} },
+	{ name: "parentId", accepted: {"order":19,"type":"String"} },
+	{ name: "trashed", accepted: {"order":33,"type":"String"} },
+]);
+
 
 function createIssueRefs(v: CompatibilityObject) {
 	const input = mergedInput(v, [
@@ -292,35 +307,60 @@ function updateIssuePlan(v: CompatibilityObject): OperationPlan {
 export const issues: readonly OperationDefinition[] = ([
 	listOperation({
 		name: "list_issues",
-		compatibilityBranches: [
-			{
-				"all": []
-			}
-		],
-		semanticException: "state-name-requires-team",
-		renderEmpty: workspaceEmpty("issues", "issue"),
-		canonical: {
-			"fields": {
-				"issues": "[IssueReference!]",
-				"query": "String",
-				"team": "TeamReference",
-				"state": "StateReference",
-				"stateType": "WorkflowStateType",
-				"assignee": "UserReference",
-				"sort": "[IssueSort!]",
-				"after": "String",
-				"before": "String",
-				"first": "Int",
-				"last": "Int",
-				"includeArchived": "Boolean",
-				"orderBy": "PaginationOrderBy",
-				"filter": "Filter"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": []
+				}
+			],
+			canonical: {
+				"fields": {
+					"issues": "[IssueReference!]",
+					"query": "String",
+					"team": "TeamReference",
+					"state": "StateReference",
+					"stateType": "WorkflowStateType",
+					"assignee": "UserReference",
+					"sort": "[IssueSort!]",
+					"after": "String",
+					"before": "String",
+					"first": "Int",
+					"last": "Int",
+					"includeArchived": "Boolean",
+					"orderBy": "PaginationOrderBy",
+					"filter": "Filter"
+				},
+				"branches": [
+					[]
+				]
 			},
-			"branches": [
-				[]
-			]
-		},
-		domain: "issues",
+			parameters: [
+				p("issues", "[IssueReference!]"),
+				p("query"),
+				p("team", "TeamReference"),
+				p("state", "StateReference"),
+				p("stateType", "WorkflowStateType"),
+				p("assignee", "UserReference"),
+			],
+			acceptedParameters: [
+				p("issues"),
+				p("query"),
+				p("team"),
+				p("teamId"),
+				p("teamKey"),
+				p("state"),
+				p("stateName"),
+				p("stateType"),
+				p("assignee"),
+				p("assigneeId"),
+				...pagination,
+				filter,
+				sort,
+			],
+		}),
+				semanticException: "state-name-requires-team",
+		renderEmpty: workspaceEmpty("issues", "issue"),
+				domain: "issues",
 		root: "issues",
 		selection: projection("issue", "list"),
 		resultView: { entity: "issue", defaultView: "summary" },
@@ -330,30 +370,7 @@ export const issues: readonly OperationDefinition[] = ([
 		sortType: "IssueSortInput",
 		sortKeys: ISSUE_SORT_KEYS,
 		example: { assignee: "me", stateType: "started" },
-		parameters: [
-			p("issues", "[IssueReference!]"),
-			p("query"),
-			p("team", "TeamReference"),
-			p("state", "StateReference"),
-			p("stateType", "WorkflowStateType"),
-			p("assignee", "UserReference"),
-		],
-		acceptedParameters: [
-			p("issues"),
-			p("query"),
-			p("team"),
-			p("teamId"),
-			p("teamKey"),
-			p("state"),
-			p("stateName"),
-			p("stateType"),
-			p("assignee"),
-			p("assigneeId"),
-			...pagination,
-			filter,
-			sort,
-		],
-		resolverPaths: {
+						resolverPaths: {
 			team: "resolveTeamReference",
 			state: "resolveStateReference",
 			assignee: "resolveUserReference",
@@ -416,37 +433,39 @@ export const issues: readonly OperationDefinition[] = ([
 	}),
 	withGetResultView({
 		name: "get_issue",
-		compatibilityBranches: [
-			{
-				"all": [
-					"issue"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [
+						"issue"
+					]
+				},
+				{
+					"all": [
+						"teamKey",
+						"number"
+					]
+				}
+			],
+			canonical: {
+				"fields": {
+					"issue": "IssueReference"
+				},
+				"branches": [
+					[
+						"issue"
+					]
 				]
 			},
-			{
-				"all": [
-					"teamKey",
-					"number"
-				]
-			}
-		],
-		canonical: {
-			"fields": {
-				"issue": "IssueReference"
-			},
-			"branches": [
-				[
-					"issue"
-				]
-			]
-		},
-		aliases: [],
+			parameters: [p("issue", "IssueReference", true)],
+			legacyParameters: [
+				[p("teamKey", "String", true), p("number", "Float", true)],
+			],
+		}),
+						aliases: [],
 		domain: "issues",
 		purpose: "Get one issue by exact identifier or UUID.",
-		parameters: [p("issue", "IssueReference", true)],
-		legacyParameters: [
-			[p("teamKey", "String", true), p("number", "Float", true)],
-		],
-		example: { operation: "get_issue", variables: { issue: "AEO-258" } },
+						example: { operation: "get_issue", variables: { issue: "AEO-258" } },
 		document: getDocument("GetIssue", "issue", projection("issue", "detail")),
 		resolverPaths: { issue: "resolveIssueReference" },
 		plan(v) {
@@ -460,109 +479,60 @@ export const issues: readonly OperationDefinition[] = ([
 	}, "issue", "issue", "GetIssue"),
 	simpleMutation({
 		name: "create_issue",
-		compatibilityBranches: [
-			{
-				"all": [
-					"title"
-				],
-				"atLeastOneOf": [
-					"team",
-					"teamKey",
-					"teamId",
-					"parent",
-					"input.teamId",
-					"input.parentId"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [
+						"title"
+					],
+					"atLeastOneOf": [
+						"team",
+						"teamKey",
+						"teamId",
+						"parent",
+						"input.teamId",
+						"input.parentId"
+					]
+				},
+				{
+					"all": [
+						"input.title"
+					],
+					"atLeastOneOf": [
+						"team",
+						"teamKey",
+						"teamId",
+						"parent",
+						"input.teamId",
+						"input.parentId"
+					]
+				}
+			],
+			canonical: {
+				"fields": createIssueFields.canonical,
+				"branches": [
+					[
+						"title",
+						"team"
+					],
+					[
+						"title",
+						"parent"
+					]
 				]
 			},
-			{
-				"all": [
-					"input.title"
-				],
-				"atLeastOneOf": [
-					"team",
-					"teamKey",
-					"teamId",
-					"parent",
-					"input.teamId",
-					"input.parentId"
-				]
-			}
-		],
-		semanticException: "non-empty-title-and-team-or-parent",
-		canonical: {
-			"fields": {
-				"title": "String",
-				"team": "TeamReference",
-				"parent": "IssueReference",
-				"state": "StateReference",
-				"assignee": "UserReference",
-				"dueDate": "Date",
-				"description": "String",
-				"descriptionData": "JsonString",
-				"priority": "Priority",
-				"estimate": "Int",
-				"projectId": "UUID",
-				"projectMilestoneId": "UUID",
-				"cycleId": "UUID",
-				"labelIds": "[UUID!]",
-				"subscriberIds": "[UUID!]",
-				"delegateId": "UUID",
-				"lastAppliedTemplateId": "UUID",
-				"slaType": "SlaDayCountType",
-				"slaBreachesAt": "NullableDateTime",
-				"slaStartedAt": "NullableDateTime",
-				"sortOrder": "Float",
-				"subIssueSortOrder": "Float",
-				"prioritySortOrder": "Float",
-				"templateId": "UUID",
-				"useDefaultTemplate": "Boolean",
-				"preserveSortOrderOnCreate": "Boolean",
-				"referenceCommentId": "UUID",
-				"sourceCommentId": "UUID",
-				"sourcePullRequestCommentId": "UUID",
-				"createAsUser": "String",
-				"displayIconUrl": "Url",
-				"completedAt": "NullableDateTime",
-				"createdAt": "DateTime",
-				"id": "UUID"
-			},
-			"branches": [
-				[
-					"title",
-					"team"
-				],
-				[
-					"title",
-					"parent"
-				]
-			]
-		},
-		domain: "issues",
+			parameters: createIssueFields.card,
+			acceptedParameters: createIssueFields.accepted,
+			legacyParameters: createIssueFields.legacy,
+		}),
+				semanticException: "non-empty-title-and-team-or-parent",
+				domain: "issues",
 		purpose:
 			"Create an issue. A parent reference supplies the team when team is omitted.",
 		root: "issueCreate",
 		inputType: "IssueCreateInput",
 		selection: `issue { ${projection("issue", "detail")} }`,
-		parameters: [
-			p("title", "String", true),
-			p("parent", "IssueReference"),
-			p("team", "TeamReference"),
-			p("state", "StateReference"),
-			p("assignee", "UserReference"),
-			input,
-		],
-		acceptedParameters: [
-			...issueCreateFields,
-			p("parent"),
-			p("team"),
-			p("state"),
-			p("assignee"),
-			p("project", "ProjectReference"),
-			p("labels", "[UUID!]"),
-			input,
-		],
-		legacyParameters: [[p("input", "IssueCreateInput", true)]],
-		example: { title: "v0.4 trial child", parent: "AEO-258" },
+								example: { title: "v0.4 trial child", parent: "AEO-258" },
 		validateVariables(variables) {
 			const raw = object(variables.input) ?? {};
 			const projectSources = [variables.project, variables.projectId, raw.projectId].filter((value) => value !== undefined);
@@ -614,197 +584,150 @@ export const issues: readonly OperationDefinition[] = ([
 	}),
 	simpleMutation({
 		name: "update_issue",
-		compatibilityBranches: [
-			{
-				"all": [
-					"issue"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [
+						"issue"
+					]
+				},
+				{
+					"all": [
+						"issueId",
+						"stateId"
+					]
+				}
+			],
+			canonical: {
+				"fields": updateIssueFields.canonical,
+				"branches": [
+					[
+						"issue",
+						"title"
+					],
+					[
+						"issue",
+						"state"
+					],
+					[
+						"issue",
+						"assignee"
+					],
+					[
+						"issue",
+						"parent"
+					],
+					[
+						"issue",
+						"teamId"
+					],
+					[
+						"issue",
+						"dueDate"
+					],
+					[
+						"issue",
+						"addedLabelIds"
+					],
+					[
+						"issue",
+						"removedLabelIds"
+					],
+					[
+						"issue",
+						"description"
+					],
+					[
+						"issue",
+						"descriptionData"
+					],
+					[
+						"issue",
+						"priority"
+					],
+					[
+						"issue",
+						"estimate"
+					],
+					[
+						"issue",
+						"projectId"
+					],
+					[
+						"issue",
+						"projectMilestoneId"
+					],
+					[
+						"issue",
+						"cycleId"
+					],
+					[
+						"issue",
+						"labelIds"
+					],
+					[
+						"issue",
+						"subscriberIds"
+					],
+					[
+						"issue",
+						"delegateId"
+					],
+					[
+						"issue",
+						"lastAppliedTemplateId"
+					],
+					[
+						"issue",
+						"slaType"
+					],
+					[
+						"issue",
+						"slaBreachesAt"
+					],
+					[
+						"issue",
+						"slaStartedAt"
+					],
+					[
+						"issue",
+						"sortOrder"
+					],
+					[
+						"issue",
+						"subIssueSortOrder"
+					],
+					[
+						"issue",
+						"prioritySortOrder"
+					],
+					[
+						"issue",
+						"autoClosedByParentClosing"
+					],
+					[
+						"issue",
+						"snoozedById"
+					],
+					[
+						"issue",
+						"snoozedUntilAt"
+					]
 				]
 			},
-			{
-				"all": [
-					"issueId",
-					"stateId"
-				]
-			}
-		],
-		canonical: {
-			"fields": {
-				"issue": "IssueReference",
-				"title": "String",
-				"state": "StateReference",
-				"assignee": "NullableUserReference",
-				"parent": "NullableIssueReference",
-				"teamId": "TeamReference",
-				"dueDate": "NullableDate",
-				"addedLabelIds": "[UUID!]",
-				"removedLabelIds": "[UUID!]",
-				"description": "String",
-				"descriptionData": "JsonString",
-				"priority": "Priority",
-				"estimate": "Int",
-				"projectId": "NullableUUID",
-				"projectMilestoneId": "NullableUUID",
-				"cycleId": "NullableUUID",
-				"labelIds": "[UUID!]",
-				"subscriberIds": "[UUID!]",
-				"delegateId": "UUID",
-				"lastAppliedTemplateId": "UUID",
-				"slaType": "SlaDayCountType",
-				"slaBreachesAt": "NullableDateTime",
-				"slaStartedAt": "NullableDateTime",
-				"sortOrder": "Float",
-				"subIssueSortOrder": "Float",
-				"prioritySortOrder": "Float",
-				"autoClosedByParentClosing": "Boolean",
-				"snoozedById": "UUID",
-				"snoozedUntilAt": "NullableDateTime"
-			},
-			"branches": [
-				[
-					"issue",
-					"title"
-				],
-				[
-					"issue",
-					"state"
-				],
-				[
-					"issue",
-					"assignee"
-				],
-				[
-					"issue",
-					"parent"
-				],
-				[
-					"issue",
-					"teamId"
-				],
-				[
-					"issue",
-					"dueDate"
-				],
-				[
-					"issue",
-					"addedLabelIds"
-				],
-				[
-					"issue",
-					"removedLabelIds"
-				],
-				[
-					"issue",
-					"description"
-				],
-				[
-					"issue",
-					"descriptionData"
-				],
-				[
-					"issue",
-					"priority"
-				],
-				[
-					"issue",
-					"estimate"
-				],
-				[
-					"issue",
-					"projectId"
-				],
-				[
-					"issue",
-					"projectMilestoneId"
-				],
-				[
-					"issue",
-					"cycleId"
-				],
-				[
-					"issue",
-					"labelIds"
-				],
-				[
-					"issue",
-					"subscriberIds"
-				],
-				[
-					"issue",
-					"delegateId"
-				],
-				[
-					"issue",
-					"lastAppliedTemplateId"
-				],
-				[
-					"issue",
-					"slaType"
-				],
-				[
-					"issue",
-					"slaBreachesAt"
-				],
-				[
-					"issue",
-					"slaStartedAt"
-				],
-				[
-					"issue",
-					"sortOrder"
-				],
-				[
-					"issue",
-					"subIssueSortOrder"
-				],
-				[
-					"issue",
-					"prioritySortOrder"
-				],
-				[
-					"issue",
-					"autoClosedByParentClosing"
-				],
-				[
-					"issue",
-					"snoozedById"
-				],
-				[
-					"issue",
-					"snoozedUntilAt"
-				]
-			]
-		},
-		domain: "issues",
+			parameters: updateIssueFields.card,
+			acceptedParameters: updateIssueFields.accepted,
+			aliasParameters: updateIssueFields.aliases,
+		}),
+						domain: "issues",
 		purpose: "Update an issue by exact identifier or UUID.",
 		root: "issueUpdate",
 		inputType: "IssueUpdateInput",
 		selection: `issue { ${projection("issue", "detail")} }`,
 		idKey: "issue",
-		parameters: [
-			p("issue", "IssueReference", true),
-			p("state", "StateReference"),
-			p("assignee", "UserReference"),
-			p("parent", "IssueReference"),
-			input,
-		],
-		acceptedParameters: [
-			p("issue"),
-			p("issueId"),
-			p("state"),
-			p("assignee"),
-			p("parent"),
-			...issueUpdateFields,
-			input,
-		],
-		example: { issue: "AEO-258", state: "Backlog" },
+						example: { issue: "AEO-258", state: "Backlog" },
 		aliases: ["update_issue_state"],
-		aliasParameters: {
-			update_issue_state: [
-				p("issueId", "String", true),
-				p("stateId", "String", true),
-			],
-		},
-		resolverPaths: {
+				resolverPaths: {
 			issue: "resolveIssueReference",
 			issueId: "resolveIssueReference",
 			state: "resolveStateReference",
@@ -819,40 +742,55 @@ export const issues: readonly OperationDefinition[] = ([
 	}),
 	listOperation({
 		name: "search_issues",
-		compatibilityBranches: [
-			{
-				"all": [
-					"term"
+		...operationParameterDecision({
+			compatibilityBranches: [
+				{
+					"all": [
+						"term"
+					]
+				}
+			],
+			canonical: {
+				"fields": {
+					"term": "String",
+					"includeComments": "Boolean",
+					"team": "TeamReference",
+					"after": "String",
+					"before": "String",
+					"first": "Int",
+					"last": "Int",
+					"includeArchived": "Boolean",
+					"orderBy": "PaginationOrderBy",
+					"filter": "Filter"
+				},
+				"branches": [
+					[
+						"term"
+					]
 				]
-			}
-		],
-		renderKind: "issue",
+			},
+			parameters: [
+				p("term", "String", true),
+				p("includeComments", "Boolean"),
+				p("team", "TeamReference"),
+			],
+			acceptedParameters: [
+				p("term", "String", true),
+				p("includeComments"),
+				p("team"),
+				p("teamId"),
+				...pagination,
+				filter,
+			],
+		}),
+				renderKind: "issue",
 		renderEmpty: {
 			"fact": "No issues matched the search.",
 			"action": "Change or broaden the search term.",
 			"filteredFact": "No issues matched the search.",
 			"filteredAction": "Change or broaden the search term."
 		},
-		canonical: {
-			"fields": {
-				"term": "String",
-				"includeComments": "Boolean",
-				"team": "TeamReference",
-				"after": "String",
-				"before": "String",
-				"first": "Int",
-				"last": "Int",
-				"includeArchived": "Boolean",
-				"orderBy": "PaginationOrderBy",
-				"filter": "Filter"
-			},
-			"branches": [
-				[
-					"term"
-				]
-			]
-		},
-		domain: "issues",
+				domain: "issues",
 		root: "searchIssues",
 		selection: projection("issue", "list"),
 		resultView: { entity: "issue", defaultView: "summary" },
@@ -864,20 +802,7 @@ export const issues: readonly OperationDefinition[] = ([
 		pageSize: 20,
 		filterType: "IssueFilter",
 		totalCount: true,
-		parameters: [
-			p("term", "String", true),
-			p("includeComments", "Boolean"),
-			p("team", "TeamReference"),
-		],
-		acceptedParameters: [
-			p("term", "String", true),
-			p("includeComments"),
-			p("team"),
-			p("teamId"),
-			...pagination,
-			filter,
-		],
-		resolverPaths: { team: "resolveTeamReference" },
+						resolverPaths: { team: "resolveTeamReference" },
 		example: { term: "authentication" },
 		extras: "$term: String! $includeComments: Boolean $teamId: String",
 		extraArgs: "term: $term includeComments: $includeComments teamId: $teamId",
