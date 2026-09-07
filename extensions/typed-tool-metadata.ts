@@ -24,7 +24,7 @@ const REFERENCE_HINTS = {
   DocumentReference: 'Exact document title, or a document UUID.',
   DateTime: 'ISO 8601 date-time.',
   Date: 'Calendar date, YYYY-MM-DD.',
-  ResultView: 'Lists default to summary; single records to full.',
+  ResultView: 'Reads: lists default to summary and single records to full. Mutations default to summary.',
   Filter: 'Linear filter object.',
   FilterData: 'Linear view filter object.',
   Preferences: 'View preference object.',

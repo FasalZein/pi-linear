@@ -15,6 +15,7 @@ import type {
 } from './operation-types';
 import { isCompatibilityObject } from './operation-types';
 import { requireJsonObject, type JsonValue } from './json';
+import { MUTATION_VIEW_PARAMETER, withMutationResultView } from './mutation-acknowledgement';
 
 /** The seam where transport-supplied variables become parsed compatibility JSON. */
 function operationVariables(name: string, variables: JsonValue | undefined): CompatibilityObject {
@@ -165,6 +166,29 @@ function assignOptional<T extends object, K extends keyof T>(
   if (value !== undefined) target[key] = value;
 }
 
+function withViewParameter<T extends { name: string }>(values: readonly T[]): readonly (T | typeof MUTATION_VIEW_PARAMETER)[] {
+  return values.some(({ name }) => name === MUTATION_VIEW_PARAMETER.name)
+    ? values
+    : [...values, MUTATION_VIEW_PARAMETER];
+}
+
+function withMutationViewLegacyBranches(
+  values: NonNullable<OperationSource['legacyParameters']>,
+): NonNullable<OperationSource['legacyParameters']> {
+  return values.map((parameters) =>
+    parameters.length === 1 && parameters[0]?.name === 'input'
+      ? parameters
+      : withViewParameter(parameters));
+}
+
+function withMutationViewAliasFields(
+  values: OperationSource['aliasParameters'],
+): OperationSource['aliasParameters'] {
+  if (!values) return undefined;
+  return Object.fromEntries(
+    Object.entries(values).map(([name, parameters]) => [name, withViewParameter(parameters)]),
+  );
+}
 
 function parseThenPlan(name: string, plan: ParsedOperationPlanFactory): OperationPlanFactory {
   return async (variables) => plan(operationVariables(name, variables));
@@ -196,6 +220,10 @@ export function defineOperation(operation: OperationSource): OperationDefinition
     throw new Error(`Query operation ${operation.name} is missing its pure operation plan.`);
   }
   const entityKind = operation.renderKind ?? projectedRenderKind(operation.name);
+  const mutation = kind === 'mutation';
+  const plannedOperation = operation.plan && mutation
+    ? withMutationResultView(operation.plan)
+    : operation.plan;
   const renderEmpty = operation.renderEmpty;
   if ((action === 'list' || action === 'search') && !renderEmpty) {
     throw new Error(`Missing render empty state for "${operation.name}".`);
@@ -210,16 +238,35 @@ export function defineOperation(operation: OperationSource): OperationDefinition
       && canonical.branches.every((branch) => branch.includes(name)),
   }));
   const generatedResolverPaths = resolverPaths(operation.referenceFields);
+  if (mutation && !canonicalFields.some(({ name }) => name === MUTATION_VIEW_PARAMETER.name)) {
+    canonicalFields.push(MUTATION_VIEW_PARAMETER);
+  }
   const compatibility: OperationCompatibilityDefinition = {
     operationAliases: operation.aliases,
-    fields: operation.parameters,
+    fields: mutation ? withViewParameter(operation.parameters) : operation.parameters,
     branches,
     example: operation.example,
     document: operation.document,
   };
-  assignOptional(compatibility, 'acceptedFields', operation.acceptedParameters);
-  assignOptional(compatibility, 'legacyBranches', operation.legacyParameters);
-  assignOptional(compatibility, 'aliasFields', operation.aliasParameters);
+  assignOptional(
+    compatibility,
+    'acceptedFields',
+    operation.acceptedParameters
+      ? mutation ? withViewParameter(operation.acceptedParameters) : operation.acceptedParameters
+      : undefined,
+  );
+  assignOptional(
+    compatibility,
+    'legacyBranches',
+    operation.legacyParameters
+      ? mutation ? withMutationViewLegacyBranches(operation.legacyParameters) : operation.legacyParameters
+      : undefined,
+  );
+  assignOptional(
+    compatibility,
+    'aliasFields',
+    mutation ? withMutationViewAliasFields(operation.aliasParameters) : operation.aliasParameters,
+  );
   assignOptional(compatibility, 'inventoryDocuments', operation.inventoryDocuments);
   assignOptional(compatibility, 'pagination', operation.pagination);
   if (operation.referenceFields.length) compatibility.resolverPaths = generatedResolverPaths;
@@ -229,14 +276,16 @@ export function defineOperation(operation: OperationSource): OperationDefinition
       ?? (() => { throw new Error(`Unnamed semantic validation exception for "${operation.name}".`); })();
     compatibility.semanticValidateVariables = operation.validateVariables;
   }
-  assignOptional(compatibility, 'plan', operation.plan);
+  assignOptional(compatibility, 'plan', plannedOperation);
   assignOptional(compatibility, 'executeLocal', operation.executeLocal);
   assignOptional(compatibility, 'localResult', operation.localResult);
 
   const canonicalBranches = canonical.branches.map((all) => ({ all }));
   const canonicalExample = operation.canonicalExample ?? operation.example.variables;
   const canonicalVariants = canonical.variants?.map((variant) => ({
-    fields: variant.fields,
+    fields: mutation
+      ? withViewParameter(variant.fields.map((name) => ({ name }))).map(({ name }) => name)
+      : variant.fields,
     branches: variant.branches.map((all) => ({ all })),
   }));
   const canonicalProjection: OperationDefinition['canonical'] = canonical.exclusiveBranches
@@ -300,7 +349,7 @@ export function defineOperation(operation: OperationSource): OperationDefinition
     canonical: canonicalProjection,
   };
   if (documents) definition.graphql = { documents };
-  if (operation.plan) definition.preparation.plan = parseThenPlan(operation.name, operation.plan);
+  if (plannedOperation) definition.preparation.plan = parseThenPlan(operation.name, plannedOperation);
   assignOptional(definition.result, 'local', operation.localResult);
   assignOptional(definition.render, 'targetFields', renderTargetFields);
   assignOptional(definition.render, 'empty', renderEmpty);

@@ -86,10 +86,16 @@ function verbFor(operationName: string): Verb {
  * The status line: outcome, identifier, name — in that order, on one row.
  * Everything else is one dim line below it.
  */
-function statusLine(theme: Theme, spec: EntitySpec, entity: Entity, verb: string): string {
+function statusLine(
+  theme: Theme,
+  spec: EntitySpec,
+  entity: Entity,
+  verb: string,
+  warning = false,
+): string {
   const lead = spec.lead?.(entity);
   const parts = [
-    theme.fg('success', `✓ ${verb}`),
+    theme.fg(warning ? 'warning' : 'success', `${warning ? '!' : '✓'} ${verb}${warning ? ' with warnings' : ''}`),
     lead ? theme.fg('accent', lead) : undefined,
     theme.fg('toolOutput', spec.label(entity)),
   ].filter((part): part is string => !!part);
@@ -103,8 +109,12 @@ function entityBlock(
   verb: string,
   notes: readonly string[],
   disclosure?: string,
+  warnings: readonly string[] = [],
 ): Array<string | ReturnType<typeof wrapped>> {
-  const lines: Array<string | ReturnType<typeof wrapped>> = ['', statusLine(theme, spec, entity, verb)];
+  const lines: Array<string | ReturnType<typeof wrapped>> = [
+    '',
+    statusLine(theme, spec, entity, verb, warnings.length > 0),
+  ];
   if (disclosure) lines.push(wrapped(theme.fg('dim', disclosure), 2));
   if (spec.details?.length) {
     for (const field of spec.details) {
@@ -122,6 +132,7 @@ function entityBlock(
   }
   const url = asString(entity.url);
   if (url) lines.push(`  ${theme.fg('dim', url)}`);
+  for (const warning of warnings) lines.push(wrapped(theme.fg('warning', warning), 2));
   for (const note of notes) lines.push(wrapped(theme.fg('dim', note), 2));
   return [...lines, '', wrapped(theme.fg('dim', jsonHint()))];
 }
@@ -334,12 +345,25 @@ function renderDigest(
       ]);
     }
     if (details.entity) {
-      return new LinearBlockComponent(entityBlock(theme, spec, details.entity, verb.past, details.notes));
+      return new LinearBlockComponent(entityBlock(
+        theme,
+        spec,
+        details.entity,
+        verb.past,
+        details.notes,
+        undefined,
+        details.warnings,
+      ));
     }
     const target = namedTarget(details.target, context, definition);
+    const warning = details.warnings.length > 0;
     return new LinearBlockComponent([
       '',
-      theme.fg('success', `✓ ${verb.past} ${spec.noun}${target ? ` ${target}` : ''}`),
+      theme.fg(
+        warning ? 'warning' : 'success',
+        `${warning ? '!' : '✓'} ${verb.past} ${spec.noun}${target ? ` ${target}` : ''}${warning ? ' with warnings' : ''}`,
+      ),
+      ...details.warnings.map((message) => wrapped(theme.fg('warning', message), 2)),
       ...details.notes.map((note) => wrapped(theme.fg('dim', note), 2)),
       '',
       wrapped(theme.fg('dim', jsonHint())),

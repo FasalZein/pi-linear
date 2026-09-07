@@ -20,16 +20,16 @@
   "oneTool": {
     "baseline": 1179,
     "before": 2552,
-    "current": 2475
+    "current": 2515
   },
   "fiveTools": {
     "baseline": 14635,
     "before": 16446,
-    "current": 14573
+    "current": 15124
   },
   "allTools": {
     "baseline": 64706,
     "before": 66101,
-    "current": 53697
+    "current": 57588
   }
 }

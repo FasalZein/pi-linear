@@ -81,13 +81,14 @@ afterEach(() => {
 });
 
 describe('delete_issue_relation strict guarded delete', () => {
-  it('publishes only the four exact required guards and rejects malformed or unknown fields with zero network calls', async () => {
+  it('publishes four exact required guards plus the result view and rejects malformed or unknown fields with zero network calls', async () => {
     const operation = operations.delete_issue_relation;
     expect(operation.parameters).toEqual([
       { name: 'relationId', type: 'UUID', required: true },
       { name: 'issueId', type: 'UUID', required: true },
       { name: 'relatedIssueId', type: 'UUID', required: true },
       { name: 'type', type: 'IssueRelationType', required: true },
+      { name: 'view', type: 'ResultView', required: false },
     ]);
     const tool = typedLinearTools().find((candidate: any) => candidate.name === 'linear_delete_issue_relation') as any;
     const fetch = vi.fn();

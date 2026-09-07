@@ -253,6 +253,7 @@ describe("exact upstream pagination and create-view discovery", () => {
 			"initiativeFilterData",
 			"feedItemFilterData",
 			"team",
+			"view",
 		]);
 		for (const parameter of operation.parameters.filter(({ name }) =>
 			name.endsWith("FilterData"),

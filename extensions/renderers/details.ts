@@ -77,6 +77,7 @@ export type MutationResultDetails = {
   success: boolean;
   entity?: Entity;
   notes: readonly string[];
+  warnings: readonly string[];
   target?: string;
 };
 
@@ -190,6 +191,17 @@ function resolutionTarget(details: JsonObject): string | undefined {
     ?? asString(target.resolvedId) ?? asString(target.requested);
 }
 
+function graphqlWarnings(details: JsonObject): string[] {
+  if (!Array.isArray(details.errors)) return [];
+  return details.errors.flatMap((value) => {
+    const error = asObject(value);
+    const message = asString(error?.message);
+    if (!message) return [];
+    const path = Array.isArray(error?.path) ? error.path.map(String).join('.') : undefined;
+    return [`Partial GraphQL error${path ? ` at ${path}` : ''}: ${message}`];
+  });
+}
+
 function metaNotes(details: JsonObject): string[] {
   const notes: string[] = [];
   const meta = asObject(details.meta) ?? {};
@@ -281,10 +293,17 @@ function parseNamed(details: JsonObject, expectedRoots: readonly string[], fallb
       .filter(([key]) => key !== 'success' && key !== 'deleted')
       .map(([, value]) => asEntity(value))
       .find((value): value is Entity => !!value);
-    return { kind: 'mutation', success: record.success === true || record.deleted === true, entity, notes, target };
+    return {
+      kind: 'mutation',
+      success: record.success === true || record.deleted === true,
+      entity,
+      notes,
+      warnings: graphqlWarnings(details),
+      target,
+    };
   }
   if (/(?:create|update|delete|archive|unarchive)$/i.test(rootEntry?.[0] ?? '')) {
-    return { kind: 'mutation', success: false, notes, target };
+    return { kind: 'mutation', success: false, notes, warnings: graphqlWarnings(details), target };
   }
   return { kind: 'entity', entity: asEntity(record), notes, view };
 }

@@ -39,7 +39,8 @@
       "doNotSubscribeToIssue",
       "createOnSyncedSlackThread",
       "createdAt",
-      "id"
+      "id",
+      "view"
     ],
     "action": "create",
     "targetFields": [
@@ -60,7 +61,8 @@
       "body",
       "bodyData",
       "quotedText",
-      "skipEditedAt"
+      "skipEditedAt",
+      "view"
     ],
     "action": "update"
   },
@@ -102,7 +104,8 @@
       "filterData",
       "projectFilterData",
       "initiativeFilterData",
-      "feedItemFilterData"
+      "feedItemFilterData",
+      "view"
     ],
     "action": "create"
   },
@@ -118,7 +121,8 @@
       "filterData",
       "projectFilterData",
       "initiativeFilterData",
-      "feedItemFilterData"
+      "feedItemFilterData",
+      "view"
     ],
     "action": "update"
   },
@@ -126,7 +130,8 @@
     "entityKind": "view",
     "callFields": [
       "viewId",
-      "preferences"
+      "preferences",
+      "view"
     ],
     "action": "set"
   },
@@ -164,7 +169,8 @@
       "startsAt",
       "endsAt",
       "name",
-      "description"
+      "description",
+      "view"
     ],
     "action": "create",
     "targetFields": [
@@ -179,7 +185,8 @@
       "description",
       "startsAt",
       "endsAt",
-      "completedAt"
+      "completedAt",
+      "view"
     ],
     "action": "update"
   },
@@ -230,7 +237,8 @@
       "ownerId",
       "subscriberIds",
       "sortOrder",
-      "id"
+      "id",
+      "view"
     ],
     "action": "create"
   },
@@ -253,7 +261,8 @@
       "ownerId",
       "subscriberIds",
       "sortOrder",
-      "hiddenAt"
+      "hiddenAt",
+      "view"
     ],
     "action": "update",
     "targetFields": [
@@ -319,7 +328,8 @@
       "parentId",
       "retiredAt",
       "replaceTeamLabels",
-      "id"
+      "id",
+      "view"
     ],
     "action": "create"
   },
@@ -333,7 +343,8 @@
       "isGroup",
       "parentId",
       "retiredAt",
-      "replaceTeamLabels"
+      "replaceTeamLabels",
+      "view"
     ],
     "action": "update"
   },
@@ -360,7 +371,8 @@
     "callFields": [
       "issue",
       "relatedIssue",
-      "type"
+      "type",
+      "view"
     ],
     "action": "create",
     "targetFields": [
@@ -374,7 +386,8 @@
       "id",
       "type",
       "issueId",
-      "relatedIssueId"
+      "relatedIssueId",
+      "view"
     ],
     "action": "update"
   },
@@ -384,7 +397,8 @@
       "relationId",
       "issueId",
       "relatedIssueId",
-      "type"
+      "type",
+      "view"
     ],
     "action": "delete",
     "targetFields": [
@@ -484,7 +498,8 @@
       "displayIconUrl",
       "completedAt",
       "createdAt",
-      "id"
+      "id",
+      "view"
     ],
     "action": "create"
   },
@@ -519,7 +534,8 @@
       "prioritySortOrder",
       "autoClosedByParentClosing",
       "snoozedById",
-      "snoozedUntilAt"
+      "snoozedUntilAt",
+      "view"
     ],
     "action": "update"
   },
@@ -599,7 +615,8 @@
       "color",
       "isGroup",
       "parentId",
-      "retiredAt"
+      "retiredAt",
+      "view"
     ],
     "action": "create"
   },
@@ -612,7 +629,8 @@
       "color",
       "isGroup",
       "parentId",
-      "retiredAt"
+      "retiredAt",
+      "view"
     ],
     "action": "update"
   },
@@ -643,7 +661,8 @@
       "anchorType",
       "relatedAnchorType",
       "projectMilestoneId",
-      "relatedProjectMilestoneId"
+      "relatedProjectMilestoneId",
+      "view"
     ],
     "action": "create"
   },
@@ -657,7 +676,8 @@
       "projectId",
       "relatedProjectId",
       "projectMilestoneId",
-      "relatedProjectMilestoneId"
+      "relatedProjectMilestoneId",
+      "view"
     ],
     "action": "update"
   },
@@ -775,7 +795,8 @@
       "updateReminderFrequency",
       "updateReminderFrequencyInWeeks",
       "updateRemindersDay",
-      "updateRemindersHour"
+      "updateRemindersHour",
+      "view"
     ],
     "action": "save",
     "targetFields": [
@@ -793,7 +814,8 @@
       "descriptionData",
       "targetDate",
       "sortOrder",
-      "id"
+      "id",
+      "view"
     ],
     "action": "save",
     "targetFields": [
@@ -840,7 +862,8 @@
       "updateReminderFrequency",
       "updateReminderFrequencyInWeeks",
       "updateRemindersDay",
-      "updateRemindersHour"
+      "updateRemindersHour",
+      "view"
     ],
     "action": "save",
     "targetFields": [

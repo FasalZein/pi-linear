@@ -18,6 +18,7 @@ import {
   type LinearRateLimitSnapshot,
 } from './client';
 import { requireJsonObject, type JsonValue } from './json';
+import { mutationAcknowledgement } from './mutation-acknowledgement';
 import {
   BATCH_HELP_EXAMPLE,
   BATCH_PHASED_HELP_EXAMPLE,
@@ -429,6 +430,13 @@ async function planEntry(
   };
 }
 
+function batchEntryResult(entry: PlannedEntry, mapped: JsonObject): JsonObject {
+  return entry.prepared?.acknowledgement
+    ?? (entry.variant && entry.prepared?.resultView !== 'full'
+      ? mutationAcknowledgement(entry.operationName, mapped, entry.variant)
+      : mapped);
+}
+
 function collectAlias(
   entry: PlannedEntry,
   raw: JsonObject,
@@ -464,8 +472,7 @@ function collectAlias(
     errors.push(failed);
     return;
   }
-  const acknowledgement = entry.prepared?.acknowledgement;
-  data[entry.key] = acknowledgement ?? mapped;
+  data[entry.key] = batchEntryResult(entry, mapped);
 }
 
 export type BatchError = {
@@ -623,7 +630,12 @@ function failTransaction(keys: readonly string[], message: string): BatchError[]
 }
 
 function collectTransactionalCreates(
-  plans: Array<{ key: string; uuid: string }>,
+  plans: Array<{
+    key: string;
+    uuid: string;
+    view?: 'summary' | 'full';
+    variant?: GraphQLDocumentVariant;
+  }>,
   raw: CompatibilityObject,
   pathErrors: ReturnType<typeof linearGraphQLErrors>,
   data: JsonObject,
@@ -706,10 +718,14 @@ function collectTransactionalCreates(
         key: plan.key,
         path: error.path,
         message: error.message,
-        partial: mapped,
+        partial: plan.view === 'full' || !plan.variant
+          ? mapped
+          : mutationAcknowledgement('create_issue', mapped, plan.variant),
       });
     } else {
-      data[plan.key] = mapped;
+      data[plan.key] = plan.view === 'full' || !plan.variant
+        ? mapped
+        : mutationAcknowledgement('create_issue', mapped, plan.variant);
     }
   }
 }
@@ -885,7 +901,13 @@ async function executeBatchWithTelemetry(
         throw new Error(`Batch entry "${entry.key}" is missing a prepared create input.`);
       }
       const uuid = randomUUID();
-      return { key: entry.key, uuid, input: { ...input, id: uuid } };
+      return {
+        key: entry.key,
+        uuid,
+        input: { ...input, id: uuid },
+        view: entry.prepared?.resultView,
+        variant: entry.variant,
+      };
     });
     assertMutationAllowed(ISSUE_BATCH_CREATE_DOCUMENT, mode, ['issueBatchCreate']);
     mutationRequests = 1;
@@ -932,7 +954,18 @@ async function executeBatchWithTelemetry(
         failureMessage: attributableFailureMessage(mutation),
       };
       const alias = phase.raw[mutation.key];
-      if (alias != null) owner.partial = { [mutation.root]: alias };
+      if (alias != null && !mutation.prepared?.acknowledgement) {
+        const partial = { [mutation.root]: alias };
+        try {
+          if (mutation.prepared) verifyOperationResult(mutation.prepared, partial);
+          if (mutation.variant?.mutationResult) {
+            validateMutationResult(mutation.operationName, partial, mutation.variant);
+          }
+          owner.partial = batchEntryResult(mutation, partial);
+        } catch {
+          owner.partial = partial;
+        }
+      }
       classifyStructuredGraphQLErrors(phase.errors, [owner], [owner], errors);
     } else {
       collectAlias(mutation, phase.raw, [], data, errors);
