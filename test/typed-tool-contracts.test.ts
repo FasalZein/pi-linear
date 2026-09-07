@@ -762,7 +762,6 @@ const COMPATIBILITY: ReadonlyArray<{
     base: { title: 'Planning notes' },
     fields: [
       ['content', 'body'],
-      ['icon', '📄'],
       ['color', '#ff0000'],
       ['issueId', 'AEO-258'],
       ['projectId', UUID],
@@ -772,7 +771,7 @@ const COMPATIBILITY: ReadonlyArray<{
       ['subscriberIds', [UUID]],
       ['sortOrder', 12.5],
     ],
-    absent: ['teamKey', 'input'],
+    absent: ['teamKey', 'icon', 'input'],
   },
   {
     tool: 'linear_update_document',
@@ -781,7 +780,6 @@ const COMPATIBILITY: ReadonlyArray<{
     fields: [
       ['title', 'Renamed'],
       ['content', 'body'],
-      ['icon', '📄'],
       ['color', '#00ff00'],
       ['issueId', 'AEO-258'],
       ['projectId', UUID],
@@ -789,7 +787,7 @@ const COMPATIBILITY: ReadonlyArray<{
       ['hiddenAt', null],
       ['sortOrder', 3],
     ],
-    absent: ['teamKey', 'input', 'trashed'],
+    absent: ['teamKey', 'icon', 'input', 'trashed'],
   },
   {
     tool: 'linear_create_comment',

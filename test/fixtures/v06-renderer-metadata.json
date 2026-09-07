@@ -224,7 +224,6 @@
     "callFields": [
       "title",
       "content",
-      "icon",
       "color",
       "issueId",
       "teamId",
@@ -248,7 +247,6 @@
       "document",
       "title",
       "content",
-      "icon",
       "color",
       "issueId",
       "teamId",

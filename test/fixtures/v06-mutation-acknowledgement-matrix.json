@@ -291,13 +291,6 @@
     {
       "required": [
         "document",
-        "icon"
-      ],
-      "target": "document"
-    },
-    {
-      "required": [
-        "document",
         "color"
       ],
       "target": "document"

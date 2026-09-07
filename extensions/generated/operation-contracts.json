@@ -4055,10 +4055,6 @@
             "type": "string",
             "minLength": 1
           },
-          "icon": {
-            "type": "string",
-            "minLength": 1
-          },
           "color": {
             "type": "string",
             "description": "Hex color such as #ff0000.",
@@ -4136,7 +4132,7 @@
     "purpose": "Create a document.",
     "kind": "mutation",
     "help": {
-      "signature": "create_document(title: String, content?: String, icon?: String, color?: Color, issueId?: IssueReference, teamId?: TeamReference, projectId?: UUID, initiativeId?: UUID, cycleId?: UUID, releaseId?: UUID, resourceFolderId?: UUID, lastAppliedTemplateId?: UUID, ownerId?: UUID, subscriberIds?: [UUID!], sortOrder?: Float, id?: UUID, view?: ResultView)",
+      "signature": "create_document(title: String, content?: String, color?: Color, issueId?: IssueReference, teamId?: TeamReference, projectId?: UUID, initiativeId?: UUID, cycleId?: UUID, releaseId?: UUID, resourceFolderId?: UUID, lastAppliedTemplateId?: UUID, ownerId?: UUID, subscriberIds?: [UUID!], sortOrder?: Float, id?: UUID, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "create_document",
@@ -4148,7 +4144,6 @@
       "callFields": [
         "title",
         "content",
-        "icon",
         "color",
         "issueId",
         "teamId",
@@ -4357,11 +4352,6 @@
           "required": false
         },
         {
-          "name": "icon",
-          "type": "String",
-          "required": false
-        },
-        {
           "name": "color",
           "type": "Color",
           "required": false
@@ -4457,7 +4447,6 @@
       "callFields": [
         "title",
         "content",
-        "icon",
         "color",
         "issueId",
         "teamId",
@@ -4495,10 +4484,6 @@
             "minLength": 1
           },
           "content": {
-            "type": "string",
-            "minLength": 1
-          },
-          "icon": {
             "type": "string",
             "minLength": 1
           },
@@ -4594,12 +4579,6 @@
           {
             "required": [
               "document",
-              "icon"
-            ]
-          },
-          {
-            "required": [
-              "document",
               "color"
             ]
           },
@@ -4682,7 +4661,7 @@
     "purpose": "Update a document.",
     "kind": "mutation",
     "help": {
-      "signature": "update_document(document: DocumentReference, title?: String, content?: String, icon?: String, color?: Color, issueId?: IssueReference, teamId?: TeamReference, projectId?: UUID, initiativeId?: UUID, cycleId?: UUID, releaseId?: UUID, resourceFolderId?: UUID, lastAppliedTemplateId?: UUID, ownerId?: UUID, subscriberIds?: [UUID!], sortOrder?: Float, hiddenAt?: NullableDateTime, view?: ResultView)",
+      "signature": "update_document(document: DocumentReference, title?: String, content?: String, color?: Color, issueId?: IssueReference, teamId?: TeamReference, projectId?: UUID, initiativeId?: UUID, cycleId?: UUID, releaseId?: UUID, resourceFolderId?: UUID, lastAppliedTemplateId?: UUID, ownerId?: UUID, subscriberIds?: [UUID!], sortOrder?: Float, hiddenAt?: NullableDateTime, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "update_document",
@@ -4695,7 +4674,6 @@
         "document",
         "title",
         "content",
-        "icon",
         "color",
         "issueId",
         "teamId",
@@ -4911,11 +4889,6 @@
           "required": false
         },
         {
-          "name": "icon",
-          "type": "String",
-          "required": false
-        },
-        {
           "name": "color",
           "type": "Color",
           "required": false
@@ -4997,12 +4970,6 @@
           "all": [
             "document",
             "content"
-          ]
-        },
-        {
-          "all": [
-            "document",
-            "icon"
           ]
         },
         {
@@ -5103,7 +5070,6 @@
         "document",
         "title",
         "content",
-        "icon",
         "color",
         "issueId",
         "teamId",

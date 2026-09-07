@@ -11,6 +11,8 @@
 - Normalized guarded relation preflight and delete failures to stable operation-specific errors that expose no supplied UUID or active credential.
 - Added batch transport: compatible reads share one aliased query, one ordinary mutation runs after the read gate, and independent issue creates use `issueBatchCreate`.
 - Added internal telemetry for every documented Linear rate-limit header. By default, results show compact `meta.rateLimit` details only near exhaustion. For explicit diagnostics, set top-level `telemetry: "always"` on the exact direct `linear_batch`, `linear_graphql`, or typed `linear_*` tool. Search reads retry one documented GraphQL `RATELIMITED` 400 response.
+- Removed document `icon` from typed tools because Linear does not publish its valid values. Compatibility calls still accept this field.
+- Classified `not a valid` GraphQL responses as input errors. The recovery message now requests corrected parameters instead of an unchanged retry.
 - Architecture references: [`ADR 0006`](./docs/adr/0006-publish-the-operation-catalog.md) publishes the catalog. [`ADR 0003`](./docs/adr/0003-result-routing.md) defines lossless routing. [`ADR 0007`](./docs/adr/0007-shape-results-and-batch-transport-by-phase.md) records result views, exact roots, and phased batch transport.
 
 ## 0.8.0
