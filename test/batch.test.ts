@@ -906,16 +906,10 @@ describe('batch mutation phase', () => {
     expect(result.details.meta.requests).toEqual({ read: 1, mutation: 0 });
   });
 
-  it('rejects two mutations and create-only transaction sets before network access', async () => {
+  it('keeps transactional create sets separate from ordinary mutations before network access', async () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
     process.env.LINEAR_API_KEY = 'test-key';
-    await expect(execute({
-      operation: 'batch',
-      variables: {
-        mutations: [mutationEntry('one'), mutationEntry('two')],
-      },
-    })).rejects.toThrow(/one ordinary named mutation/i);
     await expect(execute({
       operation: 'batch',
       variables: {
@@ -924,7 +918,7 @@ describe('batch mutation phase', () => {
           mutationEntry('b'),
         ],
       },
-    })).rejects.toThrow(/mixed|one ordinary named mutation/i);
+    })).rejects.toThrow(/mixed|transactional creates/i);
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -983,7 +977,7 @@ describe('batch mutation phase', () => {
   });
 
   it.each(['network', 'http', 'non-json', 'cancel'] as const)(
-    'preserves top-level %s failure behavior for one ordinary final mutation',
+    'attributes an outcome-unknown %s failure to one ordinary final mutation',
     async (failureKind) => {
       const controller = new AbortController();
       const { fetch } = graphqlStub(() => {
@@ -994,10 +988,15 @@ describe('batch mutation phase', () => {
         return { throw: new Error('mutation cancelled') };
       });
       const call = { operation: 'batch', variables: { mutations: [mutationEntry()] } };
-      const promise = failureKind === 'cancel'
-        ? executeWithSignal(call, controller.signal)
-        : execute(call);
-      await expect(promise).rejects.toThrow(/Linear|mutation|cancelled|data/i);
+      const result = failureKind === 'cancel'
+        ? await executeWithSignal(call, controller.signal)
+        : await execute(call);
+      expect(result.details).toMatchObject({
+        data: {},
+        errors: [{ key: 'edit', path: ['edit'], message: expect.stringMatching(/outcome is unknown.*Do not retry.*blindly/i) }],
+        skipped: [],
+        meta: { requests: { read: 0, mutation: 1 } },
+      });
       expect(fetch).toHaveBeenCalledTimes(1);
     },
   );

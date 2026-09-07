@@ -53,7 +53,7 @@ import { projection } from './selections';
 import { verifyOperationResult } from './operation-plan';
 import { validateOperationVariables } from './operation-validation';
 
-export const BATCH_PURPOSE = 'Batch independent reads with read-only operations, or use explicit phases for one ordinary mutation, grouped issue creates, or one guarded relation delete.';
+export const BATCH_PURPOSE = 'Batch independent reads, or run several ordinary mutations sequentially after all-entry preflight. Stop at the first failure; grouped issue creates stay transactional.';
 
 const ALIAS = /^[_A-Za-z][_0-9A-Za-z]*$/;
 const FORBIDDEN_OPERATIONS = new Set(['help', 'batch']);
@@ -508,12 +508,14 @@ async function executeStructuredGraphQLPhase(
   query: string,
   variables: CompatibilityObject,
   phase: 'read' | 'mutation',
+  retryRateLimit = true,
 ): Promise<StructuredGraphQLPhase> {
   try {
     return {
       raw: await linearGraphQLWithContext(network, query, variables, {
         throwResponseErrors: true,
         phase,
+        retryRateLimit,
       }),
       errors: [],
     };
@@ -786,11 +788,8 @@ async function executeBatchWithTelemetry(
   const parsed = parseEntries(requireJsonObject(params.variables ?? {}, 'Batch variables'));
   const createFlags = parsed.mutations.map((entry) => isIssueCreateEntry(entry));
   const transactional = parsed.mutations.length > 1 && createFlags.every(Boolean);
-  if (parsed.mutations.length > 1 && !transactional) {
-    if (createFlags.some(Boolean)) {
-      throw new Error('Batch rejects transactional creates mixed with other mutations.');
-    }
-    throw new Error('Batch permits one ordinary named mutation.');
+  if (parsed.mutations.length > 1 && !transactional && createFlags.some(Boolean)) {
+    throw new Error('Batch rejects transactional creates mixed with other mutations.');
   }
 
   let reads: PlannedEntry[];
@@ -941,12 +940,41 @@ async function executeBatchWithTelemetry(
     );
   }
 
-  if (mutations.length) {
-    const mutation = mutations[0]!;
-    const query = mergeDocuments(OperationTypeNode.MUTATION, 'BatchMutation', [parse(mutation.document)]);
+  const preparedMutations = mutations.map((mutation) => ({
+    mutation,
+    query: mergeDocuments(OperationTypeNode.MUTATION, 'BatchMutation', [parse(mutation.document)]),
+  }));
+  for (const { mutation, query } of preparedMutations) {
     assertMutationAllowed(query, mode, [mutation.root]);
-    mutationRequests = 1;
-    const phase = await executeStructuredGraphQLPhase(network, query, mutation.variables, 'mutation');
+  }
+
+  const skipped: string[] = [];
+  for (const [index, { mutation, query }] of preparedMutations.entries()) {
+    if (signal?.aborted) {
+      errors.push({
+        key: mutation.key,
+        path: [mutation.key],
+        message: 'Batch mutation phase was cancelled before this request was sent.',
+      });
+      skipped.push(...preparedMutations.slice(index + 1).map(({ mutation: later }) => later.key));
+      break;
+    }
+
+    mutationRequests += 1;
+    let phase: Awaited<ReturnType<typeof executeStructuredGraphQLPhase>>;
+    try {
+      phase = await executeStructuredGraphQLPhase(network, query, mutation.variables, 'mutation', false);
+    } catch (error) {
+      const detail = error instanceof Error ? ` ${error.message}` : '';
+      const message = signal?.aborted
+        ? `Batch mutation request was cancelled after it started. Its outcome is unknown because it may have reached Linear. Do not retry this mutation blindly.${detail}`
+        : `Batch mutation request failed after it started. Its outcome is unknown because it may have reached Linear. Do not retry this mutation blindly.${detail}`;
+      errors.push({ key: mutation.key, path: [mutation.key], message });
+      skipped.push(...preparedMutations.slice(index + 1).map(({ mutation: later }) => later.key));
+      break;
+    }
+
+    const beforeErrorCount = errors.length;
     if (phase.errors.length) {
       const owner: GraphQLFailureOwner = {
         entry: mutation,
@@ -970,13 +998,17 @@ async function executeBatchWithTelemetry(
     } else {
       collectAlias(mutation, phase.raw, [], data, errors);
     }
+    if (errors.length > beforeErrorCount) {
+      skipped.push(...preparedMutations.slice(index + 1).map(({ mutation: later }) => later.key));
+      break;
+    }
   }
 
   return envelope(
     requestedKeys,
     data,
     errors,
-    [],
+    skipped,
     { read: readRequests, mutation: mutationRequests },
     aliasCount,
     params.sink,

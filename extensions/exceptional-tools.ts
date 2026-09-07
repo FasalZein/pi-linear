@@ -4,7 +4,7 @@ import { BATCH_HELP_EXAMPLE, BATCH_PHASED_HELP_EXAMPLE } from './operations';
 import { GET_RESULT_PURPOSE } from './result-handles';
 
 export const LINEAR_GRAPHQL_PURPOSE = 'Execute a caller-supplied Linear GraphQL document.';
-export const LINEAR_BATCH_PURPOSE = 'Batch independent named Linear operations as flat reads or explicit read and mutation phases.';
+export const LINEAR_BATCH_PURPOSE = 'Batch independent reads, or run several ordinary mutations sequentially after all-entry preflight. Stop at the first failure; grouped issue creates stay transactional.';
 
 export const linearGraphqlParameters = Type.Object({
   query: Type.String({ description: 'GraphQL document to execute.' }),

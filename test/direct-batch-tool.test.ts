@@ -97,6 +97,46 @@ describe('direct batch tool', () => {
     expect(requests).toHaveLength(cases.length);
   });
 
+  it('runs three ordinary mutations sequentially through the registered direct tool', async () => {
+    process.env.LINEAR_API_KEY = 'test-key';
+    const requests: Array<{ query: string; variables: CompatibilityObject }> = [];
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
+      const request = JSON.parse(String(init.body));
+      requests.push(request);
+      const key = request.query.match(/(\w+)\s*:\s*issueUpdate\b/)?.[1];
+      if (!key) throw new Error('Expected one aliased issueUpdate mutation.');
+      return new Response(JSON.stringify({
+        data: {
+          [key]: {
+            success: true,
+            issue: { id: '11111111-1111-4111-8111-111111111111', identifier: 'AEO-258', title: key },
+          },
+        },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }));
+    const harness = createLinearHarness();
+    harness.startSession();
+    await execute(harness.tool('linear'), { operation: 'help', variables: { operation: 'batch' } });
+
+    const direct = await execute(harness.tool('linear_batch'), {
+      mutations: ['one', 'two', 'three'].map((key) => ({
+        key,
+        operation: 'update_issue',
+        variables: { issue: 'AEO-258', title: key },
+      })),
+    });
+
+    expect(requests).toHaveLength(3);
+    expect(requests.map(({ query }) => query.match(/(\w+)\s*:\s*issueUpdate\b/)?.[1]))
+      .toEqual(['one', 'two', 'three']);
+    expect(direct.details).toMatchObject({
+      data: { one: {}, two: {}, three: {} },
+      errors: [],
+      skipped: [],
+      meta: { requests: { read: 0, mutation: 3 } },
+    });
+  });
+
   it('renders call phases and completed, failed, skipped, and request states', () => {
     const call = block(renderLinearBatchCall({
       reads: [{ key: 'ready', operation: 'get_issue' }],
