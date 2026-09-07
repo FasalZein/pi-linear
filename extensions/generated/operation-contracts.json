@@ -265,7 +265,7 @@
           },
           "project": {
             "type": "string",
-            "description": "Exact project name, or a project UUID.",
+            "description": "Exact project name or slug, or a project UUID.",
             "minLength": 1
           },
           "initiativeId": {
@@ -4062,7 +4062,7 @@
           },
           "project": {
             "type": "string",
-            "description": "Exact project name, or a project UUID.",
+            "description": "Exact project name or slug, or a project UUID.",
             "minLength": 1
           },
           "initiativeId": {
@@ -4582,7 +4582,7 @@
           },
           "project": {
             "type": "string",
-            "description": "Exact project name, or a project UUID.",
+            "description": "Exact project name or slug, or a project UUID.",
             "minLength": 1
           },
           "initiativeId": {
@@ -8038,6 +8038,15 @@
             "description": "User email, exact name, display name, \"me\", or a user UUID.",
             "minLength": 1
           },
+          "projectId": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "project": {
+            "type": "string",
+            "description": "Exact project name or slug, or a project UUID.",
+            "minLength": 1
+          },
           "sort": {
             "type": "array",
             "items": {
@@ -8139,7 +8148,7 @@
     "purpose": "List issues with exact convenience filters.",
     "kind": "query",
     "help": {
-      "signature": "list_issues(issues?: [IssueReference!], query?: String, team?: TeamReference, state?: StateReference, stateType?: WorkflowStateType, assignee?: UserReference, sort?: [IssueSort!], after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, view?: ResultView)",
+      "signature": "list_issues(issues?: [IssueReference!], query?: String, team?: TeamReference, state?: StateReference, stateType?: WorkflowStateType, assignee?: UserReference, projectId?: UUID, project?: ProjectReference, sort?: [IssueSort!], after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "list_issues",
@@ -8155,6 +8164,8 @@
         "state",
         "stateType",
         "assignee",
+        "projectId",
+        "project",
         "sort",
         "after",
         "before",
@@ -8342,6 +8353,11 @@
           "required": false
         },
         {
+          "name": "projectId",
+          "type": "String",
+          "required": false
+        },
+        {
           "name": "view",
           "type": "ResultView",
           "required": false
@@ -8392,7 +8408,9 @@
       "resolverPaths": {
         "team": "resolveTeamReference",
         "state": "resolveStateReference",
-        "assignee": "resolveUserReference"
+        "assignee": "resolveUserReference",
+        "projectId": "resolveNamedEntityReference",
+        "project": "resolveNamedEntityReference"
       },
       "requiresVariables": false,
       "semanticException": "state-name-requires-team"
@@ -8410,7 +8428,9 @@
       "resolverPaths": {
         "team": "resolveTeamReference",
         "state": "resolveStateReference",
-        "assignee": "resolveUserReference"
+        "assignee": "resolveUserReference",
+        "projectId": "resolveNamedEntityReference",
+        "project": "resolveNamedEntityReference"
       }
     },
     "safety": {
@@ -8447,6 +8467,16 @@
         {
           "name": "assignee",
           "type": "UserReference",
+          "required": false
+        },
+        {
+          "name": "projectId",
+          "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "project",
+          "type": "ProjectReference",
           "required": false
         },
         {
@@ -8522,6 +8552,8 @@
         "state",
         "stateType",
         "assignee",
+        "projectId",
+        "project",
         "sort",
         "after",
         "before",
@@ -8763,6 +8795,11 @@
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
+          "project": {
+            "type": "string",
+            "description": "Exact project name or slug, or a project UUID.",
+            "minLength": 1
+          },
           "projectMilestoneId": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
@@ -8943,7 +8980,7 @@
     "purpose": "Create an issue. A parent reference supplies the team when team is omitted.",
     "kind": "mutation",
     "help": {
-      "signature": "create_issue(title: String, team?: TeamReference, parent?: IssueReference, state?: StateReference, assignee?: UserReference, dueDate?: Date, description?: String, descriptionData?: JsonString, priority?: Priority, estimate?: Int, projectId?: UUID, projectMilestoneId?: UUID, milestone?: MilestoneReference, cycleId?: UUID, cycle?: CycleReference, labelIds?: [UUID!], labels?: [LabelReference!], subscriberIds?: [UUID!], subscribers?: [UserReference!], delegateId?: UUID, delegate?: UserReference, lastAppliedTemplateId?: UUID, slaType?: SlaDayCountType, slaBreachesAt?: NullableDateTime, slaStartedAt?: NullableDateTime, sortOrder?: Float, subIssueSortOrder?: Float, prioritySortOrder?: Float, templateId?: UUID, useDefaultTemplate?: Boolean, preserveSortOrderOnCreate?: Boolean, referenceCommentId?: UUID, sourceCommentId?: UUID, sourcePullRequestCommentId?: UUID, createAsUser?: String, displayIconUrl?: Url, completedAt?: NullableDateTime, createdAt?: DateTime, id?: UUID)",
+      "signature": "create_issue(title: String, team?: TeamReference, parent?: IssueReference, state?: StateReference, assignee?: UserReference, dueDate?: Date, description?: String, descriptionData?: JsonString, priority?: Priority, estimate?: Int, projectId?: UUID, project?: ProjectReference, projectMilestoneId?: UUID, milestone?: MilestoneReference, cycleId?: UUID, cycle?: CycleReference, labelIds?: [UUID!], labels?: [LabelReference!], subscriberIds?: [UUID!], subscribers?: [UserReference!], delegateId?: UUID, delegate?: UserReference, lastAppliedTemplateId?: UUID, slaType?: SlaDayCountType, slaBreachesAt?: NullableDateTime, slaStartedAt?: NullableDateTime, sortOrder?: Float, subIssueSortOrder?: Float, prioritySortOrder?: Float, templateId?: UUID, useDefaultTemplate?: Boolean, preserveSortOrderOnCreate?: Boolean, referenceCommentId?: UUID, sourceCommentId?: UUID, sourcePullRequestCommentId?: UUID, createAsUser?: String, displayIconUrl?: Url, completedAt?: NullableDateTime, createdAt?: DateTime, id?: UUID)",
       "exact": true,
       "example": {
         "operation": "create_issue",
@@ -8964,6 +9001,7 @@
         "priority",
         "estimate",
         "projectId",
+        "project",
         "projectMilestoneId",
         "milestone",
         "cycleId",
@@ -9297,6 +9335,8 @@
         "stateId": "resolveStateReference",
         "assignee": "resolveUserReference",
         "assigneeId": "resolveUserReference",
+        "project": "resolveNamedEntityReference",
+        "projectId": "resolveNamedEntityReference",
         "milestone": "resolveProjectMilestoneReference",
         "cycle": "resolveCycleReference",
         "labels": "resolveIssueLabelReference",
@@ -9333,6 +9373,8 @@
         "stateId": "resolveStateReference",
         "assignee": "resolveUserReference",
         "assigneeId": "resolveUserReference",
+        "project": "resolveNamedEntityReference",
+        "projectId": "resolveNamedEntityReference",
         "milestone": "resolveProjectMilestoneReference",
         "cycle": "resolveCycleReference",
         "labels": "resolveIssueLabelReference",
@@ -9399,6 +9441,11 @@
         {
           "name": "projectId",
           "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "project",
+          "type": "ProjectReference",
           "required": false
         },
         {
@@ -9583,6 +9630,7 @@
         "priority",
         "estimate",
         "projectId",
+        "project",
         "projectMilestoneId",
         "milestone",
         "cycleId",
@@ -9747,6 +9795,18 @@
               }
             ],
             "description": "Null clears it."
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact project name or slug, or a project UUID; null clears it."
           },
           "projectMilestoneId": {
             "anyOf": [
@@ -10009,6 +10069,12 @@
           {
             "required": [
               "issue",
+              "project"
+            ]
+          },
+          {
+            "required": [
+              "issue",
               "projectMilestoneId"
             ]
           },
@@ -10139,7 +10205,7 @@
     "purpose": "Update an issue by exact identifier or UUID.",
     "kind": "mutation",
     "help": {
-      "signature": "update_issue(issue: IssueReference, title?: String, state?: StateReference, assignee?: NullableUserReference, parent?: NullableIssueReference, teamId?: TeamReference, team?: TeamReference, dueDate?: NullableDate, addedLabelIds?: [UUID!], addLabels?: [LabelReference!], removedLabelIds?: [UUID!], removeLabels?: [LabelReference!], description?: String, descriptionData?: JsonString, priority?: Priority, estimate?: Int, projectId?: NullableUUID, projectMilestoneId?: NullableUUID, milestone?: NullableMilestoneReference, cycleId?: NullableUUID, cycle?: NullableCycleReference, labelIds?: [UUID!], labels?: [LabelReference!], subscriberIds?: [UUID!], subscribers?: [UserReference!], delegateId?: UUID, delegate?: UserReference, lastAppliedTemplateId?: UUID, slaType?: SlaDayCountType, slaBreachesAt?: NullableDateTime, slaStartedAt?: NullableDateTime, sortOrder?: Float, subIssueSortOrder?: Float, prioritySortOrder?: Float, autoClosedByParentClosing?: Boolean, snoozedById?: UUID, snoozedBy?: UserReference, snoozedUntilAt?: NullableDateTime)",
+      "signature": "update_issue(issue: IssueReference, title?: String, state?: StateReference, assignee?: NullableUserReference, parent?: NullableIssueReference, teamId?: TeamReference, team?: TeamReference, dueDate?: NullableDate, addedLabelIds?: [UUID!], addLabels?: [LabelReference!], removedLabelIds?: [UUID!], removeLabels?: [LabelReference!], description?: String, descriptionData?: JsonString, priority?: Priority, estimate?: Int, projectId?: NullableUUID, project?: NullableProjectReference, projectMilestoneId?: NullableUUID, milestone?: NullableMilestoneReference, cycleId?: NullableUUID, cycle?: NullableCycleReference, labelIds?: [UUID!], labels?: [LabelReference!], subscriberIds?: [UUID!], subscribers?: [UserReference!], delegateId?: UUID, delegate?: UserReference, lastAppliedTemplateId?: UUID, slaType?: SlaDayCountType, slaBreachesAt?: NullableDateTime, slaStartedAt?: NullableDateTime, sortOrder?: Float, subIssueSortOrder?: Float, prioritySortOrder?: Float, autoClosedByParentClosing?: Boolean, snoozedById?: UUID, snoozedBy?: UserReference, snoozedUntilAt?: NullableDateTime)",
       "exact": true,
       "example": {
         "operation": "update_issue",
@@ -10166,6 +10232,7 @@
         "priority",
         "estimate",
         "projectId",
+        "project",
         "projectMilestoneId",
         "milestone",
         "cycleId",
@@ -10445,6 +10512,7 @@
         "parentId": "resolveIssueReference",
         "teamId": "resolveTeamReference",
         "team": "resolveTeamReference",
+        "project": "resolveProjectReference",
         "addLabels": "resolveIssueLabelReference",
         "removeLabels": "resolveIssueLabelReference",
         "milestone": "resolveProjectMilestoneReference",
@@ -10485,6 +10553,7 @@
         "parentId": "resolveIssueReference",
         "teamId": "resolveTeamReference",
         "team": "resolveTeamReference",
+        "project": "resolveProjectReference",
         "addLabels": "resolveIssueLabelReference",
         "removeLabels": "resolveIssueLabelReference",
         "milestone": "resolveProjectMilestoneReference",
@@ -10584,6 +10653,11 @@
         {
           "name": "projectId",
           "type": "NullableUUID",
+          "required": false
+        },
+        {
+          "name": "project",
+          "type": "NullableProjectReference",
           "required": false
         },
         {
@@ -10792,6 +10866,12 @@
         {
           "all": [
             "issue",
+            "project"
+          ]
+        },
+        {
+          "all": [
+            "issue",
             "projectMilestoneId"
           ]
         },
@@ -10949,6 +11029,7 @@
         "priority",
         "estimate",
         "projectId",
+        "project",
         "projectMilestoneId",
         "milestone",
         "cycleId",
@@ -12748,7 +12829,7 @@
           },
           "project": {
             "type": "string",
-            "description": "Exact project name, or a project UUID.",
+            "description": "Exact project name or slug, or a project UUID.",
             "minLength": 1
           },
           "relatedProjectId": {
@@ -12757,7 +12838,7 @@
           },
           "relatedProject": {
             "type": "string",
-            "description": "Exact project name, or a project UUID.",
+            "description": "Exact project name or slug, or a project UUID.",
             "minLength": 1
           },
           "type": {
@@ -13156,7 +13237,7 @@
           },
           "project": {
             "type": "string",
-            "description": "Exact project name, or a project UUID.",
+            "description": "Exact project name or slug, or a project UUID.",
             "minLength": 1
           },
           "relatedProjectId": {
@@ -13165,7 +13246,7 @@
           },
           "relatedProject": {
             "type": "string",
-            "description": "Exact project name, or a project UUID.",
+            "description": "Exact project name or slug, or a project UUID.",
             "minLength": 1
           },
           "projectMilestoneId": {
@@ -13867,13 +13948,13 @@
     "tool": {
       "name": "linear_get_project",
       "label": "Linear get project",
-      "description": "Get a project by exact name or UUID.",
+      "description": "Get a project by exact name, slug, or UUID.",
       "parameters": {
         "type": "object",
         "properties": {
           "project": {
             "type": "string",
-            "description": "Exact project name, or a project UUID.",
+            "description": "Exact project name or slug, or a project UUID.",
             "minLength": 1
           },
           "view": {
@@ -13892,7 +13973,7 @@
       }
     },
     "domain": "projects",
-    "purpose": "Get a project by exact name or UUID.",
+    "purpose": "Get a project by exact name, slug, or UUID.",
     "kind": "query",
     "help": {
       "signature": "get_project(project: ProjectReference, view?: ResultView)",
@@ -16249,12 +16330,12 @@
           },
           "projectId": {
             "type": "string",
-            "description": "Exact project name, or a project UUID.",
+            "description": "Exact project name or slug, or a project UUID.",
             "minLength": 1
           },
           "project": {
             "type": "string",
-            "description": "Exact project name, or a project UUID.",
+            "description": "Exact project name or slug, or a project UUID.",
             "minLength": 1
           },
           "description": {
@@ -16844,12 +16925,12 @@
         "properties": {
           "projectId": {
             "type": "string",
-            "description": "Exact project name, or a project UUID.",
+            "description": "Exact project name or slug, or a project UUID.",
             "minLength": 1
           },
           "project": {
             "type": "string",
-            "description": "Exact project name, or a project UUID.",
+            "description": "Exact project name or slug, or a project UUID.",
             "minLength": 1
           },
           "name": {

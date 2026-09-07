@@ -17,7 +17,7 @@ const REFERENCE_HINTS = {
   TeamReference: 'Team key such as ABC, or a team UUID.',
   StateReference: 'Workflow state name, or a state UUID.',
   UserReference: 'User email, exact name, display name, "me", or a user UUID.',
-  ProjectReference: 'Exact project name, or a project UUID.',
+  ProjectReference: 'Exact project name or slug, or a project UUID.',
   InitiativeReference: 'Exact initiative name, or an initiative UUID.',
   CycleReference: 'Exact cycle name, or a cycle UUID.',
   MilestoneReference: 'Exact milestone name, or a milestone UUID.',
@@ -26,6 +26,7 @@ const REFERENCE_HINTS = {
   '[TeamReference!]': 'One or more exact team keys or team UUIDs.',
   '[UserReference!]': 'One or more exact user references.',
   '[LabelReference!]': 'One or more exact label names or label UUIDs.',
+  NullableProjectReference: 'Exact project name or slug, or a project UUID; null clears it.',
   NullableCycleReference: 'Exact cycle name, or a cycle UUID; null clears it.',
   NullableMilestoneReference: 'Exact milestone name, or a milestone UUID; null clears it.',
   DocumentReference: 'Exact document title, or a document UUID.',
@@ -152,6 +153,7 @@ function schemaFor(type: string): TSchema {
       return Type.Union([Type.String({ minLength: 1 }), Type.Null()], options);
     case 'NullableUserReference':
     case 'NullableIssueReference':
+    case 'NullableProjectReference':
     case 'NullableCycleReference':
     case 'NullableMilestoneReference':
       return Type.Union([Type.String({ minLength: 1 }), Type.Null()], options);

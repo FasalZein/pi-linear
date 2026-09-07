@@ -73,7 +73,7 @@ Use exact loader help to activate an ordinary operation. Then call its typed too
 | `create_project_relation` | `linear_create_project_relation` | relations | type, anchorType, relatedAnchorType | Create a relation between two projects. | `{"project":"project-id","relatedProject":"other-project-id","type":"related","anchorType":"project","relatedAnchorType":"project"}` |
 | `update_project_relation` | `linear_update_project_relation` | relations | id | Update a project relation. | `{"id":"relation-id","type":"related"}` |
 | `list_projects` | `linear_list_projects` | projects | none | List projects. | `{}` |
-| `get_project` | `linear_get_project` | projects | project | Get a project by exact name or UUID. | `{"project":"Platform"}` |
+| `get_project` | `linear_get_project` | projects | project | Get a project by exact name, slug, or UUID. | `{"project":"Platform"}` |
 | `list_teams` | `linear_list_teams` | teams | none | List teams and workflow states. | `{}` |
 | `get_team` | `linear_get_team` | teams | team | Get a team by exact key or UUID. | `{"team":"AEO"}` |
 | `list_users` | `linear_list_users` | users | none | List users. | `{}` |

@@ -11,6 +11,7 @@ type ReferenceRename = {
   resolver?: ReferenceResolver;
   many?: true;
   destination?: 'input' | 'id';
+  preserveCanonical?: true;
 };
 
 export type OperationReferenceRenames = Readonly<Record<string, ReferenceRename>>;
@@ -55,7 +56,11 @@ const REFERENCE_RENAMES = referenceRenameCatalog({
     issueId: { name: 'issue', type: 'UUID' },
     relatedIssueId: { name: 'relatedIssue', type: 'UUID' },
   },
+  list_issues: {
+    projectId: { name: 'project', type: 'ProjectReference' },
+  },
   create_issue: {
+    projectId: { name: 'project', type: 'ProjectReference', preserveCanonical: true },
     projectMilestoneId: { name: 'milestone', type: 'MilestoneReference', resolver: 'projectMilestone', destination: 'input' },
     cycleId: { name: 'cycle', type: 'CycleReference', resolver: 'cycle', destination: 'input' },
     labelIds: { name: 'labels', type: '[LabelReference!]', resolver: 'issueLabel', many: true, destination: 'input' },
@@ -64,6 +69,7 @@ const REFERENCE_RENAMES = referenceRenameCatalog({
   },
   update_issue: {
     teamId: { name: 'team', type: 'TeamReference' },
+    projectId: { name: 'project', type: 'NullableProjectReference', resolver: 'project', destination: 'input' },
     addedLabelIds: { name: 'addLabels', type: '[LabelReference!]', resolver: 'issueLabel', many: true, destination: 'input' },
     removedLabelIds: { name: 'removeLabels', type: '[LabelReference!]', resolver: 'issueLabel', many: true, destination: 'input' },
     projectMilestoneId: { name: 'milestone', type: 'NullableMilestoneReference', resolver: 'projectMilestone', destination: 'input' },
@@ -186,7 +192,7 @@ export function normalizeReferenceArguments(
     if (hasOld && hasNew) {
       throw new Error(`Duplicate ${rename.name} identity: send only "${rename.name}".`);
     }
-    if (!hasNew) continue;
+    if (!hasNew || rename.preserveCanonical) continue;
     normalized[oldName] = variables[rename.name];
     delete normalized[rename.name];
   }

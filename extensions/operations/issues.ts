@@ -228,6 +228,7 @@ export const issues: readonly OperationDefinition[] = ([
 			{ name: "state", canonical: "StateReference", card: { order: 3 }, accepted: { order: 5 } },
 			{ name: "stateType", canonical: "WorkflowStateType", card: { order: 4 }, accepted: { order: 7 } },
 			{ name: "assignee", canonical: "UserReference", card: { order: 5 }, accepted: { order: 8 } },
+			{ name: "projectId", canonical: "UUID", accepted: { order: 18 } },
 			{ name: "sort", canonical: "[IssueSort!]", accepted: { order: 17, type: "[SortInput!]" } },
 			{ name: "after", canonical: "String", accepted: { order: 10 } },
 			{ name: "before", canonical: "String", accepted: { order: 11 } },
@@ -263,6 +264,7 @@ export const issues: readonly OperationDefinition[] = ([
 			team: "resolveTeamReference",
 			state: "resolveStateReference",
 			assignee: "resolveUserReference",
+			projectId: "resolveNamedEntityReference",
 		},
 		validateVariables(variables) {
 			if (variables.issues !== undefined) parseIssueReferenceSet(variables.issues);
@@ -288,10 +290,12 @@ export const issues: readonly OperationDefinition[] = ([
 			const teamRef = v.team ?? v.teamKey ?? v.teamId;
 			const assigneeRef = v.assignee ?? v.assigneeId;
 			const stateReference = v.state ?? v.stateName;
+			const projectRef = v.projectId;
 			const lookups = [
 				...(teamRef ? [teamLookup("team", String(teamRef))] : []),
 				...(assigneeRef ? [userLookup("assignee", String(assigneeRef))] : []),
 				...(stateReference ? [stateLookup("state", String(stateReference), teamRef ? "team" : undefined)] : []),
+				...(projectRef ? [namedEntityLookup("project", "project", String(projectRef))] : []),
 			];
 			return {
 				kind: "query",
@@ -300,6 +304,7 @@ export const issues: readonly OperationDefinition[] = ([
 					const team = resolved.team as { id: string; key: string } | undefined;
 					const assignee = resolved.assignee as { id: string; name?: string } | undefined;
 					const state = resolved.state as { id: string; teamId: string } | undefined;
+					const project = resolved.project as { id: string; name: string } | undefined;
 					if (team && state && state.teamId !== team.id) throw new Error(`Linear state "${String(stateReference)}" does not belong to team "${team.id}".`);
 					const convenience = compactObject({
 						id: issueIds ? { in: issueIds } : undefined,
@@ -307,6 +312,7 @@ export const issues: readonly OperationDefinition[] = ([
 						team: team ? { id: { eq: team.id } } : undefined,
 						state: state ? { id: { eq: state.id } } : v.stateType ? { type: { eq: String(v.stateType) } } : undefined,
 						assignee: assignee ? { id: { eq: assignee.id } } : undefined,
+						project: project ? { id: { eq: project.id } } : undefined,
 					});
 					return {
 						variables: { ...paginationVariables(v, 20), filter: mergeFilters(object(v.filter), convenience), sort: linearSort(v.sort) },
@@ -314,6 +320,7 @@ export const issues: readonly OperationDefinition[] = ([
 							team: team ? { requested: teamRef, resolvedId: team.id, key: team.key } : undefined,
 							assignee: assignee ? { requested: assigneeRef, resolvedId: assignee.id, name: assignee.name } : undefined,
 							state: state ? { requested: stateReference, resolvedId: state.id } : undefined,
+							project: project ? { requested: projectRef, resolvedId: project.id, name: project.name } : undefined,
 						}),
 					};
 				},
@@ -455,6 +462,8 @@ export const issues: readonly OperationDefinition[] = ([
 			stateId: "resolveStateReference",
 			assignee: "resolveUserReference",
 			assigneeId: "resolveUserReference",
+			project: "resolveNamedEntityReference",
+			projectId: "resolveNamedEntityReference",
 		},
 		plan: createIssuePlan,
 	}),

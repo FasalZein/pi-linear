@@ -1,4 +1,3 @@
-import { isLinearUrlSlug } from "../client";
 import { namedEntityLookup, pureQueryPlan } from "../operation-plan";
 import { projection } from "../selections";
 import type {
@@ -63,14 +62,14 @@ export const projectReads: readonly OperationDefinition[] = ([
 	}),
 						aliases: [],
 		domain: "projects",
-		purpose: "Get a project by exact name or UUID.",
+		purpose: "Get a project by exact name, slug, or UUID.",
 						example: { operation: "get_project", variables: { project: "Platform" } },
 		document: getDocument("GetProject", "project", projection("project", "detail")),
 		resolverPaths: { project: "resolveNamedEntityReference" },
 		plan(v) {
 			const requested = String(v.project ?? v.projectId);
 			const reference = requested.trim();
-			if (isUuid(reference) || isLinearUrlSlug(reference)) {
+			if (isUuid(reference)) {
 				return pureQueryPlan({
 					variables: { id: reference },
 					exactNamed: { requested: reference, path: "project", kind: "project" },
