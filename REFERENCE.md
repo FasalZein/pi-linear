@@ -44,7 +44,7 @@ Use exact loader help to activate an ordinary operation. Then call its typed too
 | `list_cycles` | `linear_list_cycles` | cycles | none | List cycles. | `{}` |
 | `get_cycle` | `linear_get_cycle` | cycles | cycle | Get a cycle by exact name or UUID. | `{"cycle":"Cycle 12"}` |
 | `create_cycle` | `linear_create_cycle` | cycles | team, startsAt, endsAt | Create a cycle. | `{"team":"AEO","startsAt":"2026-08-17","endsAt":"2026-08-31"}` |
-| `update_cycle` | `linear_update_cycle` | cycles | id | Update a cycle. | `{"id":"cycle-id","name":"Cycle 12"}` |
+| `update_cycle` | `linear_update_cycle` | cycles | none | Update a cycle. | `{"cycle":"cycle-id","name":"Cycle 12"}` |
 | `list_documents` | `linear_list_documents` | documents | none | List documents. | `{}` |
 | `get_document` | `linear_get_document` | documents | document | Get a document by exact title or UUID. | `{"document":"Planning notes"}` |
 | `create_document` | `linear_create_document` | documents | title | Create a document. | `{"title":"Planning notes","content":"Notes"}` |
@@ -53,11 +53,11 @@ Use exact loader help to activate an ordinary operation. Then call its typed too
 | `get_initiative` | `linear_get_initiative` | initiatives | initiative | Get an initiative by exact name or UUID. | `{"initiative":"Platform"}` |
 | `list_issue_labels` | `linear_list_issue_labels` | labels | none | List issue labels. | `{}` |
 | `create_issue_label` | `linear_create_issue_label` | labels | name | Create an issue label. | `{"name":"needs-review","color":"#ff0000"}` |
-| `update_issue_label` | `linear_update_issue_label` | labels | id | Update an issue label. | `{"id":"label-id","name":"review"}` |
+| `update_issue_label` | `linear_update_issue_label` | labels | none | Update an issue label. | `{"label":"label-id","name":"review"}` |
 | `list_issue_relations` | `linear_list_issue_relations` | relations | none | List issue relations. | `{}` |
 | `create_issue_relation` | `linear_create_issue_relation` | relations | issue, relatedIssue, type | Create a relation between two issues. | `{"issue":"AEO-258","relatedIssue":"AEO-259","type":"related"}` |
 | `update_issue_relation` | `linear_update_issue_relation` | relations | id | Update an issue relation. | `{"id":"relation-id","type":"blocks"}` |
-| `delete_issue_relation` | `linear_delete_issue_relation` | relations | relationId, issueId, relatedIssueId, type | Delete one issue relation after exact relation and endpoint verification. | `{"relationId":"33333333-3333-4333-8333-333333333333","issueId":"11111111-1111-4111-8111-111111111111","relatedIssueId":"22222222-2222-4222-8222-222222222222","type":"related"}` |
+| `delete_issue_relation` | `linear_delete_issue_relation` | relations | relationId, type | Delete one issue relation after exact relation and endpoint verification. | `{"relationId":"33333333-3333-4333-8333-333333333333","issue":"11111111-1111-4111-8111-111111111111","relatedIssue":"22222222-2222-4222-8222-222222222222","type":"related"}` |
 | `list_issue_statuses` | `linear_list_issue_statuses` | workspace | none | List issue workflow states. | `{}` |
 | `list_issues` | `linear_list_issues` | issues | none | List issues with exact convenience filters. | `{"assignee":"me","stateType":"started"}` |
 | `get_issue` | `linear_get_issue` | issues | issue | Get one issue by exact identifier or UUID. | `{"issue":"AEO-258"}` |
@@ -68,9 +68,9 @@ Use exact loader help to activate an ordinary operation. Then call its typed too
 | `get_milestone` | `linear_get_milestone` | milestones | milestone | Get a milestone by exact name or UUID. | `{"milestone":"Beta"}` |
 | `list_project_labels` | `linear_list_project_labels` | labels | none | List project labels. | `{}` |
 | `create_project_label` | `linear_create_project_label` | labels | name | Create a project label. | `{"name":"Strategic"}` |
-| `update_project_label` | `linear_update_project_label` | labels | id | Update a project label. | `{"id":"label-id","name":"Strategy"}` |
+| `update_project_label` | `linear_update_project_label` | labels | none | Update a project label. | `{"label":"label-id","name":"Strategy"}` |
 | `list_project_relations` | `linear_list_project_relations` | relations | none | List project relations. | `{}` |
-| `create_project_relation` | `linear_create_project_relation` | relations | projectId, relatedProjectId, type, anchorType, relatedAnchorType | Create a relation between two projects. | `{"projectId":"project-id","relatedProjectId":"other-project-id","type":"related","anchorType":"project","relatedAnchorType":"project"}` |
+| `create_project_relation` | `linear_create_project_relation` | relations | type, anchorType, relatedAnchorType | Create a relation between two projects. | `{"project":"project-id","relatedProject":"other-project-id","type":"related","anchorType":"project","relatedAnchorType":"project"}` |
 | `update_project_relation` | `linear_update_project_relation` | relations | id | Update a project relation. | `{"id":"relation-id","type":"related"}` |
 | `list_projects` | `linear_list_projects` | projects | none | List projects. | `{}` |
 | `get_project` | `linear_get_project` | projects | project | Get a project by exact name or UUID. | `{"project":"Platform"}` |
@@ -80,8 +80,8 @@ Use exact loader help to activate an ordinary operation. Then call its typed too
 | `get_user` | `linear_get_user` | users | user | Get a user by me, UUID, email, name, or display name. | `{"user":"me"}` |
 | `switch_workspace` | `linear_switch_workspace` | workspace | name | Switch the active stored workspace without exposing credentials. | `{"name":"work"}` |
 | `save_initiative` | `linear_save_initiative` | initiatives | none | Create or update an initiative. | `{"name":"Platform"}` |
-| `save_milestone` | `linear_save_milestone` | milestones | none | Create or update a milestone. | `{"name":"Beta","projectId":"project-id"}` |
-| `save_project` | `linear_save_project` | projects | none | Create or update a project. | `{"name":"Platform","teamIds":["team-id"]}` |
+| `save_milestone` | `linear_save_milestone` | milestones | none | Create or update a milestone. | `{"name":"Beta","project":"project-id"}` |
+| `save_project` | `linear_save_project` | projects | none | Create or update a project. | `{"name":"Platform","teams":["team-id"]}` |
 
 ### Exact help and typed call
 

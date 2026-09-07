@@ -14,6 +14,14 @@ import type {
 } from './operation-types';
 import { isCompatibilityObject } from './operation-types';
 import { requireJsonObject, type JsonValue } from './json';
+import {
+  canonicalReferenceExample,
+  canonicalReferenceResolverPaths,
+  expandReferenceContract,
+  normalizeReferenceArguments,
+  operationReferenceRenames,
+  resolveCanonicalReferences,
+} from './reference-language';
 
 /** The seam where transport-supplied variables become parsed compatibility JSON. */
 function operationVariables(name: string, variables: JsonValue | undefined): CompatibilityObject {
@@ -148,7 +156,11 @@ function assignOptional<T extends object, K extends keyof T>(
 
 
 function parseThenPlan(name: string, plan: ParsedOperationPlanFactory): OperationPlanFactory {
-  return async (variables) => plan(operationVariables(name, variables));
+  return async (variables) => {
+    const parsed = operationVariables(name, variables);
+    const planned = await plan(normalizeReferenceArguments(name, parsed));
+    return resolveCanonicalReferences(name, parsed, planned);
+  };
 }
 
 /** Project the runtime definition from one authored source operation. */
@@ -181,9 +193,10 @@ export function defineOperation(operation: OperationSource): OperationDefinition
   if ((action === 'list' || action === 'search') && !renderEmpty) {
     throw new Error(`Missing render empty state for "${operation.name}".`);
   }
-  const renderTargetFields = operation.renderTargetFields;
+  const renames = operationReferenceRenames(operation.name);
+  const renderTargetFields = operation.renderTargetFields?.map((field) => renames[field]?.name ?? field);
   const requiresVariables = !branches.some((branch) => requirementBranchMatches(branch, {}));
-  const canonical = operation.canonical;
+  const canonical = expandReferenceContract(operation.name, operation.canonical);
   const canonicalFields = Object.entries(canonical.fields).map(([name, type]) => ({
     name,
     type,
@@ -202,7 +215,11 @@ export function defineOperation(operation: OperationSource): OperationDefinition
   assignOptional(compatibility, 'aliasFields', operation.aliasParameters);
   assignOptional(compatibility, 'inventoryDocuments', operation.inventoryDocuments);
   assignOptional(compatibility, 'pagination', operation.pagination);
-  assignOptional(compatibility, 'resolverPaths', operation.resolverPaths);
+  assignOptional(
+    compatibility,
+    'resolverPaths',
+    canonicalReferenceResolverPaths(operation.name, operation.resolverPaths ?? {}),
+  );
   if (requiresVariables) compatibility.requiresVariables = true;
   if (operation.validateVariables) {
     compatibility.semanticException = operation.semanticException
@@ -214,7 +231,10 @@ export function defineOperation(operation: OperationSource): OperationDefinition
   assignOptional(compatibility, 'localResult', operation.localResult);
 
   const canonicalBranches = canonical.branches.map((all) => ({ all }));
-  const canonicalExample = operation.canonicalExample ?? operation.example.variables;
+  const canonicalExample = canonicalReferenceExample(
+    operation.name,
+    operation.canonicalExample ?? operation.example.variables,
+  );
   const canonicalVariants = canonical.variants?.map((variant) => ({
     fields: variant.fields,
     branches: variant.branches.map((all) => ({ all })),
@@ -259,7 +279,7 @@ export function defineOperation(operation: OperationSource): OperationDefinition
     kind,
     compatibility,
     preparation: {
-      resolverPaths: operation.resolverPaths ?? {},
+      resolverPaths: canonicalReferenceResolverPaths(operation.name, operation.resolverPaths ?? {}),
     },
     safety: {
       namedInputPolicy: operation.namedInputPolicy ?? 'non-destructive',
@@ -336,7 +356,7 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
     validateVariables(variables: JsonValue | undefined) {
       const parsed = operationVariables(definition.name, variables);
       assertProjectedBranches(definition, parsed);
-      compatibility.semanticValidateVariables?.(parsed);
+      compatibility.semanticValidateVariables?.(normalizeReferenceArguments(definition.name, parsed));
     },
   };
   assignOptional(operation, 'acceptedParameters', compatibility.acceptedFields);
@@ -351,8 +371,10 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
     operation.plan = async (variables: JsonValue | undefined) => {
       const parsed = operationVariables(definition.name, variables);
       assertProjectedBranches(definition, parsed);
-      compatibility.semanticValidateVariables?.(parsed);
-      return compatibility.plan!(parsed);
+      const normalized = normalizeReferenceArguments(definition.name, parsed);
+      compatibility.semanticValidateVariables?.(normalized);
+      const plan = await compatibility.plan!(normalized);
+      return resolveCanonicalReferences(definition.name, parsed, plan);
     };
   }
   assignOptional(operation, 'localResult', compatibility.localResult);
@@ -360,8 +382,9 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
     operation.executeLocal = async (variables, ctx, mode) => {
       const parsed = operationVariables(definition.name, variables);
       assertProjectedBranches(definition, parsed);
-      compatibility.semanticValidateVariables?.(parsed);
-      return compatibility.executeLocal!(parsed, ctx, mode);
+      const normalized = normalizeReferenceArguments(definition.name, parsed);
+      compatibility.semanticValidateVariables?.(normalized);
+      return compatibility.executeLocal!(normalized, ctx, mode);
     };
   }
   projections.set(definition, operation);

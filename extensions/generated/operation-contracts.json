@@ -263,9 +263,19 @@
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
+          "project": {
+            "type": "string",
+            "description": "Exact project name, or a project UUID.",
+            "minLength": 1
+          },
           "initiativeId": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "initiative": {
+            "type": "string",
+            "description": "Exact initiative name, or an initiative UUID.",
+            "minLength": 1
           },
           "projectUpdateId": {
             "type": "string",
@@ -340,7 +350,19 @@
           },
           {
             "required": [
+              "project",
+              "body"
+            ]
+          },
+          {
+            "required": [
               "projectId",
+              "bodyData"
+            ]
+          },
+          {
+            "required": [
+              "project",
               "bodyData"
             ]
           },
@@ -352,7 +374,19 @@
           },
           {
             "required": [
+              "initiative",
+              "body"
+            ]
+          },
+          {
+            "required": [
               "initiativeId",
+              "bodyData"
+            ]
+          },
+          {
+            "required": [
+              "initiative",
               "bodyData"
             ]
           },
@@ -424,7 +458,7 @@
     "purpose": "Create a comment on an issue or another supported target.",
     "kind": "mutation",
     "help": {
-      "signature": "create_comment(issue?: IssueReference, projectId?: UUID, initiativeId?: UUID, projectUpdateId?: UUID, initiativeUpdateId?: UUID, postId?: UUID, documentContentId?: UUID, parentId?: UUID, body?: String, bodyData?: JsonObject, quotedText?: String, doNotSubscribeToIssue?: Boolean, createOnSyncedSlackThread?: Boolean, createdAt?: DateTime, id?: UUID)",
+      "signature": "create_comment(issue?: IssueReference, projectId?: UUID, project?: ProjectReference, initiativeId?: UUID, initiative?: InitiativeReference, projectUpdateId?: UUID, initiativeUpdateId?: UUID, postId?: UUID, documentContentId?: UUID, parentId?: UUID, body?: String, bodyData?: JsonObject, quotedText?: String, doNotSubscribeToIssue?: Boolean, createOnSyncedSlackThread?: Boolean, createdAt?: DateTime, id?: UUID)",
       "exact": true,
       "example": {
         "operation": "create_comment",
@@ -436,7 +470,9 @@
       "callFields": [
         "issue",
         "projectId",
+        "project",
         "initiativeId",
+        "initiative",
         "projectUpdateId",
         "initiativeUpdateId",
         "postId",
@@ -636,7 +672,9 @@
       "pagination": null,
       "resolverPaths": {
         "issue": "resolveIssueReference",
-        "issueId": "resolveIssueReference"
+        "issueId": "resolveIssueReference",
+        "project": "resolveProjectReference",
+        "initiative": "resolveInitiativeReference"
       },
       "requiresVariables": true,
       "semanticException": "comment-value-types"
@@ -660,7 +698,9 @@
     "preparation": {
       "resolverPaths": {
         "issue": "resolveIssueReference",
-        "issueId": "resolveIssueReference"
+        "issueId": "resolveIssueReference",
+        "project": "resolveProjectReference",
+        "initiative": "resolveInitiativeReference"
       }
     },
     "safety": {
@@ -680,8 +720,18 @@
           "required": false
         },
         {
+          "name": "project",
+          "type": "ProjectReference",
+          "required": false
+        },
+        {
           "name": "initiativeId",
           "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "initiative",
+          "type": "InitiativeReference",
           "required": false
         },
         {
@@ -766,7 +816,19 @@
         },
         {
           "all": [
+            "project",
+            "body"
+          ]
+        },
+        {
+          "all": [
             "projectId",
+            "bodyData"
+          ]
+        },
+        {
+          "all": [
+            "project",
             "bodyData"
           ]
         },
@@ -778,7 +840,19 @@
         },
         {
           "all": [
+            "initiative",
+            "body"
+          ]
+        },
+        {
+          "all": [
             "initiativeId",
+            "bodyData"
+          ]
+        },
+        {
+          "all": [
+            "initiative",
             "bodyData"
           ]
         },
@@ -862,7 +936,9 @@
       "callFields": [
         "issue",
         "projectId",
+        "project",
         "initiativeId",
+        "initiative",
         "projectUpdateId",
         "initiativeUpdateId",
         "postId",
@@ -879,8 +955,8 @@
       "action": "create",
       "targetFields": [
         "issue",
-        "projectId",
-        "initiativeId",
+        "project",
+        "initiative",
         "projectUpdateId",
         "initiativeUpdateId",
         "postId",
@@ -3163,6 +3239,11 @@
             "type": "string",
             "minLength": 1
           },
+          "cycle": {
+            "type": "string",
+            "description": "Exact cycle name, or a cycle UUID.",
+            "minLength": 1
+          },
           "name": {
             "type": "string",
             "minLength": 1
@@ -3197,7 +3278,19 @@
           },
           {
             "required": [
+              "cycle",
+              "name"
+            ]
+          },
+          {
+            "required": [
               "id",
+              "description"
+            ]
+          },
+          {
+            "required": [
+              "cycle",
               "description"
             ]
           },
@@ -3209,13 +3302,31 @@
           },
           {
             "required": [
+              "cycle",
+              "startsAt"
+            ]
+          },
+          {
+            "required": [
               "id",
               "endsAt"
             ]
           },
           {
             "required": [
+              "cycle",
+              "endsAt"
+            ]
+          },
+          {
+            "required": [
               "id",
+              "completedAt"
+            ]
+          },
+          {
+            "required": [
+              "cycle",
               "completedAt"
             ]
           }
@@ -3226,17 +3337,18 @@
     "purpose": "Update a cycle.",
     "kind": "mutation",
     "help": {
-      "signature": "update_cycle(id: String, name?: String, description?: String, startsAt?: DateTime, endsAt?: DateTime, completedAt?: DateTime)",
+      "signature": "update_cycle(id?: String, cycle?: CycleReference, name?: String, description?: String, startsAt?: DateTime, endsAt?: DateTime, completedAt?: DateTime)",
       "exact": true,
       "example": {
         "operation": "update_cycle",
         "variables": {
-          "id": "cycle-id",
+          "cycle": "cycle-id",
           "name": "Cycle 12"
         }
       },
       "callFields": [
         "id",
+        "cycle",
         "name",
         "description",
         "startsAt",
@@ -3297,7 +3409,9 @@
       },
       "document": "mutation UpdateCycle($id: String! $input: CycleUpdateInput!) {\n    cycleUpdate(id: $id, input: $input) { success cycle { \n  id name number description startsAt endsAt completedAt archivedAt autoArchivedAt isActive isFuture\n  isPast isNext isPrevious progress createdAt updatedAt team { id key name }\n } }\n  }",
       "pagination": null,
-      "resolverPaths": {},
+      "resolverPaths": {
+        "cycle": "resolveCycleReference"
+      },
       "requiresVariables": true,
       "semanticException": null
     },
@@ -3318,7 +3432,9 @@
       ]
     },
     "preparation": {
-      "resolverPaths": {}
+      "resolverPaths": {
+        "cycle": "resolveCycleReference"
+      }
     },
     "safety": {
       "namedInputPolicy": "non-destructive",
@@ -3329,7 +3445,12 @@
         {
           "name": "id",
           "type": "String",
-          "required": true
+          "required": false
+        },
+        {
+          "name": "cycle",
+          "type": "CycleReference",
+          "required": false
         },
         {
           "name": "name",
@@ -3366,7 +3487,19 @@
         },
         {
           "all": [
+            "cycle",
+            "name"
+          ]
+        },
+        {
+          "all": [
             "id",
+            "description"
+          ]
+        },
+        {
+          "all": [
+            "cycle",
             "description"
           ]
         },
@@ -3378,7 +3511,19 @@
         },
         {
           "all": [
+            "cycle",
+            "startsAt"
+          ]
+        },
+        {
+          "all": [
             "id",
+            "endsAt"
+          ]
+        },
+        {
+          "all": [
+            "cycle",
             "endsAt"
           ]
         },
@@ -3387,11 +3532,17 @@
             "id",
             "completedAt"
           ]
+        },
+        {
+          "all": [
+            "cycle",
+            "completedAt"
+          ]
         }
       ],
       "strictRawArguments": true,
       "example": {
-        "id": "cycle-id",
+        "cycle": "cycle-id",
         "name": "Cycle 12"
       }
     },
@@ -3406,6 +3557,7 @@
       "entityKind": "cycle",
       "callFields": [
         "id",
+        "cycle",
         "name",
         "description",
         "startsAt",
@@ -3889,7 +4041,17 @@
             "description": "Issue identifier such as ABC-123, or an issue UUID.",
             "minLength": 1
           },
+          "issue": {
+            "type": "string",
+            "description": "Issue identifier such as ABC-123, or an issue UUID.",
+            "minLength": 1
+          },
           "teamId": {
+            "type": "string",
+            "description": "Team key such as ABC, or a team UUID.",
+            "minLength": 1
+          },
+          "team": {
             "type": "string",
             "description": "Team key such as ABC, or a team UUID.",
             "minLength": 1
@@ -3898,13 +4060,28 @@
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
+          "project": {
+            "type": "string",
+            "description": "Exact project name, or a project UUID.",
+            "minLength": 1
+          },
           "initiativeId": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
+          "initiative": {
+            "type": "string",
+            "description": "Exact initiative name, or an initiative UUID.",
+            "minLength": 1
+          },
           "cycleId": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "cycle": {
+            "type": "string",
+            "description": "Exact cycle name, or a cycle UUID.",
+            "minLength": 1
           },
           "releaseId": {
             "type": "string",
@@ -3922,12 +4099,26 @@
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
+          "owner": {
+            "type": "string",
+            "description": "User email, exact name, display name, \"me\", or a user UUID.",
+            "minLength": 1
+          },
           "subscriberIds": {
             "type": "array",
             "items": {
               "type": "string",
               "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
+            "minItems": 1
+          },
+          "subscribers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "One or more exact user references.",
             "minItems": 1
           },
           "sortOrder": {
@@ -3948,7 +4139,7 @@
     "purpose": "Create a document.",
     "kind": "mutation",
     "help": {
-      "signature": "create_document(title: String, content?: String, icon?: String, color?: Color, issueId?: IssueReference, teamId?: TeamReference, projectId?: UUID, initiativeId?: UUID, cycleId?: UUID, releaseId?: UUID, resourceFolderId?: UUID, lastAppliedTemplateId?: UUID, ownerId?: UUID, subscriberIds?: [UUID!], sortOrder?: Float, id?: UUID)",
+      "signature": "create_document(title: String, content?: String, icon?: String, color?: Color, issueId?: IssueReference, issue?: IssueReference, teamId?: TeamReference, team?: TeamReference, projectId?: UUID, project?: ProjectReference, initiativeId?: UUID, initiative?: InitiativeReference, cycleId?: UUID, cycle?: CycleReference, releaseId?: UUID, resourceFolderId?: UUID, lastAppliedTemplateId?: UUID, ownerId?: UUID, owner?: UserReference, subscriberIds?: [UUID!], subscribers?: [UserReference!], sortOrder?: Float, id?: UUID)",
       "exact": true,
       "example": {
         "operation": "create_document",
@@ -3963,15 +4154,22 @@
         "icon",
         "color",
         "issueId",
+        "issue",
         "teamId",
+        "team",
         "projectId",
+        "project",
         "initiativeId",
+        "initiative",
         "cycleId",
+        "cycle",
         "releaseId",
         "resourceFolderId",
         "lastAppliedTemplateId",
         "ownerId",
+        "owner",
         "subscriberIds",
+        "subscribers",
         "sortOrder",
         "id"
       ]
@@ -4113,7 +4311,14 @@
       "resolverPaths": {
         "issueId": "resolveIssueReference",
         "teamKey": "resolveTeamReference",
-        "teamId": "resolveTeamReference"
+        "teamId": "resolveTeamReference",
+        "issue": "resolveIssueReference",
+        "team": "resolveTeamReference",
+        "project": "resolveProjectReference",
+        "initiative": "resolveInitiativeReference",
+        "cycle": "resolveCycleReference",
+        "owner": "resolveUserReference",
+        "subscribers": "resolveUserReference"
       },
       "requiresVariables": true,
       "semanticException": "nested-title-type"
@@ -4138,7 +4343,14 @@
       "resolverPaths": {
         "issueId": "resolveIssueReference",
         "teamKey": "resolveTeamReference",
-        "teamId": "resolveTeamReference"
+        "teamId": "resolveTeamReference",
+        "issue": "resolveIssueReference",
+        "team": "resolveTeamReference",
+        "project": "resolveProjectReference",
+        "initiative": "resolveInitiativeReference",
+        "cycle": "resolveCycleReference",
+        "owner": "resolveUserReference",
+        "subscribers": "resolveUserReference"
       }
     },
     "safety": {
@@ -4173,7 +4385,17 @@
           "required": false
         },
         {
+          "name": "issue",
+          "type": "IssueReference",
+          "required": false
+        },
+        {
           "name": "teamId",
+          "type": "TeamReference",
+          "required": false
+        },
+        {
+          "name": "team",
           "type": "TeamReference",
           "required": false
         },
@@ -4183,13 +4405,28 @@
           "required": false
         },
         {
+          "name": "project",
+          "type": "ProjectReference",
+          "required": false
+        },
+        {
           "name": "initiativeId",
           "type": "UUID",
           "required": false
         },
         {
+          "name": "initiative",
+          "type": "InitiativeReference",
+          "required": false
+        },
+        {
           "name": "cycleId",
           "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "cycle",
+          "type": "CycleReference",
           "required": false
         },
         {
@@ -4213,8 +4450,18 @@
           "required": false
         },
         {
+          "name": "owner",
+          "type": "UserReference",
+          "required": false
+        },
+        {
           "name": "subscriberIds",
           "type": "[UUID!]",
+          "required": false
+        },
+        {
+          "name": "subscribers",
+          "type": "[UserReference!]",
           "required": false
         },
         {
@@ -4256,15 +4503,22 @@
         "icon",
         "color",
         "issueId",
+        "issue",
         "teamId",
+        "team",
         "projectId",
+        "project",
         "initiativeId",
+        "initiative",
         "cycleId",
+        "cycle",
         "releaseId",
         "resourceFolderId",
         "lastAppliedTemplateId",
         "ownerId",
+        "owner",
         "subscriberIds",
+        "subscribers",
         "sortOrder",
         "id"
       ],
@@ -4307,7 +4561,17 @@
             "description": "Issue identifier such as ABC-123, or an issue UUID.",
             "minLength": 1
           },
+          "issue": {
+            "type": "string",
+            "description": "Issue identifier such as ABC-123, or an issue UUID.",
+            "minLength": 1
+          },
           "teamId": {
+            "type": "string",
+            "description": "Team key such as ABC, or a team UUID.",
+            "minLength": 1
+          },
+          "team": {
             "type": "string",
             "description": "Team key such as ABC, or a team UUID.",
             "minLength": 1
@@ -4316,13 +4580,28 @@
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
+          "project": {
+            "type": "string",
+            "description": "Exact project name, or a project UUID.",
+            "minLength": 1
+          },
           "initiativeId": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
+          "initiative": {
+            "type": "string",
+            "description": "Exact initiative name, or an initiative UUID.",
+            "minLength": 1
+          },
           "cycleId": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "cycle": {
+            "type": "string",
+            "description": "Exact cycle name, or a cycle UUID.",
+            "minLength": 1
           },
           "releaseId": {
             "type": "string",
@@ -4340,12 +4619,26 @@
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
+          "owner": {
+            "type": "string",
+            "description": "User email, exact name, display name, \"me\", or a user UUID.",
+            "minLength": 1
+          },
           "subscriberIds": {
             "type": "array",
             "items": {
               "type": "string",
               "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
+            "minItems": 1
+          },
+          "subscribers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "One or more exact user references.",
             "minItems": 1
           },
           "sortOrder": {
@@ -4399,7 +4692,19 @@
           {
             "required": [
               "document",
+              "issue"
+            ]
+          },
+          {
+            "required": [
+              "document",
               "teamId"
+            ]
+          },
+          {
+            "required": [
+              "document",
+              "team"
             ]
           },
           {
@@ -4411,13 +4716,31 @@
           {
             "required": [
               "document",
+              "project"
+            ]
+          },
+          {
+            "required": [
+              "document",
               "initiativeId"
             ]
           },
           {
             "required": [
               "document",
+              "initiative"
+            ]
+          },
+          {
+            "required": [
+              "document",
               "cycleId"
+            ]
+          },
+          {
+            "required": [
+              "document",
+              "cycle"
             ]
           },
           {
@@ -4447,7 +4770,19 @@
           {
             "required": [
               "document",
+              "owner"
+            ]
+          },
+          {
+            "required": [
+              "document",
               "subscriberIds"
+            ]
+          },
+          {
+            "required": [
+              "document",
+              "subscribers"
             ]
           },
           {
@@ -4469,7 +4804,7 @@
     "purpose": "Update a document.",
     "kind": "mutation",
     "help": {
-      "signature": "update_document(document: DocumentReference, title?: String, content?: String, icon?: String, color?: Color, issueId?: IssueReference, teamId?: TeamReference, projectId?: UUID, initiativeId?: UUID, cycleId?: UUID, releaseId?: UUID, resourceFolderId?: UUID, lastAppliedTemplateId?: UUID, ownerId?: UUID, subscriberIds?: [UUID!], sortOrder?: Float, hiddenAt?: NullableDateTime)",
+      "signature": "update_document(document: DocumentReference, title?: String, content?: String, icon?: String, color?: Color, issueId?: IssueReference, issue?: IssueReference, teamId?: TeamReference, team?: TeamReference, projectId?: UUID, project?: ProjectReference, initiativeId?: UUID, initiative?: InitiativeReference, cycleId?: UUID, cycle?: CycleReference, releaseId?: UUID, resourceFolderId?: UUID, lastAppliedTemplateId?: UUID, ownerId?: UUID, owner?: UserReference, subscriberIds?: [UUID!], subscribers?: [UserReference!], sortOrder?: Float, hiddenAt?: NullableDateTime)",
       "exact": true,
       "example": {
         "operation": "update_document",
@@ -4485,15 +4820,22 @@
         "icon",
         "color",
         "issueId",
+        "issue",
         "teamId",
+        "team",
         "projectId",
+        "project",
         "initiativeId",
+        "initiative",
         "cycleId",
+        "cycle",
         "releaseId",
         "resourceFolderId",
         "lastAppliedTemplateId",
         "ownerId",
+        "owner",
         "subscriberIds",
+        "subscribers",
         "sortOrder",
         "hiddenAt"
       ]
@@ -4636,7 +4978,14 @@
         "documentId": "resolveDocumentReference",
         "issueId": "resolveIssueReference",
         "teamKey": "resolveTeamReference",
-        "teamId": "resolveTeamReference"
+        "teamId": "resolveTeamReference",
+        "issue": "resolveIssueReference",
+        "team": "resolveTeamReference",
+        "project": "resolveProjectReference",
+        "initiative": "resolveInitiativeReference",
+        "cycle": "resolveCycleReference",
+        "owner": "resolveUserReference",
+        "subscribers": "resolveUserReference"
       },
       "requiresVariables": true,
       "semanticException": null
@@ -4662,7 +5011,14 @@
         "documentId": "resolveDocumentReference",
         "issueId": "resolveIssueReference",
         "teamKey": "resolveTeamReference",
-        "teamId": "resolveTeamReference"
+        "teamId": "resolveTeamReference",
+        "issue": "resolveIssueReference",
+        "team": "resolveTeamReference",
+        "project": "resolveProjectReference",
+        "initiative": "resolveInitiativeReference",
+        "cycle": "resolveCycleReference",
+        "owner": "resolveUserReference",
+        "subscribers": "resolveUserReference"
       }
     },
     "safety": {
@@ -4702,7 +5058,17 @@
           "required": false
         },
         {
+          "name": "issue",
+          "type": "IssueReference",
+          "required": false
+        },
+        {
           "name": "teamId",
+          "type": "TeamReference",
+          "required": false
+        },
+        {
+          "name": "team",
           "type": "TeamReference",
           "required": false
         },
@@ -4712,13 +5078,28 @@
           "required": false
         },
         {
+          "name": "project",
+          "type": "ProjectReference",
+          "required": false
+        },
+        {
           "name": "initiativeId",
           "type": "UUID",
           "required": false
         },
         {
+          "name": "initiative",
+          "type": "InitiativeReference",
+          "required": false
+        },
+        {
           "name": "cycleId",
           "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "cycle",
+          "type": "CycleReference",
           "required": false
         },
         {
@@ -4742,8 +5123,18 @@
           "required": false
         },
         {
+          "name": "owner",
+          "type": "UserReference",
+          "required": false
+        },
+        {
           "name": "subscriberIds",
           "type": "[UUID!]",
+          "required": false
+        },
+        {
+          "name": "subscribers",
+          "type": "[UserReference!]",
           "required": false
         },
         {
@@ -4791,7 +5182,19 @@
         {
           "all": [
             "document",
+            "issue"
+          ]
+        },
+        {
+          "all": [
+            "document",
             "teamId"
+          ]
+        },
+        {
+          "all": [
+            "document",
+            "team"
           ]
         },
         {
@@ -4803,13 +5206,31 @@
         {
           "all": [
             "document",
+            "project"
+          ]
+        },
+        {
+          "all": [
+            "document",
             "initiativeId"
           ]
         },
         {
           "all": [
             "document",
+            "initiative"
+          ]
+        },
+        {
+          "all": [
+            "document",
             "cycleId"
+          ]
+        },
+        {
+          "all": [
+            "document",
+            "cycle"
           ]
         },
         {
@@ -4839,7 +5260,19 @@
         {
           "all": [
             "document",
+            "owner"
+          ]
+        },
+        {
+          "all": [
+            "document",
             "subscriberIds"
+          ]
+        },
+        {
+          "all": [
+            "document",
+            "subscribers"
           ]
         },
         {
@@ -4877,15 +5310,22 @@
         "icon",
         "color",
         "issueId",
+        "issue",
         "teamId",
+        "team",
         "projectId",
+        "project",
         "initiativeId",
+        "initiative",
         "cycleId",
+        "cycle",
         "releaseId",
         "resourceFolderId",
         "lastAppliedTemplateId",
         "ownerId",
+        "owner",
         "subscriberIds",
+        "subscribers",
         "sortOrder",
         "hiddenAt"
       ],
@@ -5910,6 +6350,11 @@
             "type": "string",
             "minLength": 1
           },
+          "label": {
+            "type": "string",
+            "description": "Exact label name, or a label UUID.",
+            "minLength": 1
+          },
           "name": {
             "type": "string",
             "minLength": 1
@@ -5956,7 +6401,19 @@
           },
           {
             "required": [
+              "label",
+              "name"
+            ]
+          },
+          {
+            "required": [
               "id",
+              "description"
+            ]
+          },
+          {
+            "required": [
+              "label",
               "description"
             ]
           },
@@ -5968,7 +6425,19 @@
           },
           {
             "required": [
+              "label",
+              "color"
+            ]
+          },
+          {
+            "required": [
               "id",
+              "isGroup"
+            ]
+          },
+          {
+            "required": [
+              "label",
               "isGroup"
             ]
           },
@@ -5980,13 +6449,31 @@
           },
           {
             "required": [
+              "label",
+              "parentId"
+            ]
+          },
+          {
+            "required": [
               "id",
               "retiredAt"
             ]
           },
           {
             "required": [
+              "label",
+              "retiredAt"
+            ]
+          },
+          {
+            "required": [
               "id",
+              "replaceTeamLabels"
+            ]
+          },
+          {
+            "required": [
+              "label",
               "replaceTeamLabels"
             ]
           }
@@ -5997,17 +6484,18 @@
     "purpose": "Update an issue label.",
     "kind": "mutation",
     "help": {
-      "signature": "update_issue_label(id: String, name?: String, description?: String, color?: Color, isGroup?: Boolean, parentId?: UUID, retiredAt?: NullableDateTime, replaceTeamLabels?: Boolean)",
+      "signature": "update_issue_label(id?: String, label?: LabelReference, name?: String, description?: String, color?: Color, isGroup?: Boolean, parentId?: UUID, retiredAt?: NullableDateTime, replaceTeamLabels?: Boolean)",
       "exact": true,
       "example": {
         "operation": "update_issue_label",
         "variables": {
-          "id": "label-id",
+          "label": "label-id",
           "name": "review"
         }
       },
       "callFields": [
         "id",
+        "label",
         "name",
         "description",
         "color",
@@ -6096,7 +6584,9 @@
       },
       "document": "mutation UpdateIssueLabel($id: String!, $input: IssueLabelUpdateInput!, $replaceTeamLabels: Boolean) {\n  issueLabelUpdate(id: $id, input: $input, replaceTeamLabels: $replaceTeamLabels) {\n    success\n    issueLabel { \n  id name description color isGroup createdAt updatedAt retiredAt\n  team { id key name } parent { id name }\n }\n  }\n}",
       "pagination": null,
-      "resolverPaths": {},
+      "resolverPaths": {
+        "label": "resolveIssueLabelReference"
+      },
       "requiresVariables": true,
       "semanticException": null
     },
@@ -6117,7 +6607,9 @@
       ]
     },
     "preparation": {
-      "resolverPaths": {}
+      "resolverPaths": {
+        "label": "resolveIssueLabelReference"
+      }
     },
     "safety": {
       "namedInputPolicy": "non-destructive",
@@ -6128,7 +6620,12 @@
         {
           "name": "id",
           "type": "String",
-          "required": true
+          "required": false
+        },
+        {
+          "name": "label",
+          "type": "LabelReference",
+          "required": false
         },
         {
           "name": "name",
@@ -6175,7 +6672,19 @@
         },
         {
           "all": [
+            "label",
+            "name"
+          ]
+        },
+        {
+          "all": [
             "id",
+            "description"
+          ]
+        },
+        {
+          "all": [
+            "label",
             "description"
           ]
         },
@@ -6187,7 +6696,19 @@
         },
         {
           "all": [
+            "label",
+            "color"
+          ]
+        },
+        {
+          "all": [
             "id",
+            "isGroup"
+          ]
+        },
+        {
+          "all": [
+            "label",
             "isGroup"
           ]
         },
@@ -6199,7 +6720,19 @@
         },
         {
           "all": [
+            "label",
+            "parentId"
+          ]
+        },
+        {
+          "all": [
             "id",
+            "retiredAt"
+          ]
+        },
+        {
+          "all": [
+            "label",
             "retiredAt"
           ]
         },
@@ -6208,11 +6741,17 @@
             "id",
             "replaceTeamLabels"
           ]
+        },
+        {
+          "all": [
+            "label",
+            "replaceTeamLabels"
+          ]
         }
       ],
       "strictRawArguments": true,
       "example": {
-        "id": "label-id",
+        "label": "label-id",
         "name": "review"
       }
     },
@@ -6227,6 +6766,7 @@
       "entityKind": "label",
       "callFields": [
         "id",
+        "label",
         "name",
         "description",
         "color",
@@ -6698,7 +7238,17 @@
             "description": "Issue identifier such as ABC-123, or an issue UUID.",
             "minLength": 1
           },
+          "issue": {
+            "type": "string",
+            "description": "Issue identifier such as ABC-123, or an issue UUID.",
+            "minLength": 1
+          },
           "relatedIssueId": {
+            "type": "string",
+            "description": "Issue identifier such as ABC-123, or an issue UUID.",
+            "minLength": 1
+          },
+          "relatedIssue": {
             "type": "string",
             "description": "Issue identifier such as ABC-123, or an issue UUID.",
             "minLength": 1
@@ -6721,7 +7271,19 @@
           {
             "required": [
               "id",
+              "issue"
+            ]
+          },
+          {
+            "required": [
+              "id",
               "relatedIssueId"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "relatedIssue"
             ]
           }
         ]
@@ -6731,7 +7293,7 @@
     "purpose": "Update an issue relation.",
     "kind": "mutation",
     "help": {
-      "signature": "update_issue_relation(id: String, type?: IssueRelationType, issueId?: IssueReference, relatedIssueId?: IssueReference)",
+      "signature": "update_issue_relation(id: String, type?: IssueRelationType, issueId?: IssueReference, issue?: IssueReference, relatedIssueId?: IssueReference, relatedIssue?: IssueReference)",
       "exact": true,
       "example": {
         "operation": "update_issue_relation",
@@ -6744,7 +7306,9 @@
         "id",
         "type",
         "issueId",
-        "relatedIssueId"
+        "issue",
+        "relatedIssueId",
+        "relatedIssue"
       ]
     },
     "compatibility": {
@@ -6808,7 +7372,9 @@
       "pagination": null,
       "resolverPaths": {
         "issueId": "resolveIssueReference",
-        "relatedIssueId": "resolveIssueReference"
+        "relatedIssueId": "resolveIssueReference",
+        "issue": "resolveIssueReference",
+        "relatedIssue": "resolveIssueReference"
       },
       "requiresVariables": true,
       "semanticException": null
@@ -6832,7 +7398,9 @@
     "preparation": {
       "resolverPaths": {
         "issueId": "resolveIssueReference",
-        "relatedIssueId": "resolveIssueReference"
+        "relatedIssueId": "resolveIssueReference",
+        "issue": "resolveIssueReference",
+        "relatedIssue": "resolveIssueReference"
       }
     },
     "safety": {
@@ -6857,7 +7425,17 @@
           "required": false
         },
         {
+          "name": "issue",
+          "type": "IssueReference",
+          "required": false
+        },
+        {
           "name": "relatedIssueId",
+          "type": "IssueReference",
+          "required": false
+        },
+        {
+          "name": "relatedIssue",
           "type": "IssueReference",
           "required": false
         }
@@ -6878,7 +7456,19 @@
         {
           "all": [
             "id",
+            "issue"
+          ]
+        },
+        {
+          "all": [
+            "id",
             "relatedIssueId"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "relatedIssue"
           ]
         }
       ],
@@ -6901,7 +7491,9 @@
         "id",
         "type",
         "issueId",
-        "relatedIssueId"
+        "issue",
+        "relatedIssueId",
+        "relatedIssue"
       ],
       "action": "update"
     }
@@ -6923,7 +7515,15 @@
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
+          "issue": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
           "relatedIssueId": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "relatedIssue": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
@@ -6938,11 +7538,39 @@
           }
         },
         "additionalProperties": false,
-        "required": [
-          "relationId",
-          "issueId",
-          "relatedIssueId",
-          "type"
+        "anyOf": [
+          {
+            "required": [
+              "relationId",
+              "issueId",
+              "relatedIssueId",
+              "type"
+            ]
+          },
+          {
+            "required": [
+              "relationId",
+              "issueId",
+              "relatedIssue",
+              "type"
+            ]
+          },
+          {
+            "required": [
+              "relationId",
+              "issue",
+              "relatedIssueId",
+              "type"
+            ]
+          },
+          {
+            "required": [
+              "relationId",
+              "issue",
+              "relatedIssue",
+              "type"
+            ]
+          }
         ]
       }
     },
@@ -6950,21 +7578,23 @@
     "purpose": "Delete one issue relation after exact relation and endpoint verification.",
     "kind": "mutation",
     "help": {
-      "signature": "delete_issue_relation(relationId: UUID, issueId: UUID, relatedIssueId: UUID, type: IssueRelationType)",
+      "signature": "delete_issue_relation(relationId: UUID, issueId?: UUID, issue?: UUID, relatedIssueId?: UUID, relatedIssue?: UUID, type: IssueRelationType)",
       "exact": true,
       "example": {
         "operation": "delete_issue_relation",
         "variables": {
           "relationId": "33333333-3333-4333-8333-333333333333",
-          "issueId": "11111111-1111-4111-8111-111111111111",
-          "relatedIssueId": "22222222-2222-4222-8222-222222222222",
+          "issue": "11111111-1111-4111-8111-111111111111",
+          "relatedIssue": "22222222-2222-4222-8222-222222222222",
           "type": "related"
         }
       },
       "callFields": [
         "relationId",
         "issueId",
+        "issue",
         "relatedIssueId",
+        "relatedIssue",
         "type"
       ]
     },
@@ -7051,12 +7681,22 @@
         {
           "name": "issueId",
           "type": "UUID",
-          "required": true
+          "required": false
+        },
+        {
+          "name": "issue",
+          "type": "UUID",
+          "required": false
         },
         {
           "name": "relatedIssueId",
           "type": "UUID",
-          "required": true
+          "required": false
+        },
+        {
+          "name": "relatedIssue",
+          "type": "UUID",
+          "required": false
         },
         {
           "name": "type",
@@ -7072,13 +7712,37 @@
             "relatedIssueId",
             "type"
           ]
+        },
+        {
+          "all": [
+            "relationId",
+            "issueId",
+            "relatedIssue",
+            "type"
+          ]
+        },
+        {
+          "all": [
+            "relationId",
+            "issue",
+            "relatedIssueId",
+            "type"
+          ]
+        },
+        {
+          "all": [
+            "relationId",
+            "issue",
+            "relatedIssue",
+            "type"
+          ]
         }
       ],
       "strictRawArguments": true,
       "example": {
         "relationId": "33333333-3333-4333-8333-333333333333",
-        "issueId": "11111111-1111-4111-8111-111111111111",
-        "relatedIssueId": "22222222-2222-4222-8222-222222222222",
+        "issue": "11111111-1111-4111-8111-111111111111",
+        "relatedIssue": "22222222-2222-4222-8222-222222222222",
         "type": "related"
       }
     },
@@ -7094,14 +7758,16 @@
       "callFields": [
         "relationId",
         "issueId",
+        "issue",
         "relatedIssueId",
+        "relatedIssue",
         "type"
       ],
       "action": "delete",
       "targetFields": [
         "relationId",
-        "issueId",
-        "relatedIssueId",
+        "issue",
+        "relatedIssue",
         "type"
       ]
     }
@@ -8101,9 +8767,19 @@
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
+          "milestone": {
+            "type": "string",
+            "description": "Exact milestone name, or a milestone UUID.",
+            "minLength": 1
+          },
           "cycleId": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "cycle": {
+            "type": "string",
+            "description": "Exact cycle name, or a cycle UUID.",
+            "minLength": 1
           },
           "labelIds": {
             "type": "array",
@@ -8111,6 +8787,15 @@
               "type": "string",
               "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
+            "minItems": 1
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "One or more exact label names or label UUIDs.",
             "minItems": 1
           },
           "subscriberIds": {
@@ -8121,9 +8806,23 @@
             },
             "minItems": 1
           },
+          "subscribers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "One or more exact user references.",
+            "minItems": 1
+          },
           "delegateId": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "delegate": {
+            "type": "string",
+            "description": "User email, exact name, display name, \"me\", or a user UUID.",
+            "minLength": 1
           },
           "lastAppliedTemplateId": {
             "type": "string",
@@ -8244,7 +8943,7 @@
     "purpose": "Create an issue. A parent reference supplies the team when team is omitted.",
     "kind": "mutation",
     "help": {
-      "signature": "create_issue(title: String, team?: TeamReference, parent?: IssueReference, state?: StateReference, assignee?: UserReference, dueDate?: Date, description?: String, descriptionData?: JsonString, priority?: Priority, estimate?: Int, projectId?: UUID, projectMilestoneId?: UUID, cycleId?: UUID, labelIds?: [UUID!], subscriberIds?: [UUID!], delegateId?: UUID, lastAppliedTemplateId?: UUID, slaType?: SlaDayCountType, slaBreachesAt?: NullableDateTime, slaStartedAt?: NullableDateTime, sortOrder?: Float, subIssueSortOrder?: Float, prioritySortOrder?: Float, templateId?: UUID, useDefaultTemplate?: Boolean, preserveSortOrderOnCreate?: Boolean, referenceCommentId?: UUID, sourceCommentId?: UUID, sourcePullRequestCommentId?: UUID, createAsUser?: String, displayIconUrl?: Url, completedAt?: NullableDateTime, createdAt?: DateTime, id?: UUID)",
+      "signature": "create_issue(title: String, team?: TeamReference, parent?: IssueReference, state?: StateReference, assignee?: UserReference, dueDate?: Date, description?: String, descriptionData?: JsonString, priority?: Priority, estimate?: Int, projectId?: UUID, projectMilestoneId?: UUID, milestone?: MilestoneReference, cycleId?: UUID, cycle?: CycleReference, labelIds?: [UUID!], labels?: [LabelReference!], subscriberIds?: [UUID!], subscribers?: [UserReference!], delegateId?: UUID, delegate?: UserReference, lastAppliedTemplateId?: UUID, slaType?: SlaDayCountType, slaBreachesAt?: NullableDateTime, slaStartedAt?: NullableDateTime, sortOrder?: Float, subIssueSortOrder?: Float, prioritySortOrder?: Float, templateId?: UUID, useDefaultTemplate?: Boolean, preserveSortOrderOnCreate?: Boolean, referenceCommentId?: UUID, sourceCommentId?: UUID, sourcePullRequestCommentId?: UUID, createAsUser?: String, displayIconUrl?: Url, completedAt?: NullableDateTime, createdAt?: DateTime, id?: UUID)",
       "exact": true,
       "example": {
         "operation": "create_issue",
@@ -8266,10 +8965,15 @@
         "estimate",
         "projectId",
         "projectMilestoneId",
+        "milestone",
         "cycleId",
+        "cycle",
         "labelIds",
+        "labels",
         "subscriberIds",
+        "subscribers",
         "delegateId",
+        "delegate",
         "lastAppliedTemplateId",
         "slaType",
         "slaBreachesAt",
@@ -8592,7 +9296,12 @@
         "state": "resolveStateReference",
         "stateId": "resolveStateReference",
         "assignee": "resolveUserReference",
-        "assigneeId": "resolveUserReference"
+        "assigneeId": "resolveUserReference",
+        "milestone": "resolveProjectMilestoneReference",
+        "cycle": "resolveCycleReference",
+        "labels": "resolveIssueLabelReference",
+        "subscribers": "resolveUserReference",
+        "delegate": "resolveUserReference"
       },
       "requiresVariables": true,
       "semanticException": "non-empty-title-and-team-or-parent"
@@ -8623,7 +9332,12 @@
         "state": "resolveStateReference",
         "stateId": "resolveStateReference",
         "assignee": "resolveUserReference",
-        "assigneeId": "resolveUserReference"
+        "assigneeId": "resolveUserReference",
+        "milestone": "resolveProjectMilestoneReference",
+        "cycle": "resolveCycleReference",
+        "labels": "resolveIssueLabelReference",
+        "subscribers": "resolveUserReference",
+        "delegate": "resolveUserReference"
       }
     },
     "safety": {
@@ -8693,8 +9407,18 @@
           "required": false
         },
         {
+          "name": "milestone",
+          "type": "MilestoneReference",
+          "required": false
+        },
+        {
           "name": "cycleId",
           "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "cycle",
+          "type": "CycleReference",
           "required": false
         },
         {
@@ -8703,13 +9427,28 @@
           "required": false
         },
         {
+          "name": "labels",
+          "type": "[LabelReference!]",
+          "required": false
+        },
+        {
           "name": "subscriberIds",
           "type": "[UUID!]",
           "required": false
         },
         {
+          "name": "subscribers",
+          "type": "[UserReference!]",
+          "required": false
+        },
+        {
           "name": "delegateId",
           "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "delegate",
+          "type": "UserReference",
           "required": false
         },
         {
@@ -8845,10 +9584,15 @@
         "estimate",
         "projectId",
         "projectMilestoneId",
+        "milestone",
         "cycleId",
+        "cycle",
         "labelIds",
+        "labels",
         "subscriberIds",
+        "subscribers",
         "delegateId",
+        "delegate",
         "lastAppliedTemplateId",
         "slaType",
         "slaBreachesAt",
@@ -8923,6 +9667,11 @@
             "description": "Team key such as ABC, or a team UUID.",
             "minLength": 1
           },
+          "team": {
+            "type": "string",
+            "description": "Team key such as ABC, or a team UUID.",
+            "minLength": 1
+          },
           "dueDate": {
             "anyOf": [
               {
@@ -8943,12 +9692,30 @@
             },
             "minItems": 1
           },
+          "addLabels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "One or more exact label names or label UUIDs.",
+            "minItems": 1
+          },
           "removedLabelIds": {
             "type": "array",
             "items": {
               "type": "string",
               "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
+            "minItems": 1
+          },
+          "removeLabels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "One or more exact label names or label UUIDs.",
             "minItems": 1
           },
           "description": {
@@ -8993,6 +9760,18 @@
             ],
             "description": "Null clears it."
           },
+          "milestone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact milestone name, or a milestone UUID; null clears it."
+          },
           "cycleId": {
             "anyOf": [
               {
@@ -9005,12 +9784,33 @@
             ],
             "description": "Null clears it."
           },
+          "cycle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact cycle name, or a cycle UUID; null clears it."
+          },
           "labelIds": {
             "type": "array",
             "items": {
               "type": "string",
               "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
+            "minItems": 1
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "One or more exact label names or label UUIDs.",
             "minItems": 1
           },
           "subscriberIds": {
@@ -9021,9 +9821,23 @@
             },
             "minItems": 1
           },
+          "subscribers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "One or more exact user references.",
+            "minItems": 1
+          },
           "delegateId": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "delegate": {
+            "type": "string",
+            "description": "User email, exact name, display name, \"me\", or a user UUID.",
+            "minLength": 1
           },
           "lastAppliedTemplateId": {
             "type": "string",
@@ -9076,6 +9890,11 @@
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
+          "snoozedBy": {
+            "type": "string",
+            "description": "User email, exact name, display name, \"me\", or a user UUID.",
+            "minLength": 1
+          },
           "snoozedUntilAt": {
             "anyOf": [
               {
@@ -9124,6 +9943,12 @@
           {
             "required": [
               "issue",
+              "team"
+            ]
+          },
+          {
+            "required": [
+              "issue",
               "dueDate"
             ]
           },
@@ -9136,7 +9961,19 @@
           {
             "required": [
               "issue",
+              "addLabels"
+            ]
+          },
+          {
+            "required": [
+              "issue",
               "removedLabelIds"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "removeLabels"
             ]
           },
           {
@@ -9178,7 +10015,19 @@
           {
             "required": [
               "issue",
+              "milestone"
+            ]
+          },
+          {
+            "required": [
+              "issue",
               "cycleId"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "cycle"
             ]
           },
           {
@@ -9190,13 +10039,31 @@
           {
             "required": [
               "issue",
+              "labels"
+            ]
+          },
+          {
+            "required": [
+              "issue",
               "subscriberIds"
             ]
           },
           {
             "required": [
               "issue",
+              "subscribers"
+            ]
+          },
+          {
+            "required": [
+              "issue",
               "delegateId"
+            ]
+          },
+          {
+            "required": [
+              "issue",
+              "delegate"
             ]
           },
           {
@@ -9256,6 +10123,12 @@
           {
             "required": [
               "issue",
+              "snoozedBy"
+            ]
+          },
+          {
+            "required": [
+              "issue",
               "snoozedUntilAt"
             ]
           }
@@ -9266,7 +10139,7 @@
     "purpose": "Update an issue by exact identifier or UUID.",
     "kind": "mutation",
     "help": {
-      "signature": "update_issue(issue: IssueReference, title?: String, state?: StateReference, assignee?: NullableUserReference, parent?: NullableIssueReference, teamId?: TeamReference, dueDate?: NullableDate, addedLabelIds?: [UUID!], removedLabelIds?: [UUID!], description?: String, descriptionData?: JsonString, priority?: Priority, estimate?: Int, projectId?: NullableUUID, projectMilestoneId?: NullableUUID, cycleId?: NullableUUID, labelIds?: [UUID!], subscriberIds?: [UUID!], delegateId?: UUID, lastAppliedTemplateId?: UUID, slaType?: SlaDayCountType, slaBreachesAt?: NullableDateTime, slaStartedAt?: NullableDateTime, sortOrder?: Float, subIssueSortOrder?: Float, prioritySortOrder?: Float, autoClosedByParentClosing?: Boolean, snoozedById?: UUID, snoozedUntilAt?: NullableDateTime)",
+      "signature": "update_issue(issue: IssueReference, title?: String, state?: StateReference, assignee?: NullableUserReference, parent?: NullableIssueReference, teamId?: TeamReference, team?: TeamReference, dueDate?: NullableDate, addedLabelIds?: [UUID!], addLabels?: [LabelReference!], removedLabelIds?: [UUID!], removeLabels?: [LabelReference!], description?: String, descriptionData?: JsonString, priority?: Priority, estimate?: Int, projectId?: NullableUUID, projectMilestoneId?: NullableUUID, milestone?: NullableMilestoneReference, cycleId?: NullableUUID, cycle?: NullableCycleReference, labelIds?: [UUID!], labels?: [LabelReference!], subscriberIds?: [UUID!], subscribers?: [UserReference!], delegateId?: UUID, delegate?: UserReference, lastAppliedTemplateId?: UUID, slaType?: SlaDayCountType, slaBreachesAt?: NullableDateTime, slaStartedAt?: NullableDateTime, sortOrder?: Float, subIssueSortOrder?: Float, prioritySortOrder?: Float, autoClosedByParentClosing?: Boolean, snoozedById?: UUID, snoozedBy?: UserReference, snoozedUntilAt?: NullableDateTime)",
       "exact": true,
       "example": {
         "operation": "update_issue",
@@ -9282,19 +10155,27 @@
         "assignee",
         "parent",
         "teamId",
+        "team",
         "dueDate",
         "addedLabelIds",
+        "addLabels",
         "removedLabelIds",
+        "removeLabels",
         "description",
         "descriptionData",
         "priority",
         "estimate",
         "projectId",
         "projectMilestoneId",
+        "milestone",
         "cycleId",
+        "cycle",
         "labelIds",
+        "labels",
         "subscriberIds",
+        "subscribers",
         "delegateId",
+        "delegate",
         "lastAppliedTemplateId",
         "slaType",
         "slaBreachesAt",
@@ -9304,6 +10185,7 @@
         "prioritySortOrder",
         "autoClosedByParentClosing",
         "snoozedById",
+        "snoozedBy",
         "snoozedUntilAt"
       ]
     },
@@ -9561,7 +10443,16 @@
         "assigneeId": "resolveUserReference",
         "parent": "resolveIssueReference",
         "parentId": "resolveIssueReference",
-        "teamId": "resolveTeamReference"
+        "teamId": "resolveTeamReference",
+        "team": "resolveTeamReference",
+        "addLabels": "resolveIssueLabelReference",
+        "removeLabels": "resolveIssueLabelReference",
+        "milestone": "resolveProjectMilestoneReference",
+        "cycle": "resolveCycleReference",
+        "labels": "resolveIssueLabelReference",
+        "subscribers": "resolveUserReference",
+        "delegate": "resolveUserReference",
+        "snoozedBy": "resolveUserReference"
       },
       "requiresVariables": true,
       "semanticException": null
@@ -9592,7 +10483,16 @@
         "assigneeId": "resolveUserReference",
         "parent": "resolveIssueReference",
         "parentId": "resolveIssueReference",
-        "teamId": "resolveTeamReference"
+        "teamId": "resolveTeamReference",
+        "team": "resolveTeamReference",
+        "addLabels": "resolveIssueLabelReference",
+        "removeLabels": "resolveIssueLabelReference",
+        "milestone": "resolveProjectMilestoneReference",
+        "cycle": "resolveCycleReference",
+        "labels": "resolveIssueLabelReference",
+        "subscribers": "resolveUserReference",
+        "delegate": "resolveUserReference",
+        "snoozedBy": "resolveUserReference"
       }
     },
     "safety": {
@@ -9632,6 +10532,11 @@
           "required": false
         },
         {
+          "name": "team",
+          "type": "TeamReference",
+          "required": false
+        },
+        {
           "name": "dueDate",
           "type": "NullableDate",
           "required": false
@@ -9642,8 +10547,18 @@
           "required": false
         },
         {
+          "name": "addLabels",
+          "type": "[LabelReference!]",
+          "required": false
+        },
+        {
           "name": "removedLabelIds",
           "type": "[UUID!]",
+          "required": false
+        },
+        {
+          "name": "removeLabels",
+          "type": "[LabelReference!]",
           "required": false
         },
         {
@@ -9677,8 +10592,18 @@
           "required": false
         },
         {
+          "name": "milestone",
+          "type": "NullableMilestoneReference",
+          "required": false
+        },
+        {
           "name": "cycleId",
           "type": "NullableUUID",
+          "required": false
+        },
+        {
+          "name": "cycle",
+          "type": "NullableCycleReference",
           "required": false
         },
         {
@@ -9687,13 +10612,28 @@
           "required": false
         },
         {
+          "name": "labels",
+          "type": "[LabelReference!]",
+          "required": false
+        },
+        {
           "name": "subscriberIds",
           "type": "[UUID!]",
           "required": false
         },
         {
+          "name": "subscribers",
+          "type": "[UserReference!]",
+          "required": false
+        },
+        {
           "name": "delegateId",
           "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "delegate",
+          "type": "UserReference",
           "required": false
         },
         {
@@ -9742,6 +10682,11 @@
           "required": false
         },
         {
+          "name": "snoozedBy",
+          "type": "UserReference",
+          "required": false
+        },
+        {
           "name": "snoozedUntilAt",
           "type": "NullableDateTime",
           "required": false
@@ -9781,6 +10726,12 @@
         {
           "all": [
             "issue",
+            "team"
+          ]
+        },
+        {
+          "all": [
+            "issue",
             "dueDate"
           ]
         },
@@ -9793,7 +10744,19 @@
         {
           "all": [
             "issue",
+            "addLabels"
+          ]
+        },
+        {
+          "all": [
+            "issue",
             "removedLabelIds"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "removeLabels"
           ]
         },
         {
@@ -9835,7 +10798,19 @@
         {
           "all": [
             "issue",
+            "milestone"
+          ]
+        },
+        {
+          "all": [
+            "issue",
             "cycleId"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "cycle"
           ]
         },
         {
@@ -9847,13 +10822,31 @@
         {
           "all": [
             "issue",
+            "labels"
+          ]
+        },
+        {
+          "all": [
+            "issue",
             "subscriberIds"
           ]
         },
         {
           "all": [
             "issue",
+            "subscribers"
+          ]
+        },
+        {
+          "all": [
+            "issue",
             "delegateId"
+          ]
+        },
+        {
+          "all": [
+            "issue",
+            "delegate"
           ]
         },
         {
@@ -9913,6 +10906,12 @@
         {
           "all": [
             "issue",
+            "snoozedBy"
+          ]
+        },
+        {
+          "all": [
+            "issue",
             "snoozedUntilAt"
           ]
         }
@@ -9939,19 +10938,27 @@
         "assignee",
         "parent",
         "teamId",
+        "team",
         "dueDate",
         "addedLabelIds",
+        "addLabels",
         "removedLabelIds",
+        "removeLabels",
         "description",
         "descriptionData",
         "priority",
         "estimate",
         "projectId",
         "projectMilestoneId",
+        "milestone",
         "cycleId",
+        "cycle",
         "labelIds",
+        "labels",
         "subscriberIds",
+        "subscribers",
         "delegateId",
+        "delegate",
         "lastAppliedTemplateId",
         "slaType",
         "slaBreachesAt",
@@ -9961,6 +10968,7 @@
         "prioritySortOrder",
         "autoClosedByParentClosing",
         "snoozedById",
+        "snoozedBy",
         "snoozedUntilAt"
       ],
       "action": "update"
@@ -11141,6 +12149,11 @@
             "type": "string",
             "minLength": 1
           },
+          "label": {
+            "type": "string",
+            "description": "Exact label name, or a label UUID.",
+            "minLength": 1
+          },
           "name": {
             "type": "string",
             "minLength": 1
@@ -11184,7 +12197,19 @@
           },
           {
             "required": [
+              "label",
+              "name"
+            ]
+          },
+          {
+            "required": [
               "id",
+              "description"
+            ]
+          },
+          {
+            "required": [
+              "label",
               "description"
             ]
           },
@@ -11196,7 +12221,19 @@
           },
           {
             "required": [
+              "label",
+              "color"
+            ]
+          },
+          {
+            "required": [
               "id",
+              "isGroup"
+            ]
+          },
+          {
+            "required": [
+              "label",
               "isGroup"
             ]
           },
@@ -11208,7 +12245,19 @@
           },
           {
             "required": [
+              "label",
+              "parentId"
+            ]
+          },
+          {
+            "required": [
               "id",
+              "retiredAt"
+            ]
+          },
+          {
+            "required": [
+              "label",
               "retiredAt"
             ]
           }
@@ -11219,17 +12268,18 @@
     "purpose": "Update a project label.",
     "kind": "mutation",
     "help": {
-      "signature": "update_project_label(id: String, name?: String, description?: String, color?: Color, isGroup?: Boolean, parentId?: UUID, retiredAt?: NullableDateTime)",
+      "signature": "update_project_label(id?: String, label?: LabelReference, name?: String, description?: String, color?: Color, isGroup?: Boolean, parentId?: UUID, retiredAt?: NullableDateTime)",
       "exact": true,
       "example": {
         "operation": "update_project_label",
         "variables": {
-          "id": "label-id",
+          "label": "label-id",
           "name": "Strategy"
         }
       },
       "callFields": [
         "id",
+        "label",
         "name",
         "description",
         "color",
@@ -11312,7 +12362,9 @@
       },
       "document": "mutation UpdateProjectLabel($id: String! $input: ProjectLabelUpdateInput!) {\n    projectLabelUpdate(id: $id, input: $input) { success projectLabel { \n  id name description color isGroup createdAt updatedAt retiredAt parent { id name }\n } }\n  }",
       "pagination": null,
-      "resolverPaths": {},
+      "resolverPaths": {
+        "label": "resolveProjectLabelReference"
+      },
       "requiresVariables": true,
       "semanticException": null
     },
@@ -11333,7 +12385,9 @@
       ]
     },
     "preparation": {
-      "resolverPaths": {}
+      "resolverPaths": {
+        "label": "resolveProjectLabelReference"
+      }
     },
     "safety": {
       "namedInputPolicy": "non-destructive",
@@ -11344,7 +12398,12 @@
         {
           "name": "id",
           "type": "String",
-          "required": true
+          "required": false
+        },
+        {
+          "name": "label",
+          "type": "LabelReference",
+          "required": false
         },
         {
           "name": "name",
@@ -11386,7 +12445,19 @@
         },
         {
           "all": [
+            "label",
+            "name"
+          ]
+        },
+        {
+          "all": [
             "id",
+            "description"
+          ]
+        },
+        {
+          "all": [
+            "label",
             "description"
           ]
         },
@@ -11398,7 +12469,19 @@
         },
         {
           "all": [
+            "label",
+            "color"
+          ]
+        },
+        {
+          "all": [
             "id",
+            "isGroup"
+          ]
+        },
+        {
+          "all": [
+            "label",
             "isGroup"
           ]
         },
@@ -11410,14 +12493,26 @@
         },
         {
           "all": [
+            "label",
+            "parentId"
+          ]
+        },
+        {
+          "all": [
             "id",
+            "retiredAt"
+          ]
+        },
+        {
+          "all": [
+            "label",
             "retiredAt"
           ]
         }
       ],
       "strictRawArguments": true,
       "example": {
-        "id": "label-id",
+        "label": "label-id",
         "name": "Strategy"
       }
     },
@@ -11432,6 +12527,7 @@
       "entityKind": "label",
       "callFields": [
         "id",
+        "label",
         "name",
         "description",
         "color",
@@ -11650,8 +12746,18 @@
             "type": "string",
             "minLength": 1
           },
+          "project": {
+            "type": "string",
+            "description": "Exact project name, or a project UUID.",
+            "minLength": 1
+          },
           "relatedProjectId": {
             "type": "string",
+            "minLength": 1
+          },
+          "relatedProject": {
+            "type": "string",
+            "description": "Exact project name, or a project UUID.",
             "minLength": 1
           },
           "type": {
@@ -11670,18 +12776,59 @@
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
+          "milestone": {
+            "type": "string",
+            "description": "Exact milestone name, or a milestone UUID.",
+            "minLength": 1
+          },
           "relatedProjectMilestoneId": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "relatedMilestone": {
+            "type": "string",
+            "description": "Exact milestone name, or a milestone UUID.",
+            "minLength": 1
           }
         },
         "additionalProperties": false,
-        "required": [
-          "projectId",
-          "relatedProjectId",
-          "type",
-          "anchorType",
-          "relatedAnchorType"
+        "anyOf": [
+          {
+            "required": [
+              "projectId",
+              "relatedProjectId",
+              "type",
+              "anchorType",
+              "relatedAnchorType"
+            ]
+          },
+          {
+            "required": [
+              "projectId",
+              "relatedProject",
+              "type",
+              "anchorType",
+              "relatedAnchorType"
+            ]
+          },
+          {
+            "required": [
+              "project",
+              "relatedProjectId",
+              "type",
+              "anchorType",
+              "relatedAnchorType"
+            ]
+          },
+          {
+            "required": [
+              "project",
+              "relatedProject",
+              "type",
+              "anchorType",
+              "relatedAnchorType"
+            ]
+          }
         ]
       }
     },
@@ -11689,13 +12836,13 @@
     "purpose": "Create a relation between two projects.",
     "kind": "mutation",
     "help": {
-      "signature": "create_project_relation(projectId: String, relatedProjectId: String, type: String, anchorType: String, relatedAnchorType: String, projectMilestoneId?: UUID, relatedProjectMilestoneId?: UUID)",
+      "signature": "create_project_relation(projectId?: String, project?: ProjectReference, relatedProjectId?: String, relatedProject?: ProjectReference, type: String, anchorType: String, relatedAnchorType: String, projectMilestoneId?: UUID, milestone?: MilestoneReference, relatedProjectMilestoneId?: UUID, relatedMilestone?: MilestoneReference)",
       "exact": true,
       "example": {
         "operation": "create_project_relation",
         "variables": {
-          "projectId": "project-id",
-          "relatedProjectId": "other-project-id",
+          "project": "project-id",
+          "relatedProject": "other-project-id",
           "type": "related",
           "anchorType": "project",
           "relatedAnchorType": "project"
@@ -11703,12 +12850,16 @@
       },
       "callFields": [
         "projectId",
+        "project",
         "relatedProjectId",
+        "relatedProject",
         "type",
         "anchorType",
         "relatedAnchorType",
         "projectMilestoneId",
-        "relatedProjectMilestoneId"
+        "milestone",
+        "relatedProjectMilestoneId",
+        "relatedMilestone"
       ]
     },
     "compatibility": {
@@ -11807,7 +12958,12 @@
       },
       "document": "mutation CreateProjectRelation($input: ProjectRelationCreateInput!) {\n    projectRelationCreate(input: $input) { success projectRelation { \n  id createdAt updatedAt type anchorType relatedAnchorType project { id name }\n  projectMilestone { id name } relatedProject { id name } relatedProjectMilestone { id name }\n } }\n  }",
       "pagination": null,
-      "resolverPaths": {},
+      "resolverPaths": {
+        "project": "resolveProjectReference",
+        "relatedProject": "resolveProjectReference",
+        "milestone": "resolveProjectMilestoneReference",
+        "relatedMilestone": "resolveProjectMilestoneReference"
+      },
       "requiresVariables": true,
       "semanticException": null
     },
@@ -11828,7 +12984,12 @@
       ]
     },
     "preparation": {
-      "resolverPaths": {}
+      "resolverPaths": {
+        "project": "resolveProjectReference",
+        "relatedProject": "resolveProjectReference",
+        "milestone": "resolveProjectMilestoneReference",
+        "relatedMilestone": "resolveProjectMilestoneReference"
+      }
     },
     "safety": {
       "namedInputPolicy": "non-destructive",
@@ -11839,12 +13000,22 @@
         {
           "name": "projectId",
           "type": "String",
-          "required": true
+          "required": false
+        },
+        {
+          "name": "project",
+          "type": "ProjectReference",
+          "required": false
         },
         {
           "name": "relatedProjectId",
           "type": "String",
-          "required": true
+          "required": false
+        },
+        {
+          "name": "relatedProject",
+          "type": "ProjectReference",
+          "required": false
         },
         {
           "name": "type",
@@ -11867,8 +13038,18 @@
           "required": false
         },
         {
+          "name": "milestone",
+          "type": "MilestoneReference",
+          "required": false
+        },
+        {
           "name": "relatedProjectMilestoneId",
           "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "relatedMilestone",
+          "type": "MilestoneReference",
           "required": false
         }
       ],
@@ -11881,12 +13062,39 @@
             "anchorType",
             "relatedAnchorType"
           ]
+        },
+        {
+          "all": [
+            "projectId",
+            "relatedProject",
+            "type",
+            "anchorType",
+            "relatedAnchorType"
+          ]
+        },
+        {
+          "all": [
+            "project",
+            "relatedProjectId",
+            "type",
+            "anchorType",
+            "relatedAnchorType"
+          ]
+        },
+        {
+          "all": [
+            "project",
+            "relatedProject",
+            "type",
+            "anchorType",
+            "relatedAnchorType"
+          ]
         }
       ],
       "strictRawArguments": true,
       "example": {
-        "projectId": "project-id",
-        "relatedProjectId": "other-project-id",
+        "project": "project-id",
+        "relatedProject": "other-project-id",
         "type": "related",
         "anchorType": "project",
         "relatedAnchorType": "project"
@@ -11903,12 +13111,16 @@
       "entityKind": "project_relation",
       "callFields": [
         "projectId",
+        "project",
         "relatedProjectId",
+        "relatedProject",
         "type",
         "anchorType",
         "relatedAnchorType",
         "projectMilestoneId",
-        "relatedProjectMilestoneId"
+        "milestone",
+        "relatedProjectMilestoneId",
+        "relatedMilestone"
       ],
       "action": "create"
     }
@@ -11942,17 +13154,37 @@
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
+          "project": {
+            "type": "string",
+            "description": "Exact project name, or a project UUID.",
+            "minLength": 1
+          },
           "relatedProjectId": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "relatedProject": {
+            "type": "string",
+            "description": "Exact project name, or a project UUID.",
+            "minLength": 1
           },
           "projectMilestoneId": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
+          "milestone": {
+            "type": "string",
+            "description": "Exact milestone name, or a milestone UUID.",
+            "minLength": 1
+          },
           "relatedProjectMilestoneId": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "relatedMilestone": {
+            "type": "string",
+            "description": "Exact milestone name, or a milestone UUID.",
+            "minLength": 1
           }
         },
         "additionalProperties": false,
@@ -11984,7 +13216,19 @@
           {
             "required": [
               "id",
+              "project"
+            ]
+          },
+          {
+            "required": [
+              "id",
               "relatedProjectId"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "relatedProject"
             ]
           },
           {
@@ -11996,7 +13240,19 @@
           {
             "required": [
               "id",
+              "milestone"
+            ]
+          },
+          {
+            "required": [
+              "id",
               "relatedProjectMilestoneId"
+            ]
+          },
+          {
+            "required": [
+              "id",
+              "relatedMilestone"
             ]
           }
         ]
@@ -12006,7 +13262,7 @@
     "purpose": "Update a project relation.",
     "kind": "mutation",
     "help": {
-      "signature": "update_project_relation(id: String, type?: String, anchorType?: String, relatedAnchorType?: String, projectId?: UUID, relatedProjectId?: UUID, projectMilestoneId?: UUID, relatedProjectMilestoneId?: UUID)",
+      "signature": "update_project_relation(id: String, type?: String, anchorType?: String, relatedAnchorType?: String, projectId?: UUID, project?: ProjectReference, relatedProjectId?: UUID, relatedProject?: ProjectReference, projectMilestoneId?: UUID, milestone?: MilestoneReference, relatedProjectMilestoneId?: UUID, relatedMilestone?: MilestoneReference)",
       "exact": true,
       "example": {
         "operation": "update_project_relation",
@@ -12021,9 +13277,13 @@
         "anchorType",
         "relatedAnchorType",
         "projectId",
+        "project",
         "relatedProjectId",
+        "relatedProject",
         "projectMilestoneId",
-        "relatedProjectMilestoneId"
+        "milestone",
+        "relatedProjectMilestoneId",
+        "relatedMilestone"
       ]
     },
     "compatibility": {
@@ -12105,7 +13365,12 @@
       },
       "document": "mutation UpdateProjectRelation($id: String! $input: ProjectRelationUpdateInput!) {\n    projectRelationUpdate(id: $id, input: $input) { success projectRelation { \n  id createdAt updatedAt type anchorType relatedAnchorType project { id name }\n  projectMilestone { id name } relatedProject { id name } relatedProjectMilestone { id name }\n } }\n  }",
       "pagination": null,
-      "resolverPaths": {},
+      "resolverPaths": {
+        "project": "resolveProjectReference",
+        "relatedProject": "resolveProjectReference",
+        "milestone": "resolveProjectMilestoneReference",
+        "relatedMilestone": "resolveProjectMilestoneReference"
+      },
       "requiresVariables": true,
       "semanticException": null
     },
@@ -12126,7 +13391,12 @@
       ]
     },
     "preparation": {
-      "resolverPaths": {}
+      "resolverPaths": {
+        "project": "resolveProjectReference",
+        "relatedProject": "resolveProjectReference",
+        "milestone": "resolveProjectMilestoneReference",
+        "relatedMilestone": "resolveProjectMilestoneReference"
+      }
     },
     "safety": {
       "namedInputPolicy": "non-destructive",
@@ -12160,8 +13430,18 @@
           "required": false
         },
         {
+          "name": "project",
+          "type": "ProjectReference",
+          "required": false
+        },
+        {
           "name": "relatedProjectId",
           "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "relatedProject",
+          "type": "ProjectReference",
           "required": false
         },
         {
@@ -12170,8 +13450,18 @@
           "required": false
         },
         {
+          "name": "milestone",
+          "type": "MilestoneReference",
+          "required": false
+        },
+        {
           "name": "relatedProjectMilestoneId",
           "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "relatedMilestone",
+          "type": "MilestoneReference",
           "required": false
         }
       ],
@@ -12203,7 +13493,19 @@
         {
           "all": [
             "id",
+            "project"
+          ]
+        },
+        {
+          "all": [
+            "id",
             "relatedProjectId"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "relatedProject"
           ]
         },
         {
@@ -12215,7 +13517,19 @@
         {
           "all": [
             "id",
+            "milestone"
+          ]
+        },
+        {
+          "all": [
+            "id",
             "relatedProjectMilestoneId"
+          ]
+        },
+        {
+          "all": [
+            "id",
+            "relatedMilestone"
           ]
         }
       ],
@@ -12240,9 +13554,13 @@
         "anchorType",
         "relatedAnchorType",
         "projectId",
+        "project",
         "relatedProjectId",
+        "relatedProject",
         "projectMilestoneId",
-        "relatedProjectMilestoneId"
+        "milestone",
+        "relatedProjectMilestoneId",
+        "relatedMilestone"
       ],
       "action": "update"
     }
@@ -13593,6 +14911,11 @@
             "description": "Exact initiative name, or an initiative UUID.",
             "minLength": 1
           },
+          "initiative": {
+            "type": "string",
+            "description": "Exact initiative name, or an initiative UUID.",
+            "minLength": 1
+          },
           "name": {
             "type": "string",
             "minLength": 1
@@ -13649,9 +14972,19 @@
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
+          "owner": {
+            "type": "string",
+            "description": "User email, exact name, display name, \"me\", or a user UUID.",
+            "minLength": 1
+          },
           "leadTeamId": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "leadTeam": {
+            "type": "string",
+            "description": "Team key such as ABC, or a team UUID.",
+            "minLength": 1
           },
           "sortOrder": {
             "type": "number"
@@ -13671,6 +15004,15 @@
               "type": "string",
               "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
+            "minItems": 1
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "One or more exact label names or label UUIDs.",
             "minItems": 1
           },
           "id": {
@@ -13731,7 +15073,7 @@
     "purpose": "Create or update an initiative.",
     "kind": "mutation",
     "help": {
-      "signature": "save_initiative(initiativeId?: InitiativeReference, name?: String, description?: String, content?: String, icon?: String, color?: Color, status?: InitiativeStatus, targetDate?: NullableDate, targetDateResolution?: DateResolutionType, ownerId?: UUID, leadTeamId?: UUID, sortOrder?: Float, prioritySortOrder?: Float, priority?: Priority, labelIds?: [UUID!], id?: UUID, customIdentifier?: String, frequencyResolution?: FrequencyResolutionType, updateReminderFrequency?: Float, updateReminderFrequencyInWeeks?: Float, updateRemindersDay?: Day, updateRemindersHour?: Float)",
+      "signature": "save_initiative(initiativeId?: InitiativeReference, initiative?: InitiativeReference, name?: String, description?: String, content?: String, icon?: String, color?: Color, status?: InitiativeStatus, targetDate?: NullableDate, targetDateResolution?: DateResolutionType, ownerId?: UUID, owner?: UserReference, leadTeamId?: UUID, leadTeam?: TeamReference, sortOrder?: Float, prioritySortOrder?: Float, priority?: Priority, labelIds?: [UUID!], labels?: [LabelReference!], id?: UUID, customIdentifier?: String, frequencyResolution?: FrequencyResolutionType, updateReminderFrequency?: Float, updateReminderFrequencyInWeeks?: Float, updateRemindersDay?: Day, updateRemindersHour?: Float)",
       "exact": true,
       "example": {
         "operation": "save_initiative",
@@ -13741,6 +15083,7 @@
       },
       "callFields": [
         "initiativeId",
+        "initiative",
         "name",
         "description",
         "content",
@@ -13750,11 +15093,14 @@
         "targetDate",
         "targetDateResolution",
         "ownerId",
+        "owner",
         "leadTeamId",
+        "leadTeam",
         "sortOrder",
         "prioritySortOrder",
         "priority",
         "labelIds",
+        "labels",
         "id",
         "customIdentifier",
         "frequencyResolution",
@@ -14022,7 +15368,11 @@
       "document": "mutation CreateInitiative($input: InitiativeCreateInput!) {\n    initiativeCreate(input: $input) { success initiative { \n  id name description content status color icon targetDate targetDateResolution sortOrder health\n  completedAt startedAt archivedAt trashed createdAt updatedAt url owner { id name email }\n } }\n  }",
       "pagination": null,
       "resolverPaths": {
-        "initiativeId": "resolveNamedEntityReference"
+        "initiativeId": "resolveNamedEntityReference",
+        "initiative": "resolveNamedEntityReference",
+        "labels": "resolveInitiativeLabelReference",
+        "leadTeam": "resolveTeamReference",
+        "owner": "resolveUserReference"
       },
       "requiresVariables": true,
       "semanticException": "save-value-types"
@@ -14059,7 +15409,11 @@
     },
     "preparation": {
       "resolverPaths": {
-        "initiativeId": "resolveNamedEntityReference"
+        "initiativeId": "resolveNamedEntityReference",
+        "initiative": "resolveNamedEntityReference",
+        "labels": "resolveInitiativeLabelReference",
+        "leadTeam": "resolveTeamReference",
+        "owner": "resolveUserReference"
       }
     },
     "safety": {
@@ -14070,6 +15424,11 @@
       "fields": [
         {
           "name": "initiativeId",
+          "type": "InitiativeReference",
+          "required": false
+        },
+        {
+          "name": "initiative",
           "type": "InitiativeReference",
           "required": false
         },
@@ -14119,8 +15478,18 @@
           "required": false
         },
         {
+          "name": "owner",
+          "type": "UserReference",
+          "required": false
+        },
+        {
           "name": "leadTeamId",
           "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "leadTeam",
+          "type": "TeamReference",
           "required": false
         },
         {
@@ -14141,6 +15510,11 @@
         {
           "name": "labelIds",
           "type": "[UUID!]",
+          "required": false
+        },
+        {
+          "name": "labels",
+          "type": "[LabelReference!]",
           "required": false
         },
         {
@@ -14193,7 +15567,19 @@
         },
         {
           "all": [
+            "initiative",
+            "name"
+          ]
+        },
+        {
+          "all": [
             "initiativeId",
+            "description"
+          ]
+        },
+        {
+          "all": [
+            "initiative",
             "description"
           ]
         },
@@ -14205,7 +15591,19 @@
         },
         {
           "all": [
+            "initiative",
+            "content"
+          ]
+        },
+        {
+          "all": [
             "initiativeId",
+            "icon"
+          ]
+        },
+        {
+          "all": [
+            "initiative",
             "icon"
           ]
         },
@@ -14217,7 +15615,19 @@
         },
         {
           "all": [
+            "initiative",
+            "color"
+          ]
+        },
+        {
+          "all": [
             "initiativeId",
+            "status"
+          ]
+        },
+        {
+          "all": [
+            "initiative",
             "status"
           ]
         },
@@ -14229,7 +15639,19 @@
         },
         {
           "all": [
+            "initiative",
+            "targetDate"
+          ]
+        },
+        {
+          "all": [
             "initiativeId",
+            "targetDateResolution"
+          ]
+        },
+        {
+          "all": [
+            "initiative",
             "targetDateResolution"
           ]
         },
@@ -14242,12 +15664,54 @@
         {
           "all": [
             "initiativeId",
+            "owner"
+          ]
+        },
+        {
+          "all": [
+            "initiative",
+            "ownerId"
+          ]
+        },
+        {
+          "all": [
+            "initiative",
+            "owner"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
             "leadTeamId"
           ]
         },
         {
           "all": [
             "initiativeId",
+            "leadTeam"
+          ]
+        },
+        {
+          "all": [
+            "initiative",
+            "leadTeamId"
+          ]
+        },
+        {
+          "all": [
+            "initiative",
+            "leadTeam"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "sortOrder"
+          ]
+        },
+        {
+          "all": [
+            "initiative",
             "sortOrder"
           ]
         },
@@ -14259,7 +15723,19 @@
         },
         {
           "all": [
+            "initiative",
+            "prioritySortOrder"
+          ]
+        },
+        {
+          "all": [
             "initiativeId",
+            "priority"
+          ]
+        },
+        {
+          "all": [
+            "initiative",
             "priority"
           ]
         },
@@ -14272,6 +15748,30 @@
         {
           "all": [
             "initiativeId",
+            "labels"
+          ]
+        },
+        {
+          "all": [
+            "initiative",
+            "labelIds"
+          ]
+        },
+        {
+          "all": [
+            "initiative",
+            "labels"
+          ]
+        },
+        {
+          "all": [
+            "initiativeId",
+            "customIdentifier"
+          ]
+        },
+        {
+          "all": [
+            "initiative",
             "customIdentifier"
           ]
         },
@@ -14283,7 +15783,19 @@
         },
         {
           "all": [
+            "initiative",
+            "frequencyResolution"
+          ]
+        },
+        {
+          "all": [
             "initiativeId",
+            "updateReminderFrequency"
+          ]
+        },
+        {
+          "all": [
+            "initiative",
             "updateReminderFrequency"
           ]
         },
@@ -14295,13 +15807,31 @@
         },
         {
           "all": [
+            "initiative",
+            "updateReminderFrequencyInWeeks"
+          ]
+        },
+        {
+          "all": [
             "initiativeId",
             "updateRemindersDay"
           ]
         },
         {
           "all": [
+            "initiative",
+            "updateRemindersDay"
+          ]
+        },
+        {
+          "all": [
             "initiativeId",
+            "updateRemindersHour"
+          ]
+        },
+        {
+          "all": [
+            "initiative",
             "updateRemindersHour"
           ]
         }
@@ -14318,11 +15848,14 @@
             "targetDate",
             "targetDateResolution",
             "ownerId",
+            "owner",
             "leadTeamId",
+            "leadTeam",
             "sortOrder",
             "prioritySortOrder",
             "priority",
             "labelIds",
+            "labels",
             "id"
           ],
           "branches": [
@@ -14336,6 +15869,7 @@
         {
           "fields": [
             "initiativeId",
+            "initiative",
             "name",
             "description",
             "content",
@@ -14345,11 +15879,14 @@
             "targetDate",
             "targetDateResolution",
             "ownerId",
+            "owner",
             "leadTeamId",
+            "leadTeam",
             "sortOrder",
             "prioritySortOrder",
             "priority",
             "labelIds",
+            "labels",
             "customIdentifier",
             "frequencyResolution",
             "updateReminderFrequency",
@@ -14366,7 +15903,19 @@
             },
             {
               "all": [
+                "initiative",
+                "name"
+              ]
+            },
+            {
+              "all": [
                 "initiativeId",
+                "description"
+              ]
+            },
+            {
+              "all": [
+                "initiative",
                 "description"
               ]
             },
@@ -14378,7 +15927,19 @@
             },
             {
               "all": [
+                "initiative",
+                "content"
+              ]
+            },
+            {
+              "all": [
                 "initiativeId",
+                "icon"
+              ]
+            },
+            {
+              "all": [
+                "initiative",
                 "icon"
               ]
             },
@@ -14390,7 +15951,19 @@
             },
             {
               "all": [
+                "initiative",
+                "color"
+              ]
+            },
+            {
+              "all": [
                 "initiativeId",
+                "status"
+              ]
+            },
+            {
+              "all": [
+                "initiative",
                 "status"
               ]
             },
@@ -14402,7 +15975,19 @@
             },
             {
               "all": [
+                "initiative",
+                "targetDate"
+              ]
+            },
+            {
+              "all": [
                 "initiativeId",
+                "targetDateResolution"
+              ]
+            },
+            {
+              "all": [
+                "initiative",
                 "targetDateResolution"
               ]
             },
@@ -14415,12 +16000,54 @@
             {
               "all": [
                 "initiativeId",
+                "owner"
+              ]
+            },
+            {
+              "all": [
+                "initiative",
+                "ownerId"
+              ]
+            },
+            {
+              "all": [
+                "initiative",
+                "owner"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
                 "leadTeamId"
               ]
             },
             {
               "all": [
                 "initiativeId",
+                "leadTeam"
+              ]
+            },
+            {
+              "all": [
+                "initiative",
+                "leadTeamId"
+              ]
+            },
+            {
+              "all": [
+                "initiative",
+                "leadTeam"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "sortOrder"
+              ]
+            },
+            {
+              "all": [
+                "initiative",
                 "sortOrder"
               ]
             },
@@ -14432,7 +16059,19 @@
             },
             {
               "all": [
+                "initiative",
+                "prioritySortOrder"
+              ]
+            },
+            {
+              "all": [
                 "initiativeId",
+                "priority"
+              ]
+            },
+            {
+              "all": [
+                "initiative",
                 "priority"
               ]
             },
@@ -14445,6 +16084,30 @@
             {
               "all": [
                 "initiativeId",
+                "labels"
+              ]
+            },
+            {
+              "all": [
+                "initiative",
+                "labelIds"
+              ]
+            },
+            {
+              "all": [
+                "initiative",
+                "labels"
+              ]
+            },
+            {
+              "all": [
+                "initiativeId",
+                "customIdentifier"
+              ]
+            },
+            {
+              "all": [
+                "initiative",
                 "customIdentifier"
               ]
             },
@@ -14456,7 +16119,19 @@
             },
             {
               "all": [
+                "initiative",
+                "frequencyResolution"
+              ]
+            },
+            {
+              "all": [
                 "initiativeId",
+                "updateReminderFrequency"
+              ]
+            },
+            {
+              "all": [
+                "initiative",
                 "updateReminderFrequency"
               ]
             },
@@ -14468,13 +16143,31 @@
             },
             {
               "all": [
+                "initiative",
+                "updateReminderFrequencyInWeeks"
+              ]
+            },
+            {
+              "all": [
                 "initiativeId",
                 "updateRemindersDay"
               ]
             },
             {
               "all": [
+                "initiative",
+                "updateRemindersDay"
+              ]
+            },
+            {
+              "all": [
                 "initiativeId",
+                "updateRemindersHour"
+              ]
+            },
+            {
+              "all": [
+                "initiative",
                 "updateRemindersHour"
               ]
             }
@@ -14498,6 +16191,7 @@
       "entityKind": "initiative",
       "callFields": [
         "initiativeId",
+        "initiative",
         "name",
         "description",
         "content",
@@ -14507,11 +16201,14 @@
         "targetDate",
         "targetDateResolution",
         "ownerId",
+        "owner",
         "leadTeamId",
+        "leadTeam",
         "sortOrder",
         "prioritySortOrder",
         "priority",
         "labelIds",
+        "labels",
         "id",
         "customIdentifier",
         "frequencyResolution",
@@ -14522,7 +16219,7 @@
       ],
       "action": "save",
       "targetFields": [
-        "initiativeId",
+        "initiative",
         "name"
       ]
     }
@@ -14541,11 +16238,21 @@
             "description": "Exact milestone name, or a milestone UUID.",
             "minLength": 1
           },
+          "milestone": {
+            "type": "string",
+            "description": "Exact milestone name, or a milestone UUID.",
+            "minLength": 1
+          },
           "name": {
             "type": "string",
             "minLength": 1
           },
           "projectId": {
+            "type": "string",
+            "description": "Exact project name, or a project UUID.",
+            "minLength": 1
+          },
+          "project": {
             "type": "string",
             "description": "Exact project name, or a project UUID.",
             "minLength": 1
@@ -14601,19 +16308,21 @@
     "purpose": "Create or update a milestone.",
     "kind": "mutation",
     "help": {
-      "signature": "save_milestone(milestoneId?: MilestoneReference, name?: String, projectId?: ProjectReference, description?: String, descriptionData?: JsonString, targetDate?: NullableDate, sortOrder?: Float, id?: UUID)",
+      "signature": "save_milestone(milestoneId?: MilestoneReference, milestone?: MilestoneReference, name?: String, projectId?: ProjectReference, project?: ProjectReference, description?: String, descriptionData?: JsonString, targetDate?: NullableDate, sortOrder?: Float, id?: UUID)",
       "exact": true,
       "example": {
         "operation": "save_milestone",
         "variables": {
           "name": "Beta",
-          "projectId": "project-id"
+          "project": "project-id"
         }
       },
       "callFields": [
         "milestoneId",
+        "milestone",
         "name",
         "projectId",
+        "project",
         "description",
         "descriptionData",
         "targetDate",
@@ -14761,7 +16470,9 @@
       "pagination": null,
       "resolverPaths": {
         "milestoneId": "resolveNamedEntityReference",
-        "projectId": "resolveNamedEntityReference"
+        "projectId": "resolveNamedEntityReference",
+        "milestone": "resolveNamedEntityReference",
+        "project": "resolveNamedEntityReference"
       },
       "requiresVariables": true,
       "semanticException": "save-value-types"
@@ -14799,7 +16510,9 @@
     "preparation": {
       "resolverPaths": {
         "milestoneId": "resolveNamedEntityReference",
-        "projectId": "resolveNamedEntityReference"
+        "projectId": "resolveNamedEntityReference",
+        "milestone": "resolveNamedEntityReference",
+        "project": "resolveNamedEntityReference"
       }
     },
     "safety": {
@@ -14814,12 +16527,22 @@
           "required": false
         },
         {
+          "name": "milestone",
+          "type": "MilestoneReference",
+          "required": false
+        },
+        {
           "name": "name",
           "type": "String",
           "required": false
         },
         {
           "name": "projectId",
+          "type": "ProjectReference",
+          "required": false
+        },
+        {
+          "name": "project",
           "type": "ProjectReference",
           "required": false
         },
@@ -14858,7 +16581,19 @@
         },
         {
           "all": [
+            "name",
+            "project"
+          ]
+        },
+        {
+          "all": [
             "milestoneId",
+            "name"
+          ]
+        },
+        {
+          "all": [
+            "milestone",
             "name"
           ]
         },
@@ -14871,6 +16606,30 @@
         {
           "all": [
             "milestoneId",
+            "project"
+          ]
+        },
+        {
+          "all": [
+            "milestone",
+            "projectId"
+          ]
+        },
+        {
+          "all": [
+            "milestone",
+            "project"
+          ]
+        },
+        {
+          "all": [
+            "milestoneId",
+            "description"
+          ]
+        },
+        {
+          "all": [
+            "milestone",
             "description"
           ]
         },
@@ -14882,13 +16641,31 @@
         },
         {
           "all": [
+            "milestone",
+            "descriptionData"
+          ]
+        },
+        {
+          "all": [
             "milestoneId",
             "targetDate"
           ]
         },
         {
           "all": [
+            "milestone",
+            "targetDate"
+          ]
+        },
+        {
+          "all": [
             "milestoneId",
+            "sortOrder"
+          ]
+        },
+        {
+          "all": [
+            "milestone",
             "sortOrder"
           ]
         }
@@ -14898,6 +16675,7 @@
           "fields": [
             "name",
             "projectId",
+            "project",
             "description",
             "descriptionData",
             "targetDate",
@@ -14910,14 +16688,22 @@
                 "name",
                 "projectId"
               ]
+            },
+            {
+              "all": [
+                "name",
+                "project"
+              ]
             }
           ]
         },
         {
           "fields": [
             "milestoneId",
+            "milestone",
             "name",
             "projectId",
+            "project",
             "description",
             "descriptionData",
             "targetDate",
@@ -14932,6 +16718,12 @@
             },
             {
               "all": [
+                "milestone",
+                "name"
+              ]
+            },
+            {
+              "all": [
                 "milestoneId",
                 "projectId"
               ]
@@ -14939,6 +16731,30 @@
             {
               "all": [
                 "milestoneId",
+                "project"
+              ]
+            },
+            {
+              "all": [
+                "milestone",
+                "projectId"
+              ]
+            },
+            {
+              "all": [
+                "milestone",
+                "project"
+              ]
+            },
+            {
+              "all": [
+                "milestoneId",
+                "description"
+              ]
+            },
+            {
+              "all": [
+                "milestone",
                 "description"
               ]
             },
@@ -14950,13 +16766,31 @@
             },
             {
               "all": [
+                "milestone",
+                "descriptionData"
+              ]
+            },
+            {
+              "all": [
                 "milestoneId",
                 "targetDate"
               ]
             },
             {
               "all": [
+                "milestone",
+                "targetDate"
+              ]
+            },
+            {
+              "all": [
                 "milestoneId",
+                "sortOrder"
+              ]
+            },
+            {
+              "all": [
+                "milestone",
                 "sortOrder"
               ]
             }
@@ -14966,7 +16800,7 @@
       "strictRawArguments": true,
       "example": {
         "name": "Beta",
-        "projectId": "project-id"
+        "project": "project-id"
       }
     },
     "result": {
@@ -14981,8 +16815,10 @@
       "entityKind": "milestone",
       "callFields": [
         "milestoneId",
+        "milestone",
         "name",
         "projectId",
+        "project",
         "description",
         "descriptionData",
         "targetDate",
@@ -14991,9 +16827,9 @@
       ],
       "action": "save",
       "targetFields": [
-        "milestoneId",
+        "milestone",
         "name",
-        "projectId"
+        "project"
       ]
     }
   },
@@ -15011,6 +16847,11 @@
             "description": "Exact project name, or a project UUID.",
             "minLength": 1
           },
+          "project": {
+            "type": "string",
+            "description": "Exact project name, or a project UUID.",
+            "minLength": 1
+          },
           "name": {
             "type": "string",
             "minLength": 1
@@ -15021,6 +16862,15 @@
               "type": "string",
               "minLength": 1
             },
+            "minItems": 1
+          },
+          "teams": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "One or more exact team keys or team UUIDs.",
             "minItems": 1
           },
           "description": {
@@ -15085,13 +16935,28 @@
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
+          "status": {
+            "type": "string",
+            "description": "Exact project status name, or a project status UUID.",
+            "minLength": 1
+          },
           "leadId": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
+          "lead": {
+            "type": "string",
+            "description": "User email, exact name, display name, \"me\", or a user UUID.",
+            "minLength": 1
+          },
           "leadTeamId": {
             "type": "string",
             "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "leadTeam": {
+            "type": "string",
+            "description": "Team key such as ABC, or a team UUID.",
+            "minLength": 1
           },
           "memberIds": {
             "type": "array",
@@ -15099,6 +16964,15 @@
               "type": "string",
               "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
+            "minItems": 1
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "One or more exact user references.",
             "minItems": 1
           },
           "labelIds": {
@@ -15109,7 +16983,21 @@
             },
             "minItems": 1
           },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "One or more exact label names or label UUIDs.",
+            "minItems": 1
+          },
           "convertedFromIssueId": {
+            "type": "string",
+            "description": "Issue identifier such as ABC-123, or an issue UUID.",
+            "minLength": 1
+          },
+          "convertedFromIssue": {
             "type": "string",
             "description": "Issue identifier such as ABC-123, or an issue UUID.",
             "minLength": 1
@@ -15235,21 +17123,23 @@
     "purpose": "Create or update a project.",
     "kind": "mutation",
     "help": {
-      "signature": "save_project(projectId?: ProjectReference, name?: String, teamIds?: [ID!], description?: String, content?: String, icon?: String, color?: Color, priority?: Priority, startDate?: Date, startDateResolution?: DateResolutionType, targetDate?: NullableDate, targetDateResolution?: DateResolutionType, statusId?: UUID, leadId?: UUID, leadTeamId?: UUID, memberIds?: [UUID!], labelIds?: [UUID!], convertedFromIssueId?: IssueReference, lastAppliedTemplateId?: UUID, sortOrder?: Float, prioritySortOrder?: Float, canceledAt?: NullableDateTime, completedAt?: NullableDateTime, projectUpdateRemindersPausedUntilAt?: NullableDateTime, slackIssueComments?: Boolean, slackIssueStatuses?: Boolean, slackNewIssue?: Boolean, slackChannelName?: String, templateId?: UUID, useDefaultTemplate?: Boolean, id?: UUID, frequencyResolution?: FrequencyResolutionType, updateReminderFrequency?: Float, updateReminderFrequencyInWeeks?: Float, updateRemindersDay?: Day, updateRemindersHour?: Float)",
+      "signature": "save_project(projectId?: ProjectReference, project?: ProjectReference, name?: String, teamIds?: [ID!], teams?: [TeamReference!], description?: String, content?: String, icon?: String, color?: Color, priority?: Priority, startDate?: Date, startDateResolution?: DateResolutionType, targetDate?: NullableDate, targetDateResolution?: DateResolutionType, statusId?: UUID, status?: ProjectStatusReference, leadId?: UUID, lead?: UserReference, leadTeamId?: UUID, leadTeam?: TeamReference, memberIds?: [UUID!], members?: [UserReference!], labelIds?: [UUID!], labels?: [LabelReference!], convertedFromIssueId?: IssueReference, convertedFromIssue?: IssueReference, lastAppliedTemplateId?: UUID, sortOrder?: Float, prioritySortOrder?: Float, canceledAt?: NullableDateTime, completedAt?: NullableDateTime, projectUpdateRemindersPausedUntilAt?: NullableDateTime, slackIssueComments?: Boolean, slackIssueStatuses?: Boolean, slackNewIssue?: Boolean, slackChannelName?: String, templateId?: UUID, useDefaultTemplate?: Boolean, id?: UUID, frequencyResolution?: FrequencyResolutionType, updateReminderFrequency?: Float, updateReminderFrequencyInWeeks?: Float, updateRemindersDay?: Day, updateRemindersHour?: Float)",
       "exact": true,
       "example": {
         "operation": "save_project",
         "variables": {
           "name": "Platform",
-          "teamIds": [
+          "teams": [
             "team-id"
           ]
         }
       },
       "callFields": [
         "projectId",
+        "project",
         "name",
         "teamIds",
+        "teams",
         "description",
         "content",
         "icon",
@@ -15260,11 +17150,17 @@
         "targetDate",
         "targetDateResolution",
         "statusId",
+        "status",
         "leadId",
+        "lead",
         "leadTeamId",
+        "leadTeam",
         "memberIds",
+        "members",
         "labelIds",
+        "labels",
         "convertedFromIssueId",
+        "convertedFromIssue",
         "lastAppliedTemplateId",
         "sortOrder",
         "prioritySortOrder",
@@ -15673,7 +17569,15 @@
       "pagination": null,
       "resolverPaths": {
         "projectId": "resolveNamedEntityReference",
-        "convertedFromIssueId": "resolveIssueReference"
+        "convertedFromIssueId": "resolveIssueReference",
+        "project": "resolveNamedEntityReference",
+        "teams": "resolveTeamReference",
+        "convertedFromIssue": "resolveIssueReference",
+        "labels": "resolveProjectLabelReference",
+        "lead": "resolveUserReference",
+        "leadTeam": "resolveTeamReference",
+        "members": "resolveUserReference",
+        "status": "resolveProjectStatusReference"
       },
       "requiresVariables": true,
       "semanticException": "save-value-types"
@@ -15711,7 +17615,15 @@
     "preparation": {
       "resolverPaths": {
         "projectId": "resolveNamedEntityReference",
-        "convertedFromIssueId": "resolveIssueReference"
+        "convertedFromIssueId": "resolveIssueReference",
+        "project": "resolveNamedEntityReference",
+        "teams": "resolveTeamReference",
+        "convertedFromIssue": "resolveIssueReference",
+        "labels": "resolveProjectLabelReference",
+        "lead": "resolveUserReference",
+        "leadTeam": "resolveTeamReference",
+        "members": "resolveUserReference",
+        "status": "resolveProjectStatusReference"
       }
     },
     "safety": {
@@ -15726,6 +17638,11 @@
           "required": false
         },
         {
+          "name": "project",
+          "type": "ProjectReference",
+          "required": false
+        },
+        {
           "name": "name",
           "type": "String",
           "required": false
@@ -15733,6 +17650,11 @@
         {
           "name": "teamIds",
           "type": "[ID!]",
+          "required": false
+        },
+        {
+          "name": "teams",
+          "type": "[TeamReference!]",
           "required": false
         },
         {
@@ -15786,8 +17708,18 @@
           "required": false
         },
         {
+          "name": "status",
+          "type": "ProjectStatusReference",
+          "required": false
+        },
+        {
           "name": "leadId",
           "type": "UUID",
+          "required": false
+        },
+        {
+          "name": "lead",
+          "type": "UserReference",
           "required": false
         },
         {
@@ -15796,8 +17728,18 @@
           "required": false
         },
         {
+          "name": "leadTeam",
+          "type": "TeamReference",
+          "required": false
+        },
+        {
           "name": "memberIds",
           "type": "[UUID!]",
+          "required": false
+        },
+        {
+          "name": "members",
+          "type": "[UserReference!]",
           "required": false
         },
         {
@@ -15806,7 +17748,17 @@
           "required": false
         },
         {
+          "name": "labels",
+          "type": "[LabelReference!]",
+          "required": false
+        },
+        {
           "name": "convertedFromIssueId",
+          "type": "IssueReference",
+          "required": false
+        },
+        {
+          "name": "convertedFromIssue",
           "type": "IssueReference",
           "required": false
         },
@@ -15910,7 +17862,19 @@
         },
         {
           "all": [
+            "name",
+            "teams"
+          ]
+        },
+        {
+          "all": [
             "projectId",
+            "name"
+          ]
+        },
+        {
+          "all": [
+            "project",
             "name"
           ]
         },
@@ -15923,6 +17887,30 @@
         {
           "all": [
             "projectId",
+            "teams"
+          ]
+        },
+        {
+          "all": [
+            "project",
+            "teamIds"
+          ]
+        },
+        {
+          "all": [
+            "project",
+            "teams"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "description"
+          ]
+        },
+        {
+          "all": [
+            "project",
             "description"
           ]
         },
@@ -15934,7 +17922,19 @@
         },
         {
           "all": [
+            "project",
+            "content"
+          ]
+        },
+        {
+          "all": [
             "projectId",
+            "icon"
+          ]
+        },
+        {
+          "all": [
+            "project",
             "icon"
           ]
         },
@@ -15946,7 +17946,19 @@
         },
         {
           "all": [
+            "project",
+            "color"
+          ]
+        },
+        {
+          "all": [
             "projectId",
+            "priority"
+          ]
+        },
+        {
+          "all": [
+            "project",
             "priority"
           ]
         },
@@ -15958,7 +17970,19 @@
         },
         {
           "all": [
+            "project",
+            "startDate"
+          ]
+        },
+        {
+          "all": [
             "projectId",
+            "startDateResolution"
+          ]
+        },
+        {
+          "all": [
+            "project",
             "startDateResolution"
           ]
         },
@@ -15970,7 +17994,19 @@
         },
         {
           "all": [
+            "project",
+            "targetDate"
+          ]
+        },
+        {
+          "all": [
             "projectId",
+            "targetDateResolution"
+          ]
+        },
+        {
+          "all": [
+            "project",
             "targetDateResolution"
           ]
         },
@@ -15983,7 +18019,43 @@
         {
           "all": [
             "projectId",
+            "status"
+          ]
+        },
+        {
+          "all": [
+            "project",
+            "statusId"
+          ]
+        },
+        {
+          "all": [
+            "project",
+            "status"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
             "leadId"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "lead"
+          ]
+        },
+        {
+          "all": [
+            "project",
+            "leadId"
+          ]
+        },
+        {
+          "all": [
+            "project",
+            "lead"
           ]
         },
         {
@@ -15995,7 +18067,43 @@
         {
           "all": [
             "projectId",
+            "leadTeam"
+          ]
+        },
+        {
+          "all": [
+            "project",
+            "leadTeamId"
+          ]
+        },
+        {
+          "all": [
+            "project",
+            "leadTeam"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
             "memberIds"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "members"
+          ]
+        },
+        {
+          "all": [
+            "project",
+            "memberIds"
+          ]
+        },
+        {
+          "all": [
+            "project",
+            "members"
           ]
         },
         {
@@ -16007,12 +18115,54 @@
         {
           "all": [
             "projectId",
+            "labels"
+          ]
+        },
+        {
+          "all": [
+            "project",
+            "labelIds"
+          ]
+        },
+        {
+          "all": [
+            "project",
+            "labels"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
             "convertedFromIssueId"
           ]
         },
         {
           "all": [
             "projectId",
+            "convertedFromIssue"
+          ]
+        },
+        {
+          "all": [
+            "project",
+            "convertedFromIssueId"
+          ]
+        },
+        {
+          "all": [
+            "project",
+            "convertedFromIssue"
+          ]
+        },
+        {
+          "all": [
+            "projectId",
+            "lastAppliedTemplateId"
+          ]
+        },
+        {
+          "all": [
+            "project",
             "lastAppliedTemplateId"
           ]
         },
@@ -16024,7 +18174,19 @@
         },
         {
           "all": [
+            "project",
+            "sortOrder"
+          ]
+        },
+        {
+          "all": [
             "projectId",
+            "prioritySortOrder"
+          ]
+        },
+        {
+          "all": [
+            "project",
             "prioritySortOrder"
           ]
         },
@@ -16036,7 +18198,19 @@
         },
         {
           "all": [
+            "project",
+            "canceledAt"
+          ]
+        },
+        {
+          "all": [
             "projectId",
+            "completedAt"
+          ]
+        },
+        {
+          "all": [
+            "project",
             "completedAt"
           ]
         },
@@ -16048,7 +18222,19 @@
         },
         {
           "all": [
+            "project",
+            "projectUpdateRemindersPausedUntilAt"
+          ]
+        },
+        {
+          "all": [
             "projectId",
+            "slackIssueComments"
+          ]
+        },
+        {
+          "all": [
+            "project",
             "slackIssueComments"
           ]
         },
@@ -16060,7 +18246,19 @@
         },
         {
           "all": [
+            "project",
+            "slackIssueStatuses"
+          ]
+        },
+        {
+          "all": [
             "projectId",
+            "slackNewIssue"
+          ]
+        },
+        {
+          "all": [
+            "project",
             "slackNewIssue"
           ]
         },
@@ -16072,7 +18270,19 @@
         },
         {
           "all": [
+            "project",
+            "frequencyResolution"
+          ]
+        },
+        {
+          "all": [
             "projectId",
+            "updateReminderFrequency"
+          ]
+        },
+        {
+          "all": [
+            "project",
             "updateReminderFrequency"
           ]
         },
@@ -16084,13 +18294,31 @@
         },
         {
           "all": [
+            "project",
+            "updateReminderFrequencyInWeeks"
+          ]
+        },
+        {
+          "all": [
             "projectId",
             "updateRemindersDay"
           ]
         },
         {
           "all": [
+            "project",
+            "updateRemindersDay"
+          ]
+        },
+        {
+          "all": [
             "projectId",
+            "updateRemindersHour"
+          ]
+        },
+        {
+          "all": [
+            "project",
             "updateRemindersHour"
           ]
         }
@@ -16100,6 +18328,7 @@
           "fields": [
             "name",
             "teamIds",
+            "teams",
             "description",
             "content",
             "icon",
@@ -16110,11 +18339,17 @@
             "targetDate",
             "targetDateResolution",
             "statusId",
+            "status",
             "leadId",
+            "lead",
             "leadTeamId",
+            "leadTeam",
             "memberIds",
+            "members",
             "labelIds",
+            "labels",
             "convertedFromIssueId",
+            "convertedFromIssue",
             "lastAppliedTemplateId",
             "sortOrder",
             "prioritySortOrder",
@@ -16129,14 +18364,22 @@
                 "name",
                 "teamIds"
               ]
+            },
+            {
+              "all": [
+                "name",
+                "teams"
+              ]
             }
           ]
         },
         {
           "fields": [
             "projectId",
+            "project",
             "name",
             "teamIds",
+            "teams",
             "description",
             "content",
             "icon",
@@ -16147,11 +18390,17 @@
             "targetDate",
             "targetDateResolution",
             "statusId",
+            "status",
             "leadId",
+            "lead",
             "leadTeamId",
+            "leadTeam",
             "memberIds",
+            "members",
             "labelIds",
+            "labels",
             "convertedFromIssueId",
+            "convertedFromIssue",
             "lastAppliedTemplateId",
             "sortOrder",
             "prioritySortOrder",
@@ -16176,6 +18425,12 @@
             },
             {
               "all": [
+                "project",
+                "name"
+              ]
+            },
+            {
+              "all": [
                 "projectId",
                 "teamIds"
               ]
@@ -16183,6 +18438,30 @@
             {
               "all": [
                 "projectId",
+                "teams"
+              ]
+            },
+            {
+              "all": [
+                "project",
+                "teamIds"
+              ]
+            },
+            {
+              "all": [
+                "project",
+                "teams"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "description"
+              ]
+            },
+            {
+              "all": [
+                "project",
                 "description"
               ]
             },
@@ -16194,7 +18473,19 @@
             },
             {
               "all": [
+                "project",
+                "content"
+              ]
+            },
+            {
+              "all": [
                 "projectId",
+                "icon"
+              ]
+            },
+            {
+              "all": [
+                "project",
                 "icon"
               ]
             },
@@ -16206,7 +18497,19 @@
             },
             {
               "all": [
+                "project",
+                "color"
+              ]
+            },
+            {
+              "all": [
                 "projectId",
+                "priority"
+              ]
+            },
+            {
+              "all": [
+                "project",
                 "priority"
               ]
             },
@@ -16218,7 +18521,19 @@
             },
             {
               "all": [
+                "project",
+                "startDate"
+              ]
+            },
+            {
+              "all": [
                 "projectId",
+                "startDateResolution"
+              ]
+            },
+            {
+              "all": [
+                "project",
                 "startDateResolution"
               ]
             },
@@ -16230,7 +18545,19 @@
             },
             {
               "all": [
+                "project",
+                "targetDate"
+              ]
+            },
+            {
+              "all": [
                 "projectId",
+                "targetDateResolution"
+              ]
+            },
+            {
+              "all": [
+                "project",
                 "targetDateResolution"
               ]
             },
@@ -16243,7 +18570,43 @@
             {
               "all": [
                 "projectId",
+                "status"
+              ]
+            },
+            {
+              "all": [
+                "project",
+                "statusId"
+              ]
+            },
+            {
+              "all": [
+                "project",
+                "status"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
                 "leadId"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "lead"
+              ]
+            },
+            {
+              "all": [
+                "project",
+                "leadId"
+              ]
+            },
+            {
+              "all": [
+                "project",
+                "lead"
               ]
             },
             {
@@ -16255,7 +18618,43 @@
             {
               "all": [
                 "projectId",
+                "leadTeam"
+              ]
+            },
+            {
+              "all": [
+                "project",
+                "leadTeamId"
+              ]
+            },
+            {
+              "all": [
+                "project",
+                "leadTeam"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
                 "memberIds"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "members"
+              ]
+            },
+            {
+              "all": [
+                "project",
+                "memberIds"
+              ]
+            },
+            {
+              "all": [
+                "project",
+                "members"
               ]
             },
             {
@@ -16267,12 +18666,54 @@
             {
               "all": [
                 "projectId",
+                "labels"
+              ]
+            },
+            {
+              "all": [
+                "project",
+                "labelIds"
+              ]
+            },
+            {
+              "all": [
+                "project",
+                "labels"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
                 "convertedFromIssueId"
               ]
             },
             {
               "all": [
                 "projectId",
+                "convertedFromIssue"
+              ]
+            },
+            {
+              "all": [
+                "project",
+                "convertedFromIssueId"
+              ]
+            },
+            {
+              "all": [
+                "project",
+                "convertedFromIssue"
+              ]
+            },
+            {
+              "all": [
+                "projectId",
+                "lastAppliedTemplateId"
+              ]
+            },
+            {
+              "all": [
+                "project",
                 "lastAppliedTemplateId"
               ]
             },
@@ -16284,7 +18725,19 @@
             },
             {
               "all": [
+                "project",
+                "sortOrder"
+              ]
+            },
+            {
+              "all": [
                 "projectId",
+                "prioritySortOrder"
+              ]
+            },
+            {
+              "all": [
+                "project",
                 "prioritySortOrder"
               ]
             },
@@ -16296,7 +18749,19 @@
             },
             {
               "all": [
+                "project",
+                "canceledAt"
+              ]
+            },
+            {
+              "all": [
                 "projectId",
+                "completedAt"
+              ]
+            },
+            {
+              "all": [
+                "project",
                 "completedAt"
               ]
             },
@@ -16308,7 +18773,19 @@
             },
             {
               "all": [
+                "project",
+                "projectUpdateRemindersPausedUntilAt"
+              ]
+            },
+            {
+              "all": [
                 "projectId",
+                "slackIssueComments"
+              ]
+            },
+            {
+              "all": [
+                "project",
                 "slackIssueComments"
               ]
             },
@@ -16320,7 +18797,19 @@
             },
             {
               "all": [
+                "project",
+                "slackIssueStatuses"
+              ]
+            },
+            {
+              "all": [
                 "projectId",
+                "slackNewIssue"
+              ]
+            },
+            {
+              "all": [
+                "project",
                 "slackNewIssue"
               ]
             },
@@ -16332,7 +18821,19 @@
             },
             {
               "all": [
+                "project",
+                "frequencyResolution"
+              ]
+            },
+            {
+              "all": [
                 "projectId",
+                "updateReminderFrequency"
+              ]
+            },
+            {
+              "all": [
+                "project",
                 "updateReminderFrequency"
               ]
             },
@@ -16344,13 +18845,31 @@
             },
             {
               "all": [
+                "project",
+                "updateReminderFrequencyInWeeks"
+              ]
+            },
+            {
+              "all": [
                 "projectId",
                 "updateRemindersDay"
               ]
             },
             {
               "all": [
+                "project",
+                "updateRemindersDay"
+              ]
+            },
+            {
+              "all": [
                 "projectId",
+                "updateRemindersHour"
+              ]
+            },
+            {
+              "all": [
+                "project",
                 "updateRemindersHour"
               ]
             }
@@ -16360,7 +18879,7 @@
       "strictRawArguments": true,
       "example": {
         "name": "Platform",
-        "teamIds": [
+        "teams": [
           "team-id"
         ]
       }
@@ -16377,8 +18896,10 @@
       "entityKind": "project",
       "callFields": [
         "projectId",
+        "project",
         "name",
         "teamIds",
+        "teams",
         "description",
         "content",
         "icon",
@@ -16389,11 +18910,17 @@
         "targetDate",
         "targetDateResolution",
         "statusId",
+        "status",
         "leadId",
+        "lead",
         "leadTeamId",
+        "leadTeam",
         "memberIds",
+        "members",
         "labelIds",
+        "labels",
         "convertedFromIssueId",
+        "convertedFromIssue",
         "lastAppliedTemplateId",
         "sortOrder",
         "prioritySortOrder",
@@ -16415,7 +18942,7 @@
       ],
       "action": "save",
       "targetFields": [
-        "projectId",
+        "project",
         "name"
       ]
     }

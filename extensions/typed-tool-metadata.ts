@@ -21,6 +21,13 @@ const REFERENCE_HINTS = {
   InitiativeReference: 'Exact initiative name, or an initiative UUID.',
   CycleReference: 'Exact cycle name, or a cycle UUID.',
   MilestoneReference: 'Exact milestone name, or a milestone UUID.',
+  LabelReference: 'Exact label name, or a label UUID.',
+  ProjectStatusReference: 'Exact project status name, or a project status UUID.',
+  '[TeamReference!]': 'One or more exact team keys or team UUIDs.',
+  '[UserReference!]': 'One or more exact user references.',
+  '[LabelReference!]': 'One or more exact label names or label UUIDs.',
+  NullableCycleReference: 'Exact cycle name, or a cycle UUID; null clears it.',
+  NullableMilestoneReference: 'Exact milestone name, or a milestone UUID; null clears it.',
   DocumentReference: 'Exact document title, or a document UUID.',
   DateTime: 'ISO 8601 date-time.',
   Date: 'Calendar date, YYYY-MM-DD.',
@@ -145,6 +152,8 @@ function schemaFor(type: string): TSchema {
       return Type.Union([Type.String({ minLength: 1 }), Type.Null()], options);
     case 'NullableUserReference':
     case 'NullableIssueReference':
+    case 'NullableCycleReference':
+    case 'NullableMilestoneReference':
       return Type.Union([Type.String({ minLength: 1 }), Type.Null()], options);
     case 'Priority':
       return Type.Integer({ ...options, minimum: 0, maximum: 4 });
@@ -163,6 +172,9 @@ function schemaFor(type: string): TSchema {
     case '[UUID!]':
       return Type.Array(Type.String({ pattern: UUID_PATTERN }), { ...options, minItems: 1 });
     case '[IssueReference!]':
+    case '[TeamReference!]':
+    case '[UserReference!]':
+    case '[LabelReference!]':
       return Type.Array(Type.String({ minLength: 1 }), { ...options, minItems: 1 });
     case 'Preferences':
       return description ? { ...PREFERENCES, description } : PREFERENCES;
