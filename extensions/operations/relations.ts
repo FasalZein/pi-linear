@@ -1,3 +1,4 @@
+import { requireIssueReference } from "../client";
 import { projection } from "../selections";
 import { issueLookup, issueRelationLookup } from "../operation-plan";
 import {
@@ -66,7 +67,7 @@ function guardedDeletePreparation(
 		requireNoGraphQLErrors: true,
 		failureMessage: RELATION_DELETE_ERROR,
 		acknowledgement: {
-			issueRelationDelete: { relationId, issueId, relatedIssueId, type, deleted: true },
+			issueRelationDelete: { relationId, issue: issueId, relatedIssue: relatedIssueId, type, deleted: true },
 		},
 	};
 }
@@ -221,23 +222,41 @@ export const issueRelations: readonly OperationDefinition[] = ([
 		variants: [DELETE_ISSUE_RELATION_VARIANT],
 		renderKind: "issue_relation",
 		renderTargetFields: ["relationId", "issueId", "relatedIssueId", "type"],
-		semanticException: "All delete guards must be exact UUIDs and the relation type must be closed.",
+		semanticException: "The relation guard must be an exact UUID; issue endpoints accept exact issue references.",
 		validateVariables(variables) {
-			for (const name of ["relationId", "issueId", "relatedIssueId"]) {
-				const value = variables[name];
-				if (!isCompatibilityString(value) || !UUID.test(value))
-					throw new Error(`Invalid ${name}: expected a UUID.`);
+			const relationId = variables.relationId;
+			if (!isCompatibilityString(relationId) || !UUID.test(relationId)) {
+				throw new Error("Invalid relationId: expected a UUID.");
 			}
+			requireIssueReference(String(variables.issueId));
+			requireIssueReference(String(variables.relatedIssueId));
 			const relationType = variables.type;
 			if (!isCompatibilityString(relationType) || !ISSUE_RELATION_TYPES.has(relationType))
 				throw new Error("Invalid type: expected blocks, duplicate, related, or similar.");
 		},
 		plan(variables) {
+			const issueRef = String(variables.issueId);
+			const relatedIssueRef = String(variables.relatedIssueId);
 			return {
 				kind: "mutation",
-				lookups: [issueRelationLookup("issueRelation", String(variables.relationId), RELATION_PREFLIGHT_ERROR)],
+				lookups: [
+					...(!UUID.test(issueRef) ? [issueLookup("issue", issueRef)] : []),
+					...(!UUID.test(relatedIssueRef) ? [issueLookup("relatedIssue", relatedIssueRef)] : []),
+					issueRelationLookup("issueRelation", String(variables.relationId), RELATION_PREFLIGHT_ERROR),
+				],
 				finish(resolved) {
-					return guardedDeletePreparation(variables, resolved.issueRelation as GuardedIssueRelation);
+					const issue = resolved.issue as import("../client").ResolvedIssue | undefined;
+					const relatedIssue = resolved.relatedIssue as import("../client").ResolvedIssue | undefined;
+					const prepared = guardedDeletePreparation({
+						...variables,
+						issueId: issue?.id ?? issueRef,
+						relatedIssueId: relatedIssue?.id ?? relatedIssueRef,
+					}, resolved.issueRelation as GuardedIssueRelation);
+					prepared.resolution = {
+						issue: issue ? issueTarget(issueRef, issue) : { requested: issueRef, resolvedId: issueRef },
+						relatedIssue: relatedIssue ? issueTarget(relatedIssueRef, relatedIssue) : { requested: relatedIssueRef, resolvedId: relatedIssueRef },
+					};
+					return prepared;
 				},
 			};
 		},

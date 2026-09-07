@@ -483,10 +483,10 @@ describe('typed schema validation across all 49 tools', () => {
     // Valid arguments come back as the identical object: no field is added, removed,
     // renamed, or reordered before Pi validates.
     const tool = tools.get('linear_create_issue')!;
-    const args = { title: 'T', team: 'AEO', priority: 2, labelIds: [UUID_SAMPLE] };
+    const args = { title: 'T', team: 'AEO', priority: 2, labels: [UUID_SAMPLE] };
     const prepared = tool.prepareArguments!(args);
     expect(prepared).toBe(args);
-    expect(prepared).toEqual({ title: 'T', team: 'AEO', priority: 2, labelIds: [UUID_SAMPLE] });
+    expect(prepared).toEqual({ title: 'T', team: 'AEO', priority: 2, labels: [UUID_SAMPLE] });
   });
 
   it.each([
@@ -586,8 +586,8 @@ describe('execution boundary rejects non-canonical arguments before any network 
     const requests = installServer();
     await expect(execute(tools.get('linear_get_document')!, { query: 'Dispatch doc' }))
       .rejects.toThrow(/query|document/);
-    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', project: 'Dispatch' })).toBe(false);
-    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', labels: [UUID_SAMPLE] })).toBe(false);
+    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', project: 'Dispatch' })).toBe(true);
+    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', labels: [UUID_SAMPLE] })).toBe(true);
     expect(requests).toHaveLength(0);
   });
 
@@ -596,7 +596,7 @@ describe('execution boundary rejects non-canonical arguments before any network 
     ['linear_create_issue', { title: 'T', team: 'AEO', teamId: 'team-9' }, /teamId/],
     ['linear_update_issue', { issue: 'AEO-258', state: 'Done', stateId: 'state-9' }, /stateId/],
     ['linear_create_issue', { title: 'T', parent: 'AEO-258', parentId: 'AEO-999' }, /parentId/],
-    ['linear_save_milestone', { milestoneId: 'Beta', name: 'B', input: { projectId: 'p' } }, /input/],
+    ['linear_save_milestone', { milestoneId: 'Beta', name: 'B', input: { projectId: 'p' } }, /milestoneId.*milestone/],
   ])('rejects %s carrying a contradictory alias', async (toolName, args, pattern) => {
     const requests = installServer();
     // The published schema already refuses these; execute() refuses them again so no
@@ -616,7 +616,7 @@ describe('execution boundary rejects non-canonical arguments before any network 
 
   it('rejects an identity-only save before any request', async () => {
     const requests = installServer();
-    await expect(execute(tools.get('linear_save_project')!, { projectId: 'Roadmap' })).rejects.toThrow();
+    await expect(execute(tools.get('linear_save_project')!, { project: 'Roadmap' })).rejects.toThrow();
     expect(requests).toHaveLength(0);
   });
 
@@ -691,7 +691,7 @@ describe('package hygiene', () => {
     const createIssueFields = canonicalFieldNames(operations.create_issue!);
     expect(createIssueFields.slice(0, 6))
       .toEqual(['title', 'team', 'parent', 'state', 'assignee', 'dueDate']);
-    for (const field of ['labelIds', 'projectId', 'cycleId', 'slaType', 'templateId', 'id']) {
+    for (const field of ['labels', 'project', 'cycle', 'slaType', 'templateId', 'id']) {
       expect(createIssueFields).toContain(field);
     }
   });
@@ -726,10 +726,10 @@ const COMPATIBILITY: ReadonlyArray<{
       ['state', 'Backlog'],
       ['assignee', 'me'],
       ['parent', 'AEO-258'],
-      ['projectId', UUID],
-      ['cycleId', UUID],
-      ['labelIds', [UUID]],
-      ['subscriberIds', [UUID]],
+      ['project', UUID],
+      ['cycle', UUID],
+      ['labels', [UUID]],
+      ['subscribers', [UUID]],
     ],
     absent: ['teamId', 'teamKey', 'stateId', 'assigneeId', 'parentId', 'input'],
   },
@@ -747,12 +747,12 @@ const COMPATIBILITY: ReadonlyArray<{
       ['state', 'Done'],
       ['assignee', 'sam@example.com'],
       ['parent', 'AEO-1'],
-      ['projectId', UUID],
-      ['cycleId', UUID],
-      ['labelIds', [UUID]],
-      ['addedLabelIds', [UUID]],
-      ['removedLabelIds', [UUID]],
-      ['subscriberIds', [UUID]],
+      ['project', UUID],
+      ['cycle', UUID],
+      ['labels', [UUID]],
+      ['addLabels', [UUID]],
+      ['removeLabels', [UUID]],
+      ['subscribers', [UUID]],
     ],
     absent: ['issueId', 'stateId', 'assigneeId', 'parentId', 'input', 'trashed'],
   },
@@ -764,12 +764,12 @@ const COMPATIBILITY: ReadonlyArray<{
       ['content', 'body'],
       ['icon', '📄'],
       ['color', '#ff0000'],
-      ['issueId', 'AEO-258'],
-      ['projectId', UUID],
-      ['teamId', 'AEO'],
-      ['initiativeId', UUID],
-      ['cycleId', UUID],
-      ['subscriberIds', [UUID]],
+      ['issue', 'AEO-258'],
+      ['project', UUID],
+      ['team', 'AEO'],
+      ['initiative', UUID],
+      ['cycle', UUID],
+      ['subscribers', [UUID]],
       ['sortOrder', 12.5],
     ],
     absent: ['teamKey', 'input'],
@@ -783,9 +783,9 @@ const COMPATIBILITY: ReadonlyArray<{
       ['content', 'body'],
       ['icon', '📄'],
       ['color', '#00ff00'],
-      ['issueId', 'AEO-258'],
-      ['projectId', UUID],
-      ['teamId', 'AEO'],
+      ['issue', 'AEO-258'],
+      ['project', UUID],
+      ['team', 'AEO'],
       ['hiddenAt', null],
       ['sortOrder', 3],
     ],
@@ -821,7 +821,7 @@ const COMPATIBILITY: ReadonlyArray<{
   {
     tool: 'linear_save_project',
     baseAlone: 'accepted',
-    base: { name: 'Auth hardening', teamIds: [UUID] },
+    base: { name: 'Auth hardening', teams: [UUID] },
     fields: [
       ['description', 'summary'],
       ['content', 'body'],
@@ -849,11 +849,11 @@ describe('upstream and runtime capability coverage', () => {
   });
 
   it('lets an update change only a restored field', () => {
-    for (const field of ['projectId', 'cycleId', 'labelIds', 'addedLabelIds', 'removedLabelIds', 'subscriberIds']) {
-      const value = field.endsWith('Ids') ? [UUID] : UUID;
+    for (const field of ['project', 'cycle', 'labels', 'addLabels', 'removeLabels', 'subscribers']) {
+      const value = ['labels', 'addLabels', 'removeLabels', 'subscribers'].includes(field) ? [UUID] : UUID;
       expect(accepts('linear_update_issue', { issue: 'AEO-258', [field]: value }), field).toBe(true);
     }
-    for (const field of ['assignee', 'parent', 'projectId', 'projectMilestoneId', 'cycleId', 'dueDate']) {
+    for (const field of ['assignee', 'parent', 'project', 'milestone', 'cycle', 'dueDate']) {
       expect(accepts('linear_update_issue', { issue: 'AEO-258', [field]: null }), field).toBe(true);
     }
   });
@@ -868,9 +868,9 @@ describe('upstream and runtime capability coverage', () => {
   });
 
   it('rejects malformed values for the restored fields', () => {
-    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', projectId: 'not-a-uuid' })).toBe(false);
-    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', labelIds: [] })).toBe(false);
-    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', labelIds: ['nope'] })).toBe(false);
+    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', project: '' })).toBe(false);
+    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', labels: [] })).toBe(false);
+    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', labels: ['bug'] })).toBe(true);
     expect(accepts('linear_update_issue', { issue: 'AEO-1', dueDate: 'clear' })).toBe(false);
     // create_issue has no nullable due date: Pi drops the null instead of forwarding it.
     expect(validate('linear_create_issue', { title: 'T', team: 'AEO', dueDate: null }))
@@ -964,7 +964,7 @@ describe('strict raw arguments before Pi conversion', () => {
   it('rejects an invalid null and keeps valid nullable updates', () => {
     expect(rawAccepts('linear_get_issue', { issue: null })).toBe(false);
     expect(rawAccepts('linear_create_issue', { title: 'T', team: 'AEO', dueDate: null })).toBe(false);
-    for (const field of ['assignee', 'parent', 'projectId', 'projectMilestoneId', 'cycleId', 'dueDate']) {
+    for (const field of ['assignee', 'parent', 'project', 'milestone', 'cycle', 'dueDate']) {
       expect(rawAccepts('linear_update_issue', { issue: 'AEO-1', [field]: null }), field).toBe(true);
     }
     expect(rawAccepts('linear_update_issue', { issue: 'AEO-1', dueDate: '2026-09-01' })).toBe(true);
@@ -1003,7 +1003,7 @@ describe('strict raw arguments before Pi conversion', () => {
       title: 'New title',
       priority: 0,
       dueDate: null,
-      labelIds: [UUID_SAMPLE],
+      labels: [UUID_SAMPLE],
       sortOrder: 1.5,
     };
     const snapshot = JSON.stringify(args);

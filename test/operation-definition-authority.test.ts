@@ -178,7 +178,7 @@ describe('v0.6 operation definition authority', () => {
       list_issues: 'state-name-requires-team',
       create_issue: 'non-empty-title-and-team-or-parent',
       create_project_label: 'nested-name-type',
-      delete_issue_relation: 'All delete guards must be exact UUIDs and the relation type must be closed.',
+      delete_issue_relation: 'The relation guard must be an exact UUID; issue endpoints accept exact issue references.',
       save_initiative: 'save-value-types',
       save_milestone: 'save-value-types',
       save_project: 'save-value-types',

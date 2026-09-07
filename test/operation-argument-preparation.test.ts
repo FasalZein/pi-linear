@@ -44,16 +44,20 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("loader create_issue compatibility", () => {
 	it("converts project and labels aliases into canonical mutation input", async () => {
-		const { requests } = graphqlStub((query) => query.includes("ResolveNamedEntityByName")
-			? { projects: { nodes: [{ id: PROJECT_ID, name: "Dispatch" }] } }
-			: { teams: { nodes: [{ id: INITIATIVE_ID, key: "AEO" }] } });
+		const { requests } = graphqlStub((query) => {
+			if (query.includes("ResolveNamedEntityByReference")) {
+				return { matches: { nodes: [{ id: PROJECT_ID, name: "Dispatch", slugId: "dispatch" }] } };
+			}
+			if (query.includes("issueLabel(id:")) return { issueLabel: { id: MILESTONE_ID, name: "Reference" } };
+			return { teams: { nodes: [{ id: INITIATIVE_ID, key: "AEO" }] } };
+		});
 		resolveRequest({ operation: "create_issue", variables: {
 			title: "Fix dispatch", team: "AEO", project: "Dispatch", labels: [MILESTONE_ID],
 		} });
 		const result = await prepare("create_issue", {
 			title: "Fix dispatch", team: "AEO", project: "Dispatch", labels: [MILESTONE_ID],
 		});
-		expect(requests).toHaveLength(2);
+		expect(requests).toHaveLength(3);
 		expect(result.variables.input).toMatchObject({ projectId: PROJECT_ID, labelIds: [MILESTONE_ID] });
 		expect(result.variables.input).not.toHaveProperty("project");
 		expect(result.variables.input).not.toHaveProperty("labels");

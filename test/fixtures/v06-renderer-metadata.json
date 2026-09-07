@@ -26,8 +26,8 @@
     "entityKind": "comment",
     "callFields": [
       "issue",
-      "projectId",
-      "initiativeId",
+      "project",
+      "initiative",
       "projectUpdateId",
       "initiativeUpdateId",
       "postId",
@@ -44,8 +44,8 @@
     "action": "create",
     "targetFields": [
       "issue",
-      "projectId",
-      "initiativeId",
+      "project",
+      "initiative",
       "projectUpdateId",
       "initiativeUpdateId",
       "postId",
@@ -174,7 +174,7 @@
   "update_cycle": {
     "entityKind": "cycle",
     "callFields": [
-      "id",
+      "cycle",
       "name",
       "description",
       "startsAt",
@@ -219,16 +219,16 @@
       "content",
       "icon",
       "color",
-      "issueId",
-      "teamId",
-      "projectId",
-      "initiativeId",
-      "cycleId",
+      "issue",
+      "team",
+      "project",
+      "initiative",
+      "cycle",
       "releaseId",
       "resourceFolderId",
       "lastAppliedTemplateId",
-      "ownerId",
-      "subscriberIds",
+      "owner",
+      "subscribers",
       "sortOrder",
       "id"
     ],
@@ -242,16 +242,16 @@
       "content",
       "icon",
       "color",
-      "issueId",
-      "teamId",
-      "projectId",
-      "initiativeId",
-      "cycleId",
+      "issue",
+      "team",
+      "project",
+      "initiative",
+      "cycle",
       "releaseId",
       "resourceFolderId",
       "lastAppliedTemplateId",
-      "ownerId",
-      "subscriberIds",
+      "owner",
+      "subscribers",
       "sortOrder",
       "hiddenAt"
     ],
@@ -326,7 +326,7 @@
   "update_issue_label": {
     "entityKind": "label",
     "callFields": [
-      "id",
+      "label",
       "name",
       "description",
       "color",
@@ -373,8 +373,8 @@
     "callFields": [
       "id",
       "type",
-      "issueId",
-      "relatedIssueId"
+      "issue",
+      "relatedIssue"
     ],
     "action": "update"
   },
@@ -382,15 +382,15 @@
     "entityKind": "issue_relation",
     "callFields": [
       "relationId",
-      "issueId",
-      "relatedIssueId",
+      "issue",
+      "relatedIssue",
       "type"
     ],
     "action": "delete",
     "targetFields": [
       "relationId",
-      "issueId",
-      "relatedIssueId",
+      "issue",
+      "relatedIssue",
       "type"
     ]
   },
@@ -422,6 +422,7 @@
       "state",
       "stateType",
       "assignee",
+      "project",
       "sort",
       "after",
       "before",
@@ -461,12 +462,12 @@
       "descriptionData",
       "priority",
       "estimate",
-      "projectId",
-      "projectMilestoneId",
-      "cycleId",
-      "labelIds",
-      "subscriberIds",
-      "delegateId",
+      "project",
+      "milestone",
+      "cycle",
+      "labels",
+      "subscribers",
+      "delegate",
       "lastAppliedTemplateId",
       "slaType",
       "slaBreachesAt",
@@ -496,20 +497,20 @@
       "state",
       "assignee",
       "parent",
-      "teamId",
+      "team",
       "dueDate",
-      "addedLabelIds",
-      "removedLabelIds",
+      "addLabels",
+      "removeLabels",
       "description",
       "descriptionData",
       "priority",
       "estimate",
-      "projectId",
-      "projectMilestoneId",
-      "cycleId",
-      "labelIds",
-      "subscriberIds",
-      "delegateId",
+      "project",
+      "milestone",
+      "cycle",
+      "labels",
+      "subscribers",
+      "delegate",
       "lastAppliedTemplateId",
       "slaType",
       "slaBreachesAt",
@@ -518,7 +519,7 @@
       "subIssueSortOrder",
       "prioritySortOrder",
       "autoClosedByParentClosing",
-      "snoozedById",
+      "snoozedBy",
       "snoozedUntilAt"
     ],
     "action": "update"
@@ -606,7 +607,7 @@
   "update_project_label": {
     "entityKind": "label",
     "callFields": [
-      "id",
+      "label",
       "name",
       "description",
       "color",
@@ -637,13 +638,13 @@
   "create_project_relation": {
     "entityKind": "project_relation",
     "callFields": [
-      "projectId",
-      "relatedProjectId",
+      "project",
+      "relatedProject",
       "type",
       "anchorType",
       "relatedAnchorType",
-      "projectMilestoneId",
-      "relatedProjectMilestoneId"
+      "milestone",
+      "relatedMilestone"
     ],
     "action": "create"
   },
@@ -654,10 +655,10 @@
       "type",
       "anchorType",
       "relatedAnchorType",
-      "projectId",
-      "relatedProjectId",
-      "projectMilestoneId",
-      "relatedProjectMilestoneId"
+      "project",
+      "relatedProject",
+      "milestone",
+      "relatedMilestone"
     ],
     "action": "update"
   },
@@ -754,7 +755,7 @@
   "save_initiative": {
     "entityKind": "initiative",
     "callFields": [
-      "initiativeId",
+      "initiative",
       "name",
       "description",
       "content",
@@ -763,12 +764,12 @@
       "status",
       "targetDate",
       "targetDateResolution",
-      "ownerId",
-      "leadTeamId",
+      "owner",
+      "leadTeam",
       "sortOrder",
       "prioritySortOrder",
       "priority",
-      "labelIds",
+      "labels",
       "id",
       "customIdentifier",
       "frequencyResolution",
@@ -779,16 +780,16 @@
     ],
     "action": "save",
     "targetFields": [
-      "initiativeId",
+      "initiative",
       "name"
     ]
   },
   "save_milestone": {
     "entityKind": "milestone",
     "callFields": [
-      "milestoneId",
+      "milestone",
       "name",
-      "projectId",
+      "project",
       "description",
       "descriptionData",
       "targetDate",
@@ -797,17 +798,17 @@
     ],
     "action": "save",
     "targetFields": [
-      "milestoneId",
+      "milestone",
       "name",
-      "projectId"
+      "project"
     ]
   },
   "save_project": {
     "entityKind": "project",
     "callFields": [
-      "projectId",
+      "project",
       "name",
-      "teamIds",
+      "teams",
       "description",
       "content",
       "icon",
@@ -817,12 +818,12 @@
       "startDateResolution",
       "targetDate",
       "targetDateResolution",
-      "statusId",
-      "leadId",
-      "leadTeamId",
-      "memberIds",
-      "labelIds",
-      "convertedFromIssueId",
+      "status",
+      "lead",
+      "leadTeam",
+      "members",
+      "labels",
+      "convertedFromIssue",
       "lastAppliedTemplateId",
       "sortOrder",
       "prioritySortOrder",
@@ -844,7 +845,7 @@
     ],
     "action": "save",
     "targetFields": [
-      "projectId",
+      "project",
       "name"
     ]
   }

@@ -36,7 +36,7 @@ describe('AEO-824 issue project references', () => {
     const requests = stubGraphql((query, variables) => {
       if (query.includes('ResolveNamedEntityByReference')) {
         expect(variables).toEqual({ reference: 'pi-linear' });
-        return { byName: { nodes: [{ id: PROJECT_ID, name: 'pi-linear', slugId: 'different-slug' }] }, bySlug: null };
+        return { matches: { nodes: [{ id: PROJECT_ID, name: 'pi-linear', slugId: 'different-slug' }] } };
       }
       return { project: { id: PROJECT_ID, name: 'pi-linear', slugId: 'different-slug' } };
     });
@@ -47,7 +47,7 @@ describe('AEO-824 issue project references', () => {
 
   it('filters list_issues by an exact project name', async () => {
     const requests = stubGraphql((query) => query.includes('ResolveNamedEntityByReference')
-      ? { byName: { nodes: [{ id: PROJECT_ID, name: 'pi-linear', slugId: 'pi-linear' }] }, bySlug: { id: PROJECT_ID, name: 'pi-linear', slugId: 'pi-linear' } }
+      ? { matches: { nodes: [{ id: PROJECT_ID, name: 'pi-linear', slugId: 'pi-linear' }] } }
       : { issues: { nodes: [], pageInfo: { hasNextPage: false, hasPreviousPage: false } } });
     await executeTyped('list_issues', { project: 'pi-linear' });
     expect(requests).toHaveLength(2);
@@ -56,7 +56,7 @@ describe('AEO-824 issue project references', () => {
 
   it('creates an issue attached to a project resolved by exact name', async () => {
     const requests = stubGraphql((query) => {
-      if (query.includes('ResolveNamedEntityByReference')) return { byName: { nodes: [{ id: PROJECT_ID, name: 'pi-linear', slugId: 'pi-linear' }] }, bySlug: { id: PROJECT_ID, name: 'pi-linear', slugId: 'pi-linear' } };
+      if (query.includes('ResolveNamedEntityByReference')) return { matches: { nodes: [{ id: PROJECT_ID, name: 'pi-linear', slugId: 'pi-linear' }] } };
       if (query.includes('ResolveTeamByKey')) return { teams: { nodes: [{ id: TEAM_ID, key: 'AEO', name: 'Agent Experience' }] } };
       return { issueCreate: { success: true, issue: issueNode() } };
     });
@@ -77,7 +77,7 @@ describe('AEO-824 issue project references', () => {
 
   it('fails closed when a project name does not resolve and sends no mutation', async () => {
     const requests = stubGraphql((query) => query.includes('ResolveNamedEntityByReference')
-      ? { byName: { nodes: [] }, bySlug: null }
+      ? { matches: { nodes: [] } }
       : (() => { throw new Error('mutation must not run'); })());
     await expect(executeTyped('update_issue', { issue: 'AEO-258', project: 'missing' }))
       .rejects.toThrow('expected exactly one');

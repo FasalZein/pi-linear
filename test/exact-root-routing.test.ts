@@ -81,13 +81,17 @@ describe('identifier-shaped search_issues uses the exact issue root', () => {
 });
 
 describe('exact project, cycle, and document reads', () => {
-  it('reads a project slug with one GetProject request', async () => {
+  it('resolves a project slug exactly before the GetProject request', async () => {
     const { requests } = graphqlStub((query, variables) => {
+      if (query.includes('ResolveNamedEntityByReference')) {
+        expect(query).toContain('projects(first: 3');
+        expect(query).toContain('slugId: { eq: $reference }');
+        expect(variables).toEqual({ reference: 'pi-linear' });
+        return { matches: { nodes: [{ id: PROJECT_ID, name: 'Pi Linear', slugId: 'pi-linear' }] } };
+      }
       expect(query).toContain('query GetProject');
       expect(query).toContain('project(id: $id)');
-      expect(query).toContain('slugId');
-      expect(query).not.toContain('projects(first:');
-      expect(variables).toEqual({ id: 'pi-linear' });
+      expect(variables).toEqual({ id: PROJECT_ID });
       return {
         project: {
           id: PROJECT_ID,
@@ -101,7 +105,7 @@ describe('exact project, cycle, and document reads', () => {
 
     const result = await execute({ operation: 'get_project', variables: { project: 'pi-linear' } });
 
-    expect(requests).toHaveLength(1);
+    expect(requests).toHaveLength(2);
     expect(result.details.resolution.target).toEqual({
       requested: 'pi-linear',
       resolvedId: PROJECT_ID,
@@ -140,18 +144,22 @@ describe('exact project, cycle, and document reads', () => {
     });
   });
 
-  it('reads a document slug with one GetDocument request', async () => {
+  it('resolves a document slug exactly before the GetDocument request', async () => {
     const { requests } = graphqlStub((query, variables) => {
+      if (query.includes('ResolveNamedEntityByReference')) {
+        expect(query).toContain('documents(first: 3');
+        expect(query).toContain('slugId: { eq: $reference }');
+        expect(variables).toEqual({ reference: 'planning-notes' });
+        return { matches: { nodes: [{ id: DOCUMENT_ID, name: 'Planning notes', slugId: 'planning-notes' }] } };
+      }
       expect(query).toContain('query GetDocument');
       expect(query).toContain('document(id: $id)');
-      expect(query).toContain('slugId');
-      expect(query).not.toContain('documents(first:');
-      expect(variables).toEqual({ id: 'planning-notes' });
+      expect(variables).toEqual({ id: DOCUMENT_ID });
       return { document: { id: DOCUMENT_ID, title: 'Planning notes', slugId: 'planning-notes' } };
     });
 
     await execute({ operation: 'get_document', variables: { document: 'planning-notes' } });
-    expect(requests).toHaveLength(1);
+    expect(requests).toHaveLength(2);
   });
 
   it('reads project, cycle, and document UUIDs with one singular request', async () => {
@@ -178,20 +186,21 @@ describe('exact project, cycle, and document reads', () => {
 
   it('keeps ordinary exact names on list filters', async () => {
     const { requests } = graphqlStub((query, variables) => {
-      if (query.includes('ResolveNamedEntityByName')) {
+      if (query.includes('ResolveNamedEntityByReference')) {
         expect(query).not.toMatch(/project\(id: \$id\)/);
-        expect(query).not.toMatch(/cycle\(id: \$id\)/);
         expect(query).not.toMatch(/document\(id: \$id\)/);
         if (query.includes('projects(')) {
-          expect(variables).toEqual({ name: 'Platform' });
-          return { projects: { nodes: [{ id: PROJECT_ID, name: 'Platform' }] } };
+          expect(variables).toEqual({ reference: 'Platform' });
+          return { matches: { nodes: [{ id: PROJECT_ID, name: 'Platform', slugId: 'platform' }] } };
         }
-        if (query.includes('cycles(')) {
-          expect(variables).toEqual({ name: 'Cycle 12' });
-          return { cycles: { nodes: [{ id: CYCLE_ID, name: 'Cycle 12' }] } };
-        }
-        expect(variables).toEqual({ name: 'Planning notes' });
-        return { documents: { nodes: [{ id: DOCUMENT_ID, name: 'Planning notes' }] } };
+        expect(variables).toEqual({ reference: 'Planning notes' });
+        return { matches: { nodes: [{ id: DOCUMENT_ID, name: 'Planning notes', slugId: 'planning-notes' }] } };
+      }
+      if (query.includes('ResolveNamedEntityByName')) {
+        expect(query).not.toMatch(/cycle\(id: \$id\)/);
+        expect(query).toContain('cycles(');
+        expect(variables).toEqual({ name: 'Cycle 12' });
+        return { cycles: { nodes: [{ id: CYCLE_ID, name: 'Cycle 12' }] } };
       }
       if (query.includes('GetProject')) {
         expect(variables).toEqual({ id: PROJECT_ID });
@@ -210,11 +219,11 @@ describe('exact project, cycle, and document reads', () => {
     await execute({ operation: 'get_cycle', variables: { cycle: 'Cycle 12' } });
     await execute({ operation: 'get_document', variables: { document: 'Planning notes' } });
     expect(requests.map(({ query }) => query.split('(')[0]!.trim())).toEqual([
-      'query ResolveNamedEntityByName',
+      'query ResolveNamedEntityByReference',
       'query GetProject',
       'query ResolveNamedEntityByName',
       'query GetCycle',
-      'query ResolveNamedEntityByName',
+      'query ResolveNamedEntityByReference',
       'query GetDocument',
     ]);
   });
@@ -222,22 +231,26 @@ describe('exact project, cycle, and document reads', () => {
   it.each([
     ['project', 'get_project', 'project', 'pi-linear', PROJECT_ID],
     ['document', 'get_document', 'document', 'planning-notes', DOCUMENT_ID],
-  ] as const)('rejects a %s slug response without identity proof', async (_kind, operation, field, reference, id) => {
-    const { requests } = graphqlStub(() => ({ [field]: { id, name: 'Name', title: 'Title' } }));
+  ] as const)('rejects a %s slug lookup without identity proof', async (_kind, operation, field, reference, id) => {
+    const { requests } = graphqlStub((query) => {
+      expect(query).toContain('ResolveNamedEntityByReference');
+      return { matches: { nodes: [{ id, name: 'Name', title: 'Title' }] } };
+    });
     await expect(execute({ operation, variables: { [field]: reference } }))
-      .rejects.toThrow('did not include slug identity proof');
+      .rejects.toThrow('resolved to 0 matches; expected exactly one');
     expect(requests).toHaveLength(1);
   });
 
   it.each([
     ['project', 'get_project', 'project', 'pi-linear', PROJECT_ID],
     ['document', 'get_document', 'document', 'planning-notes', DOCUMENT_ID],
-  ] as const)('rejects a mismatched %s slug without a second request', async (_kind, operation, field, reference, id) => {
-    const { requests } = graphqlStub(() => ({
-      [field]: { id, name: 'Other', title: 'Other', slugId: 'other-slug' },
-    }));
+  ] as const)('rejects a mismatched %s slug without a singular request', async (_kind, operation, field, reference, id) => {
+    const { requests } = graphqlStub((query) => {
+      expect(query).toContain('ResolveNamedEntityByReference');
+      return { matches: { nodes: [{ id, name: 'Other', title: 'Other', slugId: 'other-slug' }] } };
+    });
     await expect(execute({ operation, variables: { [field]: reference } }))
-      .rejects.toThrow('mismatched slug');
+      .rejects.toThrow('resolved to 0 matches; expected exactly one');
     expect(requests).toHaveLength(1);
   });
 
@@ -283,8 +296,8 @@ describe('mutations do not infer slug identifiers', () => {
   it('resolves a save_project slug-shaped id as a name, not project(id:)', async () => {
     const { requests } = graphqlStub((query) => {
       expect(query).not.toMatch(/project\(id: \$id\)/);
-      if (query.includes('ResolveNamedEntityByName')) {
-        return { projects: { nodes: [{ id: PROJECT_ID, name: 'pi-linear' }] } };
+      if (query.includes('ResolveNamedEntityByReference')) {
+        return { matches: { nodes: [{ id: PROJECT_ID, name: 'pi-linear', slugId: 'pi-linear' }] } };
       }
       expect(query).toContain('mutation UpdateProject');
       return { projectUpdate: { success: true, project: { id: PROJECT_ID, name: 'pi-linear' } } };
@@ -292,11 +305,11 @@ describe('mutations do not infer slug identifiers', () => {
 
     await execute({
       operation: 'save_project',
-      variables: { projectId: 'pi-linear', name: 'Pi Linear' },
+      variables: { project: 'pi-linear', name: 'Pi Linear' },
     });
 
-    expect(requests[0]!.query).toContain('ResolveNamedEntityByName');
-    expect(requests[0]!.variables).toEqual({ name: 'pi-linear' });
+    expect(requests[0]!.query).toContain('ResolveNamedEntityByReference');
+    expect(requests[0]!.variables).toEqual({ reference: 'pi-linear' });
     expect(requests[1]!.variables).toEqual({ id: PROJECT_ID, input: { name: 'Pi Linear' } });
   });
 });

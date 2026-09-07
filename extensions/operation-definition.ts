@@ -17,11 +17,11 @@ import { requireJsonObject, type JsonValue } from './json';
 import {
   canonicalReferenceExample,
   canonicalReferenceResolverPaths,
-  expandReferenceContract,
+  referenceContract,
   normalizeReferenceArguments,
   operationReferenceRenames,
   resolveCanonicalReferences,
-} from './reference-language';
+} from './operations/reference-language';
 
 /** The seam where transport-supplied variables become parsed compatibility JSON. */
 function operationVariables(name: string, variables: JsonValue | undefined): CompatibilityObject {
@@ -196,7 +196,7 @@ export function defineOperation(operation: OperationSource): OperationDefinition
   const renames = operationReferenceRenames(operation.name);
   const renderTargetFields = operation.renderTargetFields?.map((field) => renames[field]?.name ?? field);
   const requiresVariables = !branches.some((branch) => requirementBranchMatches(branch, {}));
-  const canonical = expandReferenceContract(operation.name, operation.canonical);
+  const canonical = referenceContract(operation.name, operation.canonical);
   const canonicalFields = Object.entries(canonical.fields).map(([name, type]) => ({
     name,
     type,

@@ -214,8 +214,8 @@ describe('generated products', () => {
       }
     }
     const createIssue = contractProjection(operationDefinitions.find(({ name }) => name === 'create_issue')!);
-    expect(createIssue.help.signature).toContain('projectId?: UUID');
-    expect(createIssue.help.signature).toContain('labelIds?: [UUID!]');
+    expect(createIssue.help.signature).toContain('project?: ProjectReference');
+    expect(createIssue.help.signature).toContain('labels?: [LabelReference!]');
     expect(createIssue.help.signature).not.toContain('input');
     expect(createIssue.help.callFields).not.toContain('input');
     expect(createIssue.compatibility.fields.map(({ name }) => name)).toContain('input');

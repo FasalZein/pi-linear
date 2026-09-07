@@ -540,24 +540,26 @@ describe('shared operation-plan resolvers', () => {
 
   it('resolves supported entity names exactly and uses title for documents', async () => {
     graphqlStub((query) => {
-      expect(query).toContain('documents(first: 2, filter: { title: { eq: $name } })');
+      expect(query).toContain('matches: documents(first: 3, filter: { or: [{ title: { eq: $reference } }, { slugId: { eq: $reference } }] })');
       expect(query).toContain('name: title');
-      return { documents: { nodes: [{ id: OTHER_ID, name: 'Planning notes' }] } };
+      return { matches: { nodes: [{ id: OTHER_ID, name: 'Planning notes', slugId: 'notes' }] } };
     });
     await expect(resolveLookup(namedEntityLookup('target', 'document', 'Planning notes'))).resolves.toEqual({
       id: OTHER_ID,
       name: 'Planning notes',
+      slugId: 'notes',
     });
   });
 
   it('resolves document titles and UUIDs through shared named-entity lookups', async () => {
-    graphqlStub((query) => query.includes('ResolveNamedEntityByName')
-      ? { documents: { nodes: [{ id: OTHER_ID, name: 'Planning notes' }] } }
+    graphqlStub((query) => query.includes('ResolveNamedEntityByReference')
+      ? { matches: { nodes: [{ id: OTHER_ID, name: 'Planning notes', slugId: 'notes' }] } }
       : { document: { id: DOCUMENT_ID, name: 'Planning notes' } });
 
     await expect(resolveLookup(namedEntityLookup('target', 'document', 'Planning notes'))).resolves.toEqual({
       id: OTHER_ID,
       name: 'Planning notes',
+      slugId: 'notes',
     });
     await expect(resolveLookup(namedEntityLookup('target', 'document', DOCUMENT_ID))).resolves.toEqual({
       id: DOCUMENT_ID,
@@ -568,12 +570,12 @@ describe('shared operation-plan resolvers', () => {
   it('fails closed for missing, ambiguous, and mismatched document references', async () => {
     graphqlStub((query, variables) => {
       if (query.includes('ResolveNamedEntityById')) return { document: { id: OTHER_ID, name: 'Wrong' } };
-      if (variables.name === 'Missing') return { documents: { nodes: [] } };
-      if (variables.name === 'Duplicate') return { documents: { nodes: [
-        { id: DOCUMENT_ID, name: 'Duplicate' },
-        { id: OTHER_ID, name: 'Duplicate' },
+      if (variables.reference === 'Missing') return { matches: { nodes: [] } };
+      if (variables.reference === 'Duplicate') return { matches: { nodes: [
+        { id: DOCUMENT_ID, name: 'Duplicate', slugId: 'one' },
+        { id: OTHER_ID, name: 'Duplicate', slugId: 'two' },
       ] } };
-      return { documents: { nodes: [{ id: DOCUMENT_ID, name: 'Fuzzy result' }] } };
+      return { matches: { nodes: [{ id: DOCUMENT_ID, name: 'Fuzzy result', slugId: 'fuzzy' }] } };
     });
 
     await expect(resolveLookup(namedEntityLookup('target', 'document', 'Missing'))).rejects.toThrow(
@@ -592,7 +594,10 @@ describe('shared operation-plan resolvers', () => {
 
   it('rejects ambiguous supported entity names', async () => {
     graphqlStub(() => ({
-      projects: { nodes: [{ id: USER_ID, name: 'Platform' }, { id: OTHER_ID, name: 'Platform' }] },
+      matches: { nodes: [
+        { id: USER_ID, name: 'Platform', slugId: 'one' },
+        { id: OTHER_ID, name: 'Platform', slugId: 'two' },
+      ] },
     }));
     await expect(resolveLookup(namedEntityLookup('target', 'project', 'Platform'))).rejects.toThrow('2 matches');
   });

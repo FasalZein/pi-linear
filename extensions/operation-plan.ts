@@ -391,8 +391,9 @@ export function namedEntityLookup(key: string, kind: LookupNamedKind, value: str
     key,
     document: () => supportsSlug
       ? `query ResolveNamedEntityByReference($reference: String!) {
-  byName: ${plural}(first: 2, filter: { ${nameField}: { eq: $reference } }) { nodes { id ${nameSelection} slugId } }
-  bySlug: ${kind}(id: $reference) { id ${nameSelection} slugId }
+  matches: ${plural}(first: 3, filter: { or: [{ ${nameField}: { eq: $reference } }, { slugId: { eq: $reference } }] }) {
+    nodes { id ${nameSelection} slugId }
+  }
 }`
       : `query ResolveNamedEntityByName($name: String!) {
   ${plural}(first: 2, filter: { ${nameField}: { eq: $name } }) { nodes { id ${nameSelection} } }
@@ -400,10 +401,9 @@ export function namedEntityLookup(key: string, kind: LookupNamedKind, value: str
     variables: () => supportsSlug ? { reference } : { name: reference },
     resolve(data) {
       if (supportsSlug) {
-        const named = lookupNodes(data.byName).filter((entity) => entity.name === reference);
-        const slugged = presentRecord(data.bySlug);
-        const matches = slugged?.slugId === reference ? [...named, slugged] : named;
-        return one([...new Map(matches.map((entity) => [entity.id, entity])).values()], `${kind} "${reference}"`);
+        const matches = lookupNodes(data.matches).filter((entity) =>
+          entity.name === reference || entity.slugId === reference);
+        return one(matches, `${kind} "${reference}"`);
       }
       const nodes = lookupNodes(data[plural]).filter((entity) => entity.name === reference);
       return one(nodes, `${kind} "${reference}"`);

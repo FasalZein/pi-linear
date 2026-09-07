@@ -158,7 +158,7 @@ describe('direct issue identifier routing', () => {
 
     await execute({
       operation: 'update_issue',
-      variables: { issue: 'AEO-258', teamId: FOREIGN_TEAM_ID, state: STATE_ID },
+      variables: { issue: 'AEO-258', team: FOREIGN_TEAM_ID, state: STATE_ID },
     });
     expect(requests).toHaveLength(3);
     expect(requests.some(({ query }) => query.includes('ResolveIssueById'))).toBe(false);
@@ -168,9 +168,9 @@ describe('direct issue identifier routing', () => {
   it.each([
     ['assignee', 'assigneeId'],
     ['parent', 'parentId'],
-    ['projectId', 'projectId'],
-    ['projectMilestoneId', 'projectMilestoneId'],
-    ['cycleId', 'cycleId'],
+    ['project', 'projectId'],
+    ['milestone', 'projectMilestoneId'],
+    ['cycle', 'cycleId'],
   ])('clears %s without a reference lookup', async (field, inputField) => {
     const { requests } = graphqlStub((_query, variables) => {
       expect(variables).toEqual({ id: 'AEO-258', input: { [inputField]: null } });

@@ -21,7 +21,6 @@ function linearGraphQLEndpoint(): string {
 
 const ISSUE_IDENTIFIER_PATTERN = /^([A-Z][A-Z0-9]*)-(\d+)$/i;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const LINEAR_URL_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export type ResolvedIssue = { id: string; identifier: string; teamId: string; teamKey: string };
 export type ResolvedTeam = { id: string; key: string };
@@ -448,10 +447,6 @@ function requireReference(value: string, kind: string): string {
 
 export function isIssueIdentifier(value: string): boolean {
   return ISSUE_IDENTIFIER_PATTERN.test(value);
-}
-
-export function isLinearUrlSlug(value: string): boolean {
-  return LINEAR_URL_SLUG_PATTERN.test(value) && !UUID_PATTERN.test(value);
 }
 
 export function requireIssueReference(value: string): string {

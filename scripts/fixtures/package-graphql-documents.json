@@ -1133,17 +1133,16 @@
     {
       "id": "batch.lookup.named.document.name",
       "sourceClass": "compiled-batch",
-      "document": "query ($_lookup_mutation_20_named_reference: String!) {\n  _lookup_mutation_20_named_byName: documents(\n    first: 2\n    filter: {title: {eq: $_lookup_mutation_20_named_reference}}\n  ) {\n    nodes {\n      id\n      name: title\n      slugId\n    }\n  }\n  _lookup_mutation_20_named_bySlug: document(\n    id: $_lookup_mutation_20_named_reference\n  ) {\n    id\n    name: title\n    slugId\n  }\n}",
+      "document": "query ($_lookup_mutation_20_named_reference: String!) {\n  _lookup_mutation_20_named: documents(\n    first: 3\n    filter: {or: [{title: {eq: $_lookup_mutation_20_named_reference}}, {slugId: {eq: $_lookup_mutation_20_named_reference}}]}\n  ) {\n    nodes {\n      id\n      name: title\n      slugId\n    }\n  }\n}",
       "operationType": "query",
       "operationName": null,
       "rootFields": [
-        "documents",
-        "document"
+        "documents"
       ],
       "variables": {
         "_lookup_mutation_20_named_reference": "String!"
       },
-      "sha256": "5dbc5d4eeebe5fb094b2361b931c0e96d168e30b6848658a11e797aaa1525fa3"
+      "sha256": "2372175f3af620c4b975a641f08c96fa1b8b4bf9d2d2d5714c05cf8d9f792e28"
     },
     {
       "id": "batch.lookup.named.initiative.id",
@@ -1190,17 +1189,16 @@
     {
       "id": "batch.lookup.named.project.name",
       "sourceClass": "compiled-batch",
-      "document": "query ($_lookup_mutation_14_named_reference: String!) {\n  _lookup_mutation_14_named_byName: projects(\n    first: 2\n    filter: {name: {eq: $_lookup_mutation_14_named_reference}}\n  ) {\n    nodes {\n      id\n      name\n      slugId\n    }\n  }\n  _lookup_mutation_14_named_bySlug: project(\n    id: $_lookup_mutation_14_named_reference\n  ) {\n    id\n    name\n    slugId\n  }\n}",
+      "document": "query ($_lookup_mutation_14_named_reference: String!) {\n  _lookup_mutation_14_named: projects(\n    first: 3\n    filter: {or: [{name: {eq: $_lookup_mutation_14_named_reference}}, {slugId: {eq: $_lookup_mutation_14_named_reference}}]}\n  ) {\n    nodes {\n      id\n      name\n      slugId\n    }\n  }\n}",
       "operationType": "query",
       "operationName": null,
       "rootFields": [
-        "projects",
-        "project"
+        "projects"
       ],
       "variables": {
         "_lookup_mutation_14_named_reference": "String!"
       },
-      "sha256": "08c8e6c215d629e9401375731b1b733f6bbf715ac78f258aa0c04c1d5df60b97"
+      "sha256": "292768689b9fe2bd702131d8575deebdf1c91f481157eb8df6cd01498ad514d3"
     },
     {
       "id": "batch.lookup.named.projectMilestone.id",
@@ -1713,17 +1711,16 @@
     {
       "id": "lookup.named.document.name",
       "sourceClass": "lookup",
-      "document": "query ResolveNamedEntityByReference($reference: String!) {\n  byName: documents(first: 2, filter: { title: { eq: $reference } }) { nodes { id name: title slugId } }\n  bySlug: document(id: $reference) { id name: title slugId }\n}",
+      "document": "query ResolveNamedEntityByReference($reference: String!) {\n  matches: documents(first: 3, filter: { or: [{ title: { eq: $reference } }, { slugId: { eq: $reference } }] }) {\n    nodes { id name: title slugId }\n  }\n}",
       "operationType": "query",
       "operationName": "ResolveNamedEntityByReference",
       "rootFields": [
-        "documents",
-        "document"
+        "documents"
       ],
       "variables": {
         "reference": "String!"
       },
-      "sha256": "31c23a1b1500fee72c575c3f98f76831e306861e00effd0cad7710796ca9a774"
+      "sha256": "57b6c591c8dd007eea5f657e3c72b30a7f812018b398acab8a3f187889db58b8"
     },
     {
       "id": "lookup.named.initiative.id",
@@ -1770,17 +1767,16 @@
     {
       "id": "lookup.named.project.name",
       "sourceClass": "lookup",
-      "document": "query ResolveNamedEntityByReference($reference: String!) {\n  byName: projects(first: 2, filter: { name: { eq: $reference } }) { nodes { id name slugId } }\n  bySlug: project(id: $reference) { id name slugId }\n}",
+      "document": "query ResolveNamedEntityByReference($reference: String!) {\n  matches: projects(first: 3, filter: { or: [{ name: { eq: $reference } }, { slugId: { eq: $reference } }] }) {\n    nodes { id name slugId }\n  }\n}",
       "operationType": "query",
       "operationName": "ResolveNamedEntityByReference",
       "rootFields": [
-        "projects",
-        "project"
+        "projects"
       ],
       "variables": {
         "reference": "String!"
       },
-      "sha256": "16eb3dc9ae7a37ef518f1b6d24464dfdc661f232e56a26928139a4e69da2c380"
+      "sha256": "4193556373fd46129801930e272ed5c6fdcbdb9820701c84ad794ae922962838"
     },
     {
       "id": "lookup.named.projectMilestone.id",

@@ -236,8 +236,8 @@ describe('runtime discovery', () => {
       operation: 'help', variables: { operation: 'create_issue' },
     });
     const names = result.details.parameters.map(({ name }: { name: string }) => name);
-    expect(names).toContain('projectId');
-    expect(names).toContain('labelIds');
+    expect(names).toContain('project');
+    expect(names).toContain('labels');
     expect(names).not.toContain('input');
     expect(fetch).not.toHaveBeenCalled();
   });

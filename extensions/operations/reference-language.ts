@@ -1,7 +1,7 @@
-import type { CanonicalOperation, CanonicalVariant } from './canonical-schema';
-import type { CompatibilityObject, CompatibilityValue, LookupPlan, OperationPlan } from './operation-types';
-import { isCompatibilityObject, isCompatibilityString } from './operation-types';
-import { issueLookup, namedEntityLookup, teamLookup, userLookup, type LookupNamedKind } from './operation-plan';
+import type { CanonicalOperation, CanonicalVariant } from '../canonical-schema';
+import type { CompatibilityObject, CompatibilityValue, LookupPlan, OperationPlan } from '../operation-types';
+import { isCompatibilityObject, isCompatibilityString } from '../operation-types';
+import { issueLookup, namedEntityLookup, teamLookup, userLookup, type LookupNamedKind } from '../operation-plan';
 
 export type ReferenceResolver = 'issue' | 'team' | 'user' | LookupNamedKind;
 
@@ -53,8 +53,8 @@ const REFERENCE_RENAMES = referenceRenameCatalog({
     relatedIssueId: { name: 'relatedIssue', type: 'IssueReference' },
   },
   delete_issue_relation: {
-    issueId: { name: 'issue', type: 'UUID' },
-    relatedIssueId: { name: 'relatedIssue', type: 'UUID' },
+    issueId: { name: 'issue', type: 'IssueReference' },
+    relatedIssueId: { name: 'relatedIssue', type: 'IssueReference' },
   },
   list_issues: {
     projectId: { name: 'project', type: 'ProjectReference' },
@@ -122,45 +122,51 @@ export function operationReferenceRenames(name: string): OperationReferenceRenam
     : {};
 }
 
-function choices(name: string, renames: OperationReferenceRenames): readonly string[] {
-  const rename = renames[name];
-  return rename ? [name, rename.name] : [name];
+function canonicalName(name: string, renames: OperationReferenceRenames): string {
+  return renames[name]?.name ?? name;
 }
 
-function expandBranch(branch: readonly string[], renames: OperationReferenceRenames): string[][] {
-  return branch.reduce<string[][]>((branches, field) =>
-    branches.flatMap((candidate) => choices(field, renames).map((choice) => [...candidate, choice])), [[]]);
-}
-
-function expandedVariants(
+function contractVariants(
   variants: readonly [CanonicalVariant, CanonicalVariant] | undefined,
   renames: OperationReferenceRenames,
 ): readonly [CanonicalVariant, CanonicalVariant] | undefined {
   if (!variants) return undefined;
   const project = (variant: CanonicalVariant): CanonicalVariant => ({
-    fields: variant.fields.flatMap((field) => choices(field, renames)),
-    branches: variant.branches.flatMap((branch) => expandBranch(branch, renames)),
+    fields: variant.fields.map((field) => canonicalName(field, renames)),
+    branches: variant.branches.map((branch) => branch.map((field) => canonicalName(field, renames))),
   });
   return [project(variants[0]), project(variants[1])];
 }
 
-/** AEO-823 expand projection: new reference words and old wire spellings coexist. */
-export function expandReferenceContract(name: string, canonical: CanonicalOperation): CanonicalOperation {
+/** AEO-825 contract projection: each reference concept publishes one typed spelling. */
+export function referenceContract(name: string, canonical: CanonicalOperation): CanonicalOperation {
   const renames = operationReferenceRenames(name);
-  const fields: Record<string, string> = {};
-  for (const [field, type] of Object.entries(canonical.fields)) {
-    fields[field] = type;
+  const fields = Object.fromEntries(Object.entries(canonical.fields).map(([field, type]) => {
     const rename = renames[field];
-    if (rename) fields[rename.name] = rename.type;
-  }
+    return rename ? [rename.name, rename.type] : [field, type];
+  }));
   const projected: CanonicalOperation = {
     fields,
-    branches: canonical.branches.flatMap((branch) => expandBranch(branch, renames)),
+    branches: canonical.branches.map((branch) => branch.map((field) => canonicalName(field, renames))),
   };
   if (canonical.exclusiveBranches) projected.exclusiveBranches = true;
-  const variants = expandedVariants(canonical.variants, renames);
+  const variants = contractVariants(canonical.variants, renames);
   if (variants) projected.variants = variants;
   return projected;
+}
+
+export function legacyReferenceReplacement(
+  operation: string,
+  field: string,
+  accepted: ReadonlySet<string>,
+): string | undefined {
+  const direct = operationReferenceRenames(operation)[field]?.name;
+  if (direct) return direct;
+  const base = field.replace(/(?:Id|Key|Name)$/, '');
+  if (base !== field && accepted.has(base)) return base;
+  if (field !== 'id' || accepted.has('id')) return undefined;
+  const noun = operation.split('_').at(-1)?.replace(/ies$/, 'y').replace(/s$/, '');
+  return noun && accepted.has(noun) ? noun : undefined;
 }
 
 export function canonicalReferenceExample(name: string, example: CompatibilityObject): CompatibilityObject {

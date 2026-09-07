@@ -1,1247 +1,219 @@
 {
   "create_comment": [
-    {
-      "required": [
-        "issue",
-        "body"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "bodyData"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "projectId",
-        "body"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "bodyData"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "body"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "bodyData"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "projectUpdateId",
-        "body"
-      ],
-      "target": "projectUpdateId"
-    },
-    {
-      "required": [
-        "projectUpdateId",
-        "bodyData"
-      ],
-      "target": "projectUpdateId"
-    },
-    {
-      "required": [
-        "initiativeUpdateId",
-        "body"
-      ],
-      "target": "initiativeUpdateId"
-    },
-    {
-      "required": [
-        "initiativeUpdateId",
-        "bodyData"
-      ],
-      "target": "initiativeUpdateId"
-    },
-    {
-      "required": [
-        "postId",
-        "body"
-      ],
-      "target": "postId"
-    },
-    {
-      "required": [
-        "postId",
-        "bodyData"
-      ],
-      "target": "postId"
-    },
-    {
-      "required": [
-        "documentContentId",
-        "body"
-      ],
-      "target": "documentContentId"
-    },
-    {
-      "required": [
-        "documentContentId",
-        "bodyData"
-      ],
-      "target": "documentContentId"
-    },
-    {
-      "required": [
-        "parentId",
-        "body"
-      ],
-      "target": "parentId"
-    },
-    {
-      "required": [
-        "parentId",
-        "bodyData"
-      ],
-      "target": "parentId"
-    }
+    { "required": ["issue", "body"], "target": "issue" },
+    { "required": ["issue", "bodyData"], "target": "issue" },
+    { "required": ["project", "body"], "target": "project" },
+    { "required": ["project", "bodyData"], "target": "project" },
+    { "required": ["initiative", "body"], "target": "initiative" },
+    { "required": ["initiative", "bodyData"], "target": "initiative" },
+    { "required": ["projectUpdateId", "body"], "target": "projectUpdateId" },
+    { "required": ["projectUpdateId", "bodyData"], "target": "projectUpdateId" },
+    { "required": ["initiativeUpdateId", "body"], "target": "initiativeUpdateId" },
+    { "required": ["initiativeUpdateId", "bodyData"], "target": "initiativeUpdateId" },
+    { "required": ["postId", "body"], "target": "postId" },
+    { "required": ["postId", "bodyData"], "target": "postId" },
+    { "required": ["documentContentId", "body"], "target": "documentContentId" },
+    { "required": ["documentContentId", "bodyData"], "target": "documentContentId" },
+    { "required": ["parentId", "body"], "target": "parentId" },
+    { "required": ["parentId", "bodyData"], "target": "parentId" }
   ],
   "update_comment": [
-    {
-      "required": [
-        "id",
-        "body"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "bodyData"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "quotedText"
-      ],
-      "target": "id"
-    }
+    { "required": ["id", "body"], "target": "id" },
+    { "required": ["id", "bodyData"], "target": "id" },
+    { "required": ["id", "quotedText"], "target": "id" }
   ],
   "create_view": [
-    {
-      "required": [
-        "name"
-      ],
-      "target": "name"
-    }
+    { "required": ["name"], "target": "name" }
   ],
   "update_view": [
-    {
-      "required": [
-        "id",
-        "name"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "description"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "icon"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "color"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "shared"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "filterData"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "projectFilterData"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "initiativeFilterData"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "feedItemFilterData"
-      ],
-      "target": "id"
-    }
+    { "required": ["id", "name"], "target": "id" },
+    { "required": ["id", "description"], "target": "id" },
+    { "required": ["id", "icon"], "target": "id" },
+    { "required": ["id", "color"], "target": "id" },
+    { "required": ["id", "shared"], "target": "id" },
+    { "required": ["id", "filterData"], "target": "id" },
+    { "required": ["id", "projectFilterData"], "target": "id" },
+    { "required": ["id", "initiativeFilterData"], "target": "id" },
+    { "required": ["id", "feedItemFilterData"], "target": "id" }
   ],
   "set_view_preferences": [
-    {
-      "required": [
-        "viewId",
-        "preferences"
-      ],
-      "target": "viewId"
-    }
+    { "required": ["viewId", "preferences"], "target": "viewId" }
   ],
   "create_cycle": [
-    {
-      "required": [
-        "team",
-        "startsAt",
-        "endsAt"
-      ],
-      "target": "team"
-    }
+    { "required": ["team", "startsAt", "endsAt"], "target": "team" }
   ],
   "update_cycle": [
-    {
-      "required": [
-        "id",
-        "name"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "description"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "startsAt"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "endsAt"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "completedAt"
-      ],
-      "target": "id"
-    }
+    { "required": ["cycle", "name"], "target": "cycle" },
+    { "required": ["cycle", "description"], "target": "cycle" },
+    { "required": ["cycle", "startsAt"], "target": "cycle" },
+    { "required": ["cycle", "endsAt"], "target": "cycle" },
+    { "required": ["cycle", "completedAt"], "target": "cycle" }
   ],
   "create_document": [
-    {
-      "required": [
-        "title"
-      ],
-      "target": "title"
-    }
+    { "required": ["title"], "target": "title" }
   ],
   "update_document": [
-    {
-      "required": [
-        "document",
-        "title"
-      ],
-      "target": "document"
-    },
-    {
-      "required": [
-        "document",
-        "content"
-      ],
-      "target": "document"
-    },
-    {
-      "required": [
-        "document",
-        "icon"
-      ],
-      "target": "document"
-    },
-    {
-      "required": [
-        "document",
-        "color"
-      ],
-      "target": "document"
-    },
-    {
-      "required": [
-        "document",
-        "issueId"
-      ],
-      "target": "document"
-    },
-    {
-      "required": [
-        "document",
-        "teamId"
-      ],
-      "target": "document"
-    },
-    {
-      "required": [
-        "document",
-        "projectId"
-      ],
-      "target": "document"
-    },
-    {
-      "required": [
-        "document",
-        "initiativeId"
-      ],
-      "target": "document"
-    },
-    {
-      "required": [
-        "document",
-        "cycleId"
-      ],
-      "target": "document"
-    },
-    {
-      "required": [
-        "document",
-        "releaseId"
-      ],
-      "target": "document"
-    },
-    {
-      "required": [
-        "document",
-        "resourceFolderId"
-      ],
-      "target": "document"
-    },
-    {
-      "required": [
-        "document",
-        "lastAppliedTemplateId"
-      ],
-      "target": "document"
-    },
-    {
-      "required": [
-        "document",
-        "ownerId"
-      ],
-      "target": "document"
-    },
-    {
-      "required": [
-        "document",
-        "subscriberIds"
-      ],
-      "target": "document"
-    },
-    {
-      "required": [
-        "document",
-        "sortOrder"
-      ],
-      "target": "document"
-    },
-    {
-      "required": [
-        "document",
-        "hiddenAt"
-      ],
-      "target": "document"
-    }
+    { "required": ["document", "title"], "target": "document" },
+    { "required": ["document", "content"], "target": "document" },
+    { "required": ["document", "icon"], "target": "document" },
+    { "required": ["document", "color"], "target": "document" },
+    { "required": ["document", "issue"], "target": "document" },
+    { "required": ["document", "team"], "target": "document" },
+    { "required": ["document", "project"], "target": "document" },
+    { "required": ["document", "initiative"], "target": "document" },
+    { "required": ["document", "cycle"], "target": "document" },
+    { "required": ["document", "releaseId"], "target": "document" },
+    { "required": ["document", "resourceFolderId"], "target": "document" },
+    { "required": ["document", "lastAppliedTemplateId"], "target": "document" },
+    { "required": ["document", "owner"], "target": "document" },
+    { "required": ["document", "subscribers"], "target": "document" },
+    { "required": ["document", "sortOrder"], "target": "document" },
+    { "required": ["document", "hiddenAt"], "target": "document" }
   ],
   "create_issue_label": [
-    {
-      "required": [
-        "name"
-      ],
-      "target": "name"
-    }
+    { "required": ["name"], "target": "name" }
   ],
   "update_issue_label": [
-    {
-      "required": [
-        "id",
-        "name"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "description"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "color"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "isGroup"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "parentId"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "retiredAt"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "replaceTeamLabels"
-      ],
-      "target": "id"
-    }
+    { "required": ["label", "name"], "target": "label" },
+    { "required": ["label", "description"], "target": "label" },
+    { "required": ["label", "color"], "target": "label" },
+    { "required": ["label", "isGroup"], "target": "label" },
+    { "required": ["label", "parentId"], "target": "label" },
+    { "required": ["label", "retiredAt"], "target": "label" },
+    { "required": ["label", "replaceTeamLabels"], "target": "label" }
   ],
   "create_issue_relation": [
-    {
-      "required": [
-        "issue",
-        "relatedIssue",
-        "type"
-      ],
-      "target": "issue"
-    }
+    { "required": ["issue", "relatedIssue", "type"], "target": "issue" }
   ],
   "update_issue_relation": [
-    {
-      "required": [
-        "id",
-        "type"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "issueId"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "relatedIssueId"
-      ],
-      "target": "id"
-    }
+    { "required": ["id", "type"], "target": "id" },
+    { "required": ["id", "issue"], "target": "id" },
+    { "required": ["id", "relatedIssue"], "target": "id" }
   ],
   "delete_issue_relation": [
-    {
-      "required": [
-        "relationId",
-        "issueId",
-        "relatedIssueId",
-        "type"
-      ],
-      "target": "relationId"
-    }
+    { "required": ["relationId", "issue", "relatedIssue", "type"], "target": "relationId" }
   ],
   "create_issue": [
-    {
-      "required": [
-        "title",
-        "team"
-      ],
-      "target": "title"
-    },
-    {
-      "required": [
-        "title",
-        "parent"
-      ],
-      "target": "title"
-    }
+    { "required": ["title", "team"], "target": "title" },
+    { "required": ["title", "parent"], "target": "title" }
   ],
   "update_issue": [
-    {
-      "required": [
-        "issue",
-        "title"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "state"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "assignee"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "parent"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "teamId"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "dueDate"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "addedLabelIds"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "removedLabelIds"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "description"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "descriptionData"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "priority"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "estimate"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "projectId"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "projectMilestoneId"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "cycleId"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "labelIds"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "subscriberIds"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "delegateId"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "lastAppliedTemplateId"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "slaType"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "slaBreachesAt"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "slaStartedAt"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "sortOrder"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "subIssueSortOrder"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "prioritySortOrder"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "autoClosedByParentClosing"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "snoozedById"
-      ],
-      "target": "issue"
-    },
-    {
-      "required": [
-        "issue",
-        "snoozedUntilAt"
-      ],
-      "target": "issue"
-    }
+    { "required": ["issue", "title"], "target": "issue" },
+    { "required": ["issue", "state"], "target": "issue" },
+    { "required": ["issue", "assignee"], "target": "issue" },
+    { "required": ["issue", "parent"], "target": "issue" },
+    { "required": ["issue", "team"], "target": "issue" },
+    { "required": ["issue", "dueDate"], "target": "issue" },
+    { "required": ["issue", "addLabels"], "target": "issue" },
+    { "required": ["issue", "removeLabels"], "target": "issue" },
+    { "required": ["issue", "description"], "target": "issue" },
+    { "required": ["issue", "descriptionData"], "target": "issue" },
+    { "required": ["issue", "priority"], "target": "issue" },
+    { "required": ["issue", "estimate"], "target": "issue" },
+    { "required": ["issue", "project"], "target": "issue" },
+    { "required": ["issue", "milestone"], "target": "issue" },
+    { "required": ["issue", "cycle"], "target": "issue" },
+    { "required": ["issue", "labels"], "target": "issue" },
+    { "required": ["issue", "subscribers"], "target": "issue" },
+    { "required": ["issue", "delegate"], "target": "issue" },
+    { "required": ["issue", "lastAppliedTemplateId"], "target": "issue" },
+    { "required": ["issue", "slaType"], "target": "issue" },
+    { "required": ["issue", "slaBreachesAt"], "target": "issue" },
+    { "required": ["issue", "slaStartedAt"], "target": "issue" },
+    { "required": ["issue", "sortOrder"], "target": "issue" },
+    { "required": ["issue", "subIssueSortOrder"], "target": "issue" },
+    { "required": ["issue", "prioritySortOrder"], "target": "issue" },
+    { "required": ["issue", "autoClosedByParentClosing"], "target": "issue" },
+    { "required": ["issue", "snoozedBy"], "target": "issue" },
+    { "required": ["issue", "snoozedUntilAt"], "target": "issue" }
   ],
   "create_project_label": [
-    {
-      "required": [
-        "name"
-      ],
-      "target": "name"
-    }
+    { "required": ["name"], "target": "name" }
   ],
   "update_project_label": [
-    {
-      "required": [
-        "id",
-        "name"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "description"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "color"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "isGroup"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "parentId"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "retiredAt"
-      ],
-      "target": "id"
-    }
+    { "required": ["label", "name"], "target": "label" },
+    { "required": ["label", "description"], "target": "label" },
+    { "required": ["label", "color"], "target": "label" },
+    { "required": ["label", "isGroup"], "target": "label" },
+    { "required": ["label", "parentId"], "target": "label" },
+    { "required": ["label", "retiredAt"], "target": "label" }
   ],
   "create_project_relation": [
-    {
-      "required": [
-        "projectId",
-        "relatedProjectId",
-        "type",
-        "anchorType",
-        "relatedAnchorType"
-      ],
-      "target": "projectId"
-    }
+    { "required": ["project", "relatedProject", "type", "anchorType", "relatedAnchorType"], "target": "project" }
   ],
   "update_project_relation": [
-    {
-      "required": [
-        "id",
-        "type"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "anchorType"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "relatedAnchorType"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "projectId"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "relatedProjectId"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "projectMilestoneId"
-      ],
-      "target": "id"
-    },
-    {
-      "required": [
-        "id",
-        "relatedProjectMilestoneId"
-      ],
-      "target": "id"
-    }
+    { "required": ["id", "type"], "target": "id" },
+    { "required": ["id", "anchorType"], "target": "id" },
+    { "required": ["id", "relatedAnchorType"], "target": "id" },
+    { "required": ["id", "project"], "target": "id" },
+    { "required": ["id", "relatedProject"], "target": "id" },
+    { "required": ["id", "milestone"], "target": "id" },
+    { "required": ["id", "relatedMilestone"], "target": "id" }
   ],
   "save_initiative": [
-    {
-      "required": [
-        "name"
-      ],
-      "target": "name"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "name"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "description"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "content"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "icon"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "color"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "status"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "targetDate"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "targetDateResolution"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "ownerId"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "leadTeamId"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "sortOrder"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "prioritySortOrder"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "priority"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "labelIds"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "customIdentifier"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "frequencyResolution"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "updateReminderFrequency"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "updateReminderFrequencyInWeeks"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "updateRemindersDay"
-      ],
-      "target": "initiativeId"
-    },
-    {
-      "required": [
-        "initiativeId",
-        "updateRemindersHour"
-      ],
-      "target": "initiativeId"
-    }
+    { "required": ["name"], "target": "name" },
+    { "required": ["initiative", "name"], "target": "initiative" },
+    { "required": ["initiative", "description"], "target": "initiative" },
+    { "required": ["initiative", "content"], "target": "initiative" },
+    { "required": ["initiative", "icon"], "target": "initiative" },
+    { "required": ["initiative", "color"], "target": "initiative" },
+    { "required": ["initiative", "status"], "target": "initiative" },
+    { "required": ["initiative", "targetDate"], "target": "initiative" },
+    { "required": ["initiative", "targetDateResolution"], "target": "initiative" },
+    { "required": ["initiative", "owner"], "target": "initiative" },
+    { "required": ["initiative", "leadTeam"], "target": "initiative" },
+    { "required": ["initiative", "sortOrder"], "target": "initiative" },
+    { "required": ["initiative", "prioritySortOrder"], "target": "initiative" },
+    { "required": ["initiative", "priority"], "target": "initiative" },
+    { "required": ["initiative", "labels"], "target": "initiative" },
+    { "required": ["initiative", "customIdentifier"], "target": "initiative" },
+    { "required": ["initiative", "frequencyResolution"], "target": "initiative" },
+    { "required": ["initiative", "updateReminderFrequency"], "target": "initiative" },
+    { "required": ["initiative", "updateReminderFrequencyInWeeks"], "target": "initiative" },
+    { "required": ["initiative", "updateRemindersDay"], "target": "initiative" },
+    { "required": ["initiative", "updateRemindersHour"], "target": "initiative" }
   ],
   "save_milestone": [
-    {
-      "required": [
-        "name",
-        "projectId"
-      ],
-      "target": "name"
-    },
-    {
-      "required": [
-        "milestoneId",
-        "name"
-      ],
-      "target": "milestoneId"
-    },
-    {
-      "required": [
-        "milestoneId",
-        "projectId"
-      ],
-      "target": "milestoneId"
-    },
-    {
-      "required": [
-        "milestoneId",
-        "description"
-      ],
-      "target": "milestoneId"
-    },
-    {
-      "required": [
-        "milestoneId",
-        "descriptionData"
-      ],
-      "target": "milestoneId"
-    },
-    {
-      "required": [
-        "milestoneId",
-        "targetDate"
-      ],
-      "target": "milestoneId"
-    },
-    {
-      "required": [
-        "milestoneId",
-        "sortOrder"
-      ],
-      "target": "milestoneId"
-    }
+    { "required": ["name", "project"], "target": "name" },
+    { "required": ["milestone", "name"], "target": "milestone" },
+    { "required": ["milestone", "project"], "target": "milestone" },
+    { "required": ["milestone", "description"], "target": "milestone" },
+    { "required": ["milestone", "descriptionData"], "target": "milestone" },
+    { "required": ["milestone", "targetDate"], "target": "milestone" },
+    { "required": ["milestone", "sortOrder"], "target": "milestone" }
   ],
   "save_project": [
-    {
-      "required": [
-        "name",
-        "teamIds"
-      ],
-      "target": "name"
-    },
-    {
-      "required": [
-        "projectId",
-        "name"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "teamIds"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "description"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "content"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "icon"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "color"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "priority"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "startDate"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "startDateResolution"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "targetDate"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "targetDateResolution"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "statusId"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "leadId"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "leadTeamId"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "memberIds"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "labelIds"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "convertedFromIssueId"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "lastAppliedTemplateId"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "sortOrder"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "prioritySortOrder"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "canceledAt"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "completedAt"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "projectUpdateRemindersPausedUntilAt"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "slackIssueComments"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "slackIssueStatuses"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "slackNewIssue"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "frequencyResolution"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "updateReminderFrequency"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "updateReminderFrequencyInWeeks"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "updateRemindersDay"
-      ],
-      "target": "projectId"
-    },
-    {
-      "required": [
-        "projectId",
-        "updateRemindersHour"
-      ],
-      "target": "projectId"
-    }
+    { "required": ["name", "teams"], "target": "name" },
+    { "required": ["project", "name"], "target": "project" },
+    { "required": ["project", "teams"], "target": "project" },
+    { "required": ["project", "description"], "target": "project" },
+    { "required": ["project", "content"], "target": "project" },
+    { "required": ["project", "icon"], "target": "project" },
+    { "required": ["project", "color"], "target": "project" },
+    { "required": ["project", "priority"], "target": "project" },
+    { "required": ["project", "startDate"], "target": "project" },
+    { "required": ["project", "startDateResolution"], "target": "project" },
+    { "required": ["project", "targetDate"], "target": "project" },
+    { "required": ["project", "targetDateResolution"], "target": "project" },
+    { "required": ["project", "status"], "target": "project" },
+    { "required": ["project", "lead"], "target": "project" },
+    { "required": ["project", "leadTeam"], "target": "project" },
+    { "required": ["project", "members"], "target": "project" },
+    { "required": ["project", "labels"], "target": "project" },
+    { "required": ["project", "convertedFromIssue"], "target": "project" },
+    { "required": ["project", "lastAppliedTemplateId"], "target": "project" },
+    { "required": ["project", "sortOrder"], "target": "project" },
+    { "required": ["project", "prioritySortOrder"], "target": "project" },
+    { "required": ["project", "canceledAt"], "target": "project" },
+    { "required": ["project", "completedAt"], "target": "project" },
+    { "required": ["project", "projectUpdateRemindersPausedUntilAt"], "target": "project" },
+    { "required": ["project", "slackIssueComments"], "target": "project" },
+    { "required": ["project", "slackIssueStatuses"], "target": "project" },
+    { "required": ["project", "slackNewIssue"], "target": "project" },
+    { "required": ["project", "frequencyResolution"], "target": "project" },
+    { "required": ["project", "updateReminderFrequency"], "target": "project" },
+    { "required": ["project", "updateReminderFrequencyInWeeks"], "target": "project" },
+    { "required": ["project", "updateRemindersDay"], "target": "project" },
+    { "required": ["project", "updateRemindersHour"], "target": "project" }
   ]
 }

@@ -17,6 +17,7 @@ import { parseJsonObject } from './json';
 import { schemaProblems, withRecovery } from './failure-message';
 import type { MutationMode } from './safety';
 import { buildTypedToolMetadata, requirementBranches } from './typed-tool-metadata';
+import { legacyReferenceReplacement } from './operations/reference-language';
 
 export { typedToolName, typedToolOperationName } from './tool-names';
 export { canonicalFieldNames } from './canonical';
@@ -49,15 +50,31 @@ function assertBranch(operation: LinearOperation, variables: JsonObject): void {
 function assertCanonicalOnly(operation: LinearOperation, variables: JsonObject): void {
   const allowed = new Set(canonicalFieldNames(operation));
   const foreign = Object.keys(variables).filter((key) => !allowed.has(key));
-  if (foreign.length) {
+  if (!foreign.length) return;
+  const replacements = foreign
+    .map((field) => ({ field, replacement: legacyReferenceReplacement(operation.name, field, allowed) }))
+    .filter((entry): entry is { field: string; replacement: string } => entry.replacement !== undefined);
+  if (replacements.length) {
+    const duplicate = replacements.find(({ replacement }) => variables[replacement] !== undefined);
+    if (duplicate) {
+      throw new Error(
+        `Duplicate ${duplicate.replacement} identity: "${duplicate.field}" conflicts with "${duplicate.replacement}"; `
+        + `send only "${duplicate.replacement}".`,
+      );
+    }
     throw new Error(
-      `Unknown parameters for "${typedToolName(operation.name)}": ${foreign.join(', ')}. `
-      + `Accepted parameters: ${[...allowed].join(', ')}. Legacy aliases and raw input go through linear.`
-      + (foreign.includes('workspace')
-        ? ' Typed tools have no workspace parameter: the active workspace is used. Change it with /linear-auth switch.'
-        : ''),
+      `Unsupported legacy parameters for "${typedToolName(operation.name)}": `
+      + replacements.map(({ field, replacement }) => `"${field}"; send "${replacement}"`).join(', ')
+      + `. Accepted parameters: ${[...allowed].join(', ')}.`,
     );
   }
+  throw new Error(
+    `Unknown parameters for "${typedToolName(operation.name)}": ${foreign.join(', ')}. `
+    + `Accepted parameters: ${[...allowed].join(', ')}. Legacy aliases and raw input go through linear.`
+    + (foreign.includes('workspace')
+      ? ' Typed tools have no workspace parameter: the active workspace is used. Change it with /linear-auth switch.'
+      : ''),
+  );
 }
 
 /**

@@ -159,9 +159,10 @@ function operationTargetFields(definition: OperationDefinition): readonly string
   if (definition.render.targetFields) return definition.render.targetFields;
   const branches = definition.canonical.branches;
   const common = branches[0]?.all.filter((field) => branches.every((branch) => branch.all.includes(field))) ?? [];
-  const references = common.filter((field) => (
-    field === 'id' || field === definition.render.entityKind || field.endsWith('Id')
-  ));
+  const references = common.filter((field) => {
+    const type = definition.canonical.fields.find(({ name }) => name === field)?.type;
+    return field === 'id' || field === definition.render.entityKind || field.endsWith('Id') || type?.includes('Reference');
+  });
   if (references.length) return references;
   return common.filter((field) => field === 'name' || field === 'title').slice(0, 1);
 }

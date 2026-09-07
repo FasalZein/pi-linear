@@ -1,4 +1,3 @@
-import { isLinearUrlSlug } from "../client";
 import { projection } from "../selections";
 import { documentLookup, issueLookup, namedEntityLookup, pureQueryPlan, teamLookup } from "../operation-plan";
 import {
@@ -70,7 +69,7 @@ export const documents: readonly OperationDefinition[] = ([
 	}),
 						aliases: [],
 		domain: "documents",
-		purpose: "Get a document by exact title or UUID.",
+		purpose: "Get a document by exact title, slug, or UUID.",
 						example: {
 			operation: "get_document",
 			variables: { document: "Planning notes" },
@@ -80,7 +79,7 @@ export const documents: readonly OperationDefinition[] = ([
 		plan(v) {
 			const requested = String(v.document ?? v.documentId);
 			const reference = requested.trim();
-			if (isUuid(reference) || isLinearUrlSlug(reference)) {
+			if (isUuid(reference)) {
 				return pureQueryPlan({
 					variables: { id: reference },
 					exactNamed: { requested: reference, path: "document", kind: "document" },
