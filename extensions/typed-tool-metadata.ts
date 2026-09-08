@@ -54,7 +54,7 @@ function objectSchema(
     });
   }
   const requirements = projectedBranches.map((branch) => ({ required: [...branch] }));
-  return exclusive
+  return exclusive && advancedNames.size === 0
     ? Type.Object(properties, { additionalProperties: false, oneOf: requirements })
     : Type.Object(properties, { additionalProperties: false, anyOf: requirements });
 }

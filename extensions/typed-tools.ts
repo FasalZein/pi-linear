@@ -16,32 +16,13 @@ import { typedToolName } from './tool-names';
 import { parseJsonObject } from './json';
 import { schemaProblems, withRecovery } from './failure-message';
 import type { MutationMode } from './safety';
-import { buildTypedToolMetadata, requirementBranches } from './typed-tool-metadata';
+import { buildTypedToolMetadata } from './typed-tool-metadata';
 import { legacyReferenceReplacement } from './operations/reference-language';
 import { flattenAdvancedArguments } from './advanced-arguments';
 
 export { typedToolName, typedToolOperationName } from './tool-names';
 export { canonicalFieldNames } from './canonical';
 export { buildTypedToolMetadata, parameterSchema, requirementBranches } from './typed-tool-metadata';
-
-function branchList(operation: LinearOperation): string {
-  return requirementBranches(operation)
-    .map((branch) => (branch.length ? `{ ${branch.join(', ')} }` : '{ }'))
-    .join(' or ');
-}
-
-/**
- * Same gate as the schema, restated where an actionable message can be produced and
- * where it cannot depend on a validator keyword. Rejects nothing the schema accepts.
- */
-function assertBranch(operation: LinearOperation, variables: JsonObject): void {
-  const branches = requirementBranches(operation);
-  const satisfied = branches.filter((branch) => branch.every((name) => variables[name] !== undefined));
-  if (canonicalOperation(operation).exclusiveBranches ? satisfied.length === 1 : satisfied.length > 0) return;
-  throw new Error(
-    `Invalid parameters for "${typedToolName(operation.name)}": supply ${branchList(operation)}.`,
-  );
-}
 
 /**
  * The canonical contract publishes one name per concept, so no two accepted fields can
@@ -171,6 +152,7 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
         assertCanonicalOnly(operation, variables);
         const flattened = flattenAdvancedArguments(operation.name, canonicalOperation(operation), variables);
         assertVariant(operation, flattened);
+        operation.validateVariables?.(flattened);
         assertSchema(args);
         return args;
       } catch (error) {
@@ -188,9 +170,8 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
         assertCanonicalOnly(operation, variables);
         flattened = flattenAdvancedArguments(operation.name, canonicalOperation(operation), variables);
         assertVariant(operation, flattened);
-        assertBranch(operation, flattened);
-        assertSchema(params);
         operation.validateVariables?.(flattened);
+        assertSchema(params);
       } catch (error) {
         throw guided(error);
       }

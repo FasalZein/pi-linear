@@ -1,7 +1,7 @@
 {
   "typedSchemaSha256": {
     "linear_list_comments": "63ca7884fd95be7cf0a5efd36c3c09a34e5a722150dbd553750ff8d2f12c51e8",
-    "linear_create_comment": "5fe2a45f25154fc6d98f59a1116e4e5ed8d94a6c06d29e15d44905248128bb0f",
+    "linear_create_comment": "793d4ac102788647e52cb96878be6d23305c5a9bf91455941425d688a0c0f78b",
     "linear_update_comment": "028e485f63f9fec9952080911469d5328eec9684cf82a92485c08d67e452a14d",
     "linear_list_views": "9e2b6ee12f63bb50a5ce5320f2e2782fe079f9a86f3ebcc267f7bf2b3503ac64",
     "linear_get_view": "334581d478a67eb2802dc26ae47bb86f4c673e04c15675d62571122a6b2d0dbd",
@@ -50,5 +50,5 @@
     "linear_save_milestone": "4bdee9cd6f370c6c8deba122c9fee43dd7765bf06400aefd123132f05c0a98f5",
     "linear_save_project": "af0123c71e32390bfd95a42dfb36c77e17894895a0c6f5626beabf768a86965f"
   },
-  "operationContractsSha256": "b8dfe63a112796cd0358fd78dc978fe282eb38a33f864c22c3d2e8607b40c262"
+  "operationContractsSha256": "047ba1d6cfd081ac2e9b63c92c9776569471cd2a54171386918a4e32ab9fb6ec"
 }

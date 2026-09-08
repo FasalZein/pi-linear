@@ -396,7 +396,10 @@ describe('typed schema validation across all 49 tools', () => {
               ? (partial.advanced as JsonObject | undefined)?.[key] !== undefined
               : partial[key] !== undefined));
           if (!satisfiedByAnother) {
-            expect(accepts(toolName, partial), `${toolName} without ${omitted}`).toBe(false);
+            const accepted = contract.exclusiveBranches && Object.keys(contract.advanced ?? {}).length
+              ? rawAccepts(toolName, partial)
+              : accepts(toolName, partial);
+            expect(accepted, `${toolName} without ${omitted}`).toBe(false);
           }
         }
       }
@@ -625,7 +628,7 @@ describe('execution boundary rejects non-canonical arguments before any network 
   it('states the accepted branches when required parameters are missing', async () => {
     const requests = installServer();
     await expect(execute(tools.get('linear_create_issue')!, { title: 'New' }))
-      .rejects.toThrow(/supply \{ title, team \} or \{ title, parent \}/);
+      .rejects.toThrow(/team or parent is required/);
     expect(requests).toHaveLength(0);
   });
 

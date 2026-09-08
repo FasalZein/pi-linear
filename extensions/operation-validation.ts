@@ -24,10 +24,10 @@ export function validateOperationVariables(
   variables: CompatibilityObject,
   display: 'canonical-fields' | 'parameter-card',
 ): void {
-  const effectiveVariables = normalizeReferenceArguments(
-    operation.name,
-    flattenAdvancedArguments(operation.name, canonicalOperation(operation), variables),
-  );
+  const flattened = flattenAdvancedArguments(operation.name, canonicalOperation(operation), variables);
+  const effectiveVariables = variables.advanced === undefined
+    ? flattened
+    : normalizeReferenceArguments(operation.name, flattened);
   const variants = parameterVariants(operation, requestedName);
   const valid = new Set(variants.flatMap((variant) => variant.map(({ name }) => name)));
   const accepted = variants.some((variant) => {

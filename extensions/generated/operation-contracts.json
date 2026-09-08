@@ -260,65 +260,9 @@
             "description": "Issue identifier such as ABC-123, or an issue UUID.",
             "minLength": 1
           },
-          "project": {
-            "type": "string",
-            "description": "Exact project name or slug, or a project UUID.",
-            "minLength": 1
-          },
-          "initiative": {
-            "type": "string",
-            "description": "Exact initiative name, or an initiative UUID.",
-            "minLength": 1
-          },
-          "projectUpdateId": {
-            "type": "string",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "initiativeUpdateId": {
-            "type": "string",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "postId": {
-            "type": "string",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "documentContentId": {
-            "type": "string",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
-          "parentId": {
-            "type": "string",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-          },
           "body": {
             "type": "string",
             "minLength": 1
-          },
-          "bodyData": {
-            "type": "object",
-            "patternProperties": {
-              "^.*$": {}
-            },
-            "description": "Linear document JSON object."
-          },
-          "quotedText": {
-            "type": "string",
-            "minLength": 1
-          },
-          "doNotSubscribeToIssue": {
-            "type": "boolean"
-          },
-          "createOnSyncedSlackThread": {
-            "type": "boolean"
-          },
-          "createdAt": {
-            "type": "string",
-            "description": "ISO 8601 date-time.",
-            "minLength": 1
-          },
-          "id": {
-            "type": "string",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "view": {
             "type": "string",
@@ -327,10 +271,15 @@
               "full"
             ],
             "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false,
-        "oneOf": [
+        "anyOf": [
           {
             "required": [
               "issue",
@@ -340,91 +289,18 @@
           {
             "required": [
               "issue",
-              "bodyData"
+              "advanced"
             ]
           },
           {
             "required": [
-              "project",
+              "advanced",
               "body"
             ]
           },
           {
             "required": [
-              "project",
-              "bodyData"
-            ]
-          },
-          {
-            "required": [
-              "initiative",
-              "body"
-            ]
-          },
-          {
-            "required": [
-              "initiative",
-              "bodyData"
-            ]
-          },
-          {
-            "required": [
-              "projectUpdateId",
-              "body"
-            ]
-          },
-          {
-            "required": [
-              "projectUpdateId",
-              "bodyData"
-            ]
-          },
-          {
-            "required": [
-              "initiativeUpdateId",
-              "body"
-            ]
-          },
-          {
-            "required": [
-              "initiativeUpdateId",
-              "bodyData"
-            ]
-          },
-          {
-            "required": [
-              "postId",
-              "body"
-            ]
-          },
-          {
-            "required": [
-              "postId",
-              "bodyData"
-            ]
-          },
-          {
-            "required": [
-              "documentContentId",
-              "body"
-            ]
-          },
-          {
-            "required": [
-              "documentContentId",
-              "bodyData"
-            ]
-          },
-          {
-            "required": [
-              "parentId",
-              "body"
-            ]
-          },
-          {
-            "required": [
-              "parentId",
-              "bodyData"
+              "advanced"
             ]
           }
         ]
@@ -435,7 +311,7 @@
     "purpose": "Create a comment on an issue or another supported target.",
     "kind": "mutation",
     "help": {
-      "signature": "create_comment(issue?: IssueReference, project?: ProjectReference, initiative?: InitiativeReference, projectUpdateId?: UUID, initiativeUpdateId?: UUID, postId?: UUID, documentContentId?: UUID, parentId?: UUID, body?: String, bodyData?: JsonObject, quotedText?: String, doNotSubscribeToIssue?: Boolean, createOnSyncedSlackThread?: Boolean, createdAt?: DateTime, id?: UUID, view?: ResultView)",
+      "signature": "create_comment(issue?: IssueReference, body?: String, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "create_comment",
@@ -446,20 +322,7 @@
       },
       "callFields": [
         "issue",
-        "project",
-        "initiative",
-        "projectUpdateId",
-        "initiativeUpdateId",
-        "postId",
-        "documentContentId",
-        "parentId",
         "body",
-        "bodyData",
-        "quotedText",
-        "doNotSubscribeToIssue",
-        "createOnSyncedSlackThread",
-        "createdAt",
-        "id",
         "view"
       ]
     },
@@ -711,6 +574,18 @@
           "required": false
         },
         {
+          "name": "body",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "view",
+          "type": "ResultView",
+          "required": false
+        }
+      ],
+      "advancedFields": [
+        {
           "name": "project",
           "type": "ProjectReference",
           "required": false
@@ -746,11 +621,6 @@
           "required": false
         },
         {
-          "name": "body",
-          "type": "String",
-          "required": false
-        },
-        {
           "name": "bodyData",
           "type": "JsonObject",
           "required": false
@@ -779,14 +649,8 @@
           "name": "id",
           "type": "UUID",
           "required": false
-        },
-        {
-          "name": "view",
-          "type": "ResultView",
-          "required": false
         }
       ],
-      "advancedFields": [],
       "branches": [
         {
           "all": [
@@ -903,20 +767,7 @@
       "entityKind": "comment",
       "callFields": [
         "issue",
-        "project",
-        "initiative",
-        "projectUpdateId",
-        "initiativeUpdateId",
-        "postId",
-        "documentContentId",
-        "parentId",
         "body",
-        "bodyData",
-        "quotedText",
-        "doNotSubscribeToIssue",
-        "createOnSyncedSlackThread",
-        "createdAt",
-        "id",
         "view"
       ],
       "action": "create",

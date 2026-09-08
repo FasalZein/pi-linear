@@ -167,8 +167,21 @@ function assertProjectedBranches(
     (definition.compatibility.acceptedFields ?? definition.compatibility.fields).map(({ name }) => name),
   );
   const hasCanonicalOnlyField = Object.keys(variables).some((name) => !compatibilityFields.has(name));
-  if (hasCanonicalOnlyField
-    && definition.canonical.branches.some((branch) => requirementBranchMatches(branch, variables))) return;
+  if (hasCanonicalOnlyField) {
+    const matches = definition.canonical.branches.filter((branch) => requirementBranchMatches(branch, variables));
+    if (!definition.canonical.exclusiveBranches ? matches.length > 0 : matches.length === 1) return;
+    if (definition.canonical.exclusiveBranches) {
+      const messages = definition.compatibility.branches[0]?.exactlyOneOfMessages ?? [];
+      const width = Math.max(...definition.canonical.branches.map(({ all }) => all.length));
+      for (let index = 0; index < width; index += 1) {
+        const fields = [...new Set(definition.canonical.branches.map(({ all }) => all[index]).filter(Boolean))];
+        if (fields.filter((field) => pathPresent(variables, field!)).length !== 1 && messages[index]) {
+          throw new Error(messages[index]!);
+        }
+      }
+      throw new Error('parameters do not match exactly one accepted requirement branch');
+    }
+  }
   assertRequirementBranches(definition.compatibility.branches, variables);
 }
 
@@ -420,8 +433,8 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
     document: compatibility.document,
     validateVariables(variables: JsonValue | undefined) {
       const parsed = operationVariables(definition.name, canonical, variables);
-      assertProjectedBranches(definition, parsed);
       compatibility.semanticValidateVariables?.(normalizeReferenceArguments(definition.name, parsed));
+      assertProjectedBranches(definition, parsed);
     },
   };
   assignOptional(operation, 'acceptedParameters', compatibility.acceptedFields);
@@ -435,9 +448,9 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
   if (compatibility.plan) {
     operation.plan = async (variables: JsonValue | undefined) => {
       const parsed = operationVariables(definition.name, canonical, variables);
-      assertProjectedBranches(definition, parsed);
       const normalized = normalizeReferenceArguments(definition.name, parsed);
       compatibility.semanticValidateVariables?.(normalized);
+      assertProjectedBranches(definition, parsed);
       const plan = await compatibility.plan!(normalized);
       return resolveCanonicalReferences(definition.name, parsed, plan);
     };
@@ -446,9 +459,9 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
   if (compatibility.executeLocal) {
     operation.executeLocal = async (variables, ctx, mode) => {
       const parsed = operationVariables(definition.name, canonical, variables);
-      assertProjectedBranches(definition, parsed);
       const normalized = normalizeReferenceArguments(definition.name, parsed);
       compatibility.semanticValidateVariables?.(normalized);
+      assertProjectedBranches(definition, parsed);
       return compatibility.executeLocal!(normalized, ctx, mode);
     };
   }
