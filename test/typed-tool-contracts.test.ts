@@ -8,6 +8,7 @@ import { linearApiTool } from '../extensions/api';
 import { requirementBranches, typedLinearTools, typedToolNames } from '../extensions/typed-tools';
 import { CANONICAL_OPERATIONS, canonicalFieldNames, missingCanonicalOperations } from '../extensions/canonical';
 import { operations } from '../extensions/operations';
+import { schemaFor } from '../extensions/parameter-schema';
 import type { JsonObject, JsonValue } from '../extensions/json';
 // The validator Pi runs on every tool call, imported from the agent runtime itself.
 import { validateToolArguments } from '../node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/utils/validation.js';
@@ -1036,5 +1037,25 @@ describe('strict raw arguments before Pi conversion', () => {
     const prepared = tools.get('linear_update_issue')!.prepareArguments!(args);
     expect(JSON.stringify(prepared)).toBe(snapshot);
     expect(JSON.stringify(validate('linear_update_issue', args))).toBe(snapshot);
+  });
+});
+
+describe('parameter type tokens', () => {
+  it('builds the contracted schema for known tokens', () => {
+    expect(schemaFor('Priority')).toMatchObject({ type: 'integer', minimum: 0, maximum: 4 });
+    expect(schemaFor('Color')).toMatchObject({ type: 'string', pattern: '^#[0-9a-fA-F]{6}$' });
+    expect(schemaFor('[SortInput!]')).toMatchObject({ type: 'array', minItems: 1 });
+  });
+
+  it('treats an unknown token as a plain reference string', () => {
+    expect(schemaFor('TotallyUnknownToken')).toMatchObject({ type: 'string', minLength: 1 });
+  });
+
+  it('describes reference tokens and publishes enum members', () => {
+    expect(schemaFor('IssueReference')).toMatchObject({
+      type: 'string',
+      description: 'Issue identifier such as ABC-123, or an issue UUID.',
+    });
+    expect(schemaFor('ResultView')).toMatchObject({ enum: ['summary', 'full'] });
   });
 });

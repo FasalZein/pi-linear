@@ -14,6 +14,7 @@ import {
   linearGraphQLWithContext,
   linearGraphQLErrors,
   withLinearRateLimitTelemetry,
+  type LinearGraphQLPathError,
   type LinearNetworkContext,
   type LinearRateLimitSnapshot,
 } from './client';
@@ -31,6 +32,7 @@ import type {
   CompatibilityValue,
   GraphQLDocumentVariant,
   LookupPlan,
+  OperationDefinition,
   OperationPlan,
   OperationPreparation,
 } from './operation-types';
@@ -374,18 +376,23 @@ function assertNamedEntry(entry: RawEntry): LinearOperation {
   return operation;
 }
 
-async function planEntry(
+function assertSingleLookupLayer(
   entry: RawEntry,
+  plan: OperationPlan,
   expectedKind: 'query' | 'mutation',
-  mode: MutationMode,
-): Promise<PlannedEntry> {
-  const operation = assertNamedEntry(entry);
-  const definition = getOperationDefinition(entry.operation);
-  if (definition.kind !== expectedKind) {
-    throw new Error(`Batch entry "${entry.key}" must be a ${expectedKind} operation.`);
+): void {
+  const readWithLookups = expectedKind === 'query' && plan.lookups.length > 0;
+  const dependentLookups = plan.lookups.some((lookup) => lookup.dependsOn?.length);
+  if (readWithLookups || dependentLookups) {
+    throw new Error(`Batch entry "${entry.key}" requires a second lookup layer and cannot run in one read request.`);
   }
-  assertOperationAllowed(operation, entry.variables, mode);
-  validateOperationVariables(operation, entry.operation, entry.variables, 'parameter-card');
+}
+
+async function batchEntryPlan(
+  entry: RawEntry,
+  definition: OperationDefinition,
+  expectedKind: 'query' | 'mutation',
+): Promise<OperationPlan> {
   const factory = definition.preparation.plan;
   if (!factory) throw new Error(`Batch entry "${entry.key}" is missing its pure operation plan.`);
   let plan: OperationPlan;
@@ -396,25 +403,32 @@ async function planEntry(
     throw new Error(`Batch entry "${entry.key}": ${message}`);
   }
   if (plan.kind !== expectedKind) throw new Error(`Batch entry "${entry.key}" produced the wrong operation plan kind.`);
-  if ((expectedKind === 'query' && plan.lookups.length)
-    || plan.lookups.some((lookup) => lookup.dependsOn?.length)) {
-    throw new Error(`Batch entry "${entry.key}" requires a second lookup layer and cannot run in one read request.`);
-  }
-  if (plan.lookups.length) {
-    const variant = operation.variants?.[0];
-    const planned: PlannedEntry = {
-      key: entry.key,
-      root: variant?.root ?? '',
-      document: '',
-      variables: {},
-      operationName: operation.name,
-      variant,
-      lookups: plan.lookups.map((lookup) => compilePlanLookup(entry.key, lookup)),
-      batchFinish: plan.finish,
-    };
-    if (expectedKind === 'mutation') planned.deferredDocument = operation.document;
-    return planned;
-  }
+  assertSingleLookupLayer(entry, plan, expectedKind);
+  return plan;
+}
+
+function deferredLookupEntry(
+  entry: RawEntry,
+  operation: LinearOperation,
+  plan: OperationPlan,
+  expectedKind: 'query' | 'mutation',
+): PlannedEntry {
+  const variant = operation.variants?.[0];
+  const planned: PlannedEntry = {
+    key: entry.key,
+    root: variant?.root ?? '',
+    document: '',
+    variables: {},
+    operationName: operation.name,
+    variant,
+    lookups: plan.lookups.map((lookup) => compilePlanLookup(entry.key, lookup)),
+    batchFinish: plan.finish,
+  };
+  if (expectedKind === 'mutation') planned.deferredDocument = operation.document;
+  return planned;
+}
+
+function preparedEntry(entry: RawEntry, operation: LinearOperation, plan: OperationPlan): PlannedEntry {
   const prepared = plan.finish({});
   const document = prepared.variant?.document ?? operation.document;
   if (!document) throw new Error(`Batch entry "${entry.key}" is missing a GraphQL document.`);
@@ -430,11 +444,88 @@ async function planEntry(
   };
 }
 
+async function planEntry(
+  entry: RawEntry,
+  expectedKind: 'query' | 'mutation',
+  mode: MutationMode,
+): Promise<PlannedEntry> {
+  const operation = assertNamedEntry(entry);
+  const definition = getOperationDefinition(entry.operation);
+  if (definition.kind !== expectedKind) {
+    throw new Error(`Batch entry "${entry.key}" must be a ${expectedKind} operation.`);
+  }
+  assertOperationAllowed(operation, entry.variables, mode);
+  validateOperationVariables(operation, entry.operation, entry.variables, 'parameter-card');
+  const plan = await batchEntryPlan(entry, definition, expectedKind);
+  if (plan.lookups.length) return deferredLookupEntry(entry, operation, plan, expectedKind);
+  return preparedEntry(entry, operation, plan);
+}
+
 function batchEntryResult(entry: PlannedEntry, mapped: JsonObject): JsonObject {
   return entry.prepared?.acknowledgement
     ?? (entry.variant && entry.prepared?.resultView !== 'full'
       ? mutationAcknowledgement(entry.operationName, mapped, entry.variant)
       : mapped);
+}
+
+function aliasPartial(entry: PlannedEntry, value: CompatibilityValue | undefined): JsonObject | undefined {
+  if (value == null) return undefined;
+  return { [entry.root]: value };
+}
+
+function aliasPathError(
+  entry: PlannedEntry,
+  error: LinearGraphQLPathError,
+  partial: JsonObject | undefined,
+): BatchError {
+  const owned: BatchError = { key: entry.key, path: error.path, message: error.message };
+  if (partial) owned.partial = partial;
+  return owned;
+}
+
+function scopedAliasErrors(
+  entry: PlannedEntry,
+  value: CompatibilityValue | undefined,
+  scoped: readonly LinearGraphQLPathError[],
+): BatchError[] {
+  const stable = entry.prepared?.failureMessage;
+  if (stable) return [{ key: entry.key, path: [entry.key], message: stable }];
+  const partial = aliasPartial(entry, value);
+  return scoped.map((error) => aliasPathError(entry, error, partial));
+}
+
+function assertAliasValue(entry: PlannedEntry, value: CompatibilityValue | undefined): void {
+  if (value == null) throw new Error(`Batch entry "${entry.key}" returned no data.`);
+}
+
+function assertPreparedAlias(entry: PlannedEntry, mapped: JsonObject): void {
+  if (entry.prepared) verifyOperationResult(entry.prepared, mapped);
+}
+
+function assertMutationAlias(entry: PlannedEntry, mapped: JsonObject): void {
+  if (entry.variant?.mutationResult) validateMutationResult(entry.operationName, mapped, entry.variant);
+}
+
+function aliasResultFailure(
+  entry: PlannedEntry,
+  mapped: JsonObject,
+  value: CompatibilityValue | undefined,
+): BatchError | undefined {
+  try {
+    assertAliasValue(entry, value);
+    assertPreparedAlias(entry, mapped);
+    assertMutationAlias(entry, mapped);
+    return undefined;
+  } catch (error) {
+    const failed: BatchError = {
+      key: entry.key,
+      path: [entry.key],
+      message: entry.prepared?.failureMessage
+        ?? (error instanceof Error ? error.message : String(error)),
+    };
+    if (value != null) failed.partial = mapped;
+    return failed;
+  }
 }
 
 function collectAlias(
@@ -446,29 +537,13 @@ function collectAlias(
 ): void {
   const scoped = pathErrors.filter((error) => error.path[0] === entry.key);
   if (scoped.length) {
-    const partial = raw[entry.key] == null ? undefined : { [entry.root]: raw[entry.key] };
-    if (entry.prepared?.failureMessage) {
-      errors.push({ key: entry.key, path: [entry.key], message: entry.prepared.failureMessage });
-    } else {
-      for (const error of scoped) {
-        const owned: BatchError = { key: entry.key, path: error.path, message: error.message };
-        if (partial) owned.partial = partial;
-        errors.push(owned);
-      }
-    }
+    errors.push(...scopedAliasErrors(entry, raw[entry.key], scoped));
     return;
   }
   const value = raw[entry.key];
   const mapped = { [entry.root]: value };
-  try {
-    if (value == null) throw new Error(`Batch entry "${entry.key}" returned no data.`);
-    if (entry.prepared) verifyOperationResult(entry.prepared, mapped);
-    if (entry.variant?.mutationResult) validateMutationResult(entry.operationName, mapped, entry.variant);
-  } catch (error) {
-    const message = entry.prepared?.failureMessage
-      ?? (error instanceof Error ? error.message : String(error));
-    const failed: BatchError = { key: entry.key, path: [entry.key], message };
-    if (value != null) failed.partial = mapped;
+  const failed = aliasResultFailure(entry, mapped, value);
+  if (failed) {
     errors.push(failed);
     return;
   }
@@ -631,13 +706,137 @@ function failTransaction(keys: readonly string[], message: string): BatchError[]
   return keys.map((key) => ({ key, path: ['issueBatchCreate'], message }));
 }
 
+type TransactionalCreatePlan = {
+  key: string;
+  uuid: string;
+  view?: 'summary' | 'full';
+  variant?: GraphQLDocumentVariant;
+};
+
+function transactionIssues(
+  raw: CompatibilityObject,
+  keys: readonly string[],
+  errors: BatchError[],
+): CompatibilityValue[] | undefined {
+  const record = raw.issueBatchCreate;
+  if (!isCompatibilityObject(record)) {
+    errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned unusable transaction data.'));
+    return undefined;
+  }
+  if (record.success !== true) {
+    errors.push(...failTransaction(keys, 'Linear issueBatchCreate failed mutation expectation: issueBatchCreate.success must be true.'));
+    return undefined;
+  }
+  if (!Array.isArray(record.issues)) {
+    errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned unusable transaction data.'));
+    return undefined;
+  }
+  return record.issues;
+}
+
+function indexTransactionIssues(
+  issues: readonly CompatibilityValue[],
+  keys: readonly string[],
+  errors: BatchError[],
+): Map<string, CompatibilityObject> | undefined {
+  const byId = new Map<string, CompatibilityObject>();
+  for (const issue of issues) {
+    if (!isCompatibilityObject(issue)) {
+      errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned unusable transaction data.'));
+      return undefined;
+    }
+    const id = issue.id;
+    if (!isCompatibilityString(id) || !id) {
+      errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned unusable transaction data.'));
+      return undefined;
+    }
+    if (byId.has(id)) {
+      errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned duplicate issue ids.'));
+      return undefined;
+    }
+    byId.set(id, issue);
+  }
+  return byId;
+}
+
+function stampedIssuesMatch(
+  plans: readonly TransactionalCreatePlan[],
+  byId: ReadonlyMap<string, CompatibilityObject>,
+): boolean {
+  const stamped = new Set(plans.map((plan) => plan.uuid));
+  if (byId.size !== stamped.size) return false;
+  return [...byId.keys()].every((id) => stamped.has(id));
+}
+
+function transactionIssueIndex(error: LinearGraphQLPathError, count: number): number | undefined {
+  const index = error.path[2];
+  if (!isPathNumber(index) || !Number.isSafeInteger(index)) return undefined;
+  return index >= 0 && index < count ? index : undefined;
+}
+
+function transactionErrorKey(
+  error: LinearGraphQLPathError,
+  issues: readonly CompatibilityValue[],
+  keyById: ReadonlyMap<string, string>,
+): string | undefined {
+  const index = transactionIssueIndex(error, issues.length);
+  if (index === undefined) return undefined;
+  const issue = issues[index];
+  if (!isCompatibilityObject(issue) || !isCompatibilityString(issue.id)) return undefined;
+  return keyById.get(issue.id);
+}
+
+function affectedTransactionErrors(
+  plans: readonly TransactionalCreatePlan[],
+  issues: readonly CompatibilityValue[],
+  scoped: ReturnType<typeof linearGraphQLErrors>,
+  keys: readonly string[],
+  errors: BatchError[],
+): Map<string, LinearGraphQLPathError[]> | undefined {
+  const keyById = new Map(plans.map((plan) => [plan.uuid, plan.key]));
+  const affected = new Map<string, LinearGraphQLPathError[]>();
+  for (const error of scoped) {
+    const key = transactionErrorKey(error, issues, keyById);
+    if (!key) {
+      errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned uncorrelatable transaction errors.'));
+      return undefined;
+    }
+    affected.set(key, [...(affected.get(key) ?? []), error]);
+  }
+  return affected;
+}
+
+function transactionPlanResult(
+  plan: TransactionalCreatePlan,
+  issue: CompatibilityObject | undefined,
+): JsonObject {
+  const mapped = { issueCreate: { success: true, issue } };
+  if (plan.view === 'full' || !plan.variant) return mapped;
+  return mutationAcknowledgement('create_issue', mapped, plan.variant);
+}
+
+function collectTransactionResults(
+  plans: readonly TransactionalCreatePlan[],
+  byId: ReadonlyMap<string, CompatibilityObject>,
+  affected: ReadonlyMap<string, readonly LinearGraphQLPathError[]>,
+  data: JsonObject,
+  errors: BatchError[],
+): void {
+  for (const plan of plans) {
+    const result = transactionPlanResult(plan, byId.get(plan.uuid));
+    const issueErrors = affected.get(plan.key);
+    if (!issueErrors?.length) {
+      data[plan.key] = result;
+      continue;
+    }
+    for (const error of issueErrors) {
+      errors.push({ key: plan.key, path: error.path, message: error.message, partial: result });
+    }
+  }
+}
+
 function collectTransactionalCreates(
-  plans: Array<{
-    key: string;
-    uuid: string;
-    view?: 'summary' | 'full';
-    variant?: GraphQLDocumentVariant;
-  }>,
+  plans: TransactionalCreatePlan[],
   raw: CompatibilityObject,
   pathErrors: ReturnType<typeof linearGraphQLErrors>,
   data: JsonObject,
@@ -645,90 +844,71 @@ function collectTransactionalCreates(
 ): void {
   const keys = plans.map((plan) => plan.key);
   const scoped = pathErrors.filter((error) => error.path[0] === 'issueBatchCreate');
-  const rootErrors = scoped.filter((error) => error.path.length < 3
-    || error.path[1] !== 'issues'
-    || !isPathNumber(error.path[2]!));
-  if (rootErrors.length) {
-    for (const key of keys) {
-      for (const error of rootErrors) errors.push({ key, path: error.path, message: error.message });
-    }
-    return;
-  }
-  const record = isCompatibilityObject(raw.issueBatchCreate) ? raw.issueBatchCreate : undefined;
-  if (!record) {
-    errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned unusable transaction data.'));
-    return;
-  }
-  if (record.success !== true) {
-    errors.push(...failTransaction(keys, 'Linear issueBatchCreate failed mutation expectation: issueBatchCreate.success must be true.'));
-    return;
-  }
-  if (!Array.isArray(record.issues)) {
-    errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned unusable transaction data.'));
-    return;
-  }
-  const byId = new Map<string, CompatibilityObject>();
-  for (const issue of record.issues) {
-    if (!isCompatibilityObject(issue)) {
-      errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned unusable transaction data.'));
-      return;
-    }
-    const id = issue.id;
-    if (!isCompatibilityString(id) || !id) {
-      errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned unusable transaction data.'));
-      return;
-    }
-    if (byId.has(id)) {
-      errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned duplicate issue ids.'));
-      return;
-    }
-    byId.set(id, issue);
-  }
-  const stamped = new Set(plans.map((plan) => plan.uuid));
-  if (byId.size !== stamped.size || [...byId.keys()].some((id) => !stamped.has(id))) {
+  const issues = transactionIssues(raw, keys, errors);
+  if (!issues) return;
+  const byId = indexTransactionIssues(issues, keys, errors);
+  if (!byId) return;
+  if (!stampedIssuesMatch(plans, byId)) {
     errors.push(...failTransaction(
       keys,
       'Linear issueBatchCreate returned issue ids that do not match the stamped create ids.',
     ));
     return;
   }
+  const affected = affectedTransactionErrors(plans, issues, scoped, keys, errors);
+  if (!affected) return;
+  collectTransactionResults(plans, byId, affected, data, errors);
+}
 
-  const keyById = new Map(plans.map((plan) => [plan.uuid, plan.key]));
-  const affected = new Map<string, typeof scoped>();
-  for (const error of scoped) {
-    const index = error.path[2] as number;
-    if (!Number.isSafeInteger(index) || index < 0 || index >= record.issues.length) {
-      errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned uncorrelatable transaction errors.'));
-      return;
+function lookupEntryPending(entry: PlannedEntry, errors: readonly BatchError[]): boolean {
+  if (!entry.lookups?.length || !entry.batchFinish) return false;
+  return !errors.some((error) => error.key === entry.key);
+}
+
+function resolveEntryLookups(
+  entry: PlannedEntry,
+  raw: CompatibilityObject,
+  pathErrors: ReturnType<typeof linearGraphQLErrors>,
+  errors: BatchError[],
+): CompatibilityObject | undefined {
+  const resolved: CompatibilityObject = {};
+  let failed = false;
+  for (const lookup of entry.lookups ?? []) {
+    try {
+      resolved[lookup.key] = lookup.resolve(raw, pathErrors);
+    } catch (error) {
+      failed = true;
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push({ key: entry.key, path: lookup.aliases, message });
     }
-    const issue = record.issues[index];
-    const key = isCompatibilityObject(issue) && isCompatibilityString(issue.id)
-      ? keyById.get(issue.id)
-      : undefined;
-    if (!key) {
-      errors.push(...failTransaction(keys, 'Linear issueBatchCreate returned uncorrelatable transaction errors.'));
-      return;
-    }
-    affected.set(key, [...(affected.get(key) ?? []), error]);
   }
+  return failed ? undefined : resolved;
+}
 
-  for (const plan of plans) {
-    const mapped = { issueCreate: { success: true, issue: byId.get(plan.uuid) } };
-    const issueErrors = affected.get(plan.key);
-    if (issueErrors?.length) {
-      for (const error of issueErrors) errors.push({
-        key: plan.key,
-        path: error.path,
-        message: error.message,
-        partial: plan.view === 'full' || !plan.variant
-          ? mapped
-          : mutationAcknowledgement('create_issue', mapped, plan.variant),
-      });
-    } else {
-      data[plan.key] = plan.view === 'full' || !plan.variant
-        ? mapped
-        : mutationAcknowledgement('create_issue', mapped, plan.variant);
-    }
+function applyDeferredDocument(entry: PlannedEntry, prepared: OperationPreparation): void {
+  if (!entry.deferredDocument) return;
+  const compiled = aliasDocument(entry.key, prepared.variant?.document ?? entry.deferredDocument);
+  entry.document = print(compiled.ast);
+  entry.root = compiled.root;
+  entry.variant = prepared.variant ?? entry.variant;
+  entry.deferredDocument = undefined;
+}
+
+function finishLookupEntry(
+  entry: PlannedEntry,
+  resolved: CompatibilityObject,
+  errors: BatchError[],
+): void {
+  const finish = entry.batchFinish;
+  if (!finish) return;
+  try {
+    const prepared = finish(resolved);
+    entry.prepared = prepared;
+    entry.variables = prefixVariables(entry.key, prepared.variables);
+    applyDeferredDocument(entry, prepared);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    errors.push({ key: entry.key, path: [entry.key], message });
   }
 }
 
@@ -739,35 +919,9 @@ function applyIndependentLookups(
   errors: BatchError[],
 ): void {
   for (const entry of mutations) {
-    if (errors.some((error) => error.key === entry.key)) continue;
-    if (!entry.lookups?.length || !entry.batchFinish) continue;
-    const resolved: CompatibilityObject = {};
-    let failed = false;
-    for (const lookup of entry.lookups) {
-      try {
-        resolved[lookup.key] = lookup.resolve(raw, pathErrors);
-      } catch (error) {
-        failed = true;
-        const message = error instanceof Error ? error.message : String(error);
-        errors.push({ key: entry.key, path: lookup.aliases, message });
-      }
-    }
-    if (failed) continue;
-    try {
-      entry.prepared = entry.batchFinish(resolved);
-      entry.variables = prefixVariables(entry.key, entry.prepared.variables);
-      if (entry.deferredDocument) {
-        const document = entry.prepared.variant?.document ?? entry.deferredDocument;
-        const compiled = aliasDocument(entry.key, document);
-        entry.document = print(compiled.ast);
-        entry.root = compiled.root;
-        entry.variant = entry.prepared.variant ?? entry.variant;
-        entry.deferredDocument = undefined;
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      errors.push({ key: entry.key, path: [entry.key], message });
-    }
+    if (!lookupEntryPending(entry, errors)) continue;
+    const resolved = resolveEntryLookups(entry, raw, pathErrors, errors);
+    if (resolved) finishLookupEntry(entry, resolved, errors);
   }
 }
 
@@ -778,6 +932,351 @@ export type BatchRequest = {
   telemetryMode?: TelemetryMode;
 };
 
+type PlannedBatch = {
+  reads: PlannedEntry[];
+  mutations: PlannedEntry[];
+  lookups: CompiledLookup[];
+  transactional: boolean;
+};
+
+type BatchRuntime = PlannedBatch & {
+  params: BatchRequest;
+  network: LinearNetworkContext;
+  requestedKeys: string[];
+  data: JsonObject;
+  errors: BatchError[];
+  secrets: string[];
+  aliasCount: number;
+};
+
+type PreparedMutation = {
+  mutation: PlannedEntry;
+  query: string;
+};
+
+function transactionMode(parsed: ParsedBatchPhases): boolean {
+  const createFlags = parsed.mutations.map((entry) => isIssueCreateEntry(entry));
+  const transactional = parsed.mutations.length > 1 && createFlags.every(Boolean);
+  if (parsed.mutations.length > 1 && !transactional && createFlags.some(Boolean)) {
+    throw new Error('Batch rejects transactional creates mixed with other mutations.');
+  }
+  return transactional;
+}
+
+async function planBatchAttempt(
+  parsed: ParsedBatchPhases,
+  mode: MutationMode,
+): Promise<Omit<PlannedBatch, 'transactional'>> {
+  const reads: PlannedEntry[] = [];
+  for (const entry of parsed.reads) reads.push(await planEntry(entry, 'query', mode));
+  const mutations: PlannedEntry[] = [];
+  for (const entry of parsed.mutations) mutations.push(await planEntry(entry, 'mutation', mode));
+  return {
+    reads,
+    mutations,
+    lookups: mutations.flatMap((entry) => entry.lookups ?? []),
+  };
+}
+
+function generatedCollisionEntry(caller: RawEntry, owner: RawEntry, alias: string): RawEntry {
+  if (caller.generated) return caller;
+  if (owner.generated) return owner;
+  throw new Error(`Batch key "${alias}" is reserved by guarded mutation "${owner.key}". Choose another optional key in { "reads": [...], "mutations": [...] }.`);
+}
+
+function lookupAliases(mutations: readonly PlannedEntry[]): Array<{ ownerKey: string; alias: string }> {
+  return mutations.flatMap((mutation) => (mutation.lookups ?? []).flatMap((lookup) =>
+    lookup.aliases.map((alias) => ({ ownerKey: mutation.key, alias }))));
+}
+
+function lookupAliasCollision(
+  parsed: ParsedBatchPhases,
+  mutations: readonly PlannedEntry[],
+): RawEntry | undefined {
+  const rawEntries = [...parsed.reads, ...parsed.mutations];
+  const callerByKey = new Map(rawEntries.map((entry) => [entry.key, entry]));
+  for (const { ownerKey, alias } of lookupAliases(mutations)) {
+    const caller = callerByKey.get(alias);
+    if (!caller) continue;
+    const owner = parsed.mutations.find((entry) => entry.key === ownerKey)!;
+    return generatedCollisionEntry(caller, owner, alias);
+  }
+  return undefined;
+}
+
+function blockedBatchKeys(parsed: ParsedBatchPhases, lookups: readonly CompiledLookup[]): Set<string> {
+  return new Set([
+    ...parsed.reads.map((entry) => entry.key),
+    ...parsed.mutations.map((entry) => entry.key),
+    ...lookups.flatMap((lookup) => lookup.aliases),
+  ]);
+}
+
+function renameGeneratedEntry(entry: RawEntry, blocked: Set<string>): void {
+  blocked.delete(entry.key);
+  let key = `${entry.keyBase}_${entry.nextSuffix++}`;
+  while (blocked.has(key)) key = `${entry.keyBase}_${entry.nextSuffix++}`;
+  entry.key = key;
+}
+
+async function planBatch(parsed: ParsedBatchPhases, mode: MutationMode): Promise<PlannedBatch> {
+  const transactional = transactionMode(parsed);
+  while (true) {
+    const planned = await planBatchAttempt(parsed, mode);
+    const collision = lookupAliasCollision(parsed, planned.mutations);
+    if (!collision) return { ...planned, transactional };
+    renameGeneratedEntry(collision, blockedBatchKeys(parsed, planned.lookups));
+  }
+}
+
+function readOwners(reads: readonly PlannedEntry[], raw: CompatibilityObject): GraphQLFailureOwner[] {
+  return reads.map((entry) => {
+    const owner: GraphQLFailureOwner = { entry, aliases: [entry.key] };
+    const alias = raw[entry.key];
+    if (alias != null) owner.partial = { [entry.root]: alias };
+    return owner;
+  });
+}
+
+function lookupOwners(mutations: readonly PlannedEntry[]): GraphQLFailureOwner[] {
+  return mutations
+    .filter((entry) => entry.lookups?.length)
+    .map((entry) => ({
+      entry,
+      aliases: entry.lookups!.flatMap((lookup) => lookup.aliases),
+      failureMessage: lookupFailureMessage(entry),
+    }));
+}
+
+async function executeReadPhase(runtime: BatchRuntime): Promise<{ requests: number; failed: boolean }> {
+  const readDocuments = [
+    ...runtime.reads.map((entry) => parse(entry.document)),
+    ...runtime.lookups.map((lookup) => lookup.ast),
+  ];
+  if (!readDocuments.length) return { requests: 0, failed: false };
+  const query = mergeDocuments(OperationTypeNode.QUERY, 'BatchRead', readDocuments);
+  const variables = Object.assign(
+    {},
+    ...runtime.reads.map((entry) => entry.variables),
+    ...runtime.lookups.map((lookup) => lookup.variables),
+  );
+  const phase = await executeStructuredGraphQLPhase(runtime.network, query, variables, 'read');
+  const directOwners = readOwners(runtime.reads, phase.raw);
+  const guardedOwners = lookupOwners(runtime.mutations);
+  const failed = classifyStructuredGraphQLErrors(
+    phase.errors,
+    [...directOwners, ...guardedOwners],
+    guardedOwners.length ? guardedOwners : directOwners,
+    runtime.errors,
+  );
+  for (const entry of runtime.reads) {
+    if (!failed.has(entry.key)) collectAlias(entry, phase.raw, [], runtime.data, runtime.errors);
+  }
+  applyIndependentLookups(runtime.mutations, phase.raw, [], runtime.errors);
+  return { requests: 1, failed: phase.errors.length > 0 };
+}
+
+function finishBatch(
+  runtime: BatchRuntime,
+  skipped: string[],
+  requests: { read: number; mutation: number },
+): Promise<JsonObject> {
+  return envelope(
+    runtime.requestedKeys,
+    runtime.data,
+    runtime.errors,
+    skipped,
+    requests,
+    runtime.aliasCount,
+    runtime.params.sink,
+    runtime.secrets,
+    runtime.network.telemetry,
+    runtime.params.telemetryMode,
+  );
+}
+
+function readFailureSkipped(runtime: BatchRuntime): string[] {
+  const failedKeys = new Set(runtime.errors.map(({ key }) => key));
+  return runtime.mutations.filter((entry) => !failedKeys.has(entry.key)).map((entry) => entry.key);
+}
+
+function stampCreatePlan(entry: PlannedEntry): TransactionalCreatePlan & { input: CompatibilityObject } {
+  const input = entry.prepared?.variables.input;
+  if (!isCompatibilityObject(input)) {
+    throw new Error(`Batch entry "${entry.key}" is missing a prepared create input.`);
+  }
+  const uuid = randomUUID();
+  return {
+    key: entry.key,
+    uuid,
+    input: { ...input, id: uuid },
+    view: entry.prepared?.resultView,
+    variant: entry.variant,
+  };
+}
+
+async function executeTransactionalBatch(
+  runtime: BatchRuntime,
+  mode: MutationMode,
+  readRequests: number,
+): Promise<JsonObject> {
+  const stamped = runtime.mutations.map(stampCreatePlan);
+  assertMutationAllowed(ISSUE_BATCH_CREATE_DOCUMENT, mode, ['issueBatchCreate']);
+  const phase = await executeStructuredGraphQLPhase(
+    runtime.network,
+    ISSUE_BATCH_CREATE_DOCUMENT,
+    { input: { issues: stamped.map((entry) => entry.input) } },
+    'mutation',
+  );
+  const scoped = phase.errors.filter((error) => error.path[0] === 'issueBatchCreate'
+    && error.path[1] === 'issues'
+    && isPathNumber(error.path[2]!));
+  const responseWide = phase.errors.filter((error) => !scoped.includes(error));
+  if (responseWide.length) {
+    const owners: GraphQLFailureOwner[] = runtime.mutations.map((entry) => ({ entry, aliases: ['issueBatchCreate'] }));
+    classifyStructuredGraphQLErrors(responseWide, owners, owners, runtime.errors);
+  } else {
+    collectTransactionalCreates(stamped, phase.raw, scoped, runtime.data, runtime.errors);
+  }
+  return finishBatch(runtime, [], { read: readRequests, mutation: 1 });
+}
+
+function prepareSequentialMutations(mutations: readonly PlannedEntry[], mode: MutationMode): PreparedMutation[] {
+  const prepared = mutations.map((mutation) => ({
+    mutation,
+    query: mergeDocuments(OperationTypeNode.MUTATION, 'BatchMutation', [parse(mutation.document)]),
+  }));
+  for (const { mutation, query } of prepared) assertMutationAllowed(query, mode, [mutation.root]);
+  return prepared;
+}
+
+function remainingMutationKeys(prepared: readonly PreparedMutation[], index: number): string[] {
+  return prepared.slice(index + 1).map(({ mutation }) => mutation.key);
+}
+
+function cancelledMutationError(mutation: PlannedEntry): BatchError {
+  return {
+    key: mutation.key,
+    path: [mutation.key],
+    message: 'Batch mutation phase was cancelled before this request was sent.',
+  };
+}
+
+async function executeMutationRequest(
+  runtime: BatchRuntime,
+  prepared: PreparedMutation,
+  signal: AbortSignal | undefined,
+): Promise<{ phase: StructuredGraphQLPhase } | { error: BatchError }> {
+  try {
+    const phase = await executeStructuredGraphQLPhase(
+      runtime.network,
+      prepared.query,
+      prepared.mutation.variables,
+      'mutation',
+      false,
+    );
+    return { phase };
+  } catch (error) {
+    const detail = error instanceof Error ? ` ${error.message}` : '';
+    const outcome = signal?.aborted
+      ? 'Batch mutation request was cancelled after it started.'
+      : 'Batch mutation request failed after it started.';
+    return {
+      error: {
+        key: prepared.mutation.key,
+        path: [prepared.mutation.key],
+        message: `${outcome} Its outcome is unknown because it may have reached Linear. Do not retry this mutation blindly.${detail}`,
+      },
+    };
+  }
+}
+
+function verifiedMutationPartial(mutation: PlannedEntry, partial: JsonObject): JsonObject {
+  try {
+    assertPreparedAlias(mutation, partial);
+    assertMutationAlias(mutation, partial);
+    return batchEntryResult(mutation, partial);
+  } catch {
+    return partial;
+  }
+}
+
+function mutationFailureOwner(mutation: PlannedEntry, raw: CompatibilityObject): GraphQLFailureOwner {
+  const owner: GraphQLFailureOwner = {
+    entry: mutation,
+    aliases: [mutation.key],
+    failureMessage: attributableFailureMessage(mutation),
+  };
+  const alias = raw[mutation.key];
+  if (alias == null || mutation.prepared?.acknowledgement) return owner;
+  const partial = { [mutation.root]: alias };
+  owner.partial = verifiedMutationPartial(mutation, partial);
+  return owner;
+}
+
+function collectMutationPhase(runtime: BatchRuntime, mutation: PlannedEntry, phase: StructuredGraphQLPhase): boolean {
+  const before = runtime.errors.length;
+  if (phase.errors.length) {
+    const owner = mutationFailureOwner(mutation, phase.raw);
+    classifyStructuredGraphQLErrors(phase.errors, [owner], [owner], runtime.errors);
+  } else {
+    collectAlias(mutation, phase.raw, [], runtime.data, runtime.errors);
+  }
+  return runtime.errors.length > before;
+}
+
+async function executeSequentialBatch(
+  runtime: BatchRuntime,
+  mode: MutationMode,
+  signal: AbortSignal | undefined,
+  readRequests: number,
+): Promise<JsonObject> {
+  const prepared = prepareSequentialMutations(runtime.mutations, mode);
+  const skipped: string[] = [];
+  let mutationRequests = 0;
+  for (const [index, entry] of prepared.entries()) {
+    if (signal?.aborted) {
+      runtime.errors.push(cancelledMutationError(entry.mutation));
+      skipped.push(...remainingMutationKeys(prepared, index));
+      break;
+    }
+    mutationRequests += 1;
+    const result = await executeMutationRequest(runtime, entry, signal);
+    if ('error' in result) {
+      runtime.errors.push(result.error);
+      skipped.push(...remainingMutationKeys(prepared, index));
+      break;
+    }
+    if (collectMutationPhase(runtime, entry.mutation, result.phase)) {
+      skipped.push(...remainingMutationKeys(prepared, index));
+      break;
+    }
+  }
+  return finishBatch(runtime, skipped, { read: readRequests, mutation: mutationRequests });
+}
+
+async function createBatchRuntime(
+  planned: PlannedBatch,
+  params: BatchRequest,
+  mode: MutationMode,
+  ctx: ExtensionContext,
+  signal: AbortSignal | undefined,
+  telemetry: LinearRateLimitSnapshot[],
+): Promise<BatchRuntime> {
+  const call = linearCallContext(mode, signal, ctx, params);
+  const network = await networkExecutionContext(call, fetch, telemetry);
+  return {
+    ...planned,
+    params,
+    network,
+    requestedKeys: [...planned.reads, ...planned.mutations].map(({ key }) => key),
+    data: {},
+    errors: [],
+    secrets: [...activeSecrets(), network.credential.apiKey],
+    aliasCount: planned.reads.length + planned.mutations.length,
+  };
+}
+
 async function executeBatchWithTelemetry(
   params: BatchRequest,
   mode: MutationMode,
@@ -786,236 +1285,14 @@ async function executeBatchWithTelemetry(
   telemetry: LinearRateLimitSnapshot[],
 ): Promise<JsonObject> {
   const parsed = parseEntries(requireJsonObject(params.variables ?? {}, 'Batch variables'));
-  const createFlags = parsed.mutations.map((entry) => isIssueCreateEntry(entry));
-  const transactional = parsed.mutations.length > 1 && createFlags.every(Boolean);
-  if (parsed.mutations.length > 1 && !transactional && createFlags.some(Boolean)) {
-    throw new Error('Batch rejects transactional creates mixed with other mutations.');
+  const planned = await planBatch(parsed, mode);
+  const runtime = await createBatchRuntime(planned, params, mode, ctx, signal, telemetry);
+  const read = await executeReadPhase(runtime);
+  if ((read.failed || runtime.errors.length) && runtime.mutations.length) {
+    return finishBatch(runtime, readFailureSkipped(runtime), { read: read.requests, mutation: 0 });
   }
-
-  let reads: PlannedEntry[];
-  let mutations: PlannedEntry[];
-  let lookups: CompiledLookup[];
-  while (true) {
-    reads = [];
-    for (const entry of parsed.reads) reads.push(await planEntry(entry, 'query', mode));
-    mutations = [];
-    for (const entry of parsed.mutations) mutations.push(await planEntry(entry, 'mutation', mode));
-    lookups = mutations.flatMap((entry) => entry.lookups ?? []);
-    const rawEntries = [...parsed.reads, ...parsed.mutations];
-    const callerByKey = new Map(rawEntries.map((entry) => [entry.key, entry]));
-    let retry = false;
-    for (const mutation of mutations) {
-      for (const alias of mutation.lookups?.flatMap((lookup) => lookup.aliases) ?? []) {
-        const caller = callerByKey.get(alias);
-        if (!caller) continue;
-        const owner = parsed.mutations.find((entry) => entry.key === mutation.key)!;
-        const generated = caller.generated ? caller : owner.generated ? owner : undefined;
-        if (!generated) {
-          throw new Error(`Batch key "${alias}" is reserved by guarded mutation "${owner.key}". Choose another optional key in { "reads": [...], "mutations": [...] }.`);
-        }
-        const blocked = new Set([...callerByKey.keys(), ...lookups.flatMap((lookup) => lookup.aliases)]);
-        blocked.delete(generated.key);
-        let key = `${generated.keyBase}_${generated.nextSuffix++}`;
-        while (blocked.has(key)) key = `${generated.keyBase}_${generated.nextSuffix++}`;
-        generated.key = key;
-        retry = true;
-        break;
-      }
-      if (retry) break;
-    }
-    if (!retry) break;
-  }
-
-  const call = linearCallContext(mode, signal, ctx, params);
-  const network = await networkExecutionContext(call, fetch, telemetry);
-  const apiKey = network.credential.apiKey;
-  const secrets = [...activeSecrets(), apiKey];
-  const requestedKeys = [...reads, ...mutations].map(({ key }) => key);
-  const data: JsonObject = {};
-  const errors: BatchError[] = [];
-  let readRequests = 0;
-  let mutationRequests = 0;
-  let readPhaseFailed = false;
-  const aliasCount = reads.length + mutations.length;
-
-  const readDocuments = [
-    ...reads.map((entry) => parse(entry.document)),
-    ...lookups.map((lookup) => lookup.ast),
-  ];
-  if (readDocuments.length) {
-    const query = mergeDocuments(OperationTypeNode.QUERY, 'BatchRead', readDocuments);
-    const variables = Object.assign(
-      {},
-      ...reads.map((entry) => entry.variables),
-      ...lookups.map((lookup) => lookup.variables),
-    );
-    readRequests = 1;
-    const phase = await executeStructuredGraphQLPhase(network, query, variables, 'read');
-    const readOwners: GraphQLFailureOwner[] = reads.map((entry) => {
-      const owner: GraphQLFailureOwner = { entry, aliases: [entry.key] };
-      const alias = phase.raw[entry.key];
-      if (alias != null) owner.partial = { [entry.root]: alias };
-      return owner;
-    });
-    const lookupOwners: GraphQLFailureOwner[] = mutations
-      .filter((entry) => entry.lookups?.length)
-      .map((entry) => ({
-        entry,
-        aliases: entry.lookups!.flatMap((lookup) => lookup.aliases),
-        failureMessage: lookupFailureMessage(entry),
-      }));
-    const failed = classifyStructuredGraphQLErrors(
-      phase.errors,
-      [...readOwners, ...lookupOwners],
-      lookupOwners.length ? lookupOwners : readOwners,
-      errors,
-    );
-    readPhaseFailed = phase.errors.length > 0;
-    for (const entry of reads) {
-      if (!failed.has(entry.key)) collectAlias(entry, phase.raw, [], data, errors);
-    }
-    applyIndependentLookups(mutations, phase.raw, [], errors);
-  }
-
-  if ((readPhaseFailed || errors.length) && mutations.length) {
-    const failedMutationKeys = new Set(errors.map(({ key }) => key));
-    return envelope(
-      requestedKeys,
-      data,
-      errors,
-      mutations.filter((entry) => !failedMutationKeys.has(entry.key)).map((entry) => entry.key),
-      { read: readRequests, mutation: 0 },
-      aliasCount,
-      params.sink,
-      secrets,
-      network.telemetry,
-      params.telemetryMode,
-    );
-  }
-
-  if (transactional) {
-    const stamped = mutations.map((entry) => {
-      const input = entry.prepared?.variables.input;
-      if (!isCompatibilityObject(input)) {
-        throw new Error(`Batch entry "${entry.key}" is missing a prepared create input.`);
-      }
-      const uuid = randomUUID();
-      return {
-        key: entry.key,
-        uuid,
-        input: { ...input, id: uuid },
-        view: entry.prepared?.resultView,
-        variant: entry.variant,
-      };
-    });
-    assertMutationAllowed(ISSUE_BATCH_CREATE_DOCUMENT, mode, ['issueBatchCreate']);
-    mutationRequests = 1;
-    const phase = await executeStructuredGraphQLPhase(
-      network,
-      ISSUE_BATCH_CREATE_DOCUMENT,
-      { input: { issues: stamped.map((entry) => entry.input) } },
-      'mutation',
-    );
-    const scoped = phase.errors.filter((error) => error.path[0] === 'issueBatchCreate'
-      && error.path[1] === 'issues'
-      && isPathNumber(error.path[2]!));
-    const responseWide = phase.errors.filter((error) => !scoped.includes(error));
-    if (responseWide.length) {
-      const owners: GraphQLFailureOwner[] = mutations.map((entry) => ({ entry, aliases: ['issueBatchCreate'] }));
-      classifyStructuredGraphQLErrors(responseWide, owners, owners, errors);
-    } else {
-      collectTransactionalCreates(stamped, phase.raw, scoped, data, errors);
-    }
-    return envelope(
-      requestedKeys,
-      data,
-      errors,
-      [],
-      { read: readRequests, mutation: mutationRequests },
-      aliasCount,
-      params.sink,
-      secrets,
-      network.telemetry,
-      params.telemetryMode,
-    );
-  }
-
-  const preparedMutations = mutations.map((mutation) => ({
-    mutation,
-    query: mergeDocuments(OperationTypeNode.MUTATION, 'BatchMutation', [parse(mutation.document)]),
-  }));
-  for (const { mutation, query } of preparedMutations) {
-    assertMutationAllowed(query, mode, [mutation.root]);
-  }
-
-  const skipped: string[] = [];
-  for (const [index, { mutation, query }] of preparedMutations.entries()) {
-    if (signal?.aborted) {
-      errors.push({
-        key: mutation.key,
-        path: [mutation.key],
-        message: 'Batch mutation phase was cancelled before this request was sent.',
-      });
-      skipped.push(...preparedMutations.slice(index + 1).map(({ mutation: later }) => later.key));
-      break;
-    }
-
-    mutationRequests += 1;
-    let phase: Awaited<ReturnType<typeof executeStructuredGraphQLPhase>>;
-    try {
-      phase = await executeStructuredGraphQLPhase(network, query, mutation.variables, 'mutation', false);
-    } catch (error) {
-      const detail = error instanceof Error ? ` ${error.message}` : '';
-      const message = signal?.aborted
-        ? `Batch mutation request was cancelled after it started. Its outcome is unknown because it may have reached Linear. Do not retry this mutation blindly.${detail}`
-        : `Batch mutation request failed after it started. Its outcome is unknown because it may have reached Linear. Do not retry this mutation blindly.${detail}`;
-      errors.push({ key: mutation.key, path: [mutation.key], message });
-      skipped.push(...preparedMutations.slice(index + 1).map(({ mutation: later }) => later.key));
-      break;
-    }
-
-    const beforeErrorCount = errors.length;
-    if (phase.errors.length) {
-      const owner: GraphQLFailureOwner = {
-        entry: mutation,
-        aliases: [mutation.key],
-        failureMessage: attributableFailureMessage(mutation),
-      };
-      const alias = phase.raw[mutation.key];
-      if (alias != null && !mutation.prepared?.acknowledgement) {
-        const partial = { [mutation.root]: alias };
-        try {
-          if (mutation.prepared) verifyOperationResult(mutation.prepared, partial);
-          if (mutation.variant?.mutationResult) {
-            validateMutationResult(mutation.operationName, partial, mutation.variant);
-          }
-          owner.partial = batchEntryResult(mutation, partial);
-        } catch {
-          owner.partial = partial;
-        }
-      }
-      classifyStructuredGraphQLErrors(phase.errors, [owner], [owner], errors);
-    } else {
-      collectAlias(mutation, phase.raw, [], data, errors);
-    }
-    if (errors.length > beforeErrorCount) {
-      skipped.push(...preparedMutations.slice(index + 1).map(({ mutation: later }) => later.key));
-      break;
-    }
-  }
-
-  return envelope(
-    requestedKeys,
-    data,
-    errors,
-    skipped,
-    { read: readRequests, mutation: mutationRequests },
-    aliasCount,
-    params.sink,
-    secrets,
-    network.telemetry,
-    params.telemetryMode,
-  );
+  if (runtime.transactional) return executeTransactionalBatch(runtime, mode, read.requests);
+  return executeSequentialBatch(runtime, mode, signal, read.requests);
 }
 
 export async function executeBatch(

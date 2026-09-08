@@ -108,11 +108,16 @@ function statusLine(
 ): string {
   const lead = spec.lead?.(entity);
   const parts = [
-    theme.fg(warning ? 'warning' : 'success', `${warning ? '!' : '✓'} ${verb}${warning ? ' with warnings' : ''}`),
+    mutationStatus(theme, verb, warning),
     lead ? theme.fg('accent', lead) : undefined,
     theme.fg('toolOutput', spec.label(entity)),
   ].filter((part): part is string => !!part);
   return parts.join(' ');
+}
+
+function mutationStatus(theme: Theme, verb: string, warning: boolean): string {
+  if (warning) return theme.fg('warning', `! ${verb} with warnings`);
+  return theme.fg('success', `✓ ${verb}`);
 }
 
 function configuredEntityDetails(theme: Theme, spec: EntitySpec, entity: Entity): BlockLine[] {
@@ -448,16 +453,7 @@ function renderMutationDigest(
   definition: OperationDefinition,
   context: LinearRenderContext,
 ): LinearBlockComponent {
-  if (!details.success) {
-    const target = namedTarget(details.target, context, definition);
-    return new LinearBlockComponent([
-      '',
-      theme.fg('warning', `! ${verb.past} ${spec.noun}${target ? ` ${target}` : ''}: status unknown`),
-      wrapped(theme.fg('dim', 'Re-read the record to confirm the change.'), 2),
-      '',
-      wrapped(theme.fg('dim', jsonHint())),
-    ]);
-  }
+  if (!details.success) return renderUnknownMutation(details, theme, spec, verb, definition, context);
   if (details.entity) {
     return new LinearBlockComponent(entityBlock(
       theme,
@@ -469,14 +465,53 @@ function renderMutationDigest(
       details.warnings,
     ));
   }
+  return renderAcknowledgedMutation(details, theme, spec, verb, definition, context);
+}
+
+function mutationSubject(verb: Verb, spec: EntitySpec, target: string | undefined): string {
+  return `${verb.past} ${spec.noun}${target ? ` ${target}` : ''}`;
+}
+
+function renderUnknownMutation(
+  details: MutationResultDetails,
+  theme: Theme,
+  spec: EntitySpec,
+  verb: Verb,
+  definition: OperationDefinition,
+  context: LinearRenderContext,
+): LinearBlockComponent {
+  const target = namedTarget(details.target, context, definition);
+  return new LinearBlockComponent([
+    '',
+    theme.fg('warning', `! ${mutationSubject(verb, spec, target)}: status unknown`),
+    wrapped(theme.fg('dim', 'Re-read the record to confirm the change.'), 2),
+    '',
+    wrapped(theme.fg('dim', jsonHint())),
+  ]);
+}
+
+function acknowledgedMutationStatus(
+  theme: Theme,
+  subject: string,
+  warning: boolean,
+): string {
+  if (warning) return theme.fg('warning', `! ${subject} with warnings`);
+  return theme.fg('success', `✓ ${subject}`);
+}
+
+function renderAcknowledgedMutation(
+  details: MutationResultDetails,
+  theme: Theme,
+  spec: EntitySpec,
+  verb: Verb,
+  definition: OperationDefinition,
+  context: LinearRenderContext,
+): LinearBlockComponent {
   const target = namedTarget(details.target, context, definition);
   const warning = details.warnings.length > 0;
   return new LinearBlockComponent([
     '',
-    theme.fg(
-      warning ? 'warning' : 'success',
-      `${warning ? '!' : '✓'} ${verb.past} ${spec.noun}${target ? ` ${target}` : ''}${warning ? ' with warnings' : ''}`,
-    ),
+    acknowledgedMutationStatus(theme, mutationSubject(verb, spec, target), warning),
     ...details.warnings.map((message) => wrapped(theme.fg('warning', message), 2)),
     ...details.notes.map((note) => wrapped(theme.fg('dim', note), 2)),
     '',
@@ -643,10 +678,14 @@ function helpCardLines(theme: Theme, details: HelpCardDetails): BlockLine[] {
   if (details.purpose) lines.push(`  ${theme.fg('dim', details.purpose)}`);
   lines.push('');
   for (const parameter of details.parameters) {
-    const label = `${parameter.name}${parameter.required ? '' : '?'}`.padEnd(24);
-    lines.push(wrapped(`${theme.fg('muted', label)}${theme.fg('dim', parameter.type)}`, 2));
+    lines.push(helpParameterLine(theme, parameter));
   }
   return lines;
+}
+
+function helpParameterLine(theme: Theme, parameter: HelpCardDetails['parameters'][number]): BlockLine {
+  const label = `${parameter.name}${parameter.required ? '' : '?'}`.padEnd(24);
+  return wrapped(`${theme.fg('muted', label)}${theme.fg('dim', parameter.type)}`, 2);
 }
 
 function helpContentLines(theme: Theme, details: KnownHelpDetails): BlockLine[] {

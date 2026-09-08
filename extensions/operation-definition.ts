@@ -159,28 +159,46 @@ export function assertRequirementBranches(
   throw new Error('parameters do not match one accepted requirement branch');
 }
 
+function canonicalOnlyVariables(
+  definition: OperationDefinition,
+  variables: CompatibilityObject,
+): boolean {
+  const compatibilityFields = new Set(
+    (definition.compatibility.acceptedFields ?? definition.compatibility.fields).map(({ name }) => name),
+  );
+  return Object.keys(variables).some((name) => !compatibilityFields.has(name));
+}
+
+function canonicalBranchesSatisfied(
+  definition: OperationDefinition,
+  variables: CompatibilityObject,
+): boolean {
+  const matches = definition.canonical.branches.filter((branch) => requirementBranchMatches(branch, variables));
+  return definition.canonical.exclusiveBranches ? matches.length === 1 : matches.length > 0;
+}
+
+function assertExclusiveCanonicalBranch(
+  definition: OperationDefinition,
+  variables: CompatibilityObject,
+): never {
+  const messages = definition.compatibility.branches[0]?.exactlyOneOfMessages ?? [];
+  const width = Math.max(...definition.canonical.branches.map(({ all }) => all.length));
+  for (let index = 0; index < width; index += 1) {
+    const fields = [...new Set(definition.canonical.branches.map(({ all }) => all[index]).filter(Boolean))];
+    if (fields.filter((field) => pathPresent(variables, field!)).length !== 1 && messages[index]) {
+      throw new Error(messages[index]!);
+    }
+  }
+  throw new Error('parameters do not match exactly one accepted requirement branch');
+}
+
 function assertProjectedBranches(
   definition: OperationDefinition,
   variables: CompatibilityObject,
 ): void {
-  const compatibilityFields = new Set(
-    (definition.compatibility.acceptedFields ?? definition.compatibility.fields).map(({ name }) => name),
-  );
-  const hasCanonicalOnlyField = Object.keys(variables).some((name) => !compatibilityFields.has(name));
-  if (hasCanonicalOnlyField) {
-    const matches = definition.canonical.branches.filter((branch) => requirementBranchMatches(branch, variables));
-    if (!definition.canonical.exclusiveBranches ? matches.length > 0 : matches.length === 1) return;
-    if (definition.canonical.exclusiveBranches) {
-      const messages = definition.compatibility.branches[0]?.exactlyOneOfMessages ?? [];
-      const width = Math.max(...definition.canonical.branches.map(({ all }) => all.length));
-      for (let index = 0; index < width; index += 1) {
-        const fields = [...new Set(definition.canonical.branches.map(({ all }) => all[index]).filter(Boolean))];
-        if (fields.filter((field) => pathPresent(variables, field!)).length !== 1 && messages[index]) {
-          throw new Error(messages[index]!);
-        }
-      }
-      throw new Error('parameters do not match exactly one accepted requirement branch');
-    }
+  if (canonicalOnlyVariables(definition, variables)) {
+    if (canonicalBranchesSatisfied(definition, variables)) return;
+    if (definition.canonical.exclusiveBranches) assertExclusiveCanonicalBranch(definition, variables);
   }
   assertRequirementBranches(definition.compatibility.branches, variables);
 }
@@ -229,135 +247,200 @@ function parseThenPlan(
   };
 }
 
-/** Project the runtime definition from one authored source operation. */
-export function defineOperation(operation: OperationSource): OperationDefinition {
-  const branches = operation.compatibilityBranches;
-  if (!branches) throw new Error(`Missing compatibility branches for "${operation.name}".`);
-  const { action } = actionAndEntity(operation.name);
-  const local = Boolean(operation.executeLocal);
+function assertLocalOperationContract(operation: OperationSource, local: boolean): void {
   if (local && !operation.localResult?.requiredStringPaths.length) {
     throw new Error(`Local operation ${operation.name} is missing its result expectation.`);
   }
   if (!local && operation.localResult) {
     throw new Error(`Operation ${operation.name} declares a local result expectation without executeLocal.`);
   }
-  const documents = local
-    ? undefined
-    : (operation.variants ?? [{ document: operation.document, root: '' }]).map((variant) =>
-        documentDefinition(variant.document, operation.variants ? variant : undefined),
-      );
-  const kind = local
-    ? 'local'
-    : documents?.some((variant) => variant.kind === 'mutation')
-      ? 'mutation'
-      : 'query';
+}
+
+function operationDocuments(
+  operation: OperationSource,
+  local: boolean,
+): OperationDocumentDefinition[] | undefined {
+  if (local) return undefined;
+  const variants = operation.variants ?? [{ document: operation.document, root: '' }];
+  return variants.map((variant) =>
+    documentDefinition(variant.document, operation.variants ? variant : undefined));
+}
+
+function operationKind(
+  local: boolean,
+  documents: readonly OperationDocumentDefinition[] | undefined,
+): OperationDefinition['kind'] {
+  if (local) return 'local';
+  if (documents?.some((variant) => variant.kind === 'mutation')) return 'mutation';
+  return 'query';
+}
+
+function plannedOperation(
+  operation: OperationSource,
+  kind: OperationDefinition['kind'],
+): ParsedOperationPlanFactory | undefined {
   if (kind === 'query' && !operation.plan) {
     throw new Error(`Query operation ${operation.name} is missing its pure operation plan.`);
   }
-  const entityKind = operation.renderKind ?? projectedRenderKind(operation.name);
-  const mutation = kind === 'mutation';
-  const plannedOperation = operation.plan && mutation
-    ? withMutationResultView(operation.plan)
-    : operation.plan;
-  const renderEmpty = operation.renderEmpty;
-  if ((action === 'list' || action === 'search') && !renderEmpty) {
+  if (kind === 'mutation' && operation.plan) return withMutationResultView(operation.plan);
+  return operation.plan;
+}
+
+function assertRenderContract(operation: OperationSource, action: string): void {
+  if ((action === 'list' || action === 'search') && !operation.renderEmpty) {
     throw new Error(`Missing render empty state for "${operation.name}".`);
   }
-  const renames = operationReferenceRenames(operation.name);
-  const renderTargetFields = operation.renderTargetFields?.map((field) => renames[field]?.name ?? field);
-  const requiresVariables = !branches.some((branch) => requirementBranchMatches(branch, {}));
-  const canonical = referenceContract(operation.name, operation.canonical);
-  const canonicalFields = Object.entries(canonical.fields).map(([name, type]) => ({
+}
+
+function canonicalFieldDefinitions(
+  canonical: LinearOperation['canonical'],
+  mutation: boolean,
+) {
+  const fields = Object.entries(canonical.fields).map(([name, type]) => ({
     name,
     type,
     required: canonical.branches.length > 0
       && canonical.branches.every((branch) => branch.includes(name)),
   }));
-  const advancedFields = Object.entries(canonical.advanced ?? {}).map(([name, type]) => ({
+  if (mutation && !fields.some(({ name }) => name === MUTATION_VIEW_PARAMETER.name)) {
+    fields.push(MUTATION_VIEW_PARAMETER);
+  }
+  return fields;
+}
+
+function advancedFieldDefinitions(canonical: LinearOperation['canonical']) {
+  return Object.entries(canonical.advanced ?? {}).map(([name, type]) => ({
     name,
     type,
     required: false,
   }));
-  const referenceFields = canonicalReferenceFields(
-    operation.name,
-    operation.referenceFields,
-    operation.canonical,
-  );
-  const generatedResolverPaths = resolverPaths(referenceFields);
-  if (mutation && !canonicalFields.some(({ name }) => name === MUTATION_VIEW_PARAMETER.name)) {
-    canonicalFields.push(MUTATION_VIEW_PARAMETER);
+}
+
+function fieldsForMutation<T extends { name: string }>(values: readonly T[], mutation: boolean) {
+  return mutation ? withViewParameter(values) : values;
+}
+
+function optionalFieldsForMutation<T extends { name: string }>(
+  values: readonly T[] | undefined,
+  mutation: boolean,
+) {
+  if (!values) return undefined;
+  return fieldsForMutation(values, mutation);
+}
+
+function legacyFieldsForMutation(
+  values: OperationSource['legacyParameters'],
+  mutation: boolean,
+): OperationSource['legacyParameters'] {
+  if (!values) return undefined;
+  return mutation ? withMutationViewLegacyBranches(values) : values;
+}
+
+function aliasFieldsForMutation(
+  values: OperationSource['aliasParameters'],
+  mutation: boolean,
+): OperationSource['aliasParameters'] {
+  if (!mutation) return values;
+  return withMutationViewAliasFields(values);
+}
+
+function assignSemanticValidation(
+  compatibility: OperationCompatibilityDefinition,
+  operation: OperationSource,
+): void {
+  if (!operation.validateVariables) return;
+  if (!operation.semanticException) {
+    throw new Error(`Unnamed semantic validation exception for "${operation.name}".`);
   }
+  compatibility.semanticException = operation.semanticException;
+  compatibility.semanticValidateVariables = operation.validateVariables;
+}
+
+function compatibilityDefinition(
+  operation: OperationSource,
+  branches: readonly RequirementBranch[],
+  mutation: boolean,
+  referenceFields: readonly OperationReferenceField[],
+  generatedResolverPaths: Readonly<Record<string, string>>,
+  plan: ParsedOperationPlanFactory | undefined,
+): OperationCompatibilityDefinition {
   const compatibility: OperationCompatibilityDefinition = {
     operationAliases: operation.aliases,
-    fields: mutation ? withViewParameter(operation.parameters) : operation.parameters,
+    fields: fieldsForMutation(operation.parameters, mutation),
     branches,
     example: operation.example,
     document: operation.document,
   };
-  assignOptional(
-    compatibility,
-    'acceptedFields',
-    operation.acceptedParameters
-      ? mutation ? withViewParameter(operation.acceptedParameters) : operation.acceptedParameters
-      : undefined,
-  );
-  assignOptional(
-    compatibility,
-    'legacyBranches',
-    operation.legacyParameters
-      ? mutation ? withMutationViewLegacyBranches(operation.legacyParameters) : operation.legacyParameters
-      : undefined,
-  );
-  assignOptional(
-    compatibility,
-    'aliasFields',
-    mutation ? withMutationViewAliasFields(operation.aliasParameters) : operation.aliasParameters,
-  );
+  assignOptional(compatibility, 'acceptedFields', optionalFieldsForMutation(operation.acceptedParameters, mutation));
+  assignOptional(compatibility, 'legacyBranches', legacyFieldsForMutation(operation.legacyParameters, mutation));
+  assignOptional(compatibility, 'aliasFields', aliasFieldsForMutation(operation.aliasParameters, mutation));
   assignOptional(compatibility, 'inventoryDocuments', operation.inventoryDocuments);
   assignOptional(compatibility, 'pagination', operation.pagination);
   if (referenceFields.length) compatibility.resolverPaths = generatedResolverPaths;
-  if (requiresVariables) compatibility.requiresVariables = true;
-  if (operation.validateVariables) {
-    compatibility.semanticException = operation.semanticException
-      ?? (() => { throw new Error(`Unnamed semantic validation exception for "${operation.name}".`); })();
-    compatibility.semanticValidateVariables = operation.validateVariables;
+  if (!branches.some((branch) => requirementBranchMatches(branch, {}))) {
+    compatibility.requiresVariables = true;
   }
-  assignOptional(compatibility, 'plan', plannedOperation);
+  assignSemanticValidation(compatibility, operation);
+  assignOptional(compatibility, 'plan', plan);
   assignOptional(compatibility, 'executeLocal', operation.executeLocal);
   assignOptional(compatibility, 'localResult', operation.localResult);
+  return compatibility;
+}
 
-  const canonicalBranches = canonical.branches.map((all) => ({ all }));
-  const canonicalExample = canonicalReferenceExample(
-    operation.name,
-    operation.canonicalExample ?? operation.example.variables,
-  );
-  const canonicalVariants = canonical.variants?.map((variant) => ({
+function canonicalVariantDefinitions(
+  canonical: LinearOperation['canonical'],
+  mutation: boolean,
+) {
+  return canonical.variants?.map((variant) => ({
     fields: mutation
       ? withViewParameter(variant.fields.map((name) => ({ name }))).map(({ name }) => name)
       : variant.fields,
     branches: variant.branches.map((all) => ({ all })),
   }));
-  const canonicalProjection: OperationDefinition['canonical'] = {
+}
+
+function canonicalDefinition(
+  operation: OperationSource,
+  canonical: LinearOperation['canonical'],
+  canonicalFields: ReturnType<typeof canonicalFieldDefinitions>,
+  advancedFields: ReturnType<typeof advancedFieldDefinitions>,
+  mutation: boolean,
+): OperationDefinition['canonical'] {
+  const projection: OperationDefinition['canonical'] = {
     fields: canonicalFields,
     advancedFields,
-    branches: canonicalBranches,
+    branches: canonical.branches.map((all) => ({ all })),
     strictRawArguments: true,
-    example: canonicalExample,
+    example: canonicalReferenceExample(
+      operation.name,
+      operation.canonicalExample ?? operation.example.variables,
+    ),
   };
-  if (canonical.exclusiveBranches) canonicalProjection.exclusiveBranches = true;
-  if (canonicalVariants) canonicalProjection.variants = canonicalVariants;
+  if (canonical.exclusiveBranches) projection.exclusiveBranches = true;
+  const variants = canonicalVariantDefinitions(canonical, mutation);
+  if (variants) projection.variants = variants;
+  return projection;
+}
 
-  const definition: OperationDefinition = {
+function baseOperationDefinition(
+  operation: OperationSource,
+  kind: OperationDefinition['kind'],
+  entityKind: string,
+  action: string,
+  compatibility: OperationCompatibilityDefinition,
+  canonical: OperationDefinition['canonical'],
+  referenceFields: readonly OperationReferenceField[],
+  generatedResolverPaths: Readonly<Record<string, string>>,
+  documents: readonly OperationDocumentDefinition[] | undefined,
+): OperationDefinition {
+  return {
     name: operation.name,
     toolName: `linear_${operation.name}`,
     domain: operation.domain,
     purpose: operation.purpose,
     kind,
     compatibility,
-    preparation: {
-      referenceFields,
-      resolverPaths: generatedResolverPaths,
-    },
+    preparation: { referenceFields, resolverPaths: generatedResolverPaths },
     safety: {
       namedInputPolicy: operation.namedInputPolicy ?? 'non-destructive',
       mutation: kind === 'mutation',
@@ -370,16 +453,68 @@ export function defineOperation(operation: OperationSource): OperationDefinition
     },
     render: {
       entityKind,
-      callFields: canonicalFields.map(({ name }) => name),
+      callFields: canonical.fields.map(({ name }) => name),
       action,
     },
-    canonical: canonicalProjection,
+    canonical,
   };
+}
+
+/** Project the runtime definition from one authored source operation. */
+export function defineOperation(operation: OperationSource): OperationDefinition {
+  const branches = operation.compatibilityBranches;
+  if (!branches) throw new Error(`Missing compatibility branches for "${operation.name}".`);
+  const { action } = actionAndEntity(operation.name);
+  const local = Boolean(operation.executeLocal);
+  assertLocalOperationContract(operation, local);
+  const documents = operationDocuments(operation, local);
+  const kind = operationKind(local, documents);
+  const plan = plannedOperation(operation, kind);
+  const entityKind = operation.renderKind ?? projectedRenderKind(operation.name);
+  const mutation = kind === 'mutation';
+  assertRenderContract(operation, action);
+  const renames = operationReferenceRenames(operation.name);
+  const renderTargetFields = operation.renderTargetFields?.map((field) => renames[field]?.name ?? field);
+  const canonical = referenceContract(operation.name, operation.canonical);
+  const canonicalFields = canonicalFieldDefinitions(canonical, mutation);
+  const advancedFields = advancedFieldDefinitions(canonical);
+  const referenceFields = canonicalReferenceFields(
+    operation.name,
+    operation.referenceFields,
+    operation.canonical,
+  );
+  const generatedResolverPaths = resolverPaths(referenceFields);
+  const compatibility = compatibilityDefinition(
+    operation,
+    branches,
+    mutation,
+    referenceFields,
+    generatedResolverPaths,
+    plan,
+  );
+  const canonicalProjection = canonicalDefinition(
+    operation,
+    canonical,
+    canonicalFields,
+    advancedFields,
+    mutation,
+  );
+  const definition = baseOperationDefinition(
+    operation,
+    kind,
+    entityKind,
+    action,
+    compatibility,
+    canonicalProjection,
+    referenceFields,
+    generatedResolverPaths,
+    documents,
+  );
   if (documents) definition.graphql = { documents };
-  if (plannedOperation) definition.preparation.plan = parseThenPlan(operation.name, canonical, plannedOperation);
+  if (plan) definition.preparation.plan = parseThenPlan(operation.name, canonical, plan);
   assignOptional(definition.result, 'local', operation.localResult);
   assignOptional(definition.render, 'targetFields', renderTargetFields);
-  assignOptional(definition.render, 'empty', renderEmpty);
+  assignOptional(definition.render, 'empty', operation.renderEmpty);
   return definition;
 }
 
@@ -405,22 +540,65 @@ function projectedCanonicalVariants(definition: OperationDefinition): LinearOper
 
 const projections = new WeakMap<OperationDefinition, LinearOperation>();
 
-/** Project the stable v0.4 runtime contract. All public consumers use this adapter during S7. */
-export function projectCompatibilityOperation(definition: OperationDefinition): LinearOperation {
-  const existing = projections.get(definition);
-  if (existing) return existing;
-  const compatibility = definition.compatibility;
-  const variants = definition.graphql?.documents
-    .filter(({ kind }) => kind === 'mutation')
-    .map(({ kind: _kind, ...variant }) => variant);
+function projectedCanonicalContract(definition: OperationDefinition): LinearOperation['canonical'] {
   const canonical: LinearOperation['canonical'] = {
     fields: Object.fromEntries(definition.canonical.fields.map(({ name, type }) => [name, type])),
     advanced: Object.fromEntries(definition.canonical.advancedFields.map(({ name, type }) => [name, type])),
     branches: definition.canonical.branches.map(({ all }) => all),
   };
   if (definition.canonical.exclusiveBranches) canonical.exclusiveBranches = true;
-  const projectedVariants = projectedCanonicalVariants(definition);
-  if (projectedVariants) canonical.variants = projectedVariants;
+  const variants = projectedCanonicalVariants(definition);
+  if (variants) canonical.variants = variants;
+  return canonical;
+}
+
+function mutationVariantDocuments(definition: OperationDefinition) {
+  return definition.graphql?.documents
+    .filter(({ kind }) => kind === 'mutation')
+    .map(({ kind: _kind, ...variant }) => variant);
+}
+
+/** Parse, normalize, and gate one call against the projected canonical contract. */
+function acceptedCallVariables(
+  definition: OperationDefinition,
+  canonical: LinearOperation['canonical'],
+  variables: JsonValue | undefined,
+) {
+  const parsed = operationVariables(definition.name, canonical, variables);
+  const normalized = normalizeReferenceArguments(definition.name, parsed);
+  definition.compatibility.semanticValidateVariables?.(normalized);
+  assertProjectedBranches(definition, parsed);
+  return { parsed, normalized };
+}
+
+function assignProjectedExecution(
+  operation: LinearOperation,
+  definition: OperationDefinition,
+  canonical: LinearOperation['canonical'],
+): void {
+  const compatibility = definition.compatibility;
+  if (compatibility.plan) {
+    operation.plan = async (variables: JsonValue | undefined) => {
+      const { parsed, normalized } = acceptedCallVariables(definition, canonical, variables);
+      const plan = await compatibility.plan!(normalized);
+      return resolveCanonicalReferences(definition.name, parsed, plan);
+    };
+  }
+  assignOptional(operation, 'localResult', compatibility.localResult);
+  if (compatibility.executeLocal) {
+    operation.executeLocal = async (variables, ctx, mode) => {
+      const { normalized } = acceptedCallVariables(definition, canonical, variables);
+      return compatibility.executeLocal!(normalized, ctx, mode);
+    };
+  }
+}
+
+/** Project the stable v0.4 runtime contract. All public consumers use this adapter during S7. */
+export function projectCompatibilityOperation(definition: OperationDefinition): LinearOperation {
+  const existing = projections.get(definition);
+  if (existing) return existing;
+  const compatibility = definition.compatibility;
+  const canonical = projectedCanonicalContract(definition);
   const operation: LinearOperation = {
     name: definition.name,
     resultCategory: definition.result.category,
@@ -432,39 +610,19 @@ export function projectCompatibilityOperation(definition: OperationDefinition): 
     example: compatibility.example,
     document: compatibility.document,
     validateVariables(variables: JsonValue | undefined) {
-      const parsed = operationVariables(definition.name, canonical, variables);
-      compatibility.semanticValidateVariables?.(normalizeReferenceArguments(definition.name, parsed));
-      assertProjectedBranches(definition, parsed);
+      acceptedCallVariables(definition, canonical, variables);
     },
   };
   assignOptional(operation, 'acceptedParameters', compatibility.acceptedFields);
   assignOptional(operation, 'legacyParameters', compatibility.legacyBranches);
   assignOptional(operation, 'aliasParameters', compatibility.aliasFields);
+  const variants = mutationVariantDocuments(definition);
   if (variants?.length) operation.variants = variants;
   assignOptional(operation, 'inventoryDocuments', compatibility.inventoryDocuments);
   assignOptional(operation, 'pagination', compatibility.pagination);
   assignOptional(operation, 'resolverPaths', compatibility.resolverPaths);
   if (compatibility.requiresVariables) operation.requiresVariables = true;
-  if (compatibility.plan) {
-    operation.plan = async (variables: JsonValue | undefined) => {
-      const parsed = operationVariables(definition.name, canonical, variables);
-      const normalized = normalizeReferenceArguments(definition.name, parsed);
-      compatibility.semanticValidateVariables?.(normalized);
-      assertProjectedBranches(definition, parsed);
-      const plan = await compatibility.plan!(normalized);
-      return resolveCanonicalReferences(definition.name, parsed, plan);
-    };
-  }
-  assignOptional(operation, 'localResult', compatibility.localResult);
-  if (compatibility.executeLocal) {
-    operation.executeLocal = async (variables, ctx, mode) => {
-      const parsed = operationVariables(definition.name, canonical, variables);
-      const normalized = normalizeReferenceArguments(definition.name, parsed);
-      compatibility.semanticValidateVariables?.(normalized);
-      assertProjectedBranches(definition, parsed);
-      return compatibility.executeLocal!(normalized, ctx, mode);
-    };
-  }
+  assignProjectedExecution(operation, definition, canonical);
   projections.set(definition, operation);
   return operation;
 }

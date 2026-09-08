@@ -125,6 +125,48 @@ const SORT_ITEM = Type.Object(
   { additionalProperties: false },
 );
 
+type SchemaOptions = { description?: string };
+type SchemaBuilder = (options: SchemaOptions) => TSchema;
+
+const nullableReference: SchemaBuilder = (options) =>
+  Type.Union([Type.String({ minLength: 1 }), Type.Null()], options);
+
+const referenceList: SchemaBuilder = (options) =>
+  Type.Array(Type.String({ minLength: 1 }), { ...options, minItems: 1 });
+
+const SCHEMA_BUILDERS = {
+  Int: (options) => Type.Integer(options),
+  Float: (options) => Type.Number(options),
+  JsonString: (options) => Type.String({ ...options, minLength: 1 }),
+  JsonObject: (options) => Type.Record(Type.String(), Type.Any(), options),
+  Url: (options) => Type.String({ ...options, minLength: 1, pattern: '^https?://' }),
+  NullableDateTime: nullableReference,
+  NullableUserReference: nullableReference,
+  NullableIssueReference: nullableReference,
+  NullableProjectReference: nullableReference,
+  NullableCycleReference: nullableReference,
+  NullableMilestoneReference: nullableReference,
+  Priority: (options) => Type.Integer({ ...options, minimum: 0, maximum: 4 }),
+  Boolean: (options) => Type.Boolean(options),
+  Color: (options) => Type.String({ ...options, pattern: '^#[0-9a-fA-F]{6}$' }),
+  Date: (options) => Type.String({ ...options, pattern: DATE_PATTERN }),
+  NullableDate: (options) => Type.Union([Type.String({ pattern: DATE_PATTERN }), Type.Null()], options),
+  UUID: (options) => Type.String({ ...options, pattern: UUID_PATTERN }),
+  NullableUUID: (options) => Type.Union([Type.String({ pattern: UUID_PATTERN }), Type.Null()], options),
+  '[UUID!]': (options) => Type.Array(Type.String({ pattern: UUID_PATTERN }), { ...options, minItems: 1 }),
+  '[IssueReference!]': referenceList,
+  '[TeamReference!]': referenceList,
+  '[UserReference!]': referenceList,
+  '[LabelReference!]': referenceList,
+  Preferences: (options) => options.description ? { ...PREFERENCES, ...options } : PREFERENCES,
+  '[ID!]': referenceList,
+  '[SortInput!]': (options) => Type.Array(SORT_ITEM, { ...options, minItems: 1 }),
+  Filter: (options) => Type.Record(Type.String(), Type.Any(), { ...options, minProperties: 1 }),
+  FilterData: (options) => Type.Record(Type.String(), Type.Any(), { ...options, minProperties: 1 }),
+} satisfies Readonly<Record<string, SchemaBuilder>>;
+
+const BUILDER_BY_TYPE = new Map<string, SchemaBuilder>(Object.entries(SCHEMA_BUILDERS));
+
 /**
  * Type token to schema. Object-valued parameters carry the strictest shape the
  * operation actually contracts: sort clauses are fully specified, and the filter and
@@ -135,62 +177,12 @@ const SORT_ITEM = Type.Object(
 export function schemaFor(type: string): TSchema {
   const description = ownedValue(REFERENCE_HINTS, type);
   const options = description ? { description } : {};
-  switch (type) {
-    case 'Int':
-      return Type.Integer(options);
-    case 'Float':
-      return Type.Number(options);
-    case 'JsonString':
-      return Type.String({ ...options, minLength: 1 });
-    case 'JsonObject':
-      return Type.Record(Type.String(), Type.Any(), options);
-    case 'Url':
-      return Type.String({ ...options, minLength: 1, pattern: '^https?://' });
-    case 'NullableDateTime':
-      return Type.Union([Type.String({ minLength: 1 }), Type.Null()], options);
-    case 'NullableUserReference':
-    case 'NullableIssueReference':
-    case 'NullableProjectReference':
-    case 'NullableCycleReference':
-    case 'NullableMilestoneReference':
-      return Type.Union([Type.String({ minLength: 1 }), Type.Null()], options);
-    case 'Priority':
-      return Type.Integer({ ...options, minimum: 0, maximum: 4 });
-    case 'Boolean':
-      return Type.Boolean(options);
-    case 'Color':
-      return Type.String({ ...options, pattern: '^#[0-9a-fA-F]{6}$' });
-    case 'Date':
-      return Type.String({ ...options, pattern: DATE_PATTERN });
-    case 'NullableDate':
-      return Type.Union([Type.String({ pattern: DATE_PATTERN }), Type.Null()], options);
-    case 'UUID':
-      return Type.String({ ...options, pattern: UUID_PATTERN });
-    case 'NullableUUID':
-      return Type.Union([Type.String({ pattern: UUID_PATTERN }), Type.Null()], options);
-    case '[UUID!]':
-      return Type.Array(Type.String({ pattern: UUID_PATTERN }), { ...options, minItems: 1 });
-    case '[IssueReference!]':
-    case '[TeamReference!]':
-    case '[UserReference!]':
-    case '[LabelReference!]':
-      return Type.Array(Type.String({ minLength: 1 }), { ...options, minItems: 1 });
-    case 'Preferences':
-      return description ? { ...PREFERENCES, description } : PREFERENCES;
-    case '[ID!]':
-      return Type.Array(Type.String({ minLength: 1 }), { ...options, minItems: 1 });
-    case '[SortInput!]':
-      return Type.Array(SORT_ITEM, { ...options, minItems: 1 });
-    case 'Filter':
-    case 'FilterData':
-      return Type.Record(Type.String(), Type.Any(), { ...options, minProperties: 1 });
-    default: {
-      const sortKeys = ownedValue(SORT_KEYS, type);
-      if (sortKeys) return Type.Array(sortItem(sortKeys), { ...options, minItems: 1 });
-      const enumValues = ownedValue(ENUMS, type);
-      // The members are published in the schema; a restating description adds only bytes.
-      if (enumValues) return StringEnum(enumValues, options);
-      return Type.String({ ...options, minLength: 1 });
-    }
-  }
+  const build = BUILDER_BY_TYPE.get(type);
+  if (build) return build(options);
+  const sortKeys = ownedValue(SORT_KEYS, type);
+  if (sortKeys) return Type.Array(sortItem(sortKeys), { ...options, minItems: 1 });
+  const enumValues = ownedValue(ENUMS, type);
+  // The members are published in the schema; a restating description adds only bytes.
+  if (enumValues) return StringEnum(enumValues, options);
+  return Type.String({ ...options, minLength: 1 });
 }

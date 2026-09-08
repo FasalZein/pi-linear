@@ -1265,6 +1265,65 @@ describe('batch transactional create', () => {
     expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
   });
 
+  it('returns keyed errors when a returned issue entry is not an object', async () => {
+    graphqlStub((request) => {
+      if (!request.query.includes('issueBatchCreate')) return { body: { data: lookupData(request.query) } };
+      const issues = batchIssues(request);
+      return {
+        body: {
+          data: {
+            issueBatchCreate: {
+              success: true,
+              issues: [null, { id: issues[1]!.id, title: 'B' }],
+            },
+          },
+        },
+      };
+    });
+
+    const result = await execute({
+      operation: 'batch',
+      variables: { mutations: [createIssue('one', 'A'), createIssue('two', 'B')] },
+    });
+
+    expect(result.details.data).toEqual({});
+    expect(result.details.errors).toEqual([
+      { key: 'one', path: ['issueBatchCreate'], message: 'Linear issueBatchCreate returned unusable transaction data.' },
+      { key: 'two', path: ['issueBatchCreate'], message: 'Linear issueBatchCreate returned unusable transaction data.' },
+    ]);
+    expect(result.details.skipped).toEqual([]);
+  });
+
+  it('returns keyed errors when an indexed transaction error points past the returned issues', async () => {
+    graphqlStub((request) => {
+      if (!request.query.includes('issueBatchCreate')) return { body: { data: lookupData(request.query) } };
+      const issues = batchIssues(request);
+      return {
+        body: {
+          data: {
+            issueBatchCreate: {
+              success: true,
+              issues: issues.map((issue, index) => ({ id: issue.id, identifier: `AEO-${index + 1}`, title: issue.title })),
+            },
+          },
+          errors: [{ message: 'Title unavailable', path: ['issueBatchCreate', 'issues', 7, 'title'] }],
+        },
+      };
+    });
+
+    const result = await execute({
+      operation: 'batch',
+      variables: { mutations: [createIssue('one', 'A'), createIssue('two', 'B')] },
+    });
+
+    expect(result.details.data).toEqual({});
+    expect(result.details.errors).toEqual([
+      { key: 'one', path: ['issueBatchCreate'], message: 'Linear issueBatchCreate returned uncorrelatable transaction errors.' },
+      { key: 'two', path: ['issueBatchCreate'], message: 'Linear issueBatchCreate returned uncorrelatable transaction errors.' },
+    ]);
+    expect(result.details.skipped).toEqual([]);
+  });
+
   it('maps an indexed transaction error only to its returned issue', async () => {
     graphqlStub((request) => {
       if (!request.query.includes('issueBatchCreate')) return { body: { data: lookupData(request.query) } };

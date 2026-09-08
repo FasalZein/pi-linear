@@ -198,7 +198,7 @@ describe('sequential batch mutations', () => {
     expect(result.details.errors).toEqual([{
       key: 'two',
       path: ['two'],
-      message: expect.stringMatching(/outcome is unknown.*Do not retry.*blindly/i),
+      message: expect.stringMatching(/^Batch mutation request failed after it started\. Its outcome is unknown because it may have reached Linear\. Do not retry this mutation blindly\./),
     }]);
     expect(result.details.skipped).toEqual(['three']);
     expect(result.details.meta.requests).toEqual({ read: 0, mutation: 2 });
@@ -246,7 +246,7 @@ describe('sequential batch mutations', () => {
     expect(result.details.errors).toEqual([{
       key: 'two',
       path: ['two'],
-      message: expect.stringMatching(/cancelled.*outcome is unknown.*may have reached Linear/i),
+      message: expect.stringMatching(/^Batch mutation request was cancelled after it started\. Its outcome is unknown because it may have reached Linear\. Do not retry this mutation blindly\./),
     }]);
     expect(result.details.skipped).toEqual(['three']);
   });
