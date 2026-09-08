@@ -3,10 +3,8 @@
     "entityKind": "comment",
     "callFields": [
       "issue",
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter"
@@ -56,10 +54,8 @@
   "list_views": {
     "entityKind": "view",
     "callFields": [
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter"
@@ -126,10 +122,8 @@
     "entityKind": "cycle",
     "callFields": [
       "team",
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter"
@@ -181,10 +175,8 @@
     "entityKind": "document",
     "callFields": [
       "sort",
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter",
@@ -259,10 +251,8 @@
     "entityKind": "initiative",
     "callFields": [
       "sort",
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter"
@@ -286,10 +276,8 @@
     "entityKind": "label",
     "callFields": [
       "team",
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter"
@@ -336,10 +324,8 @@
   "list_issue_relations": {
     "entityKind": "issue_relation",
     "callFields": [
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy"
     ],
@@ -396,10 +382,8 @@
   "list_issue_statuses": {
     "entityKind": "issue_status",
     "callFields": [
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter"
@@ -423,10 +407,8 @@
       "assignee",
       "project",
       "sort",
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter",
@@ -497,10 +479,8 @@
       "term",
       "includeComments",
       "team",
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter",
@@ -517,10 +497,8 @@
   "list_milestones": {
     "entityKind": "milestone",
     "callFields": [
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter"
@@ -543,10 +521,8 @@
   "list_project_labels": {
     "entityKind": "label",
     "callFields": [
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter"
@@ -589,10 +565,8 @@
   "list_project_relations": {
     "entityKind": "project_relation",
     "callFields": [
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy"
     ],
@@ -637,10 +611,8 @@
     "entityKind": "project",
     "callFields": [
       "sort",
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter",
@@ -665,10 +637,8 @@
   "list_teams": {
     "entityKind": "team",
     "callFields": [
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter"
@@ -693,10 +663,8 @@
     "callFields": [
       "includeDisabled",
       "sort",
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter"

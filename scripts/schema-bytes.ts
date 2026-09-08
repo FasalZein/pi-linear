@@ -21,6 +21,7 @@ registerLinearExtension(pi);
 sessionHandlers.forEach((handler) => handler());
 
 const fixture = JSON.parse(await readFile(resolve('scripts/fixtures/schema-bytes.json'), 'utf8')) as Record<string, Baseline>;
+const listFixture = JSON.parse(await readFile(resolve('scripts/fixtures/list-schema-bytes.json'), 'utf8')) as Record<string, number>;
 const initialActive = [...active];
 const scenarios: Array<[string, string[]]> = [
   ['initial', []],
@@ -36,6 +37,22 @@ function schemaBytes(names: readonly string[]): number {
 }
 
 let failed = false;
+const listTools = tools
+  .filter(({ name }) => name.startsWith('linear_list_') || name === 'linear_search_issues')
+  .map(({ name }) => name);
+const expectedListTools = Object.keys(listFixture);
+if (JSON.stringify([...listTools].sort()) !== JSON.stringify([...expectedListTools].sort())) {
+  console.error(`listTools: expected ${expectedListTools.length} fixture entries for ${listTools.length} supported list operations`);
+  failed = true;
+}
+for (const name of listTools) {
+  const current = schemaBytes([name]);
+  console.log(`${name}: v0.9 current ${current} bytes`);
+  if (current !== listFixture[name]) {
+    console.error(`${name}: expected current ${listFixture[name] ?? 'missing'} bytes`);
+    failed = true;
+  }
+}
 const directResult = schemaBytes(['linear_get_result']);
 console.log(`directResult: v0.9 current ${directResult} bytes`);
 if (directResult !== fixture.directResult?.current) {

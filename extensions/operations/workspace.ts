@@ -9,6 +9,7 @@ import {
 	workspaceEmpty,
 	listOperation,
 	operationParameterDecision,
+	pageParameterFields,
 } from "./shared";
 
 export const issueStatuses: readonly OperationDefinition[] = ([
@@ -16,12 +17,7 @@ export const issueStatuses: readonly OperationDefinition[] = ([
 		name: "list_issue_statuses",
 		...operationParameterDecision({
 		fields: [
-			{ name: "after", canonical: "String" },
-			{ name: "before", canonical: "String" },
-			{ name: "first", canonical: "Int" },
-			{ name: "last", canonical: "Int" },
-			{ name: "includeArchived", canonical: "Boolean" },
-			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			...pageParameterFields(),
 			{ name: "filter", canonical: "Filter" },
 		],
 		requirements: {

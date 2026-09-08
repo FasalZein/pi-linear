@@ -20,6 +20,7 @@ import {
 	listOperation,
 	simpleMutation,
 	operationParameterDecision,
+	pageParameterFields,
 } from "./shared";
 
 
@@ -104,12 +105,7 @@ export const comments: readonly OperationDefinition[] = ([
 		...operationParameterDecision({
 		fields: [
 			{ name: "issue", canonical: "IssueReference", card: { order: 0 } },
-			{ name: "after", canonical: "String" },
-			{ name: "before", canonical: "String" },
-			{ name: "first", canonical: "Int" },
-			{ name: "last", canonical: "Int" },
-			{ name: "includeArchived", canonical: "Boolean" },
-			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			...pageParameterFields(),
 			{ name: "filter", canonical: "Filter" },
 		],
 		requirements: {

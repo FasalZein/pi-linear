@@ -91,8 +91,9 @@ describe('model-visible deferred operation contracts', () => {
   it('publishes no parameter the help card does not document', () => {
     for (const [toolName, tool] of tools) {
       const operation = toolName.slice('linear_'.length);
-      const card = helpResult({ operation }) as { parameters: { name: string }[] };
+      const card = helpResult({ operation }) as { parameters: { name: string }[]; advancedHelp?: unknown };
       const documented = new Set(card.parameters.map(({ name }) => name));
+      if (card.advancedHelp) documented.add('advanced');
       const schema = (tool as any).parameters;
       const objects = schema.properties ? [schema] : (schema.anyOf ?? schema.oneOf ?? []);
       const published = new Set<string>(objects.flatMap((object: any) => Object.keys(object.properties ?? {})));

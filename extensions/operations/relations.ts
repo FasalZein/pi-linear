@@ -19,6 +19,7 @@ import {
 	listOperation,
 	simpleMutation,
 	operationParameterDecision,
+	pageParameterFields,
 } from "./shared";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -77,12 +78,7 @@ export const issueRelations: readonly OperationDefinition[] = ([
 		name: "list_issue_relations",
 		...operationParameterDecision({
 		fields: [
-			{ name: "after", canonical: "String" },
-			{ name: "before", canonical: "String" },
-			{ name: "first", canonical: "Int" },
-			{ name: "last", canonical: "Int" },
-			{ name: "includeArchived", canonical: "Boolean" },
-			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			...pageParameterFields(),
 		],
 		requirements: {
 			canonicalBranches: 1,
@@ -262,12 +258,7 @@ export const projectRelations: readonly OperationDefinition[] = ([
 		name: "list_project_relations",
 		...operationParameterDecision({
 		fields: [
-			{ name: "after", canonical: "String" },
-			{ name: "before", canonical: "String" },
-			{ name: "first", canonical: "Int" },
-			{ name: "last", canonical: "Int" },
-			{ name: "includeArchived", canonical: "Boolean" },
-			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			...pageParameterFields(),
 		],
 		requirements: {
 			canonicalBranches: 1,

@@ -12,6 +12,7 @@ import {
 	workspaceEmpty,
 	listOperation,
 	operationParameterDecision,
+	pageParameterFields,
 } from "./shared";
 
 export const users: readonly OperationDefinition[] = ([
@@ -21,12 +22,7 @@ export const users: readonly OperationDefinition[] = ([
 		fields: [
 			{ name: "includeDisabled", canonical: "Boolean", card: { order: 0 } },
 			{ name: "sort", canonical: "[UserSort!]" },
-			{ name: "after", canonical: "String" },
-			{ name: "before", canonical: "String" },
-			{ name: "first", canonical: "Int" },
-			{ name: "last", canonical: "Int" },
-			{ name: "includeArchived", canonical: "Boolean" },
-			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			...pageParameterFields(),
 			{ name: "filter", canonical: "Filter" },
 		],
 		requirements: {

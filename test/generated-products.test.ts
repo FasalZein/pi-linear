@@ -215,10 +215,10 @@ describe('generated products', () => {
   it('generates a resolver declaration when an authored field becomes a Reference type', async () => {
     await generatedResolverProbe(
       'extensions/operations/comments.ts',
-      '{ name: "after", canonical: "String" },',
-      '{ name: "after", canonical: "TeamReference" },',
-      'list_comments',
-      'after',
+      '{ name: "quotedText", canonical: "String", tier: "advanced", accepted: { order: 15 } },',
+      '{ name: "quotedText", canonical: "TeamReference", tier: "advanced", accepted: { order: 15 } },',
+      'create_comment',
+      'quotedText',
       'resolveTeamReference',
     );
   }, 60_000);

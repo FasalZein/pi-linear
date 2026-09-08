@@ -351,6 +351,26 @@ type OperationParameterDecision = {
 	};
 };
 
+function acceptedPageRole(
+	start: number | undefined,
+	offset: number,
+	type?: string,
+): Pick<ParameterFieldDecision, "accepted"> {
+	return start === undefined ? {} : { accepted: { order: start + offset, type } };
+}
+
+/** The one authored page shape. Backward paging remains available only through advanced. */
+export function pageParameterFields(acceptedStart?: number): readonly ParameterFieldDecision[] {
+	return [
+		{ name: "first", canonical: "Int", ...acceptedPageRole(acceptedStart, 2, "Int") },
+		{ name: "after", canonical: "String", ...acceptedPageRole(acceptedStart, 0) },
+		{ name: "includeArchived", canonical: "Boolean", ...acceptedPageRole(acceptedStart, 4, "Boolean") },
+		{ name: "orderBy", canonical: "PaginationOrderBy", ...acceptedPageRole(acceptedStart, 5, "PaginationOrderBy") },
+		{ name: "before", canonical: "String", tier: "advanced", ...acceptedPageRole(acceptedStart, 1) },
+		{ name: "last", canonical: "Int", tier: "advanced", ...acceptedPageRole(acceptedStart, 3, "Int") },
+	];
+}
+
 function parameterFromRole(
 	field: ParameterFieldDecision,
 	role: ParameterCardRole,

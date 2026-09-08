@@ -14,6 +14,7 @@ import {
 	addSaveOperation,
 	withGetResultView,
 	operationParameterDecision,
+	pageParameterFields,
 } from "./shared";
 
 export const projectReads: readonly OperationDefinition[] = ([
@@ -22,12 +23,7 @@ export const projectReads: readonly OperationDefinition[] = ([
 		...operationParameterDecision({
 		fields: [
 			{ name: "sort", canonical: "[ProjectSort!]" },
-			{ name: "after", canonical: "String" },
-			{ name: "before", canonical: "String" },
-			{ name: "first", canonical: "Int" },
-			{ name: "last", canonical: "Int" },
-			{ name: "includeArchived", canonical: "Boolean" },
-			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			...pageParameterFields(),
 			{ name: "filter", canonical: "Filter" },
 			{ name: "view", canonical: "ResultView" },
 		],

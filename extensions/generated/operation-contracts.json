@@ -13,21 +13,13 @@
             "description": "Issue identifier such as ABC-123, or an issue UUID.",
             "minLength": 1
           },
-          "after": {
-            "type": "string",
-            "minLength": 1
-          },
-          "before": {
-            "type": "string",
-            "minLength": 1
-          },
           "first": {
             "type": "integer",
             "description": "Forward page size. Omit first to use the default 20."
           },
-          "last": {
-            "type": "integer",
-            "description": "Backward page size. Omit last to use the default 20."
+          "after": {
+            "type": "string",
+            "minLength": 1
           },
           "includeArchived": {
             "type": "boolean"
@@ -46,6 +38,11 @@
             },
             "description": "Linear filter object.",
             "minProperties": 1
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false
@@ -55,7 +52,7 @@
     "purpose": "List comments, optionally for one exact issue.",
     "kind": "query",
     "help": {
-      "signature": "list_comments(issue?: IssueReference, after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
+      "signature": "list_comments(issue?: IssueReference, first?: Int, after?: String, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
       "exact": true,
       "example": {
         "operation": "list_comments",
@@ -65,10 +62,8 @@
       },
       "callFields": [
         "issue",
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter"
@@ -169,23 +164,13 @@
           "required": false
         },
         {
-          "name": "after",
-          "type": "String",
-          "required": false
-        },
-        {
-          "name": "before",
-          "type": "String",
-          "required": false
-        },
-        {
           "name": "first",
           "type": "Int",
           "required": false
         },
         {
-          "name": "last",
-          "type": "Int",
+          "name": "after",
+          "type": "String",
           "required": false
         },
         {
@@ -204,7 +189,18 @@
           "required": false
         }
       ],
-      "advancedFields": [],
+      "advancedFields": [
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        }
+      ],
       "branches": [
         {
           "all": []
@@ -226,10 +222,8 @@
       "entityKind": "comment",
       "callFields": [
         "issue",
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter"
@@ -1060,21 +1054,13 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "after": {
-            "type": "string",
-            "minLength": 1
-          },
-          "before": {
-            "type": "string",
-            "minLength": 1
-          },
           "first": {
             "type": "integer",
             "description": "Forward page size. Omit first to use the default 50."
           },
-          "last": {
-            "type": "integer",
-            "description": "Backward page size. Omit last to use the default 50."
+          "after": {
+            "type": "string",
+            "minLength": 1
           },
           "includeArchived": {
             "type": "boolean"
@@ -1093,6 +1079,11 @@
             },
             "description": "Linear filter object.",
             "minProperties": 1
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false
@@ -1102,17 +1093,15 @@
     "purpose": "List custom views.",
     "kind": "query",
     "help": {
-      "signature": "list_views(after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
+      "signature": "list_views(first?: Int, after?: String, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
       "exact": true,
       "example": {
         "operation": "list_views",
         "variables": {}
       },
       "callFields": [
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter"
@@ -1197,23 +1186,13 @@
     "canonical": {
       "fields": [
         {
-          "name": "after",
-          "type": "String",
-          "required": false
-        },
-        {
-          "name": "before",
-          "type": "String",
-          "required": false
-        },
-        {
           "name": "first",
           "type": "Int",
           "required": false
         },
         {
-          "name": "last",
-          "type": "Int",
+          "name": "after",
+          "type": "String",
           "required": false
         },
         {
@@ -1232,7 +1211,18 @@
           "required": false
         }
       ],
-      "advancedFields": [],
+      "advancedFields": [
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        }
+      ],
       "branches": [
         {
           "all": []
@@ -1251,10 +1241,8 @@
     "render": {
       "entityKind": "view",
       "callFields": [
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter"
@@ -2434,21 +2422,13 @@
             "description": "Team key such as ABC, or a team UUID.",
             "minLength": 1
           },
-          "after": {
-            "type": "string",
-            "minLength": 1
-          },
-          "before": {
-            "type": "string",
-            "minLength": 1
-          },
           "first": {
             "type": "integer",
             "description": "Forward page size. Omit first to use the default 50."
           },
-          "last": {
-            "type": "integer",
-            "description": "Backward page size. Omit last to use the default 50."
+          "after": {
+            "type": "string",
+            "minLength": 1
           },
           "includeArchived": {
             "type": "boolean"
@@ -2467,6 +2447,11 @@
             },
             "description": "Linear filter object.",
             "minProperties": 1
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false
@@ -2476,7 +2461,7 @@
     "purpose": "List cycles.",
     "kind": "query",
     "help": {
-      "signature": "list_cycles(team?: TeamReference, after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
+      "signature": "list_cycles(team?: TeamReference, first?: Int, after?: String, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
       "exact": true,
       "example": {
         "operation": "list_cycles",
@@ -2484,10 +2469,8 @@
       },
       "callFields": [
         "team",
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter"
@@ -2637,23 +2620,13 @@
           "required": false
         },
         {
-          "name": "after",
-          "type": "String",
-          "required": false
-        },
-        {
-          "name": "before",
-          "type": "String",
-          "required": false
-        },
-        {
           "name": "first",
           "type": "Int",
           "required": false
         },
         {
-          "name": "last",
-          "type": "Int",
+          "name": "after",
+          "type": "String",
           "required": false
         },
         {
@@ -2672,7 +2645,18 @@
           "required": false
         }
       ],
-      "advancedFields": [],
+      "advancedFields": [
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        }
+      ],
       "branches": [
         {
           "all": []
@@ -2692,10 +2676,8 @@
       "entityKind": "cycle",
       "callFields": [
         "team",
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter"
@@ -3509,21 +3491,13 @@
             },
             "minItems": 1
           },
-          "after": {
-            "type": "string",
-            "minLength": 1
-          },
-          "before": {
-            "type": "string",
-            "minLength": 1
-          },
           "first": {
             "type": "integer",
             "description": "Forward page size. Omit first to use the default 20."
           },
-          "last": {
-            "type": "integer",
-            "description": "Backward page size. Omit last to use the default 20."
+          "after": {
+            "type": "string",
+            "minLength": 1
           },
           "includeArchived": {
             "type": "boolean"
@@ -3550,6 +3524,11 @@
               "full"
             ],
             "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false
@@ -3559,7 +3538,7 @@
     "purpose": "List documents.",
     "kind": "query",
     "help": {
-      "signature": "list_documents(sort?: [DocumentSort!], after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, view?: ResultView)",
+      "signature": "list_documents(sort?: [DocumentSort!], first?: Int, after?: String, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "list_documents",
@@ -3567,10 +3546,8 @@
       },
       "callFields": [
         "sort",
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter",
@@ -3679,23 +3656,13 @@
           "required": false
         },
         {
-          "name": "after",
-          "type": "String",
-          "required": false
-        },
-        {
-          "name": "before",
-          "type": "String",
-          "required": false
-        },
-        {
           "name": "first",
           "type": "Int",
           "required": false
         },
         {
-          "name": "last",
-          "type": "Int",
+          "name": "after",
+          "type": "String",
           "required": false
         },
         {
@@ -3719,7 +3686,18 @@
           "required": false
         }
       ],
-      "advancedFields": [],
+      "advancedFields": [
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        }
+      ],
       "branches": [
         {
           "all": []
@@ -3739,10 +3717,8 @@
       "entityKind": "document",
       "callFields": [
         "sort",
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter",
@@ -5040,21 +5016,13 @@
             },
             "minItems": 1
           },
-          "after": {
-            "type": "string",
-            "minLength": 1
-          },
-          "before": {
-            "type": "string",
-            "minLength": 1
-          },
           "first": {
             "type": "integer",
             "description": "Forward page size. Omit first to use the default 20."
           },
-          "last": {
-            "type": "integer",
-            "description": "Backward page size. Omit last to use the default 20."
+          "after": {
+            "type": "string",
+            "minLength": 1
           },
           "includeArchived": {
             "type": "boolean"
@@ -5073,6 +5041,11 @@
             },
             "description": "Linear filter object.",
             "minProperties": 1
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false
@@ -5082,7 +5055,7 @@
     "purpose": "List initiatives.",
     "kind": "query",
     "help": {
-      "signature": "list_initiatives(sort?: [InitiativeSort!], after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
+      "signature": "list_initiatives(sort?: [InitiativeSort!], first?: Int, after?: String, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
       "exact": true,
       "example": {
         "operation": "list_initiatives",
@@ -5090,10 +5063,8 @@
       },
       "callFields": [
         "sort",
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter"
@@ -5200,23 +5171,13 @@
           "required": false
         },
         {
-          "name": "after",
-          "type": "String",
-          "required": false
-        },
-        {
-          "name": "before",
-          "type": "String",
-          "required": false
-        },
-        {
           "name": "first",
           "type": "Int",
           "required": false
         },
         {
-          "name": "last",
-          "type": "Int",
+          "name": "after",
+          "type": "String",
           "required": false
         },
         {
@@ -5235,7 +5196,18 @@
           "required": false
         }
       ],
-      "advancedFields": [],
+      "advancedFields": [
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        }
+      ],
       "branches": [
         {
           "all": []
@@ -5255,10 +5227,8 @@
       "entityKind": "initiative",
       "callFields": [
         "sort",
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter"
@@ -5423,21 +5393,13 @@
             "description": "Team key such as ABC, or a team UUID.",
             "minLength": 1
           },
-          "after": {
-            "type": "string",
-            "minLength": 1
-          },
-          "before": {
-            "type": "string",
-            "minLength": 1
-          },
           "first": {
             "type": "integer",
             "description": "Forward page size. Omit first to use the default 50."
           },
-          "last": {
-            "type": "integer",
-            "description": "Backward page size. Omit last to use the default 50."
+          "after": {
+            "type": "string",
+            "minLength": 1
           },
           "includeArchived": {
             "type": "boolean"
@@ -5456,6 +5418,11 @@
             },
             "description": "Linear filter object.",
             "minProperties": 1
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false
@@ -5465,7 +5432,7 @@
     "purpose": "List issue labels.",
     "kind": "query",
     "help": {
-      "signature": "list_issue_labels(team?: TeamReference, after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
+      "signature": "list_issue_labels(team?: TeamReference, first?: Int, after?: String, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
       "exact": true,
       "example": {
         "operation": "list_issue_labels",
@@ -5473,10 +5440,8 @@
       },
       "callFields": [
         "team",
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter"
@@ -5626,23 +5591,13 @@
           "required": false
         },
         {
-          "name": "after",
-          "type": "String",
-          "required": false
-        },
-        {
-          "name": "before",
-          "type": "String",
-          "required": false
-        },
-        {
           "name": "first",
           "type": "Int",
           "required": false
         },
         {
-          "name": "last",
-          "type": "Int",
+          "name": "after",
+          "type": "String",
           "required": false
         },
         {
@@ -5661,7 +5616,18 @@
           "required": false
         }
       ],
-      "advancedFields": [],
+      "advancedFields": [
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        }
+      ],
       "branches": [
         {
           "all": []
@@ -5681,10 +5647,8 @@
       "entityKind": "label",
       "callFields": [
         "team",
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter"
@@ -6407,21 +6371,13 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "after": {
-            "type": "string",
-            "minLength": 1
-          },
-          "before": {
-            "type": "string",
-            "minLength": 1
-          },
           "first": {
             "type": "integer",
             "description": "Forward page size. Omit first to use the default 20."
           },
-          "last": {
-            "type": "integer",
-            "description": "Backward page size. Omit last to use the default 20."
+          "after": {
+            "type": "string",
+            "minLength": 1
           },
           "includeArchived": {
             "type": "boolean"
@@ -6432,6 +6388,11 @@
               "createdAt",
               "updatedAt"
             ]
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false
@@ -6441,17 +6402,15 @@
     "purpose": "List issue relations.",
     "kind": "query",
     "help": {
-      "signature": "list_issue_relations(after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy)",
+      "signature": "list_issue_relations(first?: Int, after?: String, includeArchived?: Boolean, orderBy?: PaginationOrderBy)",
       "exact": true,
       "example": {
         "operation": "list_issue_relations",
         "variables": {}
       },
       "callFields": [
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy"
       ]
@@ -6529,23 +6488,13 @@
     "canonical": {
       "fields": [
         {
-          "name": "after",
-          "type": "String",
-          "required": false
-        },
-        {
-          "name": "before",
-          "type": "String",
-          "required": false
-        },
-        {
           "name": "first",
           "type": "Int",
           "required": false
         },
         {
-          "name": "last",
-          "type": "Int",
+          "name": "after",
+          "type": "String",
           "required": false
         },
         {
@@ -6559,7 +6508,18 @@
           "required": false
         }
       ],
-      "advancedFields": [],
+      "advancedFields": [
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        }
+      ],
       "branches": [
         {
           "all": []
@@ -6578,10 +6538,8 @@
     "render": {
       "entityKind": "issue_relation",
       "callFields": [
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy"
       ],
@@ -7362,21 +7320,13 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "after": {
-            "type": "string",
-            "minLength": 1
-          },
-          "before": {
-            "type": "string",
-            "minLength": 1
-          },
           "first": {
             "type": "integer",
             "description": "Forward page size. Omit first to use the default 50."
           },
-          "last": {
-            "type": "integer",
-            "description": "Backward page size. Omit last to use the default 50."
+          "after": {
+            "type": "string",
+            "minLength": 1
           },
           "includeArchived": {
             "type": "boolean"
@@ -7395,6 +7345,11 @@
             },
             "description": "Linear filter object.",
             "minProperties": 1
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false
@@ -7404,17 +7359,15 @@
     "purpose": "List issue workflow states.",
     "kind": "query",
     "help": {
-      "signature": "list_issue_statuses(after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
+      "signature": "list_issue_statuses(first?: Int, after?: String, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
       "exact": true,
       "example": {
         "operation": "list_issue_statuses",
         "variables": {}
       },
       "callFields": [
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter"
@@ -7501,23 +7454,13 @@
     "canonical": {
       "fields": [
         {
-          "name": "after",
-          "type": "String",
-          "required": false
-        },
-        {
-          "name": "before",
-          "type": "String",
-          "required": false
-        },
-        {
           "name": "first",
           "type": "Int",
           "required": false
         },
         {
-          "name": "last",
-          "type": "Int",
+          "name": "after",
+          "type": "String",
           "required": false
         },
         {
@@ -7536,7 +7479,18 @@
           "required": false
         }
       ],
-      "advancedFields": [],
+      "advancedFields": [
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        }
+      ],
       "branches": [
         {
           "all": []
@@ -7555,10 +7509,8 @@
     "render": {
       "entityKind": "issue_status",
       "callFields": [
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter"
@@ -7676,21 +7628,13 @@
             },
             "minItems": 1
           },
-          "after": {
-            "type": "string",
-            "minLength": 1
-          },
-          "before": {
-            "type": "string",
-            "minLength": 1
-          },
           "first": {
             "type": "integer",
             "description": "Forward page size. Omit first to use the default 20."
           },
-          "last": {
-            "type": "integer",
-            "description": "Backward page size. Omit last to use the default 20."
+          "after": {
+            "type": "string",
+            "minLength": 1
           },
           "includeArchived": {
             "type": "boolean"
@@ -7717,6 +7661,11 @@
               "full"
             ],
             "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false
@@ -7726,7 +7675,7 @@
     "purpose": "List issues with exact convenience filters.",
     "kind": "query",
     "help": {
-      "signature": "list_issues(issues?: [IssueReference!], query?: String, team?: TeamReference, state?: StateReference, stateType?: WorkflowStateType, assignee?: UserReference, project?: ProjectReference, sort?: [IssueSort!], after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, view?: ResultView)",
+      "signature": "list_issues(issues?: [IssueReference!], query?: String, team?: TeamReference, state?: StateReference, stateType?: WorkflowStateType, assignee?: UserReference, project?: ProjectReference, sort?: [IssueSort!], first?: Int, after?: String, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "list_issues",
@@ -7744,10 +7693,8 @@
         "assignee",
         "project",
         "sort",
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter",
@@ -8055,23 +8002,13 @@
           "required": false
         },
         {
-          "name": "after",
-          "type": "String",
-          "required": false
-        },
-        {
-          "name": "before",
-          "type": "String",
-          "required": false
-        },
-        {
           "name": "first",
           "type": "Int",
           "required": false
         },
         {
-          "name": "last",
-          "type": "Int",
+          "name": "after",
+          "type": "String",
           "required": false
         },
         {
@@ -8095,7 +8032,18 @@
           "required": false
         }
       ],
-      "advancedFields": [],
+      "advancedFields": [
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        }
+      ],
       "branches": [
         {
           "all": []
@@ -8125,10 +8073,8 @@
         "assignee",
         "project",
         "sort",
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter",
@@ -9923,21 +9869,13 @@
             "description": "Team key such as ABC, or a team UUID.",
             "minLength": 1
           },
-          "after": {
-            "type": "string",
-            "minLength": 1
-          },
-          "before": {
-            "type": "string",
-            "minLength": 1
-          },
           "first": {
             "type": "integer",
             "description": "Forward page size. Omit first to use the default 20."
           },
-          "last": {
-            "type": "integer",
-            "description": "Backward page size. Omit last to use the default 20."
+          "after": {
+            "type": "string",
+            "minLength": 1
           },
           "includeArchived": {
             "type": "boolean"
@@ -9964,6 +9902,11 @@
               "full"
             ],
             "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false,
@@ -9976,7 +9919,7 @@
     "purpose": "Search issues by text.",
     "kind": "query",
     "help": {
-      "signature": "search_issues(term: String, includeComments?: Boolean, team?: TeamReference, after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, view?: ResultView)",
+      "signature": "search_issues(term: String, includeComments?: Boolean, team?: TeamReference, first?: Int, after?: String, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "search_issues",
@@ -9988,10 +9931,8 @@
         "term",
         "includeComments",
         "team",
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter",
@@ -10181,23 +10122,13 @@
           "required": false
         },
         {
-          "name": "after",
-          "type": "String",
-          "required": false
-        },
-        {
-          "name": "before",
-          "type": "String",
-          "required": false
-        },
-        {
           "name": "first",
           "type": "Int",
           "required": false
         },
         {
-          "name": "last",
-          "type": "Int",
+          "name": "after",
+          "type": "String",
           "required": false
         },
         {
@@ -10221,7 +10152,18 @@
           "required": false
         }
       ],
-      "advancedFields": [],
+      "advancedFields": [
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        }
+      ],
       "branches": [
         {
           "all": [
@@ -10247,10 +10189,8 @@
         "term",
         "includeComments",
         "team",
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter",
@@ -10274,21 +10214,13 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "after": {
-            "type": "string",
-            "minLength": 1
-          },
-          "before": {
-            "type": "string",
-            "minLength": 1
-          },
           "first": {
             "type": "integer",
             "description": "Forward page size. Omit first to use the default 20."
           },
-          "last": {
-            "type": "integer",
-            "description": "Backward page size. Omit last to use the default 20."
+          "after": {
+            "type": "string",
+            "minLength": 1
           },
           "includeArchived": {
             "type": "boolean"
@@ -10307,6 +10239,11 @@
             },
             "description": "Linear filter object.",
             "minProperties": 1
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false
@@ -10316,17 +10253,15 @@
     "purpose": "List project milestones.",
     "kind": "query",
     "help": {
-      "signature": "list_milestones(after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
+      "signature": "list_milestones(first?: Int, after?: String, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
       "exact": true,
       "example": {
         "operation": "list_milestones",
         "variables": {}
       },
       "callFields": [
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter"
@@ -10411,23 +10346,13 @@
     "canonical": {
       "fields": [
         {
-          "name": "after",
-          "type": "String",
-          "required": false
-        },
-        {
-          "name": "before",
-          "type": "String",
-          "required": false
-        },
-        {
           "name": "first",
           "type": "Int",
           "required": false
         },
         {
-          "name": "last",
-          "type": "Int",
+          "name": "after",
+          "type": "String",
           "required": false
         },
         {
@@ -10446,7 +10371,18 @@
           "required": false
         }
       ],
-      "advancedFields": [],
+      "advancedFields": [
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        }
+      ],
       "branches": [
         {
           "all": []
@@ -10465,10 +10401,8 @@
     "render": {
       "entityKind": "milestone",
       "callFields": [
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter"
@@ -10628,21 +10562,13 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "after": {
-            "type": "string",
-            "minLength": 1
-          },
-          "before": {
-            "type": "string",
-            "minLength": 1
-          },
           "first": {
             "type": "integer",
             "description": "Forward page size. Omit first to use the default 50."
           },
-          "last": {
-            "type": "integer",
-            "description": "Backward page size. Omit last to use the default 50."
+          "after": {
+            "type": "string",
+            "minLength": 1
           },
           "includeArchived": {
             "type": "boolean"
@@ -10661,6 +10587,11 @@
             },
             "description": "Linear filter object.",
             "minProperties": 1
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false
@@ -10670,17 +10601,15 @@
     "purpose": "List project labels.",
     "kind": "query",
     "help": {
-      "signature": "list_project_labels(after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
+      "signature": "list_project_labels(first?: Int, after?: String, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
       "exact": true,
       "example": {
         "operation": "list_project_labels",
         "variables": {}
       },
       "callFields": [
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter"
@@ -10765,23 +10694,13 @@
     "canonical": {
       "fields": [
         {
-          "name": "after",
-          "type": "String",
-          "required": false
-        },
-        {
-          "name": "before",
-          "type": "String",
-          "required": false
-        },
-        {
           "name": "first",
           "type": "Int",
           "required": false
         },
         {
-          "name": "last",
-          "type": "Int",
+          "name": "after",
+          "type": "String",
           "required": false
         },
         {
@@ -10800,7 +10719,18 @@
           "required": false
         }
       ],
-      "advancedFields": [],
+      "advancedFields": [
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        }
+      ],
       "branches": [
         {
           "all": []
@@ -10819,10 +10749,8 @@
     "render": {
       "entityKind": "label",
       "callFields": [
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter"
@@ -11448,21 +11376,13 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "after": {
-            "type": "string",
-            "minLength": 1
-          },
-          "before": {
-            "type": "string",
-            "minLength": 1
-          },
           "first": {
             "type": "integer",
             "description": "Forward page size. Omit first to use the default 20."
           },
-          "last": {
-            "type": "integer",
-            "description": "Backward page size. Omit last to use the default 20."
+          "after": {
+            "type": "string",
+            "minLength": 1
           },
           "includeArchived": {
             "type": "boolean"
@@ -11473,6 +11393,11 @@
               "createdAt",
               "updatedAt"
             ]
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false
@@ -11482,17 +11407,15 @@
     "purpose": "List project relations.",
     "kind": "query",
     "help": {
-      "signature": "list_project_relations(after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy)",
+      "signature": "list_project_relations(first?: Int, after?: String, includeArchived?: Boolean, orderBy?: PaginationOrderBy)",
       "exact": true,
       "example": {
         "operation": "list_project_relations",
         "variables": {}
       },
       "callFields": [
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy"
       ]
@@ -11570,23 +11493,13 @@
     "canonical": {
       "fields": [
         {
-          "name": "after",
-          "type": "String",
-          "required": false
-        },
-        {
-          "name": "before",
-          "type": "String",
-          "required": false
-        },
-        {
           "name": "first",
           "type": "Int",
           "required": false
         },
         {
-          "name": "last",
-          "type": "Int",
+          "name": "after",
+          "type": "String",
           "required": false
         },
         {
@@ -11600,7 +11513,18 @@
           "required": false
         }
       ],
-      "advancedFields": [],
+      "advancedFields": [
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        }
+      ],
       "branches": [
         {
           "all": []
@@ -11619,10 +11543,8 @@
     "render": {
       "entityKind": "project_relation",
       "callFields": [
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy"
       ],
@@ -12370,21 +12292,13 @@
             },
             "minItems": 1
           },
-          "after": {
-            "type": "string",
-            "minLength": 1
-          },
-          "before": {
-            "type": "string",
-            "minLength": 1
-          },
           "first": {
             "type": "integer",
             "description": "Forward page size. Omit first to use the default 20."
           },
-          "last": {
-            "type": "integer",
-            "description": "Backward page size. Omit last to use the default 20."
+          "after": {
+            "type": "string",
+            "minLength": 1
           },
           "includeArchived": {
             "type": "boolean"
@@ -12411,6 +12325,11 @@
               "full"
             ],
             "description": "Reads: lists default to summary and single records to full. Mutations default to summary."
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false
@@ -12420,7 +12339,7 @@
     "purpose": "List projects.",
     "kind": "query",
     "help": {
-      "signature": "list_projects(sort?: [ProjectSort!], after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, view?: ResultView)",
+      "signature": "list_projects(sort?: [ProjectSort!], first?: Int, after?: String, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter, view?: ResultView)",
       "exact": true,
       "example": {
         "operation": "list_projects",
@@ -12428,10 +12347,8 @@
       },
       "callFields": [
         "sort",
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter",
@@ -12545,23 +12462,13 @@
           "required": false
         },
         {
-          "name": "after",
-          "type": "String",
-          "required": false
-        },
-        {
-          "name": "before",
-          "type": "String",
-          "required": false
-        },
-        {
           "name": "first",
           "type": "Int",
           "required": false
         },
         {
-          "name": "last",
-          "type": "Int",
+          "name": "after",
+          "type": "String",
           "required": false
         },
         {
@@ -12585,7 +12492,18 @@
           "required": false
         }
       ],
-      "advancedFields": [],
+      "advancedFields": [
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        }
+      ],
       "branches": [
         {
           "all": []
@@ -12605,10 +12523,8 @@
       "entityKind": "project",
       "callFields": [
         "sort",
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter",
@@ -12789,21 +12705,13 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "after": {
-            "type": "string",
-            "minLength": 1
-          },
-          "before": {
-            "type": "string",
-            "minLength": 1
-          },
           "first": {
             "type": "integer",
             "description": "Forward page size. Omit first to use the default 50."
           },
-          "last": {
-            "type": "integer",
-            "description": "Backward page size. Omit last to use the default 50."
+          "after": {
+            "type": "string",
+            "minLength": 1
           },
           "includeArchived": {
             "type": "boolean"
@@ -12822,6 +12730,11 @@
             },
             "description": "Linear filter object.",
             "minProperties": 1
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false
@@ -12831,17 +12744,15 @@
     "purpose": "List teams and workflow states.",
     "kind": "query",
     "help": {
-      "signature": "list_teams(after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
+      "signature": "list_teams(first?: Int, after?: String, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
       "exact": true,
       "example": {
         "operation": "list_teams",
         "variables": {}
       },
       "callFields": [
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter"
@@ -12926,23 +12837,13 @@
     "canonical": {
       "fields": [
         {
-          "name": "after",
-          "type": "String",
-          "required": false
-        },
-        {
-          "name": "before",
-          "type": "String",
-          "required": false
-        },
-        {
           "name": "first",
           "type": "Int",
           "required": false
         },
         {
-          "name": "last",
-          "type": "Int",
+          "name": "after",
+          "type": "String",
           "required": false
         },
         {
@@ -12961,7 +12862,18 @@
           "required": false
         }
       ],
-      "advancedFields": [],
+      "advancedFields": [
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        }
+      ],
       "branches": [
         {
           "all": []
@@ -12980,10 +12892,8 @@
     "render": {
       "entityKind": "team",
       "callFields": [
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter"
@@ -13174,21 +13084,13 @@
             },
             "minItems": 1
           },
-          "after": {
-            "type": "string",
-            "minLength": 1
-          },
-          "before": {
-            "type": "string",
-            "minLength": 1
-          },
           "first": {
             "type": "integer",
             "description": "Forward page size. Omit first to use the default 50."
           },
-          "last": {
-            "type": "integer",
-            "description": "Backward page size. Omit last to use the default 50."
+          "after": {
+            "type": "string",
+            "minLength": 1
           },
           "includeArchived": {
             "type": "boolean"
@@ -13207,6 +13109,11 @@
             },
             "description": "Linear filter object.",
             "minProperties": 1
+          },
+          "advanced": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
           }
         },
         "additionalProperties": false
@@ -13216,7 +13123,7 @@
     "purpose": "List users.",
     "kind": "query",
     "help": {
-      "signature": "list_users(includeDisabled?: Boolean, sort?: [UserSort!], after?: String, before?: String, first?: Int, last?: Int, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
+      "signature": "list_users(includeDisabled?: Boolean, sort?: [UserSort!], first?: Int, after?: String, includeArchived?: Boolean, orderBy?: PaginationOrderBy, filter?: Filter)",
       "exact": true,
       "example": {
         "operation": "list_users",
@@ -13225,10 +13132,8 @@
       "callFields": [
         "includeDisabled",
         "sort",
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter"
@@ -13338,23 +13243,13 @@
           "required": false
         },
         {
-          "name": "after",
-          "type": "String",
-          "required": false
-        },
-        {
-          "name": "before",
-          "type": "String",
-          "required": false
-        },
-        {
           "name": "first",
           "type": "Int",
           "required": false
         },
         {
-          "name": "last",
-          "type": "Int",
+          "name": "after",
+          "type": "String",
           "required": false
         },
         {
@@ -13373,7 +13268,18 @@
           "required": false
         }
       ],
-      "advancedFields": [],
+      "advancedFields": [
+        {
+          "name": "before",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "last",
+          "type": "Int",
+          "required": false
+        }
+      ],
       "branches": [
         {
           "all": []
@@ -13394,10 +13300,8 @@
       "callFields": [
         "includeDisabled",
         "sort",
-        "after",
-        "before",
         "first",
-        "last",
+        "after",
         "includeArchived",
         "orderBy",
         "filter"

@@ -12,6 +12,7 @@ import {
 	listOperation,
 	addSaveOperation,
 	operationParameterDecision,
+	pageParameterFields,
 } from "./shared";
 
 export const initiativeReads: readonly OperationDefinition[] = ([
@@ -20,12 +21,7 @@ export const initiativeReads: readonly OperationDefinition[] = ([
 		...operationParameterDecision({
 		fields: [
 			{ name: "sort", canonical: "[InitiativeSort!]" },
-			{ name: "after", canonical: "String" },
-			{ name: "before", canonical: "String" },
-			{ name: "first", canonical: "Int" },
-			{ name: "last", canonical: "Int" },
-			{ name: "includeArchived", canonical: "Boolean" },
-			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			...pageParameterFields(),
 			{ name: "filter", canonical: "Filter" },
 		],
 		requirements: {

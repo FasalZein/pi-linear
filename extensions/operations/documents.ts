@@ -21,6 +21,7 @@ import {
 	simpleMutation,
 	withGetResultView,
 	operationParameterDecision,
+	pageParameterFields,
 } from "./shared";
 
 export const documents: readonly OperationDefinition[] = ([
@@ -29,12 +30,7 @@ export const documents: readonly OperationDefinition[] = ([
 		...operationParameterDecision({
 		fields: [
 			{ name: "sort", canonical: "[DocumentSort!]" },
-			{ name: "after", canonical: "String" },
-			{ name: "before", canonical: "String" },
-			{ name: "first", canonical: "Int" },
-			{ name: "last", canonical: "Int" },
-			{ name: "includeArchived", canonical: "Boolean" },
-			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			...pageParameterFields(),
 			{ name: "filter", canonical: "Filter" },
 			{ name: "view", canonical: "ResultView" },
 		],
