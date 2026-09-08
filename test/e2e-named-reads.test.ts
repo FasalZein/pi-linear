@@ -191,6 +191,10 @@ function fixtureData(request: CapturedRequest): JsonObject {
   if (operationName === 'ResolveTeamById') {
     return { team: { id: variables.id, key: 'AEO' } };
   }
+  if (operationName === 'ResolveNamedEntityByReference') {
+    const root = request.rootFields[0]!;
+    return { [root]: { nodes: [{ id: ENTITY_ID, name: variables.reference, slugId: variables.reference }] } };
+  }
   if (operationName === 'ResolveNamedEntityByName') {
     const root = request.rootFields[0]!;
     return { [root]: { nodes: [{ id: ENTITY_ID, name: variables.name }] } };
@@ -388,9 +392,10 @@ describe('named read tools through extension activation and the real HTTP client
     expect(listCases).toHaveLength(16);
     for (const testCase of listCases) {
       await activate(testCase.name, testCase.tool);
+      const advanced = { before: 'backward-cursor', last: 3 };
       const args: JsonObject = testCase.name === 'search_issues'
-        ? { term: 'authentication', before: 'backward-cursor', last: 3, orderBy: 'updatedAt' }
-        : { before: 'backward-cursor', last: 3, orderBy: 'updatedAt' };
+        ? { term: 'authentication', orderBy: 'updatedAt', advanced }
+        : { orderBy: 'updatedAt', advanced };
       const start = requests.length;
       await invoke(harness.tool(testCase.tool), args);
       const final = finalRequest(start, testCase.finalOperation);
