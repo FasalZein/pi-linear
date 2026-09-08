@@ -2,7 +2,7 @@
 
 ## 1.0.0
 
-This entry documents the v1.0 contract. Release approval remains pending combined verification and AEO-831 provider evidence.
+This entry documents the v1.0 contract. Release approval remains pending combined verification.
 
 ### Common and advanced fields
 
@@ -66,7 +66,9 @@ Document `icon` remains outside typed tools because Linear does not publish vali
 ### Dependencies and evidence
 
 - The package has no Notebook dependency.
-- AEO-831 still owns provider token evidence. This release note makes no token-improvement claim.
+- AEO-831 records the context measurement in [`docs/v10-context-measurement-evidence.md`](./docs/v10-context-measurement-evidence.md). `scripts/context-measurement/run.sh` reproduces it offline.
+- The evidence names the commit that added the runner. Later commits changed only this file and the evidence files, so the measured extension source is unchanged.
+- That measurement runs no model. Completion, model-chosen wrong calls, latency, cache use, and billed provider usage stay unmeasured. This release note makes no token-improvement or behavior claim.
 - Exact serialized byte checks remain the deterministic schema measurement.
 - Architecture references: [`ADR 0005`](./docs/adr/0005-dynamic-typed-tools-over-static-registration.md), [`ADR 0006`](./docs/adr/0006-publish-the-operation-catalog.md), [`ADR 0007`](./docs/adr/0007-shape-results-and-batch-transport-by-phase.md), and [`ADR 0009`](./docs/adr/0009-use-explicit-unified-references-without-project-or-team-defaults.md).
 
