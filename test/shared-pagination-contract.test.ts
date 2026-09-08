@@ -72,7 +72,7 @@ describe('AEO-829 shared list pagination contract', () => {
     expect(actual).toEqual([...LIST_OPERATIONS].sort());
   });
 
-  it.each(LIST_OPERATIONS)('%s publishes one forward page shape and documents its existing default', (name) => {
+  it.each(LIST_OPERATIONS)('%s publishes one forward page shape, keeps its default in schema, and details backward fields in advanced help', (name) => {
     const operation = operations[name]!;
     const properties = schemaProperties(name);
     for (const field of ['first', 'after', 'includeArchived', 'orderBy']) expect(properties, field).toHaveProperty(field);
@@ -83,7 +83,10 @@ describe('AEO-829 shared list pagination contract', () => {
 
     const defaultPageSize = operation.pagination!.defaultPageSize;
     expect(Reflect.get(properties.first!, 'description')).toBe(`Forward page size. Omit first to use the default ${defaultPageSize}.`);
-    expect(helpResult({ operation: name })).toMatchObject({ pagination: { defaultPageSize } });
+    expect(helpResult({ operation: name })).toEqual({
+      purpose: operation.purpose,
+      example: operationDefinitions.find((definition) => definition.name === name)!.canonical.example,
+    });
     expect(helpResult({ operation: `${name}:advanced` })).toMatchObject({
       name,
       parameters: [

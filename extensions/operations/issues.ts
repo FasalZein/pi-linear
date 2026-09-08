@@ -42,6 +42,8 @@ import {
 } from "./shared";
 
 
+export const ISSUE_HELP_OPERATION = "get_issue";
+export const ISSUE_ADVANCED_HELP_OPERATION = "create_issue";
 
 function createIssueRefs(v: CompatibilityObject) {
 	const input = mergedInput(v, [
@@ -318,7 +320,7 @@ export const issues: readonly OperationDefinition[] = ([
 		},
 	}),
 	withGetResultView({
-		name: "get_issue",
+		name: ISSUE_HELP_OPERATION,
 		...operationParameterDecision({
 		fields: [
 			{ name: "issue", canonical: "IssueReference", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true } },
@@ -334,7 +336,7 @@ export const issues: readonly OperationDefinition[] = ([
 						aliases: [],
 		domain: "issues",
 		purpose: "Get one issue by exact identifier or UUID.",
-						example: { operation: "get_issue", variables: { issue: "AEO-258" } },
+						example: { operation: ISSUE_HELP_OPERATION, variables: { issue: "AEO-258" } },
 		document: getDocument("GetIssue", "issue", projection("issue", "detail")),
 		plan(v) {
 			const ref = requireIssueReference(issueReference(v));
@@ -346,7 +348,7 @@ export const issues: readonly OperationDefinition[] = ([
 		},
 	}, "issue", "issue", "GetIssue"),
 	simpleMutation({
-		name: "create_issue",
+		name: ISSUE_ADVANCED_HELP_OPERATION,
 		...operationParameterDecision({
 		fields: [
 			{ name: "title", canonical: "String", canonicalBranches: [0,1], compatibilityRequirements: [{"branch":0,"kind":"all","order":0},{"branch":1,"kind":"all","order":0,"input":true}], card: { order: 0, required: true }, accepted: { order: 2 } },

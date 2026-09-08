@@ -78,7 +78,10 @@ describe('advanced typed arguments', () => {
   it('discovers each exact closed tail only on an explicit advanced help request', () => {
     const advancedDefinitions = operationDefinitions.filter(({ canonical }) => canonical.advancedFields.length > 0);
     expect(advancedDefinitions.map(({ name }) => name)).toEqual([
-      'create_issue', 'update_issue', 'save_initiative', 'save_project',
+      'list_comments', 'create_comment', 'list_views', 'list_cycles', 'list_documents', 'list_initiatives',
+      'list_issue_labels', 'list_issue_relations', 'list_issue_statuses', 'list_issues', 'create_issue',
+      'update_issue', 'search_issues', 'list_milestones', 'list_project_labels', 'list_project_relations',
+      'list_projects', 'list_teams', 'list_users', 'save_initiative', 'save_project',
     ]);
 
     for (const definition of advancedDefinitions) {

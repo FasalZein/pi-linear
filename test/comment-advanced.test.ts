@@ -45,16 +45,10 @@ describe('create_comment advanced targets', () => {
       .toThrow(/exactly one comment target/);
   });
 
-  it('discovers every rare target and content field only through advanced help', () => {
-    const common = helpResult({ operation: 'create_comment' });
-    expect(common.parameters).toEqual([
-      { name: 'issue', type: 'IssueReference', required: false },
-      { name: 'body', type: 'String', required: false },
-      { name: 'view', type: 'ResultView', required: false },
-    ]);
-    expect(common.advancedHelp).toEqual({
-      operation: 'help',
-      variables: { operation: 'create_comment:advanced' },
+  it('keeps normal help lean and discovers every rare target and content field through advanced help', () => {
+    expect(helpResult({ operation: 'create_comment' })).toEqual({
+      purpose: operations.create_comment!.purpose,
+      example: { issue: 'AEO-258', body: 'Comment text' },
     });
     const detail = helpResult({ operation: 'create_comment:advanced' });
     for (const name of [

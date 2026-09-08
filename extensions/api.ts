@@ -5,6 +5,8 @@ import { Compile } from 'typebox/compile';
 import { Kind, parse, type FragmentDefinitionNode, type SelectionSetNode } from 'graphql';
 import {
   DOMAINS,
+  ISSUE_ADVANCED_HELP_OPERATION,
+  ISSUE_HELP_OPERATION,
   getOperation,
   getOperationDefinition,
   operationDefinitions,
@@ -56,9 +58,9 @@ export {
   routeLinearResult,
 } from './runtime';
 
-const REQUEST_FORMS = 'Invalid request. Send exactly one of: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }, { "operation": "help" }, or { "query": "query { viewer { id } }", "variables": {} }.';
-const HELP_FORMS = 'Send exactly one of: { "operation": "help" }, { "operation": "help", "variables": { "domain": "issues" } }, { "operation": "help", "variables": { "operation": "get_issue" } }, or { "operation": "help", "variables": { "operation": "create_issue:advanced" } }.';
-const NATURAL_SEARCH_REMOVED = 'Natural search was removed. The operation catalog is in the `linear` tool description. Send `{ "operation": "help", "variables": { "operation": "get_issue" } }` for exact help and to load `linear_get_issue`.';
+const REQUEST_FORMS = `Invalid request. Send exactly one of: { "operation": "${ISSUE_HELP_OPERATION}", "variables": { "issue": "AEO-258" } }, { "operation": "help" }, or { "query": "query { viewer { id } }", "variables": {} }.`;
+const HELP_FORMS = `Send exactly one of: { "operation": "help" }, { "operation": "help", "variables": { "domain": "issues" } }, { "operation": "help", "variables": { "operation": "${ISSUE_HELP_OPERATION}" } }, or { "operation": "help", "variables": { "operation": "${ISSUE_ADVANCED_HELP_OPERATION}:advanced" } }.`;
+const NATURAL_SEARCH_REMOVED = `Natural search was removed. The operation catalog is in the \`linear\` tool description. Send \`{ "operation": "help", "variables": { "operation": "${ISSUE_HELP_OPERATION}" } }\` for exact help and to load \`linear_${ISSUE_HELP_OPERATION}\`.`;
 const definitionDomainSet = new Set(operationDefinitions.map(({ domain }) => domain));
 const DEFINITION_DOMAINS = DOMAINS.filter((domain) => definitionDomainSet.has(domain));
 
