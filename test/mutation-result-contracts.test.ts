@@ -10,7 +10,7 @@ import { executeOperation, validateMutationResult } from '../extensions/runtime'
 import { typedLinearTools } from '../extensions/typed-tools';
 import { isolateLinearCredentials } from './helpers/credentials';
 import { parseJsonObject, type JsonObject } from '../extensions/json';
-import { isCompatibilityString } from '../extensions/operation-types';
+import { isCompatibilityString, type CompatibilityObject } from '../extensions/operation-types';
 
 isolateLinearCredentials();
 
@@ -217,11 +217,11 @@ describe('mutation document result contracts', () => {
 
     await expect(tool.execute(
       'call-1',
-      { projectId: '55555555-5555-4555-8555-555555555555', view: 'full' },
+      { project: '55555555-5555-4555-8555-555555555555', view: 'full' },
       undefined,
       undefined,
       { hasUI: false },
-    )).rejects.toThrow('linear_save_project" in update mode requires projectId plus at least one field to change');
+    )).rejects.toThrow('linear_save_project" in update mode requires project plus at least one field to change');
     expect(fetch).not.toHaveBeenCalled();
   });
 });
@@ -288,8 +288,8 @@ describe('shared mutation response validation', () => {
   );
 
   const variables = {
-    projectId: '11111111-1111-4111-8111-111111111111',
-    relatedProjectId: '22222222-2222-4222-8222-222222222222',
+    project: '11111111-1111-4111-8111-111111111111',
+    relatedProject: '22222222-2222-4222-8222-222222222222',
     type: 'related',
     anchorType: 'project',
     relatedAnchorType: 'project',
@@ -297,10 +297,16 @@ describe('shared mutation response validation', () => {
 
   function installFailure(payload: JsonObject) {
     process.env.LINEAR_API_KEY = 'test-key';
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ data: payload }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    })));
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
+      const request = JSON.parse(String(init.body)) as { query: string; variables: CompatibilityObject };
+      const data = request.query.includes('ResolveNamedEntityById')
+        ? { project: { id: request.variables.id, name: 'Project' } }
+        : payload;
+      return new Response(JSON.stringify({ data }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }));
   }
 
   it('refuses a workspace parameter on the typed tool surface', async () => {

@@ -27,8 +27,8 @@ function resolver() {
     if (query.includes('ResolveDocumentById')) {
       return { document: { id: variables.id, title: 'Planning notes' } };
     }
-    if (query.includes('ResolveNamedEntityByName')) {
-      return { documents: { nodes: [{ id: DOCUMENT_ID, name: variables.name }] } };
+    if (query.includes('ResolveNamedEntityByReference')) {
+      return { matches: { nodes: [{ id: DOCUMENT_ID, name: variables.reference, slugId: 'planning-notes' }] } };
     }
     if (query.includes('ResolveIssueById')) {
       return {
@@ -82,14 +82,14 @@ describe('document operation hardening', () => {
       graphql,
     );
     expect(named.variables).toEqual({ id: DOCUMENT_ID });
-    expect(graphql.mock.calls[0]?.[1]).toContain('ResolveNamedEntityByName');
+    expect(graphql.mock.calls[0]?.[1]).toContain('ResolveNamedEntityByReference');
   });
 
   it('resolves a create issue and removes a conflicting team association', async () => {
     const graphql = resolver();
     const prepared = await prepareOperation(
       operations.create_document!,
-      { title: 'Planning notes', issueId: 'AEO-1', teamId: TEAM_ID },
+      { title: 'Planning notes', issue: 'AEO-1', team: TEAM_ID },
       graphql,
     );
 
@@ -109,7 +109,7 @@ describe('document operation hardening', () => {
     const graphql = resolver();
     const prepared = await prepareOperation(
       operations.create_document!,
-      { title: 'Planning notes', teamKey: 'ENG' },
+      { title: 'Planning notes', team: 'ENG' },
       graphql,
     );
 
@@ -125,7 +125,7 @@ describe('document operation hardening', () => {
     expect(() => resolveRequest({
       operation: 'create_document',
       variables: { input: { content: 'No title' } },
-    })).toThrow('parameters do not match one accepted requirement branch');
+    })).toThrow('Invalid parameters for "create_document"');
     expect(() => resolveRequest({
       operation: 'create_document',
       variables: { input: { title: 42 } },
@@ -167,7 +167,7 @@ describe('document operation hardening', () => {
     const issueGraphql = resolver();
     const related = await prepareOperation(
       operations.update_document!,
-      { document: DOCUMENT_ID, issueId: 'AEO-1', teamId: TEAM_ID },
+      { document: DOCUMENT_ID, issue: 'AEO-1', team: TEAM_ID },
       issueGraphql,
     );
     expect(related.variables).toEqual({ id: DOCUMENT_ID, input: { issueId: ISSUE_ID } });
@@ -182,7 +182,7 @@ describe('document operation hardening', () => {
     const teamGraphql = resolver();
     const assigned = await prepareOperation(
       operations.update_document!,
-      { document: DOCUMENT_ID, teamKey: 'ENG', title: 'Updated notes' },
+      { document: DOCUMENT_ID, team: 'ENG', title: 'Updated notes' },
       teamGraphql,
     );
     expect(assigned.variables).toEqual({
@@ -198,7 +198,7 @@ describe('document operation hardening', () => {
     for (const field of RELATED_FIELDS) {
       const prepared = await prepareOperation(
         operations.update_document!,
-        { document: DOCUMENT_ID, title: 'Updated notes', [field]: ISSUE_ID, teamId: TEAM_ID },
+        { documentId: DOCUMENT_ID, title: 'Updated notes', [field]: ISSUE_ID, teamId: TEAM_ID },
         resolver(),
       );
       expect(prepared.variables, field).toEqual({
@@ -214,7 +214,7 @@ describe('document operation hardening', () => {
     vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
       const request = JSON.parse(String(init.body));
       requests.push(request);
-      const data = request.query.includes('ResolveNamedEntityByName')
+      const data = request.query.includes('ResolveNamedEntityByReference')
         ? { documents: { nodes: [{ id: DOCUMENT_ID, name: 'Planning notes' }] } }
         : request.query.includes('documentCreate')
           ? { created: { success: true, document: { id: DOCUMENT_ID, title: 'Planning notes' } } }

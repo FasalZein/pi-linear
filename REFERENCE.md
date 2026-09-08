@@ -81,7 +81,7 @@ Use exact loader help to activate an ordinary operation. Then call its typed too
 | `switch_workspace` | `linear_switch_workspace` | workspace | name | Switch the active stored workspace without exposing credentials. | `{"name":"work"}` |
 | `save_initiative` | `linear_save_initiative` | initiatives | none | Create or update an initiative. | `{"name":"Platform"}` |
 | `save_milestone` | `linear_save_milestone` | milestones | none | Create or update a milestone. | `{"name":"Beta","project":"project-id"}` |
-| `save_project` | `linear_save_project` | projects | none | Create or update a project. | `{"name":"Platform","teams":["team-id"]}` |
+| `save_project` | `linear_save_project` | projects | none | Create or update a project. | `{"name":"Platform","teams":["AEO"]}` |
 
 ### Exact help and typed call
 

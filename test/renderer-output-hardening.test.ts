@@ -482,7 +482,7 @@ describe('renderer output hardening', () => {
     expect(failure('update_view', 'viewUpdate', { id: 'view-1' })).toContain('view view-1');
     expect(failure('create_view', 'viewCreate', { name: 'My view' })).toContain('view My view');
     expect(failure('create_project_relation', 'projectRelationCreate', {
-      projectId: 'project-1', relatedProjectId: 'project-2', type: 'related',
+      project: 'project-1', relatedProject: 'project-2', type: 'related',
       anchorType: 'project', relatedAnchorType: 'project',
     })).toContain('relation project-1');
   });

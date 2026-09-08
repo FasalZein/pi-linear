@@ -152,7 +152,7 @@ describe('v0.6 state correctness', () => {
     const document = text(typed(
       'update_document',
       { data: { documentUpdate: { success: true, document: null } }, meta },
-      { documentId: 'doc-123', title: 'Replacement title' },
+      { document: 'doc-123', title: 'Replacement title' },
     ));
     expect(document).toContain('✓ Updated document doc-123');
     expect(document).not.toContain('Replacement title');
@@ -160,7 +160,7 @@ describe('v0.6 state correctness', () => {
     const cycle = text(typed(
       'update_cycle',
       { data: { cycleUpdate: { success: true, cycle: null } }, meta },
-      { id: 'cycle-7', name: 'Renamed cycle' },
+      { cycle: 'cycle-7', name: 'Renamed cycle' },
     ));
     expect(cycle).toContain('✓ Updated cycle cycle-7');
   });

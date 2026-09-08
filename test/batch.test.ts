@@ -1027,6 +1027,7 @@ function lookupData(query: string, overrides: CompatibilityObject = {}) {
   for (const alias of aliases(query, 'user')) data[alias] = user;
   for (const alias of aliases(query, 'users')) data[alias] = { nodes: [user] };
   for (const alias of aliases(query, 'projects')) data[alias] = { nodes: [{ id: PROJECT_ID, name: 'Dispatch' }] };
+  for (const alias of aliases(query, 'issueLabel')) data[alias] = { id: LABEL_ID, name: 'Bug' };
   for (const alias of aliases(query, 'issue')) data[alias] = issueNode(ISSUE_A, 'AEO-1');
   return { ...data, ...overrides };
 }

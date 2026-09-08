@@ -15202,7 +15202,7 @@
         "variables": {
           "name": "Platform",
           "teams": [
-            "team-id"
+            "AEO"
           ]
         }
       },
@@ -15613,7 +15613,7 @@
         "variables": {
           "name": "Platform",
           "teamIds": [
-            "team-id"
+            "AEO"
           ]
         }
       },
@@ -16060,7 +16060,7 @@
       "example": {
         "name": "Platform",
         "teams": [
-          "team-id"
+          "AEO"
         ]
       },
       "variants": [

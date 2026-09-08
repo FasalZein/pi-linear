@@ -144,6 +144,6 @@ addSaveOperation({
 	updateRoot: "projectUpdate",
 	createType: "ProjectCreateInput",
 	updateType: "ProjectUpdateInput",
-	example: { name: "Platform", teamIds: ["team-id"] },
+	example: { name: "Platform", teamIds: ["AEO"] },
 }),
 ];
