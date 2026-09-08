@@ -18,7 +18,7 @@ let sawRecovery = false;
 let sawOwnerAfterRecovery = false;
 let observed = false;
 fs.readFile = (async (...args: Parameters<typeof fs.readFile>) => {
-  const result = await originalReadFile(...args as [any]);
+  const result = await originalReadFile(...args);
   const file = String(args[0]);
   if (file === join(lockPath, 'recovery.json')) sawRecovery = true;
   if (sawRecovery && file === join(lockPath, 'owner.json')) sawOwnerAfterRecovery = true;
