@@ -1,0 +1,26 @@
+{
+  "description": "Frozen pre-v1.0 baseline for scripts/context-measurement. Sanitized: it holds only git revisions and token counts.",
+  "beforeRev": "30c8113661e7a214fad2f77ca3600f97057de815",
+  "beforePackageVersion": "0.9.0",
+  "tokenizer": {
+    "package": "tiktoken",
+    "version": "0.12.0",
+    "encoding": "o200k_base"
+  },
+  "expectedTokens": {
+    "startup": 435,
+    "allTools": 15516,
+    "issuesFiveWorkflow": 3988
+  },
+  "scoutSnapshot": {
+    "startup": 435,
+    "allTools": 15487,
+    "issuesFiveWorkflow": 3988,
+    "note": "Earlier scout counts, taken on an uncommitted working tree over this revision. Only allTools differs, by 29 tokens. This fixture keeps the counts of the committed revision so any clone can reproduce them."
+  },
+  "expectedCounts": {
+    "tools": 53,
+    "helpOperations": 52,
+    "replays": 9
+  }
+}
