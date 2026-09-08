@@ -13,12 +13,20 @@ A supported legacy name that maps to one canonical operation. Aliases do not app
 _Avoid_: Duplicate operation
 
 **Operation catalog**:
-The compact canonical operation-name index available at session start. Exact operation help supplies the authored purpose and parameter card.
+The compact canonical operation-name index available at session start. Exact operation help supplies the purpose and example.
 _Avoid_: Tool list
 
 **Parameter card**:
-The parameter names, types, and example for one operation.
+The parameter names and types for one exceptional tool or one advanced tail.
 _Avoid_: Tool schema
+
+**Common tier**:
+The fields for ordinary calls. The direct tool schema publishes these fields when the tool becomes active.
+_Avoid_: Default fields, basic mode
+
+**Tail field**:
+A rare field that a caller sends inside `advanced`. Exact `<operation>:advanced` help publishes the closed tail for one operation.
+_Avoid_: Hidden field, arbitrary option
 
 **Loader**:
 The always-available `linear` discovery tool. It returns root, domain, or exact help and activates deferred direct tools.
@@ -33,7 +41,7 @@ The step that makes one typed tool available to the caller. It removes no other 
 _Avoid_: Registration, discovery
 
 **Help request**:
-A request for the domain names, for one domain's operation signatures, or for one operation parameter card.
+A request for all domains, one domain's operation names, one operation's purpose and example, or one operation's advanced tail.
 _Avoid_: Catalog search, natural-language query
 
 **Batch request**:
@@ -88,6 +96,10 @@ _Avoid_: Retrieval interface
 A GraphQL error tied to one response path while usable sibling data remains available.
 _Avoid_: Total failure
 
+**Reference**:
+An exact caller value that identifies one Linear object. Supported forms depend on the object type. Resolution fails on no match or several matches.
+_Avoid_: Stored default, fuzzy search term
+
 **Issue reference**:
 An exact Linear issue identifier or UUID. Resolution must reject missing, ambiguous, or mismatched issues.
 _Avoid_: Search term, fuzzy issue name
@@ -118,7 +130,7 @@ The source selected for one resolved credential. It is `workspace`, `env`, or `n
 The unique environment and saved Workspace credential values used for synchronous redaction.
 
 **Workspace**:
-A named Linear account and credential selection.
+A named Linear account and credential selection. It is not a Linear organization name, Pi working directory, project, or team.
 
 **Continuation offset**:
 The next code-point, item, or property position for ordered `linear_get_result` recovery.
