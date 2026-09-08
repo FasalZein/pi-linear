@@ -166,18 +166,18 @@ describe('direct issue identifier routing', () => {
   });
 
   it.each([
-    ['assignee', 'assigneeId'],
-    ['parent', 'parentId'],
-    ['project', 'projectId'],
-    ['milestone', 'projectMilestoneId'],
-    ['cycle', 'cycleId'],
-  ])('clears %s without a reference lookup', async (field, inputField) => {
-    const { requests } = graphqlStub((_query, variables) => {
-      expect(variables).toEqual({ id: 'AEO-258', input: { [inputField]: null } });
+    ['assignee', { issue: 'AEO-258', assignee: null }, 'assigneeId'],
+    ['parent', { issue: 'AEO-258', parent: null }, 'parentId'],
+    ['project', { issue: 'AEO-258', project: null }, 'projectId'],
+    ['milestone', { issue: 'AEO-258', advanced: { milestone: null } }, 'projectMilestoneId'],
+    ['cycle', { issue: 'AEO-258', cycle: null }, 'cycleId'],
+  ])('clears %s without a reference lookup', async (_field, variables, inputField) => {
+    const { requests } = graphqlStub((_query, requestVariables) => {
+      expect(requestVariables).toEqual({ id: 'AEO-258', input: { [inputField]: null } });
       return { issueUpdate: { success: true, issue: issueNode() } };
     });
 
-    await execute({ operation: 'update_issue', variables: { issue: 'AEO-258', [field]: null } });
+    await execute({ operation: 'update_issue', variables });
 
     expect(requests).toHaveLength(1);
     expect(requests[0]!.query).toContain('mutation UpdateIssue');

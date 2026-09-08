@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { linearGraphqlTool } from '../extensions/api';
-import { getOperation, operations } from '../extensions/operations';
+import { getOperation, operationDefinitions, operations } from '../extensions/operations';
 import { operationRenderers, SUMMARY_VIEW_NOTICE } from '../extensions/renderers';
 import { compactLinearResult, executeOperation, RESULT_BUDGET } from '../extensions/runtime';
 import { projection } from '../extensions/selections';
@@ -73,8 +73,10 @@ function capturedRequests() {
     const body = JSON.parse(String(init.body)) as { query: string; variables: JsonObject };
     requests.push(body);
     const { query } = body;
-    const data = query.includes('query ListIssues')
-      ? { issues: { nodes: [ISSUE, { ...ISSUE, identifier: 'AEO-9', title: 'Second' }], pageInfo: { hasNextPage: false } } }
+    const data = query.includes('mutation UpdateIssue')
+      ? { issueUpdate: { success: true, issue: ISSUE } }
+      : query.includes('query ListIssues')
+        ? { issues: { nodes: [ISSUE, { ...ISSUE, identifier: 'AEO-9', title: 'Second' }], pageInfo: { hasNextPage: false } } }
       : query.includes('query SearchIssues')
         ? { searchIssues: { nodes: [ISSUE], pageInfo: { hasNextPage: false } } }
         : query.includes('query ListProjects')
@@ -106,16 +108,35 @@ async function run(name: string, variables: JsonObject = {}) {
 }
 
 describe('public summary and full views', () => {
-  it('publishes view on issue, project, and document reads only', () => {
-    for (const name of [...VIEWABLE_LISTS, ...VIEWABLE_GETS]) {
+  it('publishes view on every mutation and the supported reads only', () => {
+    const mutationNames = operationDefinitions
+      .filter(({ safety }) => safety.mutation)
+      .map(({ name }) => name);
+    const viewableNames = new Set([...VIEWABLE_LISTS, ...VIEWABLE_GETS, ...mutationNames]);
+
+    for (const name of viewableNames) {
       expect(operations[name]!.canonical.fields.view, name).toBe('ResultView');
       expect(operations[name]!.parameters.some((parameter) => parameter.name === 'view'), name).toBe(true);
       const schema = buildTypedToolMetadata(operations[name]!).parameters as { properties?: { view?: { enum?: string[] } } };
       expect(enumValues(schema.properties?.view), name).toEqual(['summary', 'full']);
     }
-    expect(operations.create_issue!.canonical.fields.view).toBeUndefined();
+    expect(Object.values(operations).filter(({ canonical }) => canonical.fields.view).map(({ name }) => name).sort())
+      .toEqual([...viewableNames].sort());
     expect(operations.list_comments!.canonical.fields.view).toBeUndefined();
-    expect(operations.update_issue!.canonical.fields.view).toBeUndefined();
+  });
+
+  it('keeps mutation view out of GraphQL input and no-op update accounting', async () => {
+    const requests = capturedRequests();
+    const result = await run('update_issue', { issue: 'AEO-258', title: 'Changed', view: 'full' });
+
+    expect(result.meta).toMatchObject({ view: 'full' });
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.variables).toEqual({ id: 'AEO-258', input: { title: 'Changed' } });
+    expect(requests[0]!.variables.input).not.toHaveProperty('view');
+
+    await expect(run('update_issue', { issue: 'AEO-258', view: 'full' }))
+      .rejects.toThrow('No update fields were provided.');
+    expect(requests).toHaveLength(1);
   });
 
   it('defaults lists to summary and singular reads to full', async () => {
