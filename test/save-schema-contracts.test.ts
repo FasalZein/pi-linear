@@ -204,8 +204,8 @@ describe('mode-specific field ownership', () => {
 
   it('publishes exact dated document and label fields without unsupported extras', () => {
     const expected = {
-      linear_create_document: ['title', 'content', 'icon', 'color', 'issue', 'team', 'project', 'initiative', 'cycle', 'releaseId', 'resourceFolderId', 'lastAppliedTemplateId', 'owner', 'subscribers', 'sortOrder', 'id', 'view'],
-      linear_update_document: ['document', 'title', 'content', 'icon', 'color', 'issue', 'team', 'project', 'initiative', 'cycle', 'releaseId', 'resourceFolderId', 'lastAppliedTemplateId', 'owner', 'subscribers', 'sortOrder', 'hiddenAt', 'view'],
+      linear_create_document: ['title', 'content', 'color', 'issue', 'team', 'project', 'initiative', 'cycle', 'releaseId', 'resourceFolderId', 'lastAppliedTemplateId', 'owner', 'subscribers', 'sortOrder', 'id', 'view'],
+      linear_update_document: ['document', 'title', 'content', 'color', 'issue', 'team', 'project', 'initiative', 'cycle', 'releaseId', 'resourceFolderId', 'lastAppliedTemplateId', 'owner', 'subscribers', 'sortOrder', 'hiddenAt', 'view'],
       linear_create_issue_label: ['name', 'team', 'description', 'color', 'isGroup', 'parentId', 'retiredAt', 'replaceTeamLabels', 'id', 'view'],
       linear_update_issue_label: ['label', 'name', 'description', 'color', 'isGroup', 'parentId', 'retiredAt', 'replaceTeamLabels', 'view'],
       linear_create_project_label: ['name', 'description', 'color', 'isGroup', 'parentId', 'retiredAt', 'view'],
@@ -238,6 +238,8 @@ describe('mode-specific field ownership', () => {
     expect(accepts('linear_save_project', { project: 'Project', advanced: { leadTeam: UUID } })).toBe(true);
     expect(accepts('linear_create_document', { title: 'Plan', owner: UUID })).toBe(true);
     expect(accepts('linear_update_document', { document: 'Plan', owner: UUID })).toBe(true);
+    expect(accepts('linear_create_document', { title: 'Plan', icon: 'Target' })).toBe(false);
+    expect(accepts('linear_update_document', { document: 'Plan', icon: 'Target' })).toBe(false);
     expect(accepts('linear_save_initiative', { name: 'Initiative', health: 'onTrack' })).toBe(false);
     expect(accepts('linear_save_project', { name: 'Project', teams: [UUID], resources: [] })).toBe(false);
     expect(accepts('linear_update_document', { document: 'Plan', trashed: true })).toBe(false);
@@ -285,18 +287,20 @@ describe('mode-specific field ownership', () => {
     expect((await prepare('save_initiative', { name: 'I', leadTeamId: UUID, prioritySortOrder: 1.5, priority: 2, labelIds: [UUID], targetDate: null })).variables).toEqual({ input: { name: 'I', leadTeamId: UUID, prioritySortOrder: 1.5, priority: 2, labelIds: [UUID], targetDate: null } });
     expect((await prepare('save_project', { name: 'P', teamIds: [UUID], leadTeamId: UUID, targetDate: null })).variables).toEqual({ input: { name: 'P', teamIds: [UUID], leadTeamId: UUID, targetDate: null } });
     expect((await prepare('create_document', { title: 'D', ownerId: UUID })).variables).toEqual({ input: { title: 'D', ownerId: UUID } });
+    expect((await prepare('create_document', { input: { title: 'D', icon: 'Target' } })).variables).toEqual({ input: { title: 'D', icon: 'Target' } });
     expect((await prepare('update_document', { documentId: UUID, ownerId: UUID })).variables).toEqual({ id: UUID, input: { ownerId: UUID } });
+    expect((await prepare('update_document', { documentId: UUID, input: { icon: 'Target' } })).variables).toEqual({ id: UUID, input: { icon: 'Target' } });
     expect((await prepare('create_project_label', { name: 'L', retiredAt: '2026-08-18T12:00:00Z' })).variables).toEqual({ input: { name: 'L', retiredAt: '2026-08-18T12:00:00Z' } });
     expect((await prepare('update_project_label', { id: UUID, retiredAt: null })).variables).toEqual({ id: UUID, input: { retiredAt: null } });
-    expect(fetch).toHaveBeenCalledOnce();
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it('adds every dated live field to named operation metadata', () => {
     const expected = {
       save_initiative: ['leadTeamId', 'prioritySortOrder', 'priority', 'labelIds', 'customIdentifier'],
       save_project: ['leadTeamId'],
-      create_document: ['ownerId'],
-      update_document: ['ownerId'],
+      create_document: ['ownerId', 'icon'],
+      update_document: ['ownerId', 'icon'],
       create_project_label: ['retiredAt'],
       update_project_label: ['retiredAt'],
     };

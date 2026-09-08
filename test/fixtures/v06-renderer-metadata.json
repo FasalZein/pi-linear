@@ -211,7 +211,6 @@
     "callFields": [
       "title",
       "content",
-      "icon",
       "color",
       "issue",
       "team",
@@ -235,7 +234,6 @@
       "document",
       "title",
       "content",
-      "icon",
       "color",
       "issue",
       "team",

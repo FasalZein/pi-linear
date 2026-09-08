@@ -193,8 +193,8 @@ describe('generated products', () => {
     [
       'typed tool schema branches',
       'extensions/typed-tool-metadata.ts',
-      'oneOf: requirements',
-      'anyOf: requirements',
+      'return exclusive && advancedNames.size === 0',
+      'return exclusive',
     ],
     [
       'typed tool label',

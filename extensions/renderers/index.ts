@@ -6,6 +6,7 @@ import type {
 import { Text } from '@earendil-works/pi-tui';
 import { operationDefinitions, type LinearOperation } from '../operations';
 import { canonicalFieldNames } from '../canonical';
+import type { JsonValue as ParsedJsonValue } from '../json';
 import { typedToolName } from '../tool-names';
 import type { OperationDefinition } from '../operation-types';
 import type { JsonObject } from '../runtime';
@@ -33,15 +34,24 @@ import {
 } from './common';
 import {
   parseResultDetails,
+  type EntityResultDetails,
   type HelpResultDetails,
+  type ListResultDetails,
+  type MutationResultDetails,
   type NamedResultDetails,
+  type NotFoundResultDetails,
   type RawCompleteDetails,
+  type RawField,
+  type RetrievalResultDetails,
   type SpillResultDetails,
+  type UnknownResultDetails,
+  type WorkspaceResultDetails,
 } from './details';
 import { specFor, specForKind, type Entity, type EntitySpec } from './entities';
 
 const PREVIEW_LIMIT = 20;
 export const SUMMARY_VIEW_NOTICE = 'Fields narrowed — use view="full" for complete fields.';
+type BlockLine = string | ReturnType<typeof wrapped>;
 
 /**
  * Structural view of pi's ToolRenderContext (not exported by the package).
@@ -70,16 +80,19 @@ function listCountHeadline(
 type Verb = { past: string; present: string };
 type EmptyState = { fact: string; action: string };
 
+const DEFAULT_VERB: Verb = { past: 'Loaded', present: 'Loading' };
+const VERB_RULES: readonly { prefixes: readonly string[]; verb: Verb }[] = [
+  { prefixes: ['create_'], verb: { past: 'Created', present: 'Creating' } },
+  { prefixes: ['update_', 'set_'], verb: { past: 'Updated', present: 'Updating' } },
+  { prefixes: ['save_'], verb: { past: 'Saved', present: 'Saving' } },
+  { prefixes: ['delete_'], verb: { past: 'Deleted', present: 'Deleting' } },
+  { prefixes: ['switch_'], verb: { past: 'Switched', present: 'Switching' } },
+  { prefixes: ['search_'], verb: { past: 'Searched', present: 'Searching' } },
+];
+
 function verbFor(operationName: string): Verb {
-  if (operationName.startsWith('create_')) return { past: 'Created', present: 'Creating' };
-  if (operationName.startsWith('update_') || operationName.startsWith('set_')) {
-    return { past: 'Updated', present: 'Updating' };
-  }
-  if (operationName.startsWith('save_')) return { past: 'Saved', present: 'Saving' };
-  if (operationName.startsWith('delete_')) return { past: 'Deleted', present: 'Deleting' };
-  if (operationName.startsWith('switch_')) return { past: 'Switched', present: 'Switching' };
-  if (operationName.startsWith('search_')) return { past: 'Searched', present: 'Searching' };
-  return { past: 'Loaded', present: 'Loading' };
+  return VERB_RULES.find(({ prefixes }) => prefixes.some((prefix) => operationName.startsWith(prefix)))?.verb
+    ?? DEFAULT_VERB;
 }
 
 /**
@@ -102,6 +115,33 @@ function statusLine(
   return parts.join(' ');
 }
 
+function configuredEntityDetails(theme: Theme, spec: EntitySpec, entity: Entity): BlockLine[] {
+  const lines: BlockLine[] = [];
+  for (const field of spec.details ?? []) {
+    const value = field.value(entity);
+    if (field.optional && !value) continue;
+    const display = value ?? '—';
+    const style = field.style?.(theme, display, entity);
+    lines.push(detailLine(theme, field.label, display, style));
+  }
+  return lines;
+}
+
+function fallbackEntityDetails(theme: Theme, spec: EntitySpec, entity: Entity): BlockLine[] {
+  const lines: BlockLine[] = [];
+  const metadata = spec.metadata(entity);
+  if (metadata.length) lines.push(`  ${theme.fg('dim', metadata.join(' · '))}`);
+  const body = spec.body?.(entity);
+  if (body) lines.push(`  ${theme.fg('muted', body)}`);
+  return lines;
+}
+
+function entityDetails(theme: Theme, spec: EntitySpec, entity: Entity): BlockLine[] {
+  return spec.details?.length
+    ? configuredEntityDetails(theme, spec, entity)
+    : fallbackEntityDetails(theme, spec, entity);
+}
+
 function entityBlock(
   theme: Theme,
   spec: EntitySpec,
@@ -110,31 +150,19 @@ function entityBlock(
   notes: readonly string[],
   disclosure?: string,
   warnings: readonly string[] = [],
-): Array<string | ReturnType<typeof wrapped>> {
-  const lines: Array<string | ReturnType<typeof wrapped>> = [
+): BlockLine[] {
+  const url = asString(entity.url);
+  return [
     '',
     statusLine(theme, spec, entity, verb, warnings.length > 0),
+    ...(disclosure ? [wrapped(theme.fg('dim', disclosure), 2)] : []),
+    ...entityDetails(theme, spec, entity),
+    ...(url ? [`  ${theme.fg('dim', url)}`] : []),
+    ...warnings.map((warning) => wrapped(theme.fg('warning', warning), 2)),
+    ...notes.map((note) => wrapped(theme.fg('dim', note), 2)),
+    '',
+    wrapped(theme.fg('dim', jsonHint())),
   ];
-  if (disclosure) lines.push(wrapped(theme.fg('dim', disclosure), 2));
-  if (spec.details?.length) {
-    for (const field of spec.details) {
-      const value = field.value(entity);
-      if (!value && field.optional) continue;
-      const display = value ?? '—';
-      const style = field.style?.(theme, display, entity);
-      lines.push(detailLine(theme, field.label, display, style));
-    }
-  } else {
-    const metadata = spec.metadata(entity);
-    if (metadata.length) lines.push(`  ${theme.fg('dim', metadata.join(' · '))}`);
-    const body = spec.body?.(entity);
-    if (body) lines.push(`  ${theme.fg('muted', body)}`);
-  }
-  const url = asString(entity.url);
-  if (url) lines.push(`  ${theme.fg('dim', url)}`);
-  for (const warning of warnings) lines.push(wrapped(theme.fg('warning', warning), 2));
-  for (const note of notes) lines.push(wrapped(theme.fg('dim', note), 2));
-  return [...lines, '', wrapped(theme.fg('dim', jsonHint()))];
 }
 
 function pluralNoun(spec: EntitySpec): string {
@@ -219,60 +247,275 @@ function emptyState(
   };
 }
 
-function errorRecovery(message: string, toolName: string, noun: string, rawGraphql = false): string {
-  const normalized = message.toLowerCase();
-  const httpFailure = /^linear api request failed:\s*(?:(\d{3})\b)?/i.exec(message);
-  if (httpFailure?.[1]) {
-    const status = Number(httpFailure[1]);
-    if (status === 401 || status === 403) {
-      return 'Update Linear authentication with /linear-auth, then retry the request.';
-    }
-    if (status === 408 || status === 429 || (status >= 500 && status <= 599)) {
-      return 'Retry the same request. A transient network or Linear server failure can change on retry.';
-    }
-    return 'Review the request and Linear server response before trying a corrected request.';
-  }
-  if (normalized.includes('read-only') || normalized.includes('readonly')) {
-    return 'Use a read-only operation or restart through a mutation-enabled entry point.';
-  }
-  if (normalized.includes('destructive named input') || normalized.includes('trashed')) {
-    return 'Named destructive input is unavailable. Use an authorized raw GraphQL mutation when that action is required.';
-  }
-  if (rawGraphql && normalized.includes('raw linear mutations')) {
-    return 'Set LINEAR_MUTATIONS=all only when an authorized raw GraphQL mutation is required.';
-  }
-  if (normalized.includes('not allowed') || normalized.includes('blocked root') || normalized.includes('mutation root')) {
-    return 'This mutation root is blocked by policy. Use a supported named operation.';
-  }
-  if (normalized.includes('configuration') || normalized.includes('manifest') || normalized.includes('filtered tool')) {
-    return 'Check the generated tool manifest and the active tool policy, then load the operation again.';
-  }
-  if (normalized.includes('unknown parameters')) {
-    return `Remove the unaccepted parameters and call ${toolName} again with the accepted ones only.`;
-  }
-  if (normalized.includes('not found') || normalized.includes('was not found')) {
-    return `Check the exact ${noun} reference and call ${toolName} again.`;
-  }
-  if (normalized.includes('unauthorized') || normalized.includes('authentication') || normalized.includes('api key')
-    || normalized.includes('credential') || /\b(?:401|403)\b/.test(normalized)) {
-    return 'Update Linear authentication with /linear-auth, then retry the request.';
-  }
-  if (normalized.includes('validation') || normalized.includes('invalid parameter') || normalized.includes('invalid value')
-    || normalized.includes('missing ') || normalized.includes('must be') || normalized.includes('is required')
-    || normalized.includes('expected type') || normalized.includes('exactly one')
-    || normalized.includes('was not provided') || normalized.includes('cannot query field')) {
-    return `Open the ${toolName} parameter card, correct the validation error, and call ${toolName} again.`;
-  }
-  if (normalized.includes('network') || normalized.includes('fetch') || normalized.includes('connection')
-    || normalized.includes('server') || normalized.includes('service unavailable')
-    || normalized.includes('timeout') || normalized.includes('timed out') || normalized.includes('rate limit')
-    || normalized.includes('rate-limit') || normalized.includes('too many requests') || normalized.includes('gateway')) {
-    return 'Retry the same request. A transient network or Linear server failure can change on retry.';
-  }
-  if (httpFailure || normalized.includes('graphql')) {
-    return 'Review the request and Linear server response before trying a corrected request.';
-  }
+const AUTH_RECOVERY = 'Update Linear authentication with /linear-auth, then retry the request.';
+const RETRY_RECOVERY = 'Retry the same request. A transient network or Linear server failure can change on retry.';
+const REVIEW_RECOVERY = 'Review the request and Linear server response before trying a corrected request.';
+const HTTP_FAILURE = /^linear api request failed:\s*(?:(\d{3})\b)?/i;
+const AUTH_HTTP_STATUSES = new Set([401, 403]);
+const RETRY_HTTP_STATUSES = new Set([408, 429]);
+
+type RecoveryText = (toolName: string, noun: string) => string;
+type RecoveryRule = {
+  phrases: readonly string[];
+  pattern?: RegExp;
+  rawGraphqlOnly?: boolean;
+  recovery: RecoveryText;
+};
+
+function constantRecovery(message: string): RecoveryText {
+  return () => message;
+}
+
+function unknownParametersRecovery(toolName: string): string {
+  return `Remove the unaccepted parameters and call ${toolName} again with the accepted ones only.`;
+}
+
+function notFoundRecovery(toolName: string, noun: string): string {
+  return `Check the exact ${noun} reference and call ${toolName} again.`;
+}
+
+function validationRecovery(toolName: string): string {
   return `Open the ${toolName} parameter card, correct the validation error, and call ${toolName} again.`;
+}
+
+const ERROR_RECOVERY_RULES: readonly RecoveryRule[] = [
+  {
+    phrases: ['read-only', 'readonly'],
+    recovery: constantRecovery('Use a read-only operation or restart through a mutation-enabled entry point.'),
+  },
+  {
+    phrases: ['destructive named input', 'trashed'],
+    recovery: constantRecovery('Named destructive input is unavailable. Use an authorized raw GraphQL mutation when that action is required.'),
+  },
+  {
+    phrases: ['raw linear mutations'],
+    rawGraphqlOnly: true,
+    recovery: constantRecovery('Set LINEAR_MUTATIONS=all only when an authorized raw GraphQL mutation is required.'),
+  },
+  {
+    phrases: ['not allowed', 'blocked root', 'mutation root'],
+    recovery: constantRecovery('This mutation root is blocked by policy. Use a supported named operation.'),
+  },
+  {
+    phrases: ['configuration', 'manifest', 'filtered tool'],
+    recovery: constantRecovery('Check the generated tool manifest and the active tool policy, then load the operation again.'),
+  },
+  { phrases: ['unknown parameters'], recovery: unknownParametersRecovery },
+  { phrases: ['not found'], recovery: notFoundRecovery },
+  {
+    phrases: ['unauthorized', 'authentication', 'api key', 'credential'],
+    pattern: /\b(?:401|403)\b/,
+    recovery: constantRecovery(AUTH_RECOVERY),
+  },
+  {
+    phrases: [
+      'validation',
+      'invalid parameter',
+      'invalid value',
+      'not a valid',
+      'missing ',
+      'must be',
+      'is required',
+      'expected type',
+      'exactly one',
+      'was not provided',
+      'cannot query field',
+    ],
+    recovery: validationRecovery,
+  },
+  {
+    phrases: [
+      'network',
+      'fetch',
+      'connection',
+      'server',
+      'service unavailable',
+      'timeout',
+      'timed out',
+      'rate limit',
+      'rate-limit',
+      'too many requests',
+      'gateway',
+    ],
+    recovery: constantRecovery(RETRY_RECOVERY),
+  },
+  { phrases: ['graphql'], pattern: HTTP_FAILURE, recovery: constantRecovery(REVIEW_RECOVERY) },
+];
+
+function isRetryableHttpStatus(status: number): boolean {
+  return RETRY_HTTP_STATUSES.has(status) || (status >= 500 && status <= 599);
+}
+
+function recoveryForHttpStatus(status: number): string {
+  if (AUTH_HTTP_STATUSES.has(status)) return AUTH_RECOVERY;
+  if (isRetryableHttpStatus(status)) return RETRY_RECOVERY;
+  return REVIEW_RECOVERY;
+}
+
+function httpStatusRecovery(message: string): string | undefined {
+  const status = HTTP_FAILURE.exec(message)?.[1];
+  if (status === undefined) return undefined;
+  return recoveryForHttpStatus(Number(status));
+}
+
+function ruleMatches(rule: RecoveryRule, normalized: string, rawGraphql: boolean): boolean {
+  if (rule.rawGraphqlOnly && !rawGraphql) return false;
+  if (rule.phrases.some((phrase) => normalized.includes(phrase))) return true;
+  return rule.pattern?.test(normalized) ?? false;
+}
+
+function textRecovery(normalized: string, toolName: string, noun: string, rawGraphql: boolean): string {
+  const recovery = ERROR_RECOVERY_RULES.find((rule) => ruleMatches(rule, normalized, rawGraphql))?.recovery
+    ?? validationRecovery;
+  return recovery(toolName, noun);
+}
+
+function errorRecovery(message: string, toolName: string, noun: string, rawGraphql = false): string {
+  return httpStatusRecovery(message) ?? textRecovery(message.toLowerCase(), toolName, noun, rawGraphql);
+}
+
+function renderListDigest(
+  details: ListResultDetails,
+  theme: Theme,
+  spec: EntitySpec,
+  definition: OperationDefinition,
+  context: LinearRenderContext,
+): LinearListComponent<Entity> {
+  const empty = emptyState(definition, spec, context);
+  const summaryList = details.view === 'summary' && details.entities.length > 0;
+  return new LinearListComponent([...details.entities], theme, {
+    headline: listCountHeadline(
+      details.entities.length,
+      details.totalCount,
+      spec.noun,
+      spec.pluralNoun,
+      summaryList,
+    ),
+    disclosure: summaryList ? SUMMARY_VIEW_NOTICE : undefined,
+    emptyLabel: empty.fact,
+    emptyAction: empty.action,
+    footnotes: [...details.notes],
+    previewLimit: PREVIEW_LIMIT,
+    noun: spec.noun,
+    renderItems: (items, itemTheme, width) => renderTable(items, itemTheme, width, {
+      columns: spec.columns,
+      primary: { label: spec.primaryLabel ?? 'Name', value: spec.label },
+      dropOrder: spec.dropOrder,
+      fallback: (item, fallbackTheme, fallbackWidth) => {
+        const lead = spec.lead?.(item);
+        const label = fallbackTheme.fg('toolOutput', spec.label(item));
+        return truncate(`  ${lead ? `${fallbackTheme.fg('accent', lead)} ` : ''}${label}`, fallbackWidth);
+      },
+    }),
+  });
+}
+
+function renderEntityDigest(
+  details: EntityResultDetails,
+  theme: Theme,
+  spec: EntitySpec,
+  verb: Verb,
+): LinearBlockComponent {
+  const disclosure = details.view === 'summary' ? SUMMARY_VIEW_NOTICE : undefined;
+  return new LinearBlockComponent(entityBlock(theme, spec, details.entity, verb.past, details.notes, disclosure));
+}
+
+function renderNotFoundDigest(
+  details: NotFoundResultDetails,
+  theme: Theme,
+  spec: EntitySpec,
+  definition: OperationDefinition,
+  context: LinearRenderContext,
+): LinearBlockComponent {
+  const reference = namedTarget(details.target, context, definition);
+  const title = `${spec.noun.charAt(0).toUpperCase()}${spec.noun.slice(1)} not found`;
+  return new LinearBlockComponent([
+    '',
+    theme.fg('error', `✗ ${title}`),
+    ...(reference ? [wrapped(theme.fg('accent', `Searched: ${reference}`), 2)] : []),
+    wrapped(theme.fg('dim', `Check the exact ${spec.noun} reference and call the operation again.`), 2),
+    ...details.notes.map((note) => wrapped(theme.fg('dim', note), 2)),
+    '',
+    wrapped(theme.fg('dim', jsonHint())),
+  ]);
+}
+
+function renderMutationDigest(
+  details: MutationResultDetails,
+  theme: Theme,
+  spec: EntitySpec,
+  verb: Verb,
+  definition: OperationDefinition,
+  context: LinearRenderContext,
+): LinearBlockComponent {
+  if (!details.success) {
+    const target = namedTarget(details.target, context, definition);
+    return new LinearBlockComponent([
+      '',
+      theme.fg('warning', `! ${verb.past} ${spec.noun}${target ? ` ${target}` : ''}: status unknown`),
+      wrapped(theme.fg('dim', 'Re-read the record to confirm the change.'), 2),
+      '',
+      wrapped(theme.fg('dim', jsonHint())),
+    ]);
+  }
+  if (details.entity) {
+    return new LinearBlockComponent(entityBlock(
+      theme,
+      spec,
+      details.entity,
+      verb.past,
+      details.notes,
+      undefined,
+      details.warnings,
+    ));
+  }
+  const target = namedTarget(details.target, context, definition);
+  const warning = details.warnings.length > 0;
+  return new LinearBlockComponent([
+    '',
+    theme.fg(
+      warning ? 'warning' : 'success',
+      `${warning ? '!' : '✓'} ${verb.past} ${spec.noun}${target ? ` ${target}` : ''}${warning ? ' with warnings' : ''}`,
+    ),
+    ...details.warnings.map((message) => wrapped(theme.fg('warning', message), 2)),
+    ...details.notes.map((note) => wrapped(theme.fg('dim', note), 2)),
+    '',
+    wrapped(theme.fg('dim', jsonHint())),
+  ]);
+}
+
+function renderWorkspaceDigest(details: WorkspaceResultDetails, theme: Theme, verb: Verb): LinearBlockComponent {
+  return new LinearBlockComponent([
+    '',
+    `${theme.fg('success', `✓ ${verb.past} workspace`)} ${theme.fg('accent', details.active)}`,
+    '',
+    wrapped(theme.fg('dim', jsonHint())),
+  ]);
+}
+
+function renderUnknownDigest(details: UnknownResultDetails, theme: Theme): LinearBlockComponent {
+  return new LinearBlockComponent([
+    '',
+    theme.fg('toolOutput', truncate(details.summary, 200)),
+    '',
+    wrapped(theme.fg('dim', jsonHint())),
+  ]);
+}
+
+type NamedDataDetails = SpillResultDetails | ListResultDetails | EntityResultDetails | NotFoundResultDetails;
+
+function renderNamedDataDigest(
+  details: NamedDataDetails,
+  theme: Theme,
+  spec: EntitySpec,
+  verb: Verb,
+  definition: OperationDefinition,
+  context: LinearRenderContext,
+): LinearBlockComponent | LinearListComponent<Entity> {
+  if (details.kind === 'spill') return new LinearBlockComponent(spillBlock(theme, details));
+  if (details.kind === 'list') return renderListDigest(details, theme, spec, definition, context);
+  if (details.kind === 'entity') return renderEntityDigest(details, theme, spec, verb);
+  return renderNotFoundDigest(details, theme, spec, definition, context);
 }
 
 function renderDigest(
@@ -282,110 +525,11 @@ function renderDigest(
   verb: Verb,
   definition: OperationDefinition,
   context: LinearRenderContext,
-): Text | LinearBlockComponent | LinearListComponent<Entity> {
-  if (details.kind === 'spill') return new LinearBlockComponent(spillBlock(theme, details));
-
-  if (details.kind === 'list') {
-    const empty = emptyState(definition, spec, context);
-    const summaryList = details.view === 'summary' && details.entities.length > 0;
-    return new LinearListComponent([...details.entities], theme, {
-      headline: listCountHeadline(
-        details.entities.length,
-        details.totalCount,
-        spec.noun,
-        spec.pluralNoun,
-        summaryList,
-      ),
-      disclosure: summaryList ? SUMMARY_VIEW_NOTICE : undefined,
-      emptyLabel: empty.fact,
-      emptyAction: empty.action,
-      footnotes: [...details.notes],
-      previewLimit: PREVIEW_LIMIT,
-      noun: spec.noun,
-      renderItems: (items, itemTheme, width) => renderTable(items, itemTheme, width, {
-        columns: spec.columns,
-        primary: { label: spec.primaryLabel ?? 'Name', value: spec.label },
-        dropOrder: spec.dropOrder,
-        fallback: (item, fallbackTheme, fallbackWidth) => {
-          const lead = spec.lead?.(item);
-          const label = fallbackTheme.fg('toolOutput', spec.label(item));
-          return truncate(`  ${lead ? `${fallbackTheme.fg('accent', lead)} ` : ''}${label}`, fallbackWidth);
-        },
-      }),
-    });
-  }
-
-  if (details.kind === 'entity') {
-    const disclosure = details.view === 'summary' ? SUMMARY_VIEW_NOTICE : undefined;
-    return new LinearBlockComponent(entityBlock(theme, spec, details.entity, verb.past, details.notes, disclosure));
-  }
-
-  if (details.kind === 'not-found') {
-    const reference = namedTarget(details.target, context, definition);
-    const title = `${spec.noun.charAt(0).toUpperCase()}${spec.noun.slice(1)} not found`;
-    return new LinearBlockComponent([
-      '',
-      theme.fg('error', `✗ ${title}`),
-      ...(reference ? [wrapped(theme.fg('accent', `Searched: ${reference}`), 2)] : []),
-      wrapped(theme.fg('dim', `Check the exact ${spec.noun} reference and call the operation again.`), 2),
-      ...details.notes.map((note) => wrapped(theme.fg('dim', note), 2)),
-      '',
-      wrapped(theme.fg('dim', jsonHint())),
-    ]);
-  }
-
-  if (details.kind === 'mutation') {
-    if (!details.success) {
-      const target = namedTarget(details.target, context, definition);
-      return new LinearBlockComponent([
-        '',
-        theme.fg('warning', `! ${verb.past} ${spec.noun}${target ? ` ${target}` : ''}: status unknown`),
-        wrapped(theme.fg('dim', 'Re-read the record to confirm the change.'), 2),
-        '',
-        wrapped(theme.fg('dim', jsonHint())),
-      ]);
-    }
-    if (details.entity) {
-      return new LinearBlockComponent(entityBlock(
-        theme,
-        spec,
-        details.entity,
-        verb.past,
-        details.notes,
-        undefined,
-        details.warnings,
-      ));
-    }
-    const target = namedTarget(details.target, context, definition);
-    const warning = details.warnings.length > 0;
-    return new LinearBlockComponent([
-      '',
-      theme.fg(
-        warning ? 'warning' : 'success',
-        `${warning ? '!' : '✓'} ${verb.past} ${spec.noun}${target ? ` ${target}` : ''}${warning ? ' with warnings' : ''}`,
-      ),
-      ...details.warnings.map((message) => wrapped(theme.fg('warning', message), 2)),
-      ...details.notes.map((note) => wrapped(theme.fg('dim', note), 2)),
-      '',
-      wrapped(theme.fg('dim', jsonHint())),
-    ]);
-  }
-
-  if (details.kind === 'workspace') {
-    return new LinearBlockComponent([
-      '',
-      `${theme.fg('success', `✓ ${verb.past} workspace`)} ${theme.fg('accent', details.active)}`,
-      '',
-      wrapped(theme.fg('dim', jsonHint())),
-    ]);
-  }
-
-  return new LinearBlockComponent([
-    '',
-    theme.fg('toolOutput', truncate(details.summary, 200)),
-    '',
-    wrapped(theme.fg('dim', jsonHint())),
-  ]);
+): LinearBlockComponent | LinearListComponent<Entity> {
+  if (details.kind === 'mutation') return renderMutationDigest(details, theme, spec, verb, definition, context);
+  if (details.kind === 'workspace') return renderWorkspaceDigest(details, theme, verb);
+  if (details.kind === 'unknown') return renderUnknownDigest(details, theme);
+  return renderNamedDataDigest(details, theme, spec, verb, definition, context);
 }
 
 function callKeys(operation: LinearOperation): string[] {
@@ -460,60 +604,101 @@ export function renderLinearApiCall(args: any, theme: Theme): LinearBlockCompone
   ]);
 }
 
+type HelpDomainsDetails = Extract<HelpResultDetails, { kind: 'help-domains' }>;
+type HelpOperationsDetails = Extract<HelpResultDetails, { kind: 'help-operations' }>;
+type HelpOperationDetails = Extract<HelpResultDetails, { kind: 'help-operation' }>;
+type KnownHelpDetails = Exclude<HelpResultDetails, UnknownResultDetails>;
+
+function helpDomainLines(theme: Theme, details: HelpDomainsDetails): BlockLine[] {
+  return [
+    theme.fg('success', `✓ ${details.domains.length} domains`),
+    wrapped(theme.fg('muted', details.domains.join('  ')), 2),
+    wrapped(theme.fg('dim', 'Ask for one operation to load its typed tool.'), 2),
+  ];
+}
+
+function helpOperationsLines(theme: Theme, details: HelpOperationsDetails): BlockLine[] {
+  const lines: BlockLine[] = [
+    theme.fg('success', `✓ ${plural(details.operations.length, 'operation')} in ${details.domain ?? 'domain'}`),
+    '',
+  ];
+  for (const operation of details.operations.slice(0, PREVIEW_LIMIT)) {
+    lines.push(wrapped(theme.fg('muted', operation.signature ?? operation.name ?? ''), 2));
+  }
+  return lines;
+}
+
+function helpOperationLines(theme: Theme, details: HelpOperationDetails): BlockLine[] {
+  const lines: BlockLine[] = [theme.fg('success', `✓ ${details.name}`)];
+  if (details.purpose) lines.push(`  ${theme.fg('dim', details.purpose)}`);
+  lines.push('');
+  for (const parameter of details.parameters) {
+    const label = `${parameter.name}${parameter.required ? '' : '?'}`.padEnd(24);
+    lines.push(wrapped(`${theme.fg('muted', label)}${theme.fg('dim', parameter.type)}`, 2));
+  }
+  return lines;
+}
+
+function helpContentLines(theme: Theme, details: KnownHelpDetails): BlockLine[] {
+  if (details.kind === 'help-domains') return helpDomainLines(theme, details);
+  if (details.kind === 'help-operations') return helpOperationsLines(theme, details);
+  return helpOperationLines(theme, details);
+}
+
+function loadedHelpLines(theme: Theme, details: KnownHelpDetails): BlockLine[] {
+  if (!details.loaded.length) return [];
+  return [
+    '',
+    wrapped(theme.fg('success', `✓ loaded ${plural(details.loaded.length, 'tool')}`), 2),
+    wrapped(theme.fg('dim', details.loaded.join(', ')), 2),
+  ];
+}
+
 function helpBlock(theme: Theme, details: HelpResultDetails): LinearBlockComponent | undefined {
   if (details.kind === 'unknown') return undefined;
-  const lines: Array<string | ReturnType<typeof wrapped>> = [];
+  return new LinearBlockComponent([
+    '',
+    ...helpContentLines(theme, details),
+    ...loadedHelpLines(theme, details),
+    '',
+    wrapped(theme.fg('dim', jsonHint())),
+  ]);
+}
 
-  if (details.kind === 'help-domains') {
-    lines.push(theme.fg('success', `✓ ${details.domains.length} domains`));
-    lines.push(wrapped(theme.fg('muted', details.domains.join('  ')), 2));
-    lines.push(wrapped(theme.fg('dim', 'Ask for one operation to load its typed tool.'), 2));
-  } else if (details.kind === 'help-operations') {
-    lines.push(theme.fg('success', `✓ ${plural(details.operations.length, 'operation')} in ${details.domain ?? 'domain'}`));
-    lines.push('');
-    for (const operation of details.operations.slice(0, PREVIEW_LIMIT)) {
-      lines.push(wrapped(theme.fg('muted', operation.signature ?? operation.name ?? ''), 2));
-    }
-  } else {
-    lines.push(theme.fg('success', `✓ ${details.name}`));
-    if (details.purpose) lines.push(`  ${theme.fg('dim', details.purpose)}`);
-    lines.push('');
-    for (const parameter of details.parameters) {
-      const label = `${parameter.name}${parameter.required ? '' : '?'}`.padEnd(24);
-      lines.push(wrapped(`${theme.fg('muted', label)}${theme.fg('dim', parameter.type)}`, 2));
-    }
-  }
+function connectionFieldSummary(field: Extract<RawField, { kind: 'connection' }>): string {
+  const paging = field.nextCursor ? ` · next page after="${field.nextCursor}"` : '';
+  return `${field.key}: connection · ${plural(field.nodeCount, 'node')}${paging}`;
+}
 
-  if (details.loaded.length) {
-    lines.push('');
-    lines.push(wrapped(theme.fg('success', `✓ loaded ${plural(details.loaded.length, 'tool')}`), 2));
-    lines.push(wrapped(theme.fg('dim', details.loaded.join(', ')), 2));
-  }
-  lines.push('');
-  lines.push(wrapped(theme.fg('dim', jsonHint())));
-  return new LinearBlockComponent(['', ...lines]);
+function arrayFieldSummary(field: Extract<RawField, { kind: 'array' }>): string {
+  return `${field.key}: array · ${plural(field.itemCount, 'item')}`;
+}
+
+function objectFieldSummary(field: Extract<RawField, { kind: 'object' }>): string {
+  const keys = field.keys.length ? ` (${field.keys.join(', ')})` : '';
+  return `${field.key}: object · ${plural(field.keys.length, 'key')}${keys}`;
+}
+
+function scalarFieldSummary(field: Extract<RawField, { kind: 'scalar' }>): string {
+  const size = field.charCount !== undefined ? ` · ${field.charCount} chars` : '';
+  return `${field.key}: ${field.valueKind}${size}`;
+}
+
+function rawFieldSummary(field: RawField): string {
+  if (field.kind === 'connection') return connectionFieldSummary(field);
+  if (field.kind === 'array') return arrayFieldSummary(field);
+  if (field.kind === 'object') return objectFieldSummary(field);
+  return scalarFieldSummary(field);
 }
 
 function rawGraphqlBlock(theme: Theme, details: RawCompleteDetails): LinearBlockComponent {
-  const lines: Array<string | ReturnType<typeof wrapped>> = [
+  const lines: BlockLine[] = [
     '',
     theme.fg('success', '✓ GraphQL response'),
     wrapped(theme.fg('muted', `Keys: ${details.keys.length ? details.keys.join(', ') : '(none)'}`), 2),
+    ...details.fields.map((field) => wrapped(theme.fg('toolOutput', rawFieldSummary(field)), 2)),
+    ...details.notes.map((note) => wrapped(theme.fg('dim', note), 2)),
   ];
-  for (const field of details.fields) {
-    if (field.kind === 'connection') {
-      const paging = field.nextCursor ? ` · next page after="${field.nextCursor}"` : '';
-      lines.push(wrapped(theme.fg('toolOutput', `${field.key}: connection · ${plural(field.nodeCount, 'node')}${paging}`), 2));
-    } else if (field.kind === 'array') {
-      lines.push(wrapped(theme.fg('toolOutput', `${field.key}: array · ${plural(field.itemCount, 'item')}`), 2));
-    } else if (field.kind === 'object') {
-      const childKeys = field.keys;
-      lines.push(wrapped(theme.fg('toolOutput', `${field.key}: object · ${plural(childKeys.length, 'key')}${childKeys.length ? ` (${childKeys.join(', ')})` : ''}`), 2));
-    } else {
-      lines.push(wrapped(theme.fg('toolOutput', `${field.key}: ${field.valueKind}${field.charCount !== undefined ? ` · ${field.charCount} chars` : ''}`), 2));
-    }
-  }
-  for (const note of details.notes) lines.push(wrapped(theme.fg('dim', note), 2));
   return new LinearBlockComponent([...lines, '', wrapped(theme.fg('dim', jsonHint()))]);
 }
 
@@ -537,6 +722,19 @@ export function renderLinearBatchCall(args: any, theme: Theme): LinearBlockCompo
   return new LinearBlockComponent(lines);
 }
 
+function directErrorResult(
+  result: AgentToolResult<JsonObject>,
+  theme: Theme,
+  toolName: string,
+  noun: string,
+  rawGraphql = false,
+): ReturnType<typeof renderErrorResult> {
+  const message = resultErrorMessage(result);
+  const recovery = errorRecovery(message, toolName, noun, rawGraphql);
+  const guidance = recovery.includes(toolName) ? recovery : `${recovery} Then call ${toolName} again.`;
+  return renderErrorResult(result, theme, guidance);
+}
+
 export function renderLinearBatchResult(
   result: AgentToolResult<JsonObject>,
   options: ToolRenderResultOptions,
@@ -544,12 +742,7 @@ export function renderLinearBatchResult(
   context: LinearRenderContext,
 ): Text | LinearBlockComponent {
   if (options.isPartial) return new Text(theme.fg('warning', 'Running batch…'), 0, 0);
-  if (context.isError) {
-    const message = resultErrorMessage(result);
-    let recovery = errorRecovery(message, 'linear_batch', 'batch');
-    if (!recovery.includes('linear_batch')) recovery = `${recovery} Then call linear_batch again.`;
-    return renderErrorResult(result, theme, recovery);
-  }
+  if (context.isError) return directErrorResult(result, theme, 'linear_batch', 'batch');
   if (shouldShowJson(options, context)) return expandedJson(result, theme);
 
   const details = parseResultDetails(result.details, { kind: 'batch' });
@@ -575,6 +768,29 @@ export function renderLinearGraphqlCall(args: any, theme: Theme): LinearBlockCom
   return renderToolCall('linear_graphql', (args ?? {}) as ToolArgs, theme, ['workspace', 'sink']);
 }
 
+function retrievalRangeValue(value: ParsedJsonValue | undefined): string {
+  return String(value ?? '?');
+}
+
+function retrievalBlock(theme: Theme, details: RetrievalResultDetails): LinearBlockComponent {
+  const lines: BlockLine[] = [
+    '',
+    theme.fg('success', details.complete ? '✓ Stored result complete' : '✓ Stored result segment'),
+  ];
+  if (details.range) {
+    const start = retrievalRangeValue(details.range.start);
+    const end = retrievalRangeValue(details.range.end);
+    const total = retrievalRangeValue(details.range.total);
+    lines.push(wrapped(theme.fg('dim', `Range: ${start}–${end} of ${total} ${details.range.unit}`), 2));
+  }
+  if (details.nextOffset !== undefined) {
+    lines.push(wrapped(theme.fg('dim', `Next offset: ${details.nextOffset}`), 2));
+  }
+  lines.push(wrapped(theme.fg('toolOutput', JSON.stringify(details.value)), 2));
+  lines.push('', wrapped(theme.fg('dim', jsonHint())));
+  return new LinearBlockComponent(lines);
+}
+
 export function renderLinearGetResultResult(
   result: AgentToolResult<JsonObject>,
   options: ToolRenderResultOptions,
@@ -588,19 +804,7 @@ export function renderLinearGetResultResult(
   if (shouldShowJson(options, context)) return expandedJson(result, theme);
 
   const details = parseResultDetails(result.details, { kind: 'retrieval' });
-  const lines: Array<string | ReturnType<typeof wrapped>> = [
-    '',
-    theme.fg('success', details.complete ? '✓ Stored result complete' : '✓ Stored result segment'),
-  ];
-  if (details.range) {
-    lines.push(wrapped(theme.fg('dim', `Range: ${details.range.start ?? '?'}–${details.range.end ?? '?'} of ${details.range.total ?? '?'} ${details.range.unit}`), 2));
-  }
-  if (details.nextOffset !== undefined) {
-    lines.push(wrapped(theme.fg('dim', `Next offset: ${details.nextOffset}`), 2));
-  }
-  lines.push(wrapped(theme.fg('toolOutput', JSON.stringify(details.value)), 2));
-  lines.push('', wrapped(theme.fg('dim', jsonHint())));
-  return new LinearBlockComponent(lines);
+  return retrievalBlock(theme, details);
 }
 
 export function renderLinearGraphqlResult(
@@ -610,12 +814,7 @@ export function renderLinearGraphqlResult(
   context: LinearRenderContext,
 ): Text | LinearBlockComponent | LinearListComponent<Entity> {
   if (options.isPartial) return new Text(theme.fg('warning', 'Running request…'), 0, 0);
-  if (context.isError) {
-    const message = resultErrorMessage(result);
-    let recovery = errorRecovery(message, 'linear_graphql', 'operation', true);
-    if (!recovery.includes('linear_graphql')) recovery = `${recovery} Then call linear_graphql again.`;
-    return renderErrorResult(result, theme, recovery);
-  }
+  if (context.isError) return directErrorResult(result, theme, 'linear_graphql', 'operation', true);
   if (shouldShowJson(options, context)) return expandedJson(result, theme);
   const details = parseResultDetails(result.details, { kind: 'raw' });
   if (details.kind === 'spill') return new LinearBlockComponent(spillBlock(theme, details));

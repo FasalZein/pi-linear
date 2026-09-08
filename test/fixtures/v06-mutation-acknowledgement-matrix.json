@@ -55,7 +55,6 @@
   "update_document": [
     { "required": ["document", "title"], "target": "document" },
     { "required": ["document", "content"], "target": "document" },
-    { "required": ["document", "icon"], "target": "document" },
     { "required": ["document", "color"], "target": "document" },
     { "required": ["document", "issue"], "target": "document" },
     { "required": ["document", "team"], "target": "document" },
