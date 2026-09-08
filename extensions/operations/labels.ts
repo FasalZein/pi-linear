@@ -18,6 +18,7 @@ import {
 	listOperation,
 	simpleMutation,
 	operationParameterDecision,
+	pageParameterFields,
 } from "./shared";
 
 const createIssueLabelDocument = `mutation CreateIssueLabel($input: IssueLabelCreateInput!, $replaceTeamLabels: Boolean) {
@@ -40,12 +41,7 @@ export const issueLabels: readonly OperationDefinition[] = ([
 		...operationParameterDecision({
 		fields: [
 			{ name: "team", canonical: "TeamReference", card: { order: 0 }, accepted: { order: 0 } },
-			{ name: "after", canonical: "String", accepted: { order: 3 } },
-			{ name: "before", canonical: "String", accepted: { order: 4 } },
-			{ name: "first", canonical: "Int", accepted: { order: 5, type: "Int" } },
-			{ name: "last", canonical: "Int", accepted: { order: 6, type: "Int" } },
-			{ name: "includeArchived", canonical: "Boolean", accepted: { order: 7, type: "Boolean" } },
-			{ name: "orderBy", canonical: "PaginationOrderBy", accepted: { order: 8, type: "PaginationOrderBy" } },
+			...pageParameterFields(3),
 			{ name: "filter", canonical: "Filter", accepted: { order: 9, type: "Filter" } },
 			{ name: "teamId", accepted: { order: 1 } },
 			{ name: "teamKey", accepted: { order: 2 } },
@@ -63,7 +59,6 @@ export const issueLabels: readonly OperationDefinition[] = ([
 		purpose: "List issue labels.",
 		pageSize: 50,
 		filterType: "IssueLabelFilter",
-						resolverPaths: { team: "resolveTeamReference" },
 		plan: (v) => {
 			const ref = v.team ?? v.teamKey ?? v.teamId;
 			return {
@@ -118,7 +113,6 @@ export const issueLabels: readonly OperationDefinition[] = ([
 				throw new Error("canonical fields or nested input require name");
 			}
 		},
-		resolverPaths: { team: "resolveTeamReference" },
 		plan(v) {
 			const rawInput = object(v.input);
 			const replaceTeamLabels = v.replaceTeamLabels ?? rawInput?.replaceTeamLabels;
@@ -186,12 +180,7 @@ export const projectLabels: readonly OperationDefinition[] = ([
 		name: "list_project_labels",
 		...operationParameterDecision({
 		fields: [
-			{ name: "after", canonical: "String" },
-			{ name: "before", canonical: "String" },
-			{ name: "first", canonical: "Int" },
-			{ name: "last", canonical: "Int" },
-			{ name: "includeArchived", canonical: "Boolean" },
-			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			...pageParameterFields(),
 			{ name: "filter", canonical: "Filter" },
 		],
 		requirements: {

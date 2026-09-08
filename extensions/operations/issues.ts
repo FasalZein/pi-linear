@@ -38,9 +38,12 @@ import {
 	simpleMutation,
 	withGetResultView,
 	operationParameterDecision,
+	pageParameterFields,
 } from "./shared";
 
 
+export const ISSUE_HELP_OPERATION = "get_issue";
+export const ISSUE_ADVANCED_HELP_OPERATION = "create_issue";
 
 function createIssueRefs(v: CompatibilityObject) {
 	const input = mergedInput(v, [
@@ -54,7 +57,6 @@ function createIssueRefs(v: CompatibilityObject) {
 	]);
 	const projectRef = v.project;
 	if (isUuid(projectRef)) input.projectId = projectRef;
-	if (Array.isArray(v.labels)) input.labelIds = v.labels;
 	return {
 		input,
 		parentRef: v.parent ?? input.parentId,
@@ -228,13 +230,9 @@ export const issues: readonly OperationDefinition[] = ([
 			{ name: "state", canonical: "StateReference", card: { order: 3 }, accepted: { order: 5 } },
 			{ name: "stateType", canonical: "WorkflowStateType", card: { order: 4 }, accepted: { order: 7 } },
 			{ name: "assignee", canonical: "UserReference", card: { order: 5 }, accepted: { order: 8 } },
+			{ name: "projectId", canonical: "UUID", accepted: { order: 18 } },
 			{ name: "sort", canonical: "[IssueSort!]", accepted: { order: 17, type: "[SortInput!]" } },
-			{ name: "after", canonical: "String", accepted: { order: 10 } },
-			{ name: "before", canonical: "String", accepted: { order: 11 } },
-			{ name: "first", canonical: "Int", accepted: { order: 12, type: "Int" } },
-			{ name: "last", canonical: "Int", accepted: { order: 13, type: "Int" } },
-			{ name: "includeArchived", canonical: "Boolean", accepted: { order: 14, type: "Boolean" } },
-			{ name: "orderBy", canonical: "PaginationOrderBy", accepted: { order: 15, type: "PaginationOrderBy" } },
+			...pageParameterFields(10),
 			{ name: "filter", canonical: "Filter", accepted: { order: 16, type: "Filter" } },
 			{ name: "view", canonical: "ResultView" },
 			{ name: "teamId", accepted: { order: 3 } },
@@ -259,11 +257,6 @@ export const issues: readonly OperationDefinition[] = ([
 		sortType: "IssueSortInput",
 		sortKeys: ISSUE_SORT_KEYS,
 		example: { assignee: "me", stateType: "started" },
-						resolverPaths: {
-			team: "resolveTeamReference",
-			state: "resolveStateReference",
-			assignee: "resolveUserReference",
-		},
 		validateVariables(variables) {
 			if (variables.issues !== undefined) parseIssueReferenceSet(variables.issues);
 			const state = variables.state ?? variables.stateName;
@@ -288,10 +281,12 @@ export const issues: readonly OperationDefinition[] = ([
 			const teamRef = v.team ?? v.teamKey ?? v.teamId;
 			const assigneeRef = v.assignee ?? v.assigneeId;
 			const stateReference = v.state ?? v.stateName;
+			const projectRef = v.projectId;
 			const lookups = [
 				...(teamRef ? [teamLookup("team", String(teamRef))] : []),
 				...(assigneeRef ? [userLookup("assignee", String(assigneeRef))] : []),
 				...(stateReference ? [stateLookup("state", String(stateReference), teamRef ? "team" : undefined)] : []),
+				...(projectRef ? [namedEntityLookup("project", "project", String(projectRef))] : []),
 			];
 			return {
 				kind: "query",
@@ -300,6 +295,7 @@ export const issues: readonly OperationDefinition[] = ([
 					const team = resolved.team as { id: string; key: string } | undefined;
 					const assignee = resolved.assignee as { id: string; name?: string } | undefined;
 					const state = resolved.state as { id: string; teamId: string } | undefined;
+					const project = resolved.project as { id: string; name: string } | undefined;
 					if (team && state && state.teamId !== team.id) throw new Error(`Linear state "${String(stateReference)}" does not belong to team "${team.id}".`);
 					const convenience = compactObject({
 						id: issueIds ? { in: issueIds } : undefined,
@@ -307,6 +303,7 @@ export const issues: readonly OperationDefinition[] = ([
 						team: team ? { id: { eq: team.id } } : undefined,
 						state: state ? { id: { eq: state.id } } : v.stateType ? { type: { eq: String(v.stateType) } } : undefined,
 						assignee: assignee ? { id: { eq: assignee.id } } : undefined,
+						project: project ? { id: { eq: project.id } } : undefined,
 					});
 					return {
 						variables: { ...paginationVariables(v, 20), filter: mergeFilters(object(v.filter), convenience), sort: linearSort(v.sort) },
@@ -314,6 +311,7 @@ export const issues: readonly OperationDefinition[] = ([
 							team: team ? { requested: teamRef, resolvedId: team.id, key: team.key } : undefined,
 							assignee: assignee ? { requested: assigneeRef, resolvedId: assignee.id, name: assignee.name } : undefined,
 							state: state ? { requested: stateReference, resolvedId: state.id } : undefined,
+							project: project ? { requested: projectRef, resolvedId: project.id, name: project.name } : undefined,
 						}),
 					};
 				},
@@ -321,7 +319,7 @@ export const issues: readonly OperationDefinition[] = ([
 		},
 	}),
 	withGetResultView({
-		name: "get_issue",
+		name: ISSUE_HELP_OPERATION,
 		...operationParameterDecision({
 		fields: [
 			{ name: "issue", canonical: "IssueReference", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true } },
@@ -337,9 +335,8 @@ export const issues: readonly OperationDefinition[] = ([
 						aliases: [],
 		domain: "issues",
 		purpose: "Get one issue by exact identifier or UUID.",
-						example: { operation: "get_issue", variables: { issue: "AEO-258" } },
+						example: { operation: ISSUE_HELP_OPERATION, variables: { issue: "AEO-258" } },
 		document: getDocument("GetIssue", "issue", projection("issue", "detail")),
-		resolverPaths: { issue: "resolveIssueReference" },
 		plan(v) {
 			const ref = requireIssueReference(issueReference(v));
 			return pureQueryPlan({
@@ -350,51 +347,51 @@ export const issues: readonly OperationDefinition[] = ([
 		},
 	}, "issue", "issue", "GetIssue"),
 	simpleMutation({
-		name: "create_issue",
+		name: ISSUE_ADVANCED_HELP_OPERATION,
 		...operationParameterDecision({
 		fields: [
 			{ name: "title", canonical: "String", canonicalBranches: [0,1], compatibilityRequirements: [{"branch":0,"kind":"all","order":0},{"branch":1,"kind":"all","order":0,"input":true}], card: { order: 0, required: true }, accepted: { order: 2 } },
-			{ name: "team", canonical: "TeamReference", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":0},{"branch":1,"kind":"atLeastOne","order":0}], card: { order: 2 }, accepted: { order: 36 } },
-			{ name: "parent", canonical: "IssueReference", canonicalBranches: [1], compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":3},{"branch":1,"kind":"atLeastOne","order":3}], card: { order: 1 }, accepted: { order: 35 } },
-			{ name: "state", canonical: "StateReference", card: { order: 3 }, accepted: { order: 37 } },
-			{ name: "assignee", canonical: "UserReference", card: { order: 4 }, accepted: { order: 38 } },
+			{ name: "team", canonical: "TeamReference", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":0},{"branch":1,"kind":"atLeastOne","order":0}], card: { order: 2 }, accepted: { order: 36 }, reference: { order: 2 } },
+			{ name: "parent", canonical: "IssueReference", canonicalBranches: [1], compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":3},{"branch":1,"kind":"atLeastOne","order":3}], card: { order: 1 }, accepted: { order: 35 }, reference: { order: 0 } },
+			{ name: "state", canonical: "StateReference", card: { order: 3 }, accepted: { order: 37 }, reference: { order: 5 } },
+			{ name: "assignee", canonical: "UserReference", card: { order: 4 }, accepted: { order: 38 }, reference: { order: 7 } },
 			{ name: "dueDate", canonical: "Date", accepted: { order: 12 } },
 			{ name: "description", canonical: "String", accepted: { order: 3 } },
-			{ name: "descriptionData", canonical: "JsonString", accepted: { order: 10 } },
+			{ name: "descriptionData", canonical: "JsonString", tier: "advanced", accepted: { order: 10 } },
 			{ name: "priority", canonical: "Priority", accepted: { order: 19 } },
 			{ name: "estimate", canonical: "Int", accepted: { order: 13 } },
 			{ name: "projectId", canonical: "UUID", accepted: { order: 21 } },
-			{ name: "projectMilestoneId", canonical: "UUID", accepted: { order: 22 } },
+			{ name: "projectMilestoneId", canonical: "UUID", tier: "advanced", accepted: { order: 22 } },
 			{ name: "cycleId", canonical: "UUID", accepted: { order: 8 } },
 			{ name: "labelIds", canonical: "[UUID!]", accepted: { order: 15 } },
 			{ name: "subscriberIds", canonical: "[UUID!]", accepted: { order: 32 } },
-			{ name: "delegateId", canonical: "UUID", accepted: { order: 9 } },
-			{ name: "lastAppliedTemplateId", canonical: "UUID", accepted: { order: 16 } },
-			{ name: "slaType", canonical: "SlaDayCountType", accepted: { order: 26 } },
-			{ name: "slaBreachesAt", canonical: "NullableDateTime", accepted: { order: 24 } },
-			{ name: "slaStartedAt", canonical: "NullableDateTime", accepted: { order: 25 } },
-			{ name: "sortOrder", canonical: "Float", accepted: { order: 27 } },
-			{ name: "subIssueSortOrder", canonical: "Float", accepted: { order: 31 } },
-			{ name: "prioritySortOrder", canonical: "Float", accepted: { order: 20 } },
-			{ name: "templateId", canonical: "UUID", accepted: { order: 33 } },
-			{ name: "useDefaultTemplate", canonical: "Boolean", accepted: { order: 34 } },
-			{ name: "preserveSortOrderOnCreate", canonical: "Boolean", accepted: { order: 18 } },
-			{ name: "referenceCommentId", canonical: "UUID", accepted: { order: 23 } },
-			{ name: "sourceCommentId", canonical: "UUID", accepted: { order: 28 } },
-			{ name: "sourcePullRequestCommentId", canonical: "UUID", accepted: { order: 29 } },
-			{ name: "createAsUser", canonical: "String", accepted: { order: 6 } },
-			{ name: "displayIconUrl", canonical: "Url", accepted: { order: 11 } },
-			{ name: "completedAt", canonical: "NullableDateTime", accepted: { order: 5 } },
-			{ name: "createdAt", canonical: "DateTime", accepted: { order: 7 } },
-			{ name: "id", canonical: "UUID", accepted: { order: 14 } },
+			{ name: "delegateId", canonical: "UUID", tier: "advanced", accepted: { order: 9 } },
+			{ name: "lastAppliedTemplateId", canonical: "UUID", tier: "advanced", accepted: { order: 16 } },
+			{ name: "slaType", canonical: "SlaDayCountType", tier: "advanced", accepted: { order: 26 } },
+			{ name: "slaBreachesAt", canonical: "NullableDateTime", tier: "advanced", accepted: { order: 24 } },
+			{ name: "slaStartedAt", canonical: "NullableDateTime", tier: "advanced", accepted: { order: 25 } },
+			{ name: "sortOrder", canonical: "Float", tier: "advanced", accepted: { order: 27 } },
+			{ name: "subIssueSortOrder", canonical: "Float", tier: "advanced", accepted: { order: 31 } },
+			{ name: "prioritySortOrder", canonical: "Float", tier: "advanced", accepted: { order: 20 } },
+			{ name: "templateId", canonical: "UUID", tier: "advanced", accepted: { order: 33 } },
+			{ name: "useDefaultTemplate", canonical: "Boolean", tier: "advanced", accepted: { order: 34 } },
+			{ name: "preserveSortOrderOnCreate", canonical: "Boolean", tier: "advanced", accepted: { order: 18 } },
+			{ name: "referenceCommentId", canonical: "UUID", tier: "advanced", accepted: { order: 23 } },
+			{ name: "sourceCommentId", canonical: "UUID", tier: "advanced", accepted: { order: 28 } },
+			{ name: "sourcePullRequestCommentId", canonical: "UUID", tier: "advanced", accepted: { order: 29 } },
+			{ name: "createAsUser", canonical: "String", tier: "advanced", accepted: { order: 6 } },
+			{ name: "displayIconUrl", canonical: "Url", tier: "advanced", accepted: { order: 11 } },
+			{ name: "completedAt", canonical: "NullableDateTime", tier: "advanced", accepted: { order: 5 } },
+			{ name: "createdAt", canonical: "DateTime", tier: "advanced", accepted: { order: 7 } },
+			{ name: "id", canonical: "UUID", tier: "advanced", accepted: { order: 14 } },
 			{ name: "input", card: { order: 5, type: "Input" }, accepted: { order: 41, type: "Input" }, legacy: [{ order: 0, type: "IssueCreateInput", required: true, branch: 0 }] },
-			{ name: "teamId", compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":2},{"branch":0,"kind":"atLeastOne","order":4,"input":true},{"branch":1,"kind":"atLeastOne","order":2},{"branch":1,"kind":"atLeastOne","order":4,"input":true}], accepted: { order: 0 } },
-			{ name: "teamKey", compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":1},{"branch":1,"kind":"atLeastOne","order":1}], accepted: { order: 1 } },
-			{ name: "assigneeId", accepted: { order: 4 } },
-			{ name: "parentId", compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":5,"input":true},{"branch":1,"kind":"atLeastOne","order":5,"input":true}], accepted: { order: 17 } },
-			{ name: "stateId", accepted: { order: 30 } },
+			{ name: "teamId", compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":2},{"branch":0,"kind":"atLeastOne","order":4,"input":true},{"branch":1,"kind":"atLeastOne","order":2},{"branch":1,"kind":"atLeastOne","order":4,"input":true}], accepted: { order: 0 }, reference: { type: "TeamReference", order: 4 } },
+			{ name: "teamKey", compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":1},{"branch":1,"kind":"atLeastOne","order":1}], accepted: { order: 1 }, reference: { type: "TeamReference", order: 3 } },
+			{ name: "assigneeId", accepted: { order: 4 }, reference: { type: "UserReference", order: 8 } },
+			{ name: "parentId", compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":5,"input":true},{"branch":1,"kind":"atLeastOne","order":5,"input":true}], accepted: { order: 17 }, reference: { type: "IssueReference", order: 1 } },
+			{ name: "stateId", accepted: { order: 30 }, reference: { type: "StateReference", order: 6 } },
 			{ name: "project", accepted: { order: 39, type: "ProjectReference" } },
-			{ name: "labels", accepted: { order: 40, type: "[UUID!]" } },
+			{ name: "labels", accepted: { order: 40, type: "[LabelReference!]" } },
 		],
 		requirements: {
 			canonicalBranches: 2,
@@ -421,9 +418,13 @@ export const issues: readonly OperationDefinition[] = ([
 			}
 			const labelSources = [variables.labels, variables.labelIds, raw.labelIds].filter((value) => value !== undefined);
 			if (labelSources.length > 1) throw new Error("labels, labelIds, and input.labelIds conflict; send exactly one");
-			for (const labels of labelSources) {
-				if (!Array.isArray(labels) || !labels.length || labels.some((label) => !isUuid(label))) {
-					throw new Error("labels and labelIds must be a non-empty list of exact issue-label UUIDs");
+			if (variables.labels !== undefined && (!Array.isArray(variables.labels) || !variables.labels.length
+				|| variables.labels.some((label) => !isCompatibilityString(label) || !label.trim()))) {
+				throw new Error("labels must be a non-empty list of exact issue-label names or UUIDs");
+			}
+			for (const labelIds of [variables.labelIds, raw.labelIds].filter((value) => value !== undefined)) {
+				if (!Array.isArray(labelIds) || !labelIds.length || labelIds.some((label) => !isUuid(label))) {
+					throw new Error("labelIds must be a non-empty list of exact issue-label UUIDs");
 				}
 			}
 			const title = variables.title ?? raw.title;
@@ -445,57 +446,46 @@ export const issues: readonly OperationDefinition[] = ([
 				);
 			}
 		},
-		resolverPaths: {
-			parent: "resolveIssueReference",
-			parentId: "resolveIssueReference",
-			team: "resolveTeamReference",
-			teamKey: "resolveTeamReference",
-			teamId: "resolveTeamReference",
-			state: "resolveStateReference",
-			stateId: "resolveStateReference",
-			assignee: "resolveUserReference",
-			assigneeId: "resolveUserReference",
-		},
 		plan: createIssuePlan,
 	}),
 	simpleMutation({
 		name: "update_issue",
 		...operationParameterDecision({
 		fields: [
-			{ name: "issue", canonical: "IssueReference", canonicalBranches: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true }, accepted: { order: 0 } },
+			{ name: "issue", canonical: "IssueReference", canonicalBranches: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true }, accepted: { order: 0 }, reference: { order: 0 } },
 			{ name: "title", canonical: "String", canonicalBranches: [0], accepted: { order: 5 } },
-			{ name: "state", canonical: "StateReference", canonicalBranches: [1], card: { order: 1 }, accepted: { order: 2 } },
-			{ name: "assignee", canonical: "NullableUserReference", canonicalBranches: [2], card: { order: 2, type: "UserReference" }, accepted: { order: 3 } },
-			{ name: "parent", canonical: "NullableIssueReference", canonicalBranches: [3], card: { order: 3, type: "IssueReference" }, accepted: { order: 4 } },
-			{ name: "teamId", canonical: "TeamReference", canonicalBranches: [4], accepted: { order: 32 } },
+			{ name: "state", canonical: "StateReference", canonicalBranches: [1], card: { order: 1 }, accepted: { order: 2 }, reference: { order: 2 } },
+			{ name: "assignee", canonical: "NullableUserReference", canonicalBranches: [2], card: { order: 2, type: "UserReference" }, accepted: { order: 3 }, reference: { order: 4 } },
+			{ name: "parent", canonical: "NullableIssueReference", canonicalBranches: [3], card: { order: 3, type: "IssueReference" }, accepted: { order: 4 }, reference: { order: 6 } },
+			{ name: "teamId", canonical: "TeamReference", canonicalBranches: [4], accepted: { order: 32 }, reference: { order: 8 } },
 			{ name: "dueDate", canonical: "NullableDate", canonicalBranches: [5], accepted: { order: 10 } },
 			{ name: "addedLabelIds", canonical: "[UUID!]", canonicalBranches: [6], accepted: { order: 11 } },
 			{ name: "removedLabelIds", canonical: "[UUID!]", canonicalBranches: [7], accepted: { order: 23 } },
 			{ name: "description", canonical: "String", canonicalBranches: [8], accepted: { order: 6 } },
-			{ name: "descriptionData", canonical: "JsonString", canonicalBranches: [9], accepted: { order: 15 } },
+			{ name: "descriptionData", canonical: "JsonString", tier: "advanced", canonicalBranches: [9], accepted: { order: 15 } },
 			{ name: "priority", canonical: "Priority", canonicalBranches: [10], accepted: { order: 7 } },
 			{ name: "estimate", canonical: "Int", canonicalBranches: [11], accepted: { order: 16 } },
 			{ name: "projectId", canonical: "NullableUUID", canonicalBranches: [12], accepted: { order: 21 } },
-			{ name: "projectMilestoneId", canonical: "NullableUUID", canonicalBranches: [13], accepted: { order: 22 } },
+			{ name: "projectMilestoneId", canonical: "NullableUUID", tier: "advanced", canonicalBranches: [13], accepted: { order: 22 } },
 			{ name: "cycleId", canonical: "NullableUUID", canonicalBranches: [14], accepted: { order: 13 } },
 			{ name: "labelIds", canonical: "[UUID!]", canonicalBranches: [15], accepted: { order: 17 } },
 			{ name: "subscriberIds", canonical: "[UUID!]", canonicalBranches: [16], accepted: { order: 31 } },
-			{ name: "delegateId", canonical: "UUID", canonicalBranches: [17], accepted: { order: 14 } },
-			{ name: "lastAppliedTemplateId", canonical: "UUID", canonicalBranches: [18], accepted: { order: 18 } },
-			{ name: "slaType", canonical: "SlaDayCountType", canonicalBranches: [19], accepted: { order: 26 } },
-			{ name: "slaBreachesAt", canonical: "NullableDateTime", canonicalBranches: [20], accepted: { order: 24 } },
-			{ name: "slaStartedAt", canonical: "NullableDateTime", canonicalBranches: [21], accepted: { order: 25 } },
-			{ name: "sortOrder", canonical: "Float", canonicalBranches: [22], accepted: { order: 29 } },
-			{ name: "subIssueSortOrder", canonical: "Float", canonicalBranches: [23], accepted: { order: 30 } },
-			{ name: "prioritySortOrder", canonical: "Float", canonicalBranches: [24], accepted: { order: 20 } },
-			{ name: "autoClosedByParentClosing", canonical: "Boolean", canonicalBranches: [25], accepted: { order: 12 } },
-			{ name: "snoozedById", canonical: "UUID", canonicalBranches: [26], accepted: { order: 27 } },
-			{ name: "snoozedUntilAt", canonical: "NullableDateTime", canonicalBranches: [27], accepted: { order: 28 } },
+			{ name: "delegateId", canonical: "UUID", tier: "advanced", canonicalBranches: [17], accepted: { order: 14 } },
+			{ name: "lastAppliedTemplateId", canonical: "UUID", tier: "advanced", canonicalBranches: [18], accepted: { order: 18 } },
+			{ name: "slaType", canonical: "SlaDayCountType", tier: "advanced", canonicalBranches: [19], accepted: { order: 26 } },
+			{ name: "slaBreachesAt", canonical: "NullableDateTime", tier: "advanced", canonicalBranches: [20], accepted: { order: 24 } },
+			{ name: "slaStartedAt", canonical: "NullableDateTime", tier: "advanced", canonicalBranches: [21], accepted: { order: 25 } },
+			{ name: "sortOrder", canonical: "Float", tier: "advanced", canonicalBranches: [22], accepted: { order: 29 } },
+			{ name: "subIssueSortOrder", canonical: "Float", tier: "advanced", canonicalBranches: [23], accepted: { order: 30 } },
+			{ name: "prioritySortOrder", canonical: "Float", tier: "advanced", canonicalBranches: [24], accepted: { order: 20 } },
+			{ name: "autoClosedByParentClosing", canonical: "Boolean", tier: "advanced", canonicalBranches: [25], accepted: { order: 12 } },
+			{ name: "snoozedById", canonical: "UUID", tier: "advanced", canonicalBranches: [26], accepted: { order: 27 } },
+			{ name: "snoozedUntilAt", canonical: "NullableDateTime", tier: "advanced", canonicalBranches: [27], accepted: { order: 28 } },
 			{ name: "input", card: { order: 4, type: "Input" }, accepted: { order: 34, type: "Input" } },
-			{ name: "issueId", compatibilityRequirements: [{"branch":1,"kind":"all","order":0}], accepted: { order: 1 }, aliases: [{ order: 0, required: true, operation: "update_issue_state" }] },
-			{ name: "stateId", compatibilityRequirements: [{"branch":1,"kind":"all","order":1}], accepted: { order: 8 }, aliases: [{ order: 1, required: true, operation: "update_issue_state" }] },
-			{ name: "assigneeId", accepted: { order: 9 } },
-			{ name: "parentId", accepted: { order: 19 } },
+			{ name: "issueId", compatibilityRequirements: [{"branch":1,"kind":"all","order":0}], accepted: { order: 1 }, aliases: [{ order: 0, required: true, operation: "update_issue_state" }], reference: { type: "IssueReference", order: 1 } },
+			{ name: "stateId", compatibilityRequirements: [{"branch":1,"kind":"all","order":1}], accepted: { order: 8 }, aliases: [{ order: 1, required: true, operation: "update_issue_state" }], reference: { type: "StateReference", order: 3 } },
+			{ name: "assigneeId", accepted: { order: 9 }, reference: { type: "UserReference", order: 5 } },
+			{ name: "parentId", accepted: { order: 19 }, reference: { type: "IssueReference", order: 7 } },
 			{ name: "trashed", accepted: { order: 33 } },
 		],
 		requirements: {
@@ -511,17 +501,6 @@ export const issues: readonly OperationDefinition[] = ([
 		idKey: "issue",
 						example: { issue: "AEO-258", state: "Backlog" },
 		aliases: ["update_issue_state"],
-				resolverPaths: {
-			issue: "resolveIssueReference",
-			issueId: "resolveIssueReference",
-			state: "resolveStateReference",
-			stateId: "resolveStateReference",
-			assignee: "resolveUserReference",
-			assigneeId: "resolveUserReference",
-			parent: "resolveIssueReference",
-			parentId: "resolveIssueReference",
-			teamId: "resolveTeamReference",
-		},
 		plan: updateIssuePlan,
 	}),
 	listOperation({
@@ -531,12 +510,7 @@ export const issues: readonly OperationDefinition[] = ([
 			{ name: "term", canonical: "String", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, required: true }, accepted: { order: 0, required: true } },
 			{ name: "includeComments", canonical: "Boolean", card: { order: 1 }, accepted: { order: 1 } },
 			{ name: "team", canonical: "TeamReference", card: { order: 2 }, accepted: { order: 2 } },
-			{ name: "after", canonical: "String", accepted: { order: 4 } },
-			{ name: "before", canonical: "String", accepted: { order: 5 } },
-			{ name: "first", canonical: "Int", accepted: { order: 6, type: "Int" } },
-			{ name: "last", canonical: "Int", accepted: { order: 7, type: "Int" } },
-			{ name: "includeArchived", canonical: "Boolean", accepted: { order: 8, type: "Boolean" } },
-			{ name: "orderBy", canonical: "PaginationOrderBy", accepted: { order: 9, type: "PaginationOrderBy" } },
+			...pageParameterFields(4),
 			{ name: "filter", canonical: "Filter", accepted: { order: 10, type: "Filter" } },
 			{ name: "view", canonical: "ResultView" },
 			{ name: "teamId", accepted: { order: 3 } },
@@ -565,7 +539,6 @@ export const issues: readonly OperationDefinition[] = ([
 		pageSize: 20,
 		filterType: "IssueFilter",
 		totalCount: true,
-						resolverPaths: { team: "resolveTeamReference" },
 		example: { term: "authentication" },
 		extras: "$term: String! $includeComments: Boolean $teamId: String",
 		extraArgs: "term: $term includeComments: $includeComments teamId: $teamId",

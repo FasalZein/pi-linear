@@ -10,7 +10,8 @@ import manifest from '../extensions/generated/linear-tools.manifest.json';
 import { LINEAR_OPERATION_CATALOG } from '../extensions/generated/operation-catalog';
 import contracts from '../extensions/generated/operation-contracts.json';
 import schemaBaseline from './fixtures/design-b-s3-1-schema-baseline.json';
-import { DOMAINS, operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
+import helpBytes from '../scripts/fixtures/help-bytes.json';
+import { DOMAINS, operationDefinitions } from '../extensions/operations';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { exceptionalToolDefinitions } from '../extensions/exceptional-tools';
 
@@ -41,6 +42,43 @@ async function treeDigest(root: string): Promise<string> {
   };
   await walk(root);
   return hash.digest('hex');
+}
+
+async function generatedResolverProbe(
+  relativePath: string,
+  oldText: string,
+  newText: string,
+  operationName: string,
+  fieldName: string,
+  expectedLabel: string,
+): Promise<void> {
+  const parent = await mkdtemp(join(tmpdir(), 'linear-resolver-probe-'));
+  const copy = join(parent, basename(process.cwd()));
+  try {
+    await cp(process.cwd(), copy, {
+      recursive: true,
+      filter: (source) => !source.endsWith('/.git') && !source.endsWith('/node_modules'),
+    });
+    await symlink(join(process.cwd(), 'node_modules'), join(copy, 'node_modules'), 'dir');
+    const path = join(copy, relativePath);
+    const source = await readFile(path, 'utf8');
+    expect(source.split(oldText)).toHaveLength(2);
+    await writeFile(path, source.replace(oldText, newText));
+    const result = spawnSync('npm', ['run', 'generate'], {
+      cwd: copy,
+      encoding: 'utf8',
+      env: { ...process.env, CI: '1' },
+      timeout: 30_000,
+    });
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+    const generated = JSON.parse(
+      await readFile(join(copy, 'extensions/generated/operation-contracts.json'), 'utf8'),
+    ) as Array<{ name: string; preparation: { resolverPaths: Record<string, string> } }>;
+    expect(generated.find(({ name }) => name === operationName)?.preparation.resolverPaths[fieldName])
+      .toBe(expectedLabel);
+  } finally {
+    await rm(parent, { recursive: true, force: true });
+  }
 }
 
 async function staleSourceProbe(relativePath: string, oldText: string, newText: string): Promise<void> {
@@ -144,20 +182,20 @@ describe('generated products', () => {
     [
       'typed tool description',
       'extensions/typed-tool-metadata.ts',
-      'return operation.purpose;',
-      'return `${operation.purpose} Call it.`;',
+      'For advanced fields, request linear help',
+      'For rare fields, request linear help',
     ],
     [
       'typed tool schema field',
-      'extensions/typed-tool-metadata.ts',
+      'extensions/parameter-schema.ts',
       'Issue identifier such as ABC-123, or an issue UUID.',
       'Issue UUID or identifier such as ABC-123.',
     ],
     [
       'typed tool schema branches',
       'extensions/typed-tool-metadata.ts',
-      'oneOf: requirements',
-      'anyOf: requirements',
+      'return exclusive && advancedNames.size === 0',
+      'return exclusive',
     ],
     [
       'typed tool label',
@@ -173,6 +211,17 @@ describe('generated products', () => {
     ],
   ])('fails read-only generation checks for %s drift', async (_name, path, oldText, newText) => {
     await staleSourceProbe(path, oldText, newText);
+  }, 60_000);
+
+  it('generates a resolver declaration when an authored field becomes a Reference type', async () => {
+    await generatedResolverProbe(
+      'extensions/operations/comments.ts',
+      '{ name: "quotedText", canonical: "String", tier: "advanced", accepted: { order: 15 } },',
+      '{ name: "quotedText", canonical: "TeamReference", tier: "advanced", accepted: { order: 15 } },',
+      'create_comment',
+      'quotedText',
+      'resolveTeamReference',
+    );
   }, 60_000);
 
   it('keeps exact runtime typed-tool metadata in every generated contract', () => {
@@ -214,14 +263,30 @@ describe('generated products', () => {
       }
     }
     const createIssue = contractProjection(operationDefinitions.find(({ name }) => name === 'create_issue')!);
-    expect(createIssue.help.signature).toContain('projectId?: UUID');
-    expect(createIssue.help.signature).toContain('labelIds?: [UUID!]');
+    expect(createIssue.help.signature).toContain('project?: ProjectReference');
+    expect(createIssue.help.signature).toContain('labels?: [LabelReference!]');
     expect(createIssue.help.signature).not.toContain('input');
     expect(createIssue.help.callFields).not.toContain('input');
     expect(createIssue.compatibility.fields.map(({ name }) => name)).toContain('input');
   });
 
+  it('keeps hand-authored resolver labels out of Operation sources', async () => {
+    const directory = join(process.cwd(), 'extensions/operations');
+    const sourceFiles = (await readdir(directory))
+      .filter((name) => name.endsWith('.ts') && !['index.ts', 'shared.ts'].includes(name));
+    for (const name of sourceFiles) {
+      expect(await readFile(join(directory, name), 'utf8'), name).not.toContain('resolverPaths');
+    }
+  });
+
   it('serializes exhaustive compatibility and GraphQL products', () => {
+    for (const definition of operationDefinitions) {
+      const projected = contractProjection(definition);
+      expect(projected.preparation.resolverPaths, definition.name)
+        .toEqual(definition.preparation.resolverPaths);
+      expect(projected.compatibility.resolverPaths, definition.name)
+        .toEqual(definition.preparation.resolverPaths);
+    }
     const createComment = contractProjection(operationDefinitions.find(({ name }) => name === 'create_comment')!);
     expect(createComment.compatibility).toMatchObject({
       operationAliases: ['add_comment'],
@@ -285,35 +350,32 @@ describe('generated products', () => {
     expect(LINEAR_OPERATION_CATALOG).toContain('special: graphql, batch, get_result');
   });
 
-  it('keeps every exact help card sufficient to call and load its typed tool', () => {
+  it('returns only purpose, one direct example, and activation from exact operation help', () => {
     for (const definition of operationDefinitions) {
       const loaded: string[] = [];
       const result = helpResult({ operation: definition.name }, (names) => {
         loaded.push(...names);
         return names;
       });
-      const operation = projectCompatibilityOperation(definition);
-      const alwaysRequired = Object.keys(operation.canonical.fields)
-        .filter((name) => operation.canonical.branches.every((branch) => branch.includes(name)));
-      const expected = {
+      expect(result, definition.name).toEqual({
         loadedTools: [definition.toolName],
-        name: definition.name,
-        domain: definition.domain,
         purpose: definition.purpose,
-        parameters: Object.entries(operation.canonical.fields).map(([name, type]) => ({
-          name,
-          type,
-          required: alwaysRequired.includes(name),
-        })),
-        requirements: operation.canonical.branches,
         example: definition.canonical.example,
-      };
-      expect(result, definition.name).toEqual(
-        operation.pagination
-          ? { ...expected, pagination: { defaultPageSize: operation.pagination.defaultPageSize } }
-          : expected,
-      );
+      });
       expect(loaded, definition.name).toEqual([definition.toolName]);
+    }
+  });
+
+  it('keeps an exact measured help-byte fixture for every operation', () => {
+    expect(Object.keys(helpBytes)).toEqual(operationDefinitions.map(({ name }) => name));
+    for (const definition of operationDefinitions) {
+      const measured = Buffer.byteLength(JSON.stringify(
+        helpResult({ operation: definition.name }, (names) => names),
+      ), 'utf8');
+      const fixture = helpBytes[definition.name as keyof typeof helpBytes];
+      expect(measured, definition.name).toBe(fixture.current);
+      expect(measured, `${definition.name} must stay below its measured pre-slice help payload`)
+        .toBeLessThan(fixture.before);
     }
   });
 
@@ -352,7 +414,7 @@ describe('generated products', () => {
     expect(readme).toContain('Call `linear_get_issue` with:');
     expect(readme).toContain('The `linear` tool never runs an operation.');
     expect(readme).not.toContain('Call an operation directly');
-    expect(reference).toContain('then call the activated `linear_<operation>` tool with direct arguments');
+    expect(reference).toContain('The activated `linear_<operation>` schema is the authority for common fields.');
     expect(reference).not.toContain('| First call |');
     for (const definition of operationDefinitions) {
       expect(reference, definition.name).toContain(`| \`${definition.name}\` | \`${definition.toolName}\``);
@@ -360,7 +422,7 @@ describe('generated products', () => {
     }
   });
 
-  it('keeps all 49 generated typed schema bytes and operation-contract bytes unchanged', async () => {
+  it('keeps all 49 typed schemas stable and the generated operation contract exact', async () => {
     const typedSchemaSha256 = Object.fromEntries(typedLinearTools().map((tool) => [
       tool.name,
       createHash('sha256').update(JSON.stringify(tool.parameters)).digest('hex'),
@@ -384,7 +446,7 @@ describe('generated products', () => {
     expect(tools.map(({ label }) => label)).toEqual([
       'Linear', 'Linear get result', 'Linear GraphQL', 'Linear batch', 'Linear get issue',
     ]);
-    expect(helpResult({ operation: 'get_issue' })).toMatchObject({ name: 'get_issue' });
+    expect(helpResult({ operation: 'get_issue' }, (names) => names).loadedTools).toEqual(['linear_get_issue']);
     expect(JSON.stringify(tools.map(({ name }) => name))).not.toMatch(/linear (?:get issue|get_result|batch|graphql)/i);
   });
 
@@ -419,8 +481,8 @@ describe('generated products', () => {
     expect(readme).toContain(`The package registers ${manifest.allowedTools.length} tools.`);
     expect(readme).toContain('`delete_issue_relation` is the only delete operation.');
     expect(readme).not.toContain('Delete, archive, and unarchive tools do not exist.');
-    expect(reference).toContain('49 inactive typed tools');
-    expect(reference).toContain(`does not duplicate ${manifest.lazyTools.length} full schemas`);
+    expect(reference).toContain('49 typed tools load on demand.');
+    expect(reference).toContain(`\`linear_graphql\`, \`linear_batch\`, and ${manifest.lazyTools.length} typed tools load on demand.`);
     expect(changelog).toContain('By default, results show compact `meta.rateLimit` details only near exhaustion.');
     const referenceTelemetry = reference.match(/## Rate-limit telemetry\n([\s\S]*?)(?=\n## )/)?.[1] ?? '';
     const changelogTelemetry = changelog.split('\n').find((line) => line.startsWith('- Added internal telemetry')) ?? '';
@@ -445,7 +507,7 @@ describe('generated products', () => {
       readFile('docs/v09-result-transport-evidence.md', 'utf8'),
       readFile('CHANGELOG.md', 'utf8'),
     ]);
-    expect(adr).toContain('## Status\n\nAccepted.');
+    expect(adr).toContain('## Status\n\nAccepted with the v1.0 mutation acknowledgement and sequential batch amendments.');
     expect(adr).toContain('ADR 0006 publishes the operation catalog.');
     expect(adr).toContain('This ADR does not repeat or reopen that decision.');
     expect(adr).toContain('This ADR begins after operation selection.');

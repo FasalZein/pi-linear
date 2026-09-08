@@ -23,6 +23,7 @@ import {
   type ResultCategory,
 } from './operation-types';
 import { parseJson, type JsonObject, type JsonValue } from './json';
+import { mutationAcknowledgement } from './mutation-acknowledgement';
 import type { LinearOperation } from './operations';
 import { resolveOperationPlan, verifyOperationResult } from './operation-plan';
 import type { ResultView } from './selections';
@@ -514,7 +515,10 @@ async function executeOperationWithContext(
       }
       const category = prepared.resultCategory ?? operation.resultCategory;
       if (category === 'local') throw new Error(`Network operation "${operation.name}" cannot use local result routing.`);
-      const acknowledgement = prepared.acknowledgement;
+      const acknowledgement = prepared.acknowledgement
+        ?? (variant && prepared.resultView !== 'full'
+          ? mutationAcknowledgement(operation.name, data, variant)
+          : undefined);
       return routeLinearResult(acknowledgement ?? data, {
         label: operation.name,
         category,

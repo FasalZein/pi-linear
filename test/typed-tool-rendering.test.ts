@@ -359,20 +359,19 @@ describe('linear rendering', () => {
     expect(text).not.toContain('linear get_issue');
   });
 
-  it('renders a parameter card and reports the tool it loaded', () => {
+  it('renders lean exact help and reports the tool it loaded', () => {
     const text = block(apiResult(
       {
         loadedTools: ['linear_get_issue'],
-        name: 'get_issue',
         purpose: 'Get one issue.',
-        parameters: [{ name: 'issue', type: 'IssueReference', required: true }],
-        example: { operation: 'get_issue', variables: { issue: 'AEO-258' } },
+        example: { issue: 'AEO-258' },
       },
       { operation: 'help', variables: { operation: 'get_issue' } },
     ));
-    expect(text).toContain('✓ get_issue');
-    expect(text).toContain('issue');
-    expect(text).toContain('IssueReference');
+    expect(text).toContain('✓ operation help');
+    expect(text).toContain('Get one issue.');
+    expect(text).toContain('"issue":"AEO-258"');
+    expect(text).not.toContain('IssueReference');
     expect(text).toContain('✓ loaded 1 tool');
     expect(text).toContain('linear_get_issue');
   });

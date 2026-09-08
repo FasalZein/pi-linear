@@ -5,6 +5,8 @@ import { Compile } from 'typebox/compile';
 import { Kind, parse, type FragmentDefinitionNode, type SelectionSetNode } from 'graphql';
 import {
   DOMAINS,
+  ISSUE_ADVANCED_HELP_OPERATION,
+  ISSUE_HELP_OPERATION,
   getOperation,
   getOperationDefinition,
   operationDefinitions,
@@ -56,9 +58,9 @@ export {
   routeLinearResult,
 } from './runtime';
 
-const REQUEST_FORMS = 'Invalid request. Send exactly one of: { "operation": "get_issue", "variables": { "issue": "AEO-258" } }, { "operation": "help" }, or { "query": "query { viewer { id } }", "variables": {} }.';
-const HELP_FORMS = 'Send exactly one of: { "operation": "help" }, { "operation": "help", "variables": { "domain": "issues" } }, or { "operation": "help", "variables": { "operation": "get_issue" } }.';
-const NATURAL_SEARCH_REMOVED = 'Natural search was removed. The operation catalog is in the `linear` tool description. Send `{ "operation": "help", "variables": { "operation": "get_issue" } }` for exact parameters and to load `linear_get_issue`.';
+const REQUEST_FORMS = `Invalid request. Send exactly one of: { "operation": "${ISSUE_HELP_OPERATION}", "variables": { "issue": "AEO-258" } }, { "operation": "help" }, or { "query": "query { viewer { id } }", "variables": {} }.`;
+const HELP_FORMS = `Send exactly one of: { "operation": "help" }, { "operation": "help", "variables": { "domain": "issues" } }, { "operation": "help", "variables": { "operation": "${ISSUE_HELP_OPERATION}" } }, or { "operation": "help", "variables": { "operation": "${ISSUE_ADVANCED_HELP_OPERATION}:advanced" } }.`;
+const NATURAL_SEARCH_REMOVED = `Natural search was removed. The operation catalog is in the \`linear\` tool description. Send \`{ "operation": "help", "variables": { "operation": "${ISSUE_HELP_OPERATION}" } }\` for exact help and to load \`linear_${ISSUE_HELP_OPERATION}\`.`;
 const definitionDomainSet = new Set(operationDefinitions.map(({ domain }) => domain));
 const DEFINITION_DOMAINS = DOMAINS.filter((domain) => definitionDomainSet.has(domain));
 
@@ -110,7 +112,9 @@ export function helpResult(variables: JsonObject = {}, activator?: ToolActivator
   }
 
   const domain = variables.domain;
-  const operationName = variables.operation;
+  const requestedOperation = variables.operation;
+  const advancedDetail = isCompatibilityString(requestedOperation) && requestedOperation.endsWith(':advanced');
+  const operationName = advancedDetail ? requestedOperation.slice(0, -':advanced'.length) : requestedOperation;
   if (keys.length !== 1) throw new Error(`Invalid help request. ${HELP_FORMS}`);
   if (isCompatibilityString(domain) && DEFINITION_DOMAINS.includes(domain as OperationDomain)) {
     return {
@@ -134,22 +138,27 @@ export function helpResult(variables: JsonObject = {}, activator?: ToolActivator
       );
     }
     const canonical = operation.canonical;
-    const alwaysRequired = new Set(
-      canonical.branches.length
-        ? canonical.branches.reduce<string[]>((shared, branch) => shared.filter((field) => branch.includes(field)), [...canonical.branches[0]!])
-        : [],
-    );
-    const help: JsonObject = {
+    const advanced = canonical.advanced ?? {};
+    if (advancedDetail) {
+      if (!Object.keys(advanced).length) {
+        throw new Error(`Linear operation "${operation.name}" has no advanced parameters.`);
+      }
+      const modes = (name: string) => canonical.variants
+        ?.flatMap((variant, index) => variant.fields.includes(name) ? [index === 0 ? 'create' : 'update'] : []);
+      return {
+        ...activate(activator, [typedToolName(operation.name)]),
+        name: operation.name,
+        parameters: Object.entries(advanced).map(([name, type]) => {
+          const fieldModes = modes(name);
+          return fieldModes?.length ? { name, type, modes: fieldModes } : { name, type };
+        }),
+      };
+    }
+    return {
       ...activate(activator, [typedToolName(operation.name)]),
-      name: operation.name,
-      domain: operation.domain,
       purpose: operation.purpose,
-      parameters: Object.entries(canonical.fields).map(([name, type]) => ({ name, type, required: alwaysRequired.has(name) })),
-      requirements: canonical.branches,
+      example: getOperationDefinition(operation.name).canonical.example,
     };
-    if (operation.pagination) help.pagination = { defaultPageSize: operation.pagination.defaultPageSize };
-    help.example = getOperationDefinition(operation.name).canonical.example;
-    return help;
   }
   throw new Error(`Invalid help request. ${HELP_FORMS}`);
 }

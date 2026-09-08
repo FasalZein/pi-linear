@@ -78,11 +78,11 @@ describe('Google schema conversion', () => {
   it('keeps local required and save-mode checks after conversion', () => {
     const comment = tools.find((tool) => tool.name === 'linear_create_comment')!;
     const save = tools.find((tool) => tool.name === 'linear_save_project')!;
-    expect(() => comment.prepareArguments?.({})).toThrow(/Invalid arguments for "linear_create_comment"/);
+    expect(() => comment.prepareArguments?.({})).toThrow('exactly one comment target is required');
     // The save-mode rule is enforced by the pre-call gate, not by the published schema,
     // so it survives conversion to any provider dialect unchanged.
-    expect(() => save.prepareArguments?.({ projectId: '11111111-1111-4111-8111-111111111111' })).toThrow(
-      /"linear_save_project" in update mode requires projectId plus at least one field to change/,
+    expect(() => save.prepareArguments?.({ project: '11111111-1111-4111-8111-111111111111' })).toThrow(
+      /"linear_save_project" in update mode requires project plus at least one field to change/,
     );
     expect(declarations(false).map((declaration) => declaration.name)).toEqual(tools.map((tool) => tool.name));
     expect(declarations(true).map((declaration) => declaration.name)).toEqual(tools.map((tool) => tool.name));

@@ -65,7 +65,7 @@ describe('native OpenAI route', () => {
     ]);
 
     expect(() => harness.tool('linear_create_comment').prepareArguments({})).toThrow(
-      /Invalid arguments for "linear_create_comment"/,
+      'exactly one comment target is required',
     );
   });
 

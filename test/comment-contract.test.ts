@@ -22,8 +22,8 @@ const update = tools.get('linear_update_comment')!;
 
 const TARGETS = [
   ['issue', 'AEO-258'],
-  ['projectId', TARGET_ID],
-  ['initiativeId', TARGET_ID],
+  ['project', TARGET_ID],
+  ['initiative', TARGET_ID],
   ['projectUpdateId', TARGET_ID],
   ['initiativeUpdateId', TARGET_ID],
   ['postId', TARGET_ID],
@@ -63,9 +63,20 @@ afterEach(() => {
 });
 
 describe('canonical comment schemas', () => {
+  const createArgs = (target: string, value: CompatibilityValue, content: CompatibilityObject) => {
+    const variables: CompatibilityObject = {};
+    const advanced: CompatibilityObject = {};
+    if (target === 'issue') variables.issue = value;
+    else advanced[target] = value;
+    if ('body' in content) variables.body = content.body;
+    if ('bodyData' in content) advanced.bodyData = content.bodyData;
+    if (Object.keys(advanced).length) variables.advanced = advanced;
+    return variables;
+  };
+
   it.each(TARGETS)('accepts %s as the only create target with body or bodyData', (target, value) => {
-    expect(schemaAccepts(create, { [target]: value, body: 'Text' })).toBe(true);
-    expect(rawAccepts(create, { [target]: value, bodyData: { type: 'doc', content: [] } })).toBe(true);
+    expect(schemaAccepts(create, createArgs(target, value, { body: 'Text' }))).toBe(true);
+    expect(rawAccepts(create, createArgs(target, value, { bodyData: { type: 'doc', content: [] } }))).toBe(true);
   });
 
   it.each([
@@ -75,18 +86,19 @@ describe('canonical comment schemas', () => {
     ['boolean', true],
     ['null', null],
   ])('rejects %s bodyData roots', (_kind, bodyData) => {
-    expect(schemaAccepts(create, { issue: 'AEO-258', bodyData })).toBe(false);
+    expect(schemaAccepts(create, { issue: 'AEO-258', advanced: { bodyData } })).toBe(true);
+    expect(rawAccepts(create, { issue: 'AEO-258', advanced: { bodyData } })).toBe(false);
     expect(rawAccepts(update, { id: 'comment-id', bodyData })).toBe(false);
   });
 
   it.each([
-    ['missing target', { body: 'Text' }],
-    ['multiple targets', { issue: 'AEO-258', projectId: TARGET_ID, body: 'Text' }],
-    ['missing content', { issue: 'AEO-258' }],
-    ['multiple content values', { issue: 'AEO-258', body: 'Text', bodyData: { type: 'doc' } }],
-    ['unknown field', { issue: 'AEO-258', body: 'Text', archivedAt: '2026-08-18T00:00:00Z' }],
-  ])('rejects %s', (_name, args) => {
-    expect(schemaAccepts(create, args)).toBe(false);
+    ['missing target', { body: 'Text' }, false],
+    ['multiple targets', { issue: 'AEO-258', body: 'Text', advanced: { project: TARGET_ID } }, true],
+    ['missing content', { issue: 'AEO-258' }, false],
+    ['multiple content values', { issue: 'AEO-258', body: 'Text', advanced: { bodyData: { type: 'doc' } } }, true],
+    ['unknown field', { issue: 'AEO-258', body: 'Text', archivedAt: '2026-08-18T00:00:00Z' }, false],
+  ])('rejects %s', (_name, args, providerMayAccept) => {
+    expect(schemaAccepts(create, args)).toBe(providerMayAccept);
     expect(rawAccepts(create, args)).toBe(false);
   });
 
@@ -108,12 +120,10 @@ describe('canonical comment schemas', () => {
 
   it('publishes an independent dated field fixture and excludes unsafe or unsupported fields', () => {
     expect(Object.keys((create.parameters as any).properties)).toEqual([
-      'issue', 'projectId', 'initiativeId', 'projectUpdateId', 'initiativeUpdateId', 'postId',
-      'documentContentId', 'parentId', 'body', 'bodyData', 'quotedText',
-      'doNotSubscribeToIssue', 'createOnSyncedSlackThread', 'createdAt', 'id',
+      'issue', 'body', 'view', 'advanced',
     ]);
     expect(Object.keys((update.parameters as any).properties)).toEqual([
-      'id', 'body', 'bodyData', 'quotedText', 'skipEditedAt',
+      'id', 'body', 'bodyData', 'quotedText', 'skipEditedAt', 'view',
     ]);
     for (const field of ['input', 'issueId', 'subscriberIds', 'createAsUser', 'displayIconUrl', 'resolvingCommentId', 'resolvingUserId', 'resolved', 'trashed', 'archivedAt', 'externalUserId']) {
       expect((create.parameters as any).properties).not.toHaveProperty(field);
@@ -178,7 +188,10 @@ describe('comment compatibility validation and preparation', () => {
       quotedText: 'quote',
       subscriberIds: [TARGET_ID],
     } satisfies CompatibilityObject;
-    const targetFields = new Set<string>(TARGETS.map(([field]) => field === 'issue' ? 'issueId' : field));
+    const targetFields = new Set([
+      'issueId', 'projectId', 'initiativeId', 'projectUpdateId', 'initiativeUpdateId',
+      'postId', 'documentContentId', 'parentId',
+    ]);
     for (const field of Object.keys(LIVE_COMMENT_SCHEMA_2026_08_19.inputs.CommentCreateInput)) {
       const input: CompatibilityObject = targetFields.has(field)
         ? { [field]: compatibilityField(createValues, field), body: 'Text' }
@@ -219,7 +232,15 @@ describe('comment compatibility validation and preparation', () => {
     })).toThrow();
   });
 
-  it.each(TARGETS.slice(1))('accepts named compatibility target %s', (target, value) => {
+  it.each([
+    ['projectId', TARGET_ID],
+    ['initiativeId', TARGET_ID],
+    ['projectUpdateId', TARGET_ID],
+    ['initiativeUpdateId', TARGET_ID],
+    ['postId', TARGET_ID],
+    ['documentContentId', TARGET_ID],
+    ['parentId', TARGET_ID],
+  ] as const)('accepts named compatibility target %s', (target, value) => {
     expect(() => resolveRequest({ operation: 'create_comment', variables: { [target]: value, body: 'Text' } })).not.toThrow();
     expect(() => resolveRequest({ operation: 'create_comment', variables: { input: { [target]: value, bodyData: { type: 'doc' } } } })).not.toThrow();
   });
@@ -228,10 +249,10 @@ describe('comment compatibility validation and preparation', () => {
     expect((operations.create_comment.acceptedParameters ?? []).map(({ name }) => name)).toEqual([
       'issue', 'body', 'bodyData', 'createOnSyncedSlackThread', 'createdAt',
       'doNotSubscribeToIssue', 'documentContentId', 'id', 'initiativeId', 'initiativeUpdateId',
-      'issueId', 'parentId', 'postId', 'projectId', 'projectUpdateId', 'quotedText', 'input',
+      'issueId', 'parentId', 'postId', 'projectId', 'projectUpdateId', 'quotedText', 'input', 'view',
     ]);
     expect(operations.update_comment.parameters.map(({ name }) => name)).toEqual([
-      'id', 'body', 'bodyData', 'quotedText', 'skipEditedAt', 'input',
+      'id', 'body', 'bodyData', 'quotedText', 'skipEditedAt', 'input', 'view',
     ]);
   });
 
@@ -271,15 +292,16 @@ describe('comment compatibility validation and preparation', () => {
     vi.stubGlobal('fetch', fetch);
     const bodyData = { type: 'doc', content: [{ type: 'paragraph' }] };
 
-    expect((await prepare('create_comment', { issue: ISSUE_ID, bodyData })).variables).toEqual({ input: { issueId: ISSUE_ID, bodyData } });
+    expect((await prepare('create_comment', { issue: ISSUE_ID, advanced: { bodyData } })).variables).toEqual({ input: { issueId: ISSUE_ID, bodyData } });
     expect(fetch).toHaveBeenCalledTimes(1);
 
     for (const useParameters of [false, true]) {
       const converted = convertTools([create, update] as any, useParameters, false)![0]!.functionDeclarations as any[];
-      for (const declaration of converted) {
-        const parameters = declaration.parametersJsonSchema ?? declaration.parameters;
-        expect(parameters.properties.bodyData.type).toBe('object');
-      }
+      const createParameters = converted[0]!.parametersJsonSchema ?? converted[0]!.parameters;
+      const updateParameters = converted[1]!.parametersJsonSchema ?? converted[1]!.parameters;
+      expect(createParameters.properties.advanced.type).toBe('object');
+      expect(createParameters.properties).not.toHaveProperty('bodyData');
+      expect(updateParameters.properties.bodyData.type).toBe('object');
     }
     for (const tool of [create, update]) {
       expect(tool.constrainedSampling).toBe(false);
@@ -319,7 +341,7 @@ describe('comment compatibility validation and preparation', () => {
 
   it('normalizes all direct targets and current safe fields without conversion', async () => {
     const bodyData = { type: 'doc', content: [] };
-    for (const [target, value] of TARGETS.slice(1)) {
+    for (const [target, value] of TARGETS.slice(3)) {
       expect((await prepare('create_comment', { [target]: value, bodyData, subscriberIds: [OTHER_ID] })).variables)
         .toEqual({ input: { [target]: value, bodyData, subscriberIds: [OTHER_ID] } });
     }

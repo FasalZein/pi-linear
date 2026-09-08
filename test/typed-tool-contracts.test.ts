@@ -8,6 +8,7 @@ import { linearApiTool } from '../extensions/api';
 import { requirementBranches, typedLinearTools, typedToolNames } from '../extensions/typed-tools';
 import { CANONICAL_OPERATIONS, canonicalFieldNames, missingCanonicalOperations } from '../extensions/canonical';
 import { operations } from '../extensions/operations';
+import { schemaFor } from '../extensions/parameter-schema';
 import type { JsonObject, JsonValue } from '../extensions/json';
 // The validator Pi runs on every tool call, imported from the agent runtime itself.
 import { validateToolArguments } from '../node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/utils/validation.js';
@@ -120,7 +121,11 @@ describe('deterministic activation', () => {
       variables: { operation: 'get_issue' },
     });
 
-    expect(result.details.loadedTools).toEqual(['linear_get_issue']);
+    expect(result.details).toEqual({
+      loadedTools: ['linear_get_issue'],
+      purpose: operations.get_issue!.purpose,
+      example: { issue: 'AEO-258' },
+    });
     const after = harness.activeTools();
     for (const name of before) expect(after).toContain(name);
     expect(after.length).toBe(before.length + 1);
@@ -164,7 +169,10 @@ describe('deterministic activation', () => {
       variables: { operation: 'get_issue' },
     });
 
-    expect(second.details.loadedTools).toBeUndefined();
+    expect(second.details).toEqual({
+      purpose: operations.get_issue!.purpose,
+      example: { issue: 'AEO-258' },
+    });
     expect(harness.activeTools()).toEqual(afterFirst);
     for (const names of harness.history) {
       for (const name of afterFirst.filter((entry) => names.includes(entry))) {
@@ -284,8 +292,14 @@ function sampleFor(type: string): JsonValue {
 }
 
 function sampleBranch(operationName: string, branch: readonly string[]): JsonObject {
-  const { fields } = CANONICAL_OPERATIONS[operationName]!;
-  return Object.fromEntries(branch.map((key) => [key, sampleFor(fields[key]!)]));
+  const { fields, advanced = {} } = CANONICAL_OPERATIONS[operationName]!;
+  const common = branch.filter((key) => key in fields)
+    .map((key) => [key, sampleFor(fields[key]!)] as const);
+  const tail = branch.filter((key) => key in advanced)
+    .map((key) => [key, sampleFor(advanced[key]!)] as const);
+  const sample: JsonObject = Object.fromEntries(common);
+  if (tail.length) sample.advanced = Object.fromEntries(tail);
+  return sample;
 }
 
 /**
@@ -309,7 +323,8 @@ const ALIAS_OF = {
 const ALWAYS_FORBIDDEN = ['input', 'trashed', 'teamKey'];
 
 function forbiddenAliases(operationName: string): string[] {
-  const published = new Set(Object.keys(CANONICAL_OPERATIONS[operationName]!.fields));
+  const contract = CANONICAL_OPERATIONS[operationName]!;
+  const published = new Set([...Object.keys(contract.fields), ...Object.keys(contract.advanced ?? {})]);
   return [
     ...ALWAYS_FORBIDDEN,
     ...Object.entries(ALIAS_OF)
@@ -326,7 +341,7 @@ describe('canonical typed contract', () => {
 
   it('publishes no v0.4 compatibility alias', () => {
     for (const [operationName, contract] of Object.entries(CANONICAL_OPERATIONS)) {
-      const published = Object.keys(contract.fields);
+      const published = [...Object.keys(contract.fields), ...Object.keys(contract.advanced ?? {})];
       for (const alias of forbiddenAliases(operationName)) {
         expect(published, `${operationName}.${alias}`).not.toContain(alias);
       }
@@ -342,7 +357,7 @@ describe('canonical typed contract', () => {
     for (const [operationName, contract] of Object.entries(CANONICAL_OPERATIONS)) {
       for (const branch of contract.branches) {
         for (const key of branch) {
-          expect(Object.keys(contract.fields), `${operationName}.${key}`).toContain(key);
+          expect([...Object.keys(contract.fields), ...Object.keys(contract.advanced ?? {})], `${operationName}.${key}`).toContain(key);
         }
       }
     }
@@ -353,7 +368,10 @@ describe('canonical typed contract', () => {
       const schema = tools.get(`linear_${operationName}`)!.parameters as any;
       const objects = schema.properties ? [schema] : schema.anyOf;
       const properties = [...new Set(objects.flatMap((object: any) => Object.keys(object.properties)))];
-      expect(properties.sort()).toEqual(Object.keys(contract.fields).sort());
+      expect(properties.sort()).toEqual([
+        ...Object.keys(contract.fields),
+        ...(Object.keys(contract.advanced ?? {}).length ? ['advanced'] : []),
+      ].sort());
       expect(properties, `${operationName} must not publish workspace`).not.toContain('workspace');
     }
   });
@@ -376,12 +394,20 @@ describe('typed schema validation across all 49 tools', () => {
       for (const branch of contract.branches) {
         const args = sampleBranch(operationName, branch);
         for (const omitted of branch) {
-          const partial = { ...args };
-          delete partial[omitted];
-          const satisfiedByAnother = contract.branches.some((other) =>
-            other.every((key) => partial[key] !== undefined));
+          const partial = structuredClone(args);
+          if (omitted in (contract.advanced ?? {})) {
+            delete (partial.advanced as JsonObject)[omitted];
+            if (!Object.keys(partial.advanced as JsonObject).length) delete partial.advanced;
+          } else delete partial[omitted];
+          const satisfiedByAnother = contract.branches.some((other) => other.every((key) =>
+            key in (contract.advanced ?? {})
+              ? (partial.advanced as JsonObject | undefined)?.[key] !== undefined
+              : partial[key] !== undefined));
           if (!satisfiedByAnother) {
-            expect(accepts(toolName, partial), `${toolName} without ${omitted}`).toBe(false);
+            const accepted = contract.exclusiveBranches && Object.keys(contract.advanced ?? {}).length
+              ? rawAccepts(toolName, partial)
+              : accepts(toolName, partial);
+            expect(accepted, `${toolName} without ${omitted}`).toBe(false);
           }
         }
       }
@@ -483,10 +509,10 @@ describe('typed schema validation across all 49 tools', () => {
     // Valid arguments come back as the identical object: no field is added, removed,
     // renamed, or reordered before Pi validates.
     const tool = tools.get('linear_create_issue')!;
-    const args = { title: 'T', team: 'AEO', priority: 2, labelIds: [UUID_SAMPLE] };
+    const args = { title: 'T', team: 'AEO', priority: 2, labels: [UUID_SAMPLE] };
     const prepared = tool.prepareArguments!(args);
     expect(prepared).toBe(args);
-    expect(prepared).toEqual({ title: 'T', team: 'AEO', priority: 2, labelIds: [UUID_SAMPLE] });
+    expect(prepared).toEqual({ title: 'T', team: 'AEO', priority: 2, labels: [UUID_SAMPLE] });
   });
 
   it.each([
@@ -586,8 +612,8 @@ describe('execution boundary rejects non-canonical arguments before any network 
     const requests = installServer();
     await expect(execute(tools.get('linear_get_document')!, { query: 'Dispatch doc' }))
       .rejects.toThrow(/query|document/);
-    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', project: 'Dispatch' })).toBe(false);
-    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', labels: [UUID_SAMPLE] })).toBe(false);
+    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', project: 'Dispatch' })).toBe(true);
+    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', labels: [UUID_SAMPLE] })).toBe(true);
     expect(requests).toHaveLength(0);
   });
 
@@ -596,7 +622,7 @@ describe('execution boundary rejects non-canonical arguments before any network 
     ['linear_create_issue', { title: 'T', team: 'AEO', teamId: 'team-9' }, /teamId/],
     ['linear_update_issue', { issue: 'AEO-258', state: 'Done', stateId: 'state-9' }, /stateId/],
     ['linear_create_issue', { title: 'T', parent: 'AEO-258', parentId: 'AEO-999' }, /parentId/],
-    ['linear_save_milestone', { milestoneId: 'Beta', name: 'B', input: { projectId: 'p' } }, /input/],
+    ['linear_save_milestone', { milestoneId: 'Beta', name: 'B', input: { projectId: 'p' } }, /milestoneId.*milestone/],
   ])('rejects %s carrying a contradictory alias', async (toolName, args, pattern) => {
     const requests = installServer();
     // The published schema already refuses these; execute() refuses them again so no
@@ -610,13 +636,13 @@ describe('execution boundary rejects non-canonical arguments before any network 
   it('states the accepted branches when required parameters are missing', async () => {
     const requests = installServer();
     await expect(execute(tools.get('linear_create_issue')!, { title: 'New' }))
-      .rejects.toThrow(/supply \{ title, team \} or \{ title, parent \}/);
+      .rejects.toThrow(/team or parent is required/);
     expect(requests).toHaveLength(0);
   });
 
   it('rejects an identity-only save before any request', async () => {
     const requests = installServer();
-    await expect(execute(tools.get('linear_save_project')!, { projectId: 'Roadmap' })).rejects.toThrow();
+    await expect(execute(tools.get('linear_save_project')!, { project: 'Roadmap' })).rejects.toThrow();
     expect(requests).toHaveLength(0);
   });
 
@@ -691,9 +717,10 @@ describe('package hygiene', () => {
     const createIssueFields = canonicalFieldNames(operations.create_issue!);
     expect(createIssueFields.slice(0, 6))
       .toEqual(['title', 'team', 'parent', 'state', 'assignee', 'dueDate']);
-    for (const field of ['labelIds', 'projectId', 'cycleId', 'slaType', 'templateId', 'id']) {
+    for (const field of ['labels', 'project', 'cycle', 'advanced']) {
       expect(createIssueFields).toContain(field);
     }
+    for (const field of ['slaType', 'templateId', 'id']) expect(createIssueFields).not.toContain(field);
   });
 });
 
@@ -726,10 +753,10 @@ const COMPATIBILITY: ReadonlyArray<{
       ['state', 'Backlog'],
       ['assignee', 'me'],
       ['parent', 'AEO-258'],
-      ['projectId', UUID],
-      ['cycleId', UUID],
-      ['labelIds', [UUID]],
-      ['subscriberIds', [UUID]],
+      ['project', UUID],
+      ['cycle', UUID],
+      ['labels', [UUID]],
+      ['subscribers', [UUID]],
     ],
     absent: ['teamId', 'teamKey', 'stateId', 'assigneeId', 'parentId', 'input'],
   },
@@ -747,12 +774,12 @@ const COMPATIBILITY: ReadonlyArray<{
       ['state', 'Done'],
       ['assignee', 'sam@example.com'],
       ['parent', 'AEO-1'],
-      ['projectId', UUID],
-      ['cycleId', UUID],
-      ['labelIds', [UUID]],
-      ['addedLabelIds', [UUID]],
-      ['removedLabelIds', [UUID]],
-      ['subscriberIds', [UUID]],
+      ['project', UUID],
+      ['cycle', UUID],
+      ['labels', [UUID]],
+      ['addLabels', [UUID]],
+      ['removeLabels', [UUID]],
+      ['subscribers', [UUID]],
     ],
     absent: ['issueId', 'stateId', 'assigneeId', 'parentId', 'input', 'trashed'],
   },
@@ -762,17 +789,16 @@ const COMPATIBILITY: ReadonlyArray<{
     base: { title: 'Planning notes' },
     fields: [
       ['content', 'body'],
-      ['icon', '📄'],
       ['color', '#ff0000'],
-      ['issueId', 'AEO-258'],
-      ['projectId', UUID],
-      ['teamId', 'AEO'],
-      ['initiativeId', UUID],
-      ['cycleId', UUID],
-      ['subscriberIds', [UUID]],
+      ['issue', 'AEO-258'],
+      ['project', UUID],
+      ['team', 'AEO'],
+      ['initiative', UUID],
+      ['cycle', UUID],
+      ['subscribers', [UUID]],
       ['sortOrder', 12.5],
     ],
-    absent: ['teamKey', 'input'],
+    absent: ['teamKey', 'icon', 'input'],
   },
   {
     tool: 'linear_update_document',
@@ -781,15 +807,14 @@ const COMPATIBILITY: ReadonlyArray<{
     fields: [
       ['title', 'Renamed'],
       ['content', 'body'],
-      ['icon', '📄'],
       ['color', '#00ff00'],
-      ['issueId', 'AEO-258'],
-      ['projectId', UUID],
-      ['teamId', 'AEO'],
+      ['issue', 'AEO-258'],
+      ['project', UUID],
+      ['team', 'AEO'],
       ['hiddenAt', null],
       ['sortOrder', 3],
     ],
-    absent: ['teamKey', 'input', 'trashed'],
+    absent: ['teamKey', 'icon', 'input', 'trashed'],
   },
   {
     tool: 'linear_create_comment',
@@ -821,7 +846,7 @@ const COMPATIBILITY: ReadonlyArray<{
   {
     tool: 'linear_save_project',
     baseAlone: 'accepted',
-    base: { name: 'Auth hardening', teamIds: [UUID] },
+    base: { name: 'Auth hardening', teams: [UUID] },
     fields: [
       ['description', 'summary'],
       ['content', 'body'],
@@ -849,13 +874,14 @@ describe('upstream and runtime capability coverage', () => {
   });
 
   it('lets an update change only a restored field', () => {
-    for (const field of ['projectId', 'cycleId', 'labelIds', 'addedLabelIds', 'removedLabelIds', 'subscriberIds']) {
-      const value = field.endsWith('Ids') ? [UUID] : UUID;
+    for (const field of ['project', 'cycle', 'labels', 'addLabels', 'removeLabels', 'subscribers']) {
+      const value = ['labels', 'addLabels', 'removeLabels', 'subscribers'].includes(field) ? [UUID] : UUID;
       expect(accepts('linear_update_issue', { issue: 'AEO-258', [field]: value }), field).toBe(true);
     }
-    for (const field of ['assignee', 'parent', 'projectId', 'projectMilestoneId', 'cycleId', 'dueDate']) {
+    for (const field of ['assignee', 'parent', 'project', 'cycle', 'dueDate']) {
       expect(accepts('linear_update_issue', { issue: 'AEO-258', [field]: null }), field).toBe(true);
     }
+    expect(accepts('linear_update_issue', { issue: 'AEO-258', advanced: { milestone: null } }), 'milestone').toBe(true);
   });
 
   it('publishes only team keys or UUIDs and rejects a human team name before credential access', async () => {
@@ -868,9 +894,9 @@ describe('upstream and runtime capability coverage', () => {
   });
 
   it('rejects malformed values for the restored fields', () => {
-    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', projectId: 'not-a-uuid' })).toBe(false);
-    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', labelIds: [] })).toBe(false);
-    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', labelIds: ['nope'] })).toBe(false);
+    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', project: '' })).toBe(false);
+    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', labels: [] })).toBe(false);
+    expect(accepts('linear_create_issue', { title: 'T', team: 'AEO', labels: ['bug'] })).toBe(true);
     expect(accepts('linear_update_issue', { issue: 'AEO-1', dueDate: 'clear' })).toBe(false);
     // create_issue has no nullable due date: Pi drops the null instead of forwarding it.
     expect(validate('linear_create_issue', { title: 'T', team: 'AEO', dueDate: null }))
@@ -964,9 +990,10 @@ describe('strict raw arguments before Pi conversion', () => {
   it('rejects an invalid null and keeps valid nullable updates', () => {
     expect(rawAccepts('linear_get_issue', { issue: null })).toBe(false);
     expect(rawAccepts('linear_create_issue', { title: 'T', team: 'AEO', dueDate: null })).toBe(false);
-    for (const field of ['assignee', 'parent', 'projectId', 'projectMilestoneId', 'cycleId', 'dueDate']) {
+    for (const field of ['assignee', 'parent', 'project', 'cycle', 'dueDate']) {
       expect(rawAccepts('linear_update_issue', { issue: 'AEO-1', [field]: null }), field).toBe(true);
     }
+    expect(rawAccepts('linear_update_issue', { issue: 'AEO-1', advanced: { milestone: null } }), 'milestone').toBe(true);
     expect(rawAccepts('linear_update_issue', { issue: 'AEO-1', dueDate: '2026-09-01' })).toBe(true);
   });
 
@@ -1003,12 +1030,32 @@ describe('strict raw arguments before Pi conversion', () => {
       title: 'New title',
       priority: 0,
       dueDate: null,
-      labelIds: [UUID_SAMPLE],
-      sortOrder: 1.5,
+      labels: [UUID_SAMPLE],
+      advanced: { sortOrder: 1.5 },
     };
     const snapshot = JSON.stringify(args);
     const prepared = tools.get('linear_update_issue')!.prepareArguments!(args);
     expect(JSON.stringify(prepared)).toBe(snapshot);
     expect(JSON.stringify(validate('linear_update_issue', args))).toBe(snapshot);
+  });
+});
+
+describe('parameter type tokens', () => {
+  it('builds the contracted schema for known tokens', () => {
+    expect(schemaFor('Priority')).toMatchObject({ type: 'integer', minimum: 0, maximum: 4 });
+    expect(schemaFor('Color')).toMatchObject({ type: 'string', pattern: '^#[0-9a-fA-F]{6}$' });
+    expect(schemaFor('[SortInput!]')).toMatchObject({ type: 'array', minItems: 1 });
+  });
+
+  it('treats an unknown token as a plain reference string', () => {
+    expect(schemaFor('TotallyUnknownToken')).toMatchObject({ type: 'string', minLength: 1 });
+  });
+
+  it('describes reference tokens and publishes enum members', () => {
+    expect(schemaFor('IssueReference')).toMatchObject({
+      type: 'string',
+      description: 'Issue identifier such as ABC-123, or an issue UUID.',
+    });
+    expect(schemaFor('ResultView')).toMatchObject({ enum: ['summary', 'full'] });
   });
 });

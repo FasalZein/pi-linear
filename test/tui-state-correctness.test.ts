@@ -152,7 +152,7 @@ describe('v0.6 state correctness', () => {
     const document = text(typed(
       'update_document',
       { data: { documentUpdate: { success: true, document: null } }, meta },
-      { documentId: 'doc-123', title: 'Replacement title' },
+      { document: 'doc-123', title: 'Replacement title' },
     ));
     expect(document).toContain('✓ Updated document doc-123');
     expect(document).not.toContain('Replacement title');
@@ -160,7 +160,7 @@ describe('v0.6 state correctness', () => {
     const cycle = text(typed(
       'update_cycle',
       { data: { cycleUpdate: { success: true, cycle: null } }, meta },
-      { id: 'cycle-7', name: 'Renamed cycle' },
+      { cycle: 'cycle-7', name: 'Renamed cycle' },
     ));
     expect(cycle).toContain('✓ Updated cycle cycle-7');
   });
@@ -168,10 +168,15 @@ describe('v0.6 state correctness', () => {
   it('branches recovery by cause and never gives parameter advice for policy blocks', () => {
     const cases = [
       ['Linear mutations are disabled by read-only mode.', 'mutation-enabled entry point'],
+      ['Destructive named input is unavailable at variables.trashed.', 'authorized raw GraphQL mutation'],
       ['Mutation root issueDelete is not allowed.', 'supported named operation'],
+      ['Generated tool manifest configuration excluded a filtered tool.', 'generated tool manifest'],
+      ['Unknown parameters for update_issue: icon', 'Remove the unaccepted parameters'],
       ['Linear issue "AEO-404" was not found.', 'exact issue reference'],
+      ['Linear authentication failed: invalid credential', '/linear-auth'],
       ['Linear network error: connection reset', 'Retry'],
       ['Linear GraphQL error: service unavailable', 'Retry'],
+      ['Linear request failed unexpectedly', 'parameter card'],
     ] as const;
     for (const [message, recovery] of cases) {
       const rendered = text(typed('update_issue', { error: message }, { issue: 'AEO-258' }, plainTheme, true));
@@ -193,7 +198,7 @@ describe('v0.6 state correctness', () => {
     }
     const stableHttp = text(typed(
       'get_issue',
-      { error: 'Linear API request failed: 422 Unprocessable Entity' },
+      { error: 'Linear API request failed: 422 service unavailable' },
       {},
       plainTheme,
       true,
@@ -201,6 +206,25 @@ describe('v0.6 state correctness', () => {
     expect(stableHttp).toContain('Review the request and Linear server response');
     expect(stableHttp).not.toContain('Retry the same request');
     expect(stableHttp).not.toContain('parameter card');
+
+    const typedRawMutation = text(typed(
+      'get_issue',
+      { error: 'Raw Linear mutations are disabled.' },
+      {},
+      plainTheme,
+      true,
+    ));
+    expect(typedRawMutation).toContain('parameter card');
+    expect(typedRawMutation).not.toContain('LINEAR_MUTATIONS=all');
+
+    const rawMutation = text(graphql(
+      { error: 'Raw Linear mutations are disabled.' },
+      {},
+      plainTheme,
+      true,
+    ));
+    expect(rawMutation).toContain('LINEAR_MUTATIONS=all');
+    expect(rawMutation).not.toContain('parameter card');
 
     for (const detail of ['service unavailable', 'gateway timeout', 'rate-limit exceeded']) {
       const rendered = text(typed(
@@ -237,6 +261,16 @@ describe('v0.6 state correctness', () => {
     ));
     expect(documentValidation).toContain('parameter card');
     expect(documentValidation).not.toContain('Retry the same request');
+
+    const invalidIcon = text(typed(
+      'create_document',
+      { error: 'Linear GraphQL error: icon is not a valid icon.' },
+      { title: 'Planning notes', icon: 'Target' },
+      plainTheme,
+      true,
+    ));
+    expect(invalidIcon).toContain('parameter card');
+    expect(invalidIcon).not.toContain('Retry the same request');
 
     const unknownExecution = text(typed(
       'get_issue',
@@ -392,8 +426,8 @@ describe('v0.6 state correctness', () => {
 
     const loaded = text(api({
       loadedTools: ['linear_get_issue'],
-      name: 'get_issue',
-      parameters: [{ name: 'issue', type: 'IssueReference', required: true }],
+      purpose: 'Get one issue.',
+      example: { issue: 'AEO-258' },
     }, { operation: 'help', variables: { operation: 'get_issue' } }));
     expect(loaded).toContain('✓ loaded 1 tool');
     expect(loaded).not.toContain('+ loaded');

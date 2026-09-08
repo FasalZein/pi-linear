@@ -216,7 +216,7 @@ describe('Raw query details', () => {
 });
 
 describe('help details', () => {
-  it('parses domain, operation list, and parameter-card help', () => {
+  it('parses domain, operation list, lean exact help, and exceptional parameter cards', () => {
     expect(parseResultDetails({ domains: ['issues', 'comments'], loadedTools: ['linear_get_issue'] }, { kind: 'help' })).toEqual({
       kind: 'help-domains',
       domains: ['issues', 'comments'],
@@ -232,14 +232,24 @@ describe('help details', () => {
       loaded: [],
     });
     expect(parseResultDetails({
-      name: 'get_issue',
       purpose: 'Get one issue.',
-      parameters: [{ name: 'issue', type: 'IssueReference', required: true }],
+      example: { issue: 'AEO-258' },
+      loadedTools: ['linear_get_issue'],
     }, { kind: 'help' })).toEqual({
-      kind: 'help-operation',
-      name: 'get_issue',
+      kind: 'help-exact',
       purpose: 'Get one issue.',
-      parameters: [{ name: 'issue', type: 'IssueReference', required: true }],
+      example: { issue: 'AEO-258' },
+      loaded: ['linear_get_issue'],
+    });
+    expect(parseResultDetails({
+      name: 'get_result',
+      purpose: 'Retrieve stored result data.',
+      parameters: [{ name: 'handle', type: 'ResultHandle', required: true }],
+    }, { kind: 'help' })).toEqual({
+      kind: 'help-card',
+      name: 'get_result',
+      purpose: 'Retrieve stored result data.',
+      parameters: [{ name: 'handle', type: 'ResultHandle', required: true }],
       loaded: [],
     });
   });

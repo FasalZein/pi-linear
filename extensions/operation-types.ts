@@ -59,6 +59,11 @@ export type OperationParameter = {
 	type: string;
 	required: boolean;
 };
+/** An authored preparation field whose type determines its generated resolver label. */
+export type OperationReferenceField = {
+	name: string;
+	type: `${string}Reference`;
+};
 export type OperationExample = {
 	operation: string;
 	variables: CompatibilityObject;
@@ -195,8 +200,10 @@ export type OperationSource = Omit<
 	| "canonicalExample"
 	| "example"
 	| "compatibilityBranches"
+	| "resolverPaths"
 > & {
 	example: OperationExample;
+	referenceFields: readonly OperationReferenceField[];
 	canonicalExample?: CompatibilityObject;
 	compatibilityBranches: readonly RequirementBranch[];
 	validateVariables?: (variables: CompatibilityObject) => void;
@@ -261,6 +268,8 @@ export type OperationDefinition = {
 	compatibility: OperationCompatibilityDefinition;
 	graphql?: { documents: readonly OperationDocumentDefinition[] };
 	preparation: {
+		/** Authored field types retained so generation can prove resolver declarations. */
+		referenceFields: readonly OperationReferenceField[];
 		resolverPaths: Readonly<{ [name: string]: string }>;
 		plan?: OperationPlanFactory;
 	};
@@ -284,6 +293,7 @@ export type OperationDefinition = {
 	};
 	canonical: {
 		fields: readonly OperationParameter[];
+		advancedFields: readonly OperationParameter[];
 		branches: readonly RequirementBranch[];
 		exclusiveBranches?: true;
 		variants?: readonly {

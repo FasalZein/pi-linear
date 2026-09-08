@@ -229,16 +229,17 @@ describe('runtime discovery', () => {
     expect(tool.description).not.toContain('get_issue(');
   });
 
-  it('publishes the complete create_issue canonical contract without raw input guidance', async () => {
+  it('returns purpose and one direct example without repeating the create_issue schema', async () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
     const result = await execute(linearApiTool() as any, {
       operation: 'help', variables: { operation: 'create_issue' },
     });
-    const names = result.details.parameters.map(({ name }: { name: string }) => name);
-    expect(names).toContain('projectId');
-    expect(names).toContain('labelIds');
-    expect(names).not.toContain('input');
+    expect(result.details).toEqual({
+      purpose: operations.create_issue!.purpose,
+      example: { title: 'v0.4 trial child', parent: 'AEO-258' },
+    });
+    expect(JSON.stringify(result.details)).not.toMatch(/parameters|signature|project|labels|input/);
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -290,15 +291,20 @@ describe('runtime discovery', () => {
       execute(tool, { operation: 'help', variables: { operation: 'create_relation' } }),
       execute(tool, { operation: 'help', variables: { operation: 'list_workflow_states' } }),
     ]);
-    expect(aliasCards.map(({ details }: any) => details.name)).toEqual([
-      'create_comment',
-      'create_issue_relation',
-      'list_issue_statuses',
+    expect(aliasCards.map(({ details }: any) => details.purpose)).toEqual([
+      operations.create_comment!.purpose,
+      operations.create_issue_relation!.purpose,
+      operations.list_issue_statuses!.purpose,
     ]);
-    expect(aliasCards[0].details).toMatchObject({
+    expect(aliasCards[0].details).toEqual({
+      purpose: operations.create_comment!.purpose,
       example: { issue: 'AEO-258', body: 'Comment text' },
     });
-    for (const card of aliasCards) expect(card.details).not.toHaveProperty('aliases');
+    for (const card of aliasCards) {
+      expect(card.details).not.toHaveProperty('name');
+      expect(card.details).not.toHaveProperty('aliases');
+      expect(card.details).not.toHaveProperty('parameters');
+    }
     expect(fetch).not.toHaveBeenCalled();
   });
 

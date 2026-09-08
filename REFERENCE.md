@@ -1,35 +1,51 @@
 # Linear API reference
 
-Version 0.9 of `pi-linear-lite` registers 53 tool surfaces: active `linear` and `linear_get_result`, deferred `linear_graphql` and `linear_batch`, plus 49 inactive typed tools. The `linear` tool accepts discovery help only. For an ordinary operation, send exact help, then call the activated `linear_<operation>` tool with direct arguments. Send exact `graphql` or `batch` help before calling `linear_graphql` or `linear_batch`. Exact `get_result` help returns a parameter card without activation because `linear_get_result` is already active. Callable tool names always use underscores.
+Version 1.0.0 of `pi-linear-lite` registers 53 tool surfaces. `linear` and `linear_get_result` start active. `linear_graphql`, `linear_batch`, and 49 typed tools load on demand.
+
+The `linear` tool accepts discovery help only. Callable tool names use underscores.
 
 ## Help protocol
 
-Every `linear` call requires `operation: "help"`. This request returns the accepted domains plus exact-operation, GraphQL, batch, and result-retrieval help links:
+Every `linear` call requires `operation: "help"`. Root help returns the accepted domains and exact help forms:
 
 ```json
 { "operation": "help" }
 ```
 
+Domain help returns only the canonical names for that domain:
+
 ```json
 { "operation": "help", "variables": { "domain": "issues" } }
 ```
 
-Domain help returns only the canonical names for that domain. Exact operation help returns purpose, parameters, accepted branches, and an example.
+Normal exact help returns only the operation purpose, canonical example, and additive activation result:
 
 ```json
 { "operation": "help", "variables": { "operation": "update_issue" } }
 ```
 
-Operation help returns one parameter card and direct arguments for the activated typed tool. For example, call `linear_update_issue` with the returned arguments. This response is the authoritative parameter reference. This file does not duplicate 49 full schemas that can change or consume context unnecessarily.
+The activated `linear_<operation>` schema is the authority for common fields. It has a closed object root and rejects legacy caller names.
 
-Every typed schema has a provider-safe object root. Save operations enforce exclusive create and update modes inside that root. All save target dates are nullable. The packaged dated schema contract includes initiative and project lead teams, initiative priority and labels, document owners, and create/update label retirement dates. `trashed` remains excluded from typed tools.
+A tool description names the advanced route when an operation has rare tail fields. Request the exact tail with:
 
-Accepted domains are `issues`, `comments`, `users`, `teams`, `projects`, `cycles`, `milestones`, `initiatives`, `documents`, `views`, `labels`, `relations`, and `workspace`. Invalid requests direct the caller to a valid help request instead of returning the full catalog.
+```json
+{ "operation": "help", "variables": { "operation": "update_issue:advanced" } }
+```
+
+Advanced help returns the tail names and types. Save operations also return each field's create or update modes.
+
+Send tail fields inside `advanced`. The runtime rejects unknown tail fields, common-field duplicates, and tail fields at the top level.
+
+Exact `graphql` and `batch` help return their direct cards and activate their tools. Exact `get_result` help returns its card without activation.
+
+Save operations enforce separate create and update modes. `view` controls result detail and never satisfies an update change requirement.
+
+Accepted domains are `issues`, `comments`, `users`, `teams`, `projects`, `cycles`, `milestones`, `initiatives`, `documents`, `views`, `labels`, `relations`, and `workspace`.
 
 <!-- BEGIN GENERATED LINEAR OPERATIONS -->
 ## Generated operation catalog
 
-Use exact loader help to activate an ordinary operation. Then call its typed tool with the direct arguments in the table.
+Use exact loader help to activate an ordinary operation. The table shows one common-tier call for each typed tool.
 
 | Operation | Typed tool | Domain | Always required | Purpose | Typed arguments |
 | --- | --- | --- | --- | --- | --- |
@@ -44,20 +60,20 @@ Use exact loader help to activate an ordinary operation. Then call its typed too
 | `list_cycles` | `linear_list_cycles` | cycles | none | List cycles. | `{}` |
 | `get_cycle` | `linear_get_cycle` | cycles | cycle | Get a cycle by exact name or UUID. | `{"cycle":"Cycle 12"}` |
 | `create_cycle` | `linear_create_cycle` | cycles | team, startsAt, endsAt | Create a cycle. | `{"team":"AEO","startsAt":"2026-08-17","endsAt":"2026-08-31"}` |
-| `update_cycle` | `linear_update_cycle` | cycles | id | Update a cycle. | `{"id":"cycle-id","name":"Cycle 12"}` |
+| `update_cycle` | `linear_update_cycle` | cycles | cycle | Update a cycle. | `{"cycle":"cycle-id","name":"Cycle 12"}` |
 | `list_documents` | `linear_list_documents` | documents | none | List documents. | `{}` |
-| `get_document` | `linear_get_document` | documents | document | Get a document by exact title or UUID. | `{"document":"Planning notes"}` |
+| `get_document` | `linear_get_document` | documents | document | Get a document by exact title, slug, or UUID. | `{"document":"Planning notes"}` |
 | `create_document` | `linear_create_document` | documents | title | Create a document. | `{"title":"Planning notes","content":"Notes"}` |
 | `update_document` | `linear_update_document` | documents | document | Update a document. | `{"document":"document-id","title":"Updated notes"}` |
 | `list_initiatives` | `linear_list_initiatives` | initiatives | none | List initiatives. | `{}` |
 | `get_initiative` | `linear_get_initiative` | initiatives | initiative | Get an initiative by exact name or UUID. | `{"initiative":"Platform"}` |
 | `list_issue_labels` | `linear_list_issue_labels` | labels | none | List issue labels. | `{}` |
 | `create_issue_label` | `linear_create_issue_label` | labels | name | Create an issue label. | `{"name":"needs-review","color":"#ff0000"}` |
-| `update_issue_label` | `linear_update_issue_label` | labels | id | Update an issue label. | `{"id":"label-id","name":"review"}` |
+| `update_issue_label` | `linear_update_issue_label` | labels | label | Update an issue label. | `{"label":"label-id","name":"review"}` |
 | `list_issue_relations` | `linear_list_issue_relations` | relations | none | List issue relations. | `{}` |
 | `create_issue_relation` | `linear_create_issue_relation` | relations | issue, relatedIssue, type | Create a relation between two issues. | `{"issue":"AEO-258","relatedIssue":"AEO-259","type":"related"}` |
 | `update_issue_relation` | `linear_update_issue_relation` | relations | id | Update an issue relation. | `{"id":"relation-id","type":"blocks"}` |
-| `delete_issue_relation` | `linear_delete_issue_relation` | relations | relationId, issueId, relatedIssueId, type | Delete one issue relation after exact relation and endpoint verification. | `{"relationId":"33333333-3333-4333-8333-333333333333","issueId":"11111111-1111-4111-8111-111111111111","relatedIssueId":"22222222-2222-4222-8222-222222222222","type":"related"}` |
+| `delete_issue_relation` | `linear_delete_issue_relation` | relations | relationId, issue, relatedIssue, type | Delete one issue relation after exact relation and endpoint verification. | `{"relationId":"33333333-3333-4333-8333-333333333333","issue":"11111111-1111-4111-8111-111111111111","relatedIssue":"22222222-2222-4222-8222-222222222222","type":"related"}` |
 | `list_issue_statuses` | `linear_list_issue_statuses` | workspace | none | List issue workflow states. | `{}` |
 | `list_issues` | `linear_list_issues` | issues | none | List issues with exact convenience filters. | `{"assignee":"me","stateType":"started"}` |
 | `get_issue` | `linear_get_issue` | issues | issue | Get one issue by exact identifier or UUID. | `{"issue":"AEO-258"}` |
@@ -68,20 +84,20 @@ Use exact loader help to activate an ordinary operation. Then call its typed too
 | `get_milestone` | `linear_get_milestone` | milestones | milestone | Get a milestone by exact name or UUID. | `{"milestone":"Beta"}` |
 | `list_project_labels` | `linear_list_project_labels` | labels | none | List project labels. | `{}` |
 | `create_project_label` | `linear_create_project_label` | labels | name | Create a project label. | `{"name":"Strategic"}` |
-| `update_project_label` | `linear_update_project_label` | labels | id | Update a project label. | `{"id":"label-id","name":"Strategy"}` |
+| `update_project_label` | `linear_update_project_label` | labels | label | Update a project label. | `{"label":"label-id","name":"Strategy"}` |
 | `list_project_relations` | `linear_list_project_relations` | relations | none | List project relations. | `{}` |
-| `create_project_relation` | `linear_create_project_relation` | relations | projectId, relatedProjectId, type, anchorType, relatedAnchorType | Create a relation between two projects. | `{"projectId":"project-id","relatedProjectId":"other-project-id","type":"related","anchorType":"project","relatedAnchorType":"project"}` |
+| `create_project_relation` | `linear_create_project_relation` | relations | project, relatedProject, type, anchorType, relatedAnchorType | Create a relation between two projects. | `{"project":"project-id","relatedProject":"other-project-id","type":"related","anchorType":"project","relatedAnchorType":"project"}` |
 | `update_project_relation` | `linear_update_project_relation` | relations | id | Update a project relation. | `{"id":"relation-id","type":"related"}` |
 | `list_projects` | `linear_list_projects` | projects | none | List projects. | `{}` |
-| `get_project` | `linear_get_project` | projects | project | Get a project by exact name or UUID. | `{"project":"Platform"}` |
+| `get_project` | `linear_get_project` | projects | project | Get a project by exact name, slug, or UUID. | `{"project":"Platform"}` |
 | `list_teams` | `linear_list_teams` | teams | none | List teams and workflow states. | `{}` |
 | `get_team` | `linear_get_team` | teams | team | Get a team by exact key or UUID. | `{"team":"AEO"}` |
 | `list_users` | `linear_list_users` | users | none | List users. | `{}` |
 | `get_user` | `linear_get_user` | users | user | Get a user by me, UUID, email, name, or display name. | `{"user":"me"}` |
 | `switch_workspace` | `linear_switch_workspace` | workspace | name | Switch the active stored workspace without exposing credentials. | `{"name":"work"}` |
 | `save_initiative` | `linear_save_initiative` | initiatives | none | Create or update an initiative. | `{"name":"Platform"}` |
-| `save_milestone` | `linear_save_milestone` | milestones | none | Create or update a milestone. | `{"name":"Beta","projectId":"project-id"}` |
-| `save_project` | `linear_save_project` | projects | none | Create or update a project. | `{"name":"Platform","teamIds":["team-id"]}` |
+| `save_milestone` | `linear_save_milestone` | milestones | none | Create or update a milestone. | `{"name":"Beta","project":"project-id"}` |
+| `save_project` | `linear_save_project` | projects | none | Create or update a project. | `{"name":"Platform","teams":["AEO"]}` |
 
 ### Exact help and typed call
 
@@ -89,10 +105,22 @@ Use exact loader help to activate an ordinary operation. Then call its typed too
 { "operation": "help", "variables": { "operation": "get_issue" } }
 ```
 
-Then call `linear_get_issue`:
+Normal exact help returns purpose, example, and activation. Then call `linear_get_issue`:
 
 ```json
 { "issue": "AEO-258" }
+```
+
+### Advanced tail help
+
+```json
+{ "operation": "help", "variables": { "operation": "list_comments:advanced" } }
+```
+
+Send returned tail fields inside `advanced`:
+
+```json
+{ "issue": "AEO-258", "advanced": { "before": "CURSOR", "last": 20 } }
 ```
 
 ### Discovery and direct exceptional tools
@@ -126,7 +154,7 @@ Then call `linear_batch` with direct arguments:
 ```
 
 ```json
-{ "reads": [{ "key": "issue", "operation": "get_issue", "variables": { "issue": "AEO-258" } }], "mutations": [{ "key": "delete", "operation": "delete_issue_relation", "variables": { "relationId": "33333333-3333-4333-8333-333333333333", "issueId": "11111111-1111-4111-8111-111111111111", "relatedIssueId": "22222222-2222-4222-8222-222222222222", "type": "related" } }] }
+{ "reads": [{ "key": "issue", "operation": "get_issue", "variables": { "issue": "AEO-258" } }], "mutations": [{ "key": "delete", "operation": "delete_issue_relation", "variables": { "relationId": "33333333-3333-4333-8333-333333333333", "issue": "11111111-1111-4111-8111-111111111111", "relatedIssue": "22222222-2222-4222-8222-222222222222", "type": "related" } }] }
 ```
 
 ```json
@@ -140,19 +168,36 @@ This returns the direct parameter card without activation. Call the already-acti
 ```
 <!-- END GENERATED LINEAR OPERATIONS -->
 
-A batch can combine independent reads with one guarded `delete_issue_relation`. Its read request includes the exact relation preflight. The delete request runs only after every guard matches and the read-error gate passes.
+A batch can combine independent reads with several ordinary mutations. It validates all entries, resolves all References, and applies all safety gates before the first mutation.
+
+Ordinary mutations run in order with one request per entry. The batch stops at the first failure and skips all later mutations without sending them.
+
+A transport, HTTP, or cancellation failure can leave the sent mutation outcome unknown. Check Linear before you retry that mutation.
+
+Several `create_issue` entries can use one `issueBatchCreate` transaction. The batch rejects a mix of this transaction and ordinary mutations.
+
+Guarded `delete_issue_relation` entries place every exact guard in the shared read phase. No guarded delete runs unless all guards match.
 
 ## Exact references and fail-closed behavior
 
-Named operations resolve human references before the final request:
+Named operations use one Reference name for each object concept. They resolve human References before the final request:
 
-- Issue references accept only an exact `TEAM-123` identifier or UUID.
-- Team references accept only an exact team key or UUID.
-- State references accept an exact state name or UUID and must belong to the target team.
-- User references accept `me`, an exact UUID, or one exact email, name, or display name.
-- Projects, initiatives, cycles, documents, milestones, and views accept an exact supported name or UUID.
+- Issue References accept only an exact `TEAM-123` identifier or UUID.
+- Team References accept only an exact team key or UUID.
+- State References accept an exact state name or UUID and must belong to the target team.
+- User References accept `me`, an exact UUID, or one exact email, name, or display name.
+- Project and document References accept an exact supported name, slug, or UUID.
+- Initiative, cycle, milestone, label, and view References accept an exact supported name or UUID.
 
-Resolution requires exactly one match. Missing, ambiguous, fuzzy, malformed, or mismatched results fail before a mutation. Issue and team responses are checked against the requested identifier, key, UUID, and team. Parent and state references are checked against the target issue team.
+Resolution requires exactly one match. Missing, ambiguous, fuzzy, malformed, or mismatched results fail before a mutation.
+
+The extension stores no default project or default team. Every call supplies its required context. A `create_issue` parent can supply its team.
+
+Typed tools publish no `workspace` field. Workspace selection is independent from project and team References.
+
+Use `null` only for fields whose schema type is nullable. In these fields, `null` clears the existing association or date.
+
+The [v1.0 changelog](./CHANGELOG.md#100) lists every v0.9 field rename and every field moved into `advanced`.
 
 ## Hidden v0.3 compatibility
 
@@ -169,7 +214,13 @@ The v0.3 `get_issue` shape `{ "teamKey": "AEO", "number": 258 }` and legacy nest
 
 ## Pagination
 
-List operations and `search_issues` return `pageInfo` and accept supported cursor parameters such as `after`, `before`, `first`, and `last`. `search_issues` also returns `totalCount`. `list_issues` does not: `IssueConnection` has no total count, so an incomplete page reports that more results exist without a total. Their operation help cards show the exact parameters. Named operations apply their documented defaults when a size is omitted. Result routing never changes the server request size or returned cursor.
+List operations and `search_issues` return `pageInfo`. The common tier publishes forward paging with `first` and `after`.
+
+Backward paging stays available in the advanced tail with `before` and `last`. Request exact `<operation>:advanced` help before using it.
+
+`search_issues` also returns `totalCount`. `list_issues` does not because `IssueConnection` has no total count.
+
+Named operations apply their documented page-size defaults when a size is omitted. Result routing never changes the server request size or returned cursor.
 
 1. Make the first call without `after`.
 2. Read `totalCount` when present, then `pageInfo.hasNextPage` and `pageInfo.endCursor`.
@@ -184,7 +235,11 @@ Call `linear_search_issues` with direct arguments:
 
 ## Result routing
 
-Complete results stay inline by default when their serialized result fits Pi's 50KB or 2,000-line custom-tool boundary. Results beyond that boundary automatically route to `${PI_ARTIFACT_PROJECT_ROOT:-$HOME/.pi/artifacts}/linear/raw/`. This routing preserves every returned entity and every caller key.
+Singular reads default to `full`. Collection reads default to `summary`.
+
+Mutations default to a compact `summary` acknowledgement from the validated server result. Set `view` to `full` for the complete mutation entity.
+
+Complete routed results stay inline when they fit Pi's 50KB or 2,000-line custom-tool boundary. Larger results route to `${PI_ARTIFACT_PROJECT_ROOT:-$HOME/.pi/artifacts}/linear/raw/`.
 
 The returned digest includes a canonical opaque `handle`, full `bytes`, a compact `index`, `meta`, and a legacy compatibility `path`. The artifact contains the complete redacted JSON. Retrieve it through `linear_get_result({"handle":"linear-result:v1:<UUID>"})`. Do not use arbitrary file-reading or shell tools. The compatibility path exists only for older integrations.
 
@@ -208,13 +263,15 @@ HTTP 429 responses keep one automatic retry. For `searchIssues` and `semanticSea
 
 ## Workspaces and authentication
 
-The optional `workspace` argument selects one stored workspace for one typed call without changing the active workspace. For example, call `linear_get_issue` with:
+A Workspace is a named Linear account and credential selection. It is not a Linear organization name, Pi working directory, project, or team.
 
-```json
-{ "issue": "AEO-258", "workspace": "work" }
-```
+Typed tools do not accept `workspace`. Use `linear_switch_workspace` or `/linear-auth switch <name>` to change the active stored Workspace.
 
-The named operation `switch_workspace` changes the active stored workspace. `/linear-auth switch <name>` performs the same persistent selection. `/linear-settings` sets the default Human readable or Full JSON result view. That preference lives under the Pi agent state directory and is never stored with credentials. Credential precedence and commands are documented in [`README.md`](./README.md).
+`linear_graphql` and `linear_batch` accept an explicit `workspace` override for cross-account work. The override does not change the active Workspace.
+
+The extension stores no default project or default team. `/linear-settings` controls Human readable or Full JSON display only.
+
+The display preference lives under the Pi agent state directory. It is never stored with credentials.
 
 ## Raw GraphQL and mutation safety
 
@@ -228,5 +285,7 @@ Use exact `graphql` help to activate `linear_graphql`. Call `linear_graphql` onl
 ```
 
 The default entry point authorizes safe mutations by canonical or compatible named operation. Each named operation declares exact mutation roots, and the runtime checks its parsed GraphQL document against that declaration and the safe named-root set.
+
+Common and advanced fields use the same mutation checks. The `advanced` wrapper does not widen mutation authority.
 
 Raw GraphQL mutations are disabled by default. Set `LINEAR_MUTATIONS=all` to allow them. The guarded `delete_issue_relation` operation uses normal named mutation authority and does not require that setting. The read-only entry point and `LINEAR_READONLY=1` reject all named and raw mutations, and `LINEAR_MUTATIONS=all` cannot override them. Ask for user authorization before a mutation even when the runtime permits it.

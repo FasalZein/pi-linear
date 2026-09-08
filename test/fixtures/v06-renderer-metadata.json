@@ -3,10 +3,8 @@
     "entityKind": "comment",
     "callFields": [
       "issue",
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter"
@@ -26,26 +24,14 @@
     "entityKind": "comment",
     "callFields": [
       "issue",
-      "projectId",
-      "initiativeId",
-      "projectUpdateId",
-      "initiativeUpdateId",
-      "postId",
-      "documentContentId",
-      "parentId",
       "body",
-      "bodyData",
-      "quotedText",
-      "doNotSubscribeToIssue",
-      "createOnSyncedSlackThread",
-      "createdAt",
-      "id"
+      "view"
     ],
     "action": "create",
     "targetFields": [
       "issue",
-      "projectId",
-      "initiativeId",
+      "project",
+      "initiative",
       "projectUpdateId",
       "initiativeUpdateId",
       "postId",
@@ -60,17 +46,16 @@
       "body",
       "bodyData",
       "quotedText",
-      "skipEditedAt"
+      "skipEditedAt",
+      "view"
     ],
     "action": "update"
   },
   "list_views": {
     "entityKind": "view",
     "callFields": [
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter"
@@ -102,7 +87,8 @@
       "filterData",
       "projectFilterData",
       "initiativeFilterData",
-      "feedItemFilterData"
+      "feedItemFilterData",
+      "view"
     ],
     "action": "create"
   },
@@ -118,7 +104,8 @@
       "filterData",
       "projectFilterData",
       "initiativeFilterData",
-      "feedItemFilterData"
+      "feedItemFilterData",
+      "view"
     ],
     "action": "update"
   },
@@ -126,7 +113,8 @@
     "entityKind": "view",
     "callFields": [
       "viewId",
-      "preferences"
+      "preferences",
+      "view"
     ],
     "action": "set"
   },
@@ -134,10 +122,8 @@
     "entityKind": "cycle",
     "callFields": [
       "team",
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter"
@@ -164,7 +150,8 @@
       "startsAt",
       "endsAt",
       "name",
-      "description"
+      "description",
+      "view"
     ],
     "action": "create",
     "targetFields": [
@@ -174,12 +161,13 @@
   "update_cycle": {
     "entityKind": "cycle",
     "callFields": [
-      "id",
+      "cycle",
       "name",
       "description",
       "startsAt",
       "endsAt",
-      "completedAt"
+      "completedAt",
+      "view"
     ],
     "action": "update"
   },
@@ -187,10 +175,8 @@
     "entityKind": "document",
     "callFields": [
       "sort",
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter",
@@ -217,20 +203,20 @@
     "callFields": [
       "title",
       "content",
-      "icon",
       "color",
-      "issueId",
-      "teamId",
-      "projectId",
-      "initiativeId",
-      "cycleId",
+      "issue",
+      "team",
+      "project",
+      "initiative",
+      "cycle",
       "releaseId",
       "resourceFolderId",
       "lastAppliedTemplateId",
-      "ownerId",
-      "subscriberIds",
+      "owner",
+      "subscribers",
       "sortOrder",
-      "id"
+      "id",
+      "view"
     ],
     "action": "create"
   },
@@ -240,20 +226,20 @@
       "document",
       "title",
       "content",
-      "icon",
       "color",
-      "issueId",
-      "teamId",
-      "projectId",
-      "initiativeId",
-      "cycleId",
+      "issue",
+      "team",
+      "project",
+      "initiative",
+      "cycle",
       "releaseId",
       "resourceFolderId",
       "lastAppliedTemplateId",
-      "ownerId",
-      "subscriberIds",
+      "owner",
+      "subscribers",
       "sortOrder",
-      "hiddenAt"
+      "hiddenAt",
+      "view"
     ],
     "action": "update",
     "targetFields": [
@@ -265,10 +251,8 @@
     "entityKind": "initiative",
     "callFields": [
       "sort",
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter"
@@ -292,10 +276,8 @@
     "entityKind": "label",
     "callFields": [
       "team",
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter"
@@ -319,31 +301,31 @@
       "parentId",
       "retiredAt",
       "replaceTeamLabels",
-      "id"
+      "id",
+      "view"
     ],
     "action": "create"
   },
   "update_issue_label": {
     "entityKind": "label",
     "callFields": [
-      "id",
+      "label",
       "name",
       "description",
       "color",
       "isGroup",
       "parentId",
       "retiredAt",
-      "replaceTeamLabels"
+      "replaceTeamLabels",
+      "view"
     ],
     "action": "update"
   },
   "list_issue_relations": {
     "entityKind": "issue_relation",
     "callFields": [
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy"
     ],
@@ -360,7 +342,8 @@
     "callFields": [
       "issue",
       "relatedIssue",
-      "type"
+      "type",
+      "view"
     ],
     "action": "create",
     "targetFields": [
@@ -373,8 +356,9 @@
     "callFields": [
       "id",
       "type",
-      "issueId",
-      "relatedIssueId"
+      "issue",
+      "relatedIssue",
+      "view"
     ],
     "action": "update"
   },
@@ -382,25 +366,24 @@
     "entityKind": "issue_relation",
     "callFields": [
       "relationId",
-      "issueId",
-      "relatedIssueId",
-      "type"
+      "issue",
+      "relatedIssue",
+      "type",
+      "view"
     ],
     "action": "delete",
     "targetFields": [
       "relationId",
-      "issueId",
-      "relatedIssueId",
+      "issue",
+      "relatedIssue",
       "type"
     ]
   },
   "list_issue_statuses": {
     "entityKind": "issue_status",
     "callFields": [
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter"
@@ -422,11 +405,10 @@
       "state",
       "stateType",
       "assignee",
+      "project",
       "sort",
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter",
@@ -458,33 +440,13 @@
       "assignee",
       "dueDate",
       "description",
-      "descriptionData",
       "priority",
       "estimate",
-      "projectId",
-      "projectMilestoneId",
-      "cycleId",
-      "labelIds",
-      "subscriberIds",
-      "delegateId",
-      "lastAppliedTemplateId",
-      "slaType",
-      "slaBreachesAt",
-      "slaStartedAt",
-      "sortOrder",
-      "subIssueSortOrder",
-      "prioritySortOrder",
-      "templateId",
-      "useDefaultTemplate",
-      "preserveSortOrderOnCreate",
-      "referenceCommentId",
-      "sourceCommentId",
-      "sourcePullRequestCommentId",
-      "createAsUser",
-      "displayIconUrl",
-      "completedAt",
-      "createdAt",
-      "id"
+      "project",
+      "cycle",
+      "labels",
+      "subscribers",
+      "view"
     ],
     "action": "create"
   },
@@ -496,30 +458,18 @@
       "state",
       "assignee",
       "parent",
-      "teamId",
+      "team",
       "dueDate",
-      "addedLabelIds",
-      "removedLabelIds",
+      "addLabels",
+      "removeLabels",
       "description",
-      "descriptionData",
       "priority",
       "estimate",
-      "projectId",
-      "projectMilestoneId",
-      "cycleId",
-      "labelIds",
-      "subscriberIds",
-      "delegateId",
-      "lastAppliedTemplateId",
-      "slaType",
-      "slaBreachesAt",
-      "slaStartedAt",
-      "sortOrder",
-      "subIssueSortOrder",
-      "prioritySortOrder",
-      "autoClosedByParentClosing",
-      "snoozedById",
-      "snoozedUntilAt"
+      "project",
+      "cycle",
+      "labels",
+      "subscribers",
+      "view"
     ],
     "action": "update"
   },
@@ -529,10 +479,8 @@
       "term",
       "includeComments",
       "team",
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter",
@@ -549,10 +497,8 @@
   "list_milestones": {
     "entityKind": "milestone",
     "callFields": [
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter"
@@ -575,10 +521,8 @@
   "list_project_labels": {
     "entityKind": "label",
     "callFields": [
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter"
@@ -599,30 +543,30 @@
       "color",
       "isGroup",
       "parentId",
-      "retiredAt"
+      "retiredAt",
+      "view"
     ],
     "action": "create"
   },
   "update_project_label": {
     "entityKind": "label",
     "callFields": [
-      "id",
+      "label",
       "name",
       "description",
       "color",
       "isGroup",
       "parentId",
-      "retiredAt"
+      "retiredAt",
+      "view"
     ],
     "action": "update"
   },
   "list_project_relations": {
     "entityKind": "project_relation",
     "callFields": [
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy"
     ],
@@ -637,13 +581,14 @@
   "create_project_relation": {
     "entityKind": "project_relation",
     "callFields": [
-      "projectId",
-      "relatedProjectId",
+      "project",
+      "relatedProject",
       "type",
       "anchorType",
       "relatedAnchorType",
-      "projectMilestoneId",
-      "relatedProjectMilestoneId"
+      "milestone",
+      "relatedMilestone",
+      "view"
     ],
     "action": "create"
   },
@@ -654,10 +599,11 @@
       "type",
       "anchorType",
       "relatedAnchorType",
-      "projectId",
-      "relatedProjectId",
-      "projectMilestoneId",
-      "relatedProjectMilestoneId"
+      "project",
+      "relatedProject",
+      "milestone",
+      "relatedMilestone",
+      "view"
     ],
     "action": "update"
   },
@@ -665,10 +611,8 @@
     "entityKind": "project",
     "callFields": [
       "sort",
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter",
@@ -693,10 +637,8 @@
   "list_teams": {
     "entityKind": "team",
     "callFields": [
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter"
@@ -721,10 +663,8 @@
     "callFields": [
       "includeDisabled",
       "sort",
-      "after",
-      "before",
       "first",
-      "last",
+      "after",
       "includeArchived",
       "orderBy",
       "filter"
@@ -754,7 +694,7 @@
   "save_initiative": {
     "entityKind": "initiative",
     "callFields": [
-      "initiativeId",
+      "initiative",
       "name",
       "description",
       "content",
@@ -762,89 +702,58 @@
       "color",
       "status",
       "targetDate",
-      "targetDateResolution",
-      "ownerId",
-      "leadTeamId",
-      "sortOrder",
-      "prioritySortOrder",
+      "owner",
       "priority",
-      "labelIds",
-      "id",
-      "customIdentifier",
-      "frequencyResolution",
-      "updateReminderFrequency",
-      "updateReminderFrequencyInWeeks",
-      "updateRemindersDay",
-      "updateRemindersHour"
+      "labels",
+      "view"
     ],
     "action": "save",
     "targetFields": [
-      "initiativeId",
+      "initiative",
       "name"
     ]
   },
   "save_milestone": {
     "entityKind": "milestone",
     "callFields": [
-      "milestoneId",
+      "milestone",
       "name",
-      "projectId",
+      "project",
       "description",
       "descriptionData",
       "targetDate",
       "sortOrder",
-      "id"
+      "id",
+      "view"
     ],
     "action": "save",
     "targetFields": [
-      "milestoneId",
+      "milestone",
       "name",
-      "projectId"
+      "project"
     ]
   },
   "save_project": {
     "entityKind": "project",
     "callFields": [
-      "projectId",
+      "project",
       "name",
-      "teamIds",
+      "teams",
       "description",
       "content",
       "icon",
       "color",
       "priority",
       "startDate",
-      "startDateResolution",
       "targetDate",
-      "targetDateResolution",
-      "statusId",
-      "leadId",
-      "leadTeamId",
-      "memberIds",
-      "labelIds",
-      "convertedFromIssueId",
-      "lastAppliedTemplateId",
-      "sortOrder",
-      "prioritySortOrder",
-      "canceledAt",
-      "completedAt",
-      "projectUpdateRemindersPausedUntilAt",
-      "slackIssueComments",
-      "slackIssueStatuses",
-      "slackNewIssue",
-      "slackChannelName",
-      "templateId",
-      "useDefaultTemplate",
-      "id",
-      "frequencyResolution",
-      "updateReminderFrequency",
-      "updateReminderFrequencyInWeeks",
-      "updateRemindersDay",
-      "updateRemindersHour"
+      "status",
+      "lead",
+      "labels",
+      "view"
     ],
     "action": "save",
     "targetFields": [
-      "projectId",
+      "project",
       "name"
     ]
   }

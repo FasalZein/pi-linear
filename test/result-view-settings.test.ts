@@ -152,13 +152,13 @@ describe('default view and expand override', () => {
 
   it('applies the same inverse on linear discovery help', async () => {
     await saveResultPreference('Full JSON');
-    const help = { name: 'get_issue', purpose: 'Get one issue.', parameters: [{ name: 'issue', type: 'IssueReference', required: true }] };
+    const help = { purpose: 'Get one issue.', example: { issue: 'AEO-258' } };
     const args = { operation: 'help', variables: { operation: 'get_issue' } };
     const json = text(renderLinearApiResult(result(help), { expanded: false, isPartial: false }, theme, { args } as any));
     expect(json).toContain('Full JSON response');
 
     const human = text(renderLinearApiResult(result(help), { expanded: true, isPartial: false }, theme, { args } as any));
-    expect(human).toContain('✓ get_issue');
+    expect(human).toContain('✓ operation help');
   });
 });
 

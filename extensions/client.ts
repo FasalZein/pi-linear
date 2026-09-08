@@ -21,7 +21,6 @@ function linearGraphQLEndpoint(): string {
 
 const ISSUE_IDENTIFIER_PATTERN = /^([A-Z][A-Z0-9]*)-(\d+)$/i;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const LINEAR_URL_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export type ResolvedIssue = { id: string; identifier: string; teamId: string; teamKey: string };
 export type ResolvedTeam = { id: string; key: string };
@@ -292,6 +291,7 @@ export type LinearGraphQLOptions = {
   preserveUnusableRoot?: boolean;
   throwResponseErrors?: boolean;
   phase?: 'read' | 'mutation';
+  retryRateLimit?: boolean;
 };
 
 export type LinearTransport = typeof fetch;
@@ -329,6 +329,170 @@ function abortableDelay(delay: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
+type LinearAttempt = {
+  response: Response;
+  body: LinearResponseBody;
+  snapshot: LinearRateLimitSnapshot;
+};
+
+async function requestAttempt(
+  context: LinearNetworkContext,
+  query: string,
+  variables: JsonObject,
+  options: LinearGraphQLOptions | undefined,
+  snapshots: LinearRateLimitSnapshot[],
+  attempt: number,
+): Promise<LinearAttempt> {
+  const { apiKey } = context.credential;
+  let response: Response;
+  try {
+    response = await context.transport(linearGraphQLEndpoint(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: apiKey },
+      body: JSON.stringify({ query, variables }),
+      signal: context.signal,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const failure = new Error(`Linear network error: ${redactText(message, [apiKey])}`);
+    attachTelemetry(failure, snapshots, 'linearTelemetry');
+    throw failure;
+  }
+  const headers = redactDeep(parseLinearRateLimitHeaders(response.headers ?? new Headers()), [apiKey]);
+  const snapshot: LinearRateLimitSnapshot = options?.phase
+    ? { phase: options.phase, attempt: attempt + 1, headers }
+    : { attempt: attempt + 1, headers };
+  snapshots.push(snapshot);
+  context.telemetry.push(snapshot);
+  let body: LinearResponseBody = { errors: [] };
+  try {
+    body = parseResponseBody(await response.json());
+  } catch {
+    // Use the HTTP status below for non-JSON responses.
+  }
+  return { response, body, snapshot };
+}
+
+function retryableAttempt(
+  response: Response,
+  body: LinearResponseBody,
+  isSearchRead: boolean,
+  options: LinearGraphQLOptions | undefined,
+): boolean {
+  const retryHttp = response.status === 429 && options?.retryRateLimit !== false;
+  const retryGraphQL = response.status === 400 && isSearchRead && rateLimited(body.errors);
+  return retryHttp || retryGraphQL;
+}
+
+async function waitForRetry(
+  snapshot: LinearRateLimitSnapshot,
+  context: LinearNetworkContext,
+  snapshots: readonly LinearRateLimitSnapshot[],
+): Promise<void> {
+  try {
+    await abortableDelay(retryDelay(snapshot), context.signal);
+  } catch (error) {
+    if (error instanceof Error) attachTelemetry(error, snapshots, 'linearTelemetry');
+    throw error;
+  }
+}
+
+async function requestWithRetry(
+  context: LinearNetworkContext,
+  query: string,
+  variables: JsonObject,
+  options: LinearGraphQLOptions | undefined,
+  snapshots: LinearRateLimitSnapshot[],
+): Promise<LinearAttempt> {
+  const isSearchRead = searchRead(query);
+  for (let attempt = 0; ; attempt += 1) {
+    const result = await requestAttempt(context, query, variables, options, snapshots, attempt);
+    if (attempt === 0 && retryableAttempt(result.response, result.body, isSearchRead, options)) {
+      await waitForRetry(result.snapshot, context, snapshots);
+      continue;
+    }
+    return result;
+  }
+}
+
+function responseDetail(body: LinearResponseBody, apiKey: string): string {
+  return redactText([...new Set(body.errors.map(errorText))].join('; '), [apiKey]);
+}
+
+function throwResponseGraphQLError(
+  body: LinearResponseBody,
+  apiKey: string,
+  detail: string,
+  snapshots: readonly LinearRateLimitSnapshot[],
+): never {
+  const failure = new Error(`Linear GraphQL error: ${detail}`);
+  Object.defineProperty(failure, LINEAR_GRAPHQL_RESPONSE_FAILURE, {
+    value: responseGraphQLErrors(body.errors, apiKey),
+  });
+  if (body.data) Object.defineProperty(failure, LINEAR_GRAPHQL_RESPONSE_DATA, { value: body.data });
+  attachTelemetry(failure, snapshots, 'linearTelemetry');
+  throw failure;
+}
+
+function partialGraphQLData(
+  body: LinearResponseBody,
+  apiKey: string,
+  options: LinearGraphQLOptions | undefined,
+  snapshots: readonly LinearRateLimitSnapshot[],
+): JsonObject | undefined {
+  const data = body.data;
+  if (!data) return undefined;
+  const scoped = scopedPathErrors(body.errors, apiKey);
+  const usable = scoped && hasUsableRoot(data, scoped);
+  if (!usable && !options?.preserveUnusableRoot) return undefined;
+  Object.defineProperty(data, LINEAR_GRAPHQL_ERRORS, {
+    value: scoped ?? responseGraphQLErrors(body.errors, apiKey),
+  });
+  attachTelemetry(data, snapshots, LINEAR_RATE_LIMIT_TELEMETRY);
+  return data;
+}
+
+function graphQLErrorResult(
+  body: LinearResponseBody,
+  apiKey: string,
+  options: LinearGraphQLOptions | undefined,
+  snapshots: readonly LinearRateLimitSnapshot[],
+  detail: string,
+): JsonObject {
+  if (options?.throwResponseErrors) {
+    throwResponseGraphQLError(body, apiKey, detail, snapshots);
+  }
+  const partial = partialGraphQLData(body, apiKey, options, snapshots);
+  if (partial) return partial;
+  const failure = new Error(`Linear GraphQL error: ${detail}`);
+  attachTelemetry(failure, snapshots, 'linearTelemetry');
+  throw failure;
+}
+
+function responseData(
+  attempt: LinearAttempt,
+  apiKey: string,
+  options: LinearGraphQLOptions | undefined,
+  snapshots: readonly LinearRateLimitSnapshot[],
+): JsonObject {
+  const { response, body } = attempt;
+  const detail = responseDetail(body, apiKey);
+  if (!response.ok) {
+    const status = redactText(`${response.status} ${response.statusText}`, [apiKey]);
+    const failure = new Error(`Linear API request failed: ${detail || status}`);
+    attachTelemetry(failure, snapshots, 'linearTelemetry');
+    throw failure;
+  }
+  if (body.errors.length) return graphQLErrorResult(body, apiKey, options, snapshots, detail);
+  if (!body.data) {
+    const failure = new Error('Linear GraphQL response did not include data.');
+    attachTelemetry(failure, snapshots, 'linearTelemetry');
+    throw failure;
+  }
+  attachTelemetry(body.data, snapshots, LINEAR_RATE_LIMIT_TELEMETRY);
+  return body.data;
+}
+
 export async function linearGraphQLWithContext(
   context: LinearNetworkContext,
   query: string,
@@ -337,92 +501,8 @@ export async function linearGraphQLWithContext(
 ): Promise<JsonObject> {
   const { apiKey } = context.credential;
   const snapshots: LinearRateLimitSnapshot[] = [];
-  const isSearchRead = searchRead(query);
-  let response!: Response;
-  let body: LinearResponseBody = { errors: [] };
-
-  for (let attempt = 0; ; attempt++) {
-    try {
-      response = await context.transport(linearGraphQLEndpoint(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: apiKey },
-        body: JSON.stringify({ query, variables }),
-        signal: context.signal,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const failure = new Error(`Linear network error: ${redactText(message, [apiKey])}`);
-      attachTelemetry(failure, snapshots, 'linearTelemetry');
-      throw failure;
-    }
-
-    const headers = redactDeep(parseLinearRateLimitHeaders(response.headers ?? new Headers()), [apiKey]);
-    const snapshot: LinearRateLimitSnapshot = options?.phase
-      ? { phase: options.phase, attempt: attempt + 1, headers }
-      : { attempt: attempt + 1, headers };
-    snapshots.push(snapshot);
-    context.telemetry.push(snapshot);
-    body = { errors: [] };
-    try {
-      body = parseResponseBody(await response.json());
-    } catch {
-      // Use the HTTP status below for non-JSON responses.
-    }
-
-    const retryHttp = response.status === 429;
-    const retryGraphQL = response.status === 400 && isSearchRead && rateLimited(body.errors);
-    if (attempt === 0 && (retryHttp || retryGraphQL)) {
-      try {
-        await abortableDelay(retryDelay(snapshot), context.signal);
-      } catch (error) {
-        if (error instanceof Error) attachTelemetry(error, snapshots, 'linearTelemetry');
-        throw error;
-      }
-      continue;
-    }
-    break;
-  }
-
-  const detail = redactText([...new Set(body.errors.map(errorText))].join('; '), [apiKey]);
-  if (!response.ok) {
-    const status = redactText(`${response.status} ${response.statusText}`, [apiKey]);
-    const failure = new Error(`Linear API request failed: ${detail || status}`);
-    attachTelemetry(failure, snapshots, 'linearTelemetry');
-    throw failure;
-  }
-  if (body.errors.length) {
-    const data = body.data;
-    const normalized = responseGraphQLErrors(body.errors, apiKey);
-    if (options?.throwResponseErrors) {
-      const failure = new Error(`Linear GraphQL error: ${detail}`);
-      Object.defineProperty(failure, LINEAR_GRAPHQL_RESPONSE_FAILURE, { value: normalized });
-      if (data) {
-        Object.defineProperty(failure, LINEAR_GRAPHQL_RESPONSE_DATA, { value: data });
-      }
-      attachTelemetry(failure, snapshots, 'linearTelemetry');
-      throw failure;
-    }
-    if (data) {
-      const scoped = scopedPathErrors(body.errors, apiKey);
-      if ((scoped && hasUsableRoot(data, scoped)) || options?.preserveUnusableRoot) {
-        Object.defineProperty(data, LINEAR_GRAPHQL_ERRORS, {
-          value: scoped ?? responseGraphQLErrors(body.errors, apiKey),
-        });
-        attachTelemetry(data, snapshots, LINEAR_RATE_LIMIT_TELEMETRY);
-        return data;
-      }
-    }
-    const failure = new Error(`Linear GraphQL error: ${detail}`);
-    attachTelemetry(failure, snapshots, 'linearTelemetry');
-    throw failure;
-  }
-  if (!body.data) {
-    const failure = new Error('Linear GraphQL response did not include data.');
-    attachTelemetry(failure, snapshots, 'linearTelemetry');
-    throw failure;
-  }
-  attachTelemetry(body.data, snapshots, LINEAR_RATE_LIMIT_TELEMETRY);
-  return body.data;
+  const attempt = await requestWithRetry(context, query, variables, options, snapshots);
+  return responseData(attempt, apiKey, options, snapshots);
 }
 
 export async function linearGraphQL(
@@ -448,10 +528,6 @@ function requireReference(value: string, kind: string): string {
 
 export function isIssueIdentifier(value: string): boolean {
   return ISSUE_IDENTIFIER_PATTERN.test(value);
-}
-
-export function isLinearUrlSlug(value: string): boolean {
-  return LINEAR_URL_SLUG_PATTERN.test(value) && !UUID_PATTERN.test(value);
 }
 
 export function requireIssueReference(value: string): string {

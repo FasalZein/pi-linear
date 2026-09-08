@@ -1005,34 +1005,6 @@
       "sha256": "89530557646be4606c8c884846902e3ec3472664b13f7c14910c3ea4892fd6fa"
     },
     {
-      "id": "batch.lookup.document.id",
-      "sourceClass": "compiled-batch",
-      "document": "query ($_lookup_mutation_10_document_id: String!) {\n  _lookup_mutation_10_document: document(id: $_lookup_mutation_10_document_id) {\n    id\n    title\n  }\n}",
-      "operationType": "query",
-      "operationName": null,
-      "rootFields": [
-        "document"
-      ],
-      "variables": {
-        "_lookup_mutation_10_document_id": "String!"
-      },
-      "sha256": "40d9d0f61321eb45564fd4d3b907641c65094bdf1b69e4e798671fe822c8a482"
-    },
-    {
-      "id": "batch.lookup.document.title",
-      "sourceClass": "compiled-batch",
-      "document": "query ($_lookup_mutation_11_document_title: String!) {\n  _lookup_mutation_11_document: documents(\n    first: 2\n    filter: {title: {eq: $_lookup_mutation_11_document_title}}\n  ) {\n    nodes {\n      id\n      title\n    }\n  }\n}",
-      "operationType": "query",
-      "operationName": null,
-      "rootFields": [
-        "documents"
-      ],
-      "variables": {
-        "_lookup_mutation_11_document_title": "String!"
-      },
-      "sha256": "1881bf733b714f3cf4bb0bf66cca8479cc917ac0f1ad216af21d953f4e103161"
-    },
-    {
       "id": "batch.lookup.issue",
       "sourceClass": "compiled-batch",
       "document": "query ($_lookup_mutation_0_issue_id: String!) {\n  _lookup_mutation_0_issue: issue(id: $_lookup_mutation_0_issue_id) {\n    id\n    identifier\n    team {\n      id\n      key\n    }\n  }\n}",
@@ -1049,184 +1021,184 @@
     {
       "id": "batch.lookup.issue-relation",
       "sourceClass": "compiled-batch",
-      "document": "query ($_lookup_mutation_12_relation_id: String!) {\n  _lookup_mutation_12_relation: issueRelation(\n    id: $_lookup_mutation_12_relation_id\n  ) {\n    id\n    type\n    issue {\n      id\n    }\n    relatedIssue {\n      id\n    }\n  }\n}",
+      "document": "query ($_lookup_mutation_10_relation_id: String!) {\n  _lookup_mutation_10_relation: issueRelation(\n    id: $_lookup_mutation_10_relation_id\n  ) {\n    id\n    type\n    issue {\n      id\n    }\n    relatedIssue {\n      id\n    }\n  }\n}",
       "operationType": "query",
       "operationName": null,
       "rootFields": [
         "issueRelation"
       ],
       "variables": {
-        "_lookup_mutation_12_relation_id": "String!"
+        "_lookup_mutation_10_relation_id": "String!"
       },
-      "sha256": "1937580efe14c15e254ab0fc4d7462ab2508aea7c120a68ac5838fab30784859"
+      "sha256": "e7bff8cb3e5de07ea8a1f532b8b13e36c49418c6f34cf882fef4efeecbf8269b"
     },
     {
       "id": "batch.lookup.named.customView.id",
       "sourceClass": "compiled-batch",
-      "document": "query ($_lookup_mutation_23_named_id: String!) {\n  _lookup_mutation_23_named: customView(id: $_lookup_mutation_23_named_id) {\n    id\n    name\n  }\n}",
+      "document": "query ($_lookup_mutation_21_named_id: String!) {\n  _lookup_mutation_21_named: customView(id: $_lookup_mutation_21_named_id) {\n    id\n    name\n  }\n}",
       "operationType": "query",
       "operationName": null,
       "rootFields": [
         "customView"
       ],
       "variables": {
-        "_lookup_mutation_23_named_id": "String!"
+        "_lookup_mutation_21_named_id": "String!"
       },
-      "sha256": "e4f19aa212d3213a1c05dc65ee4054fb20d5c10f40446b2968aaeef9d04c834a"
+      "sha256": "8119e0b49fec8900339c1a35fd5bece0a69f38aa653a832a2c238dd701b4f9e3"
     },
     {
       "id": "batch.lookup.named.customView.name",
       "sourceClass": "compiled-batch",
-      "document": "query ($_lookup_mutation_24_named_name: String!) {\n  _lookup_mutation_24_named: customViews(\n    first: 2\n    filter: {name: {eq: $_lookup_mutation_24_named_name}}\n  ) {\n    nodes {\n      id\n      name\n    }\n  }\n}",
+      "document": "query ($_lookup_mutation_22_named_name: String!) {\n  _lookup_mutation_22_named: customViews(\n    first: 2\n    filter: {name: {eq: $_lookup_mutation_22_named_name}}\n  ) {\n    nodes {\n      id\n      name\n    }\n  }\n}",
       "operationType": "query",
       "operationName": null,
       "rootFields": [
         "customViews"
       ],
       "variables": {
-        "_lookup_mutation_24_named_name": "String!"
+        "_lookup_mutation_22_named_name": "String!"
       },
-      "sha256": "8083d513a628084337a215e7955035cf00093df5bb4438f479e9df58f238026d"
+      "sha256": "1e58fd071fa8b83c5a57c6739bda12793d6c134064e844f9c7f90583f4609014"
     },
     {
       "id": "batch.lookup.named.cycle.id",
       "sourceClass": "compiled-batch",
-      "document": "query ($_lookup_mutation_17_named_id: String!) {\n  _lookup_mutation_17_named: cycle(id: $_lookup_mutation_17_named_id) {\n    id\n    name\n  }\n}",
+      "document": "query ($_lookup_mutation_15_named_id: String!) {\n  _lookup_mutation_15_named: cycle(id: $_lookup_mutation_15_named_id) {\n    id\n    name\n  }\n}",
       "operationType": "query",
       "operationName": null,
       "rootFields": [
         "cycle"
       ],
       "variables": {
-        "_lookup_mutation_17_named_id": "String!"
+        "_lookup_mutation_15_named_id": "String!"
       },
-      "sha256": "b549b4bf54c55e60e48f88f76fa209df94d438bc2ddeb6d4b771f1e637f0fce8"
+      "sha256": "fa6608f8f291f52d9c779243418e266428ba874633e704f7fd5de6d87341191a"
     },
     {
       "id": "batch.lookup.named.cycle.name",
       "sourceClass": "compiled-batch",
-      "document": "query ($_lookup_mutation_18_named_name: String!) {\n  _lookup_mutation_18_named: cycles(\n    first: 2\n    filter: {name: {eq: $_lookup_mutation_18_named_name}}\n  ) {\n    nodes {\n      id\n      name\n    }\n  }\n}",
+      "document": "query ($_lookup_mutation_16_named_name: String!) {\n  _lookup_mutation_16_named: cycles(\n    first: 2\n    filter: {name: {eq: $_lookup_mutation_16_named_name}}\n  ) {\n    nodes {\n      id\n      name\n    }\n  }\n}",
       "operationType": "query",
       "operationName": null,
       "rootFields": [
         "cycles"
       ],
       "variables": {
-        "_lookup_mutation_18_named_name": "String!"
+        "_lookup_mutation_16_named_name": "String!"
       },
-      "sha256": "e79aa2e72e2701a9bde0232ca492daee408c906a94e9b41661d67f2f8fa3dbdb"
+      "sha256": "2b51c63afa7419b6d05ebb14b8d07255b39dd60289dd6e04b97553be3aff9f37"
     },
     {
       "id": "batch.lookup.named.document.id",
       "sourceClass": "compiled-batch",
-      "document": "query ($_lookup_mutation_19_named_id: String!) {\n  _lookup_mutation_19_named: document(id: $_lookup_mutation_19_named_id) {\n    id\n    name: title\n  }\n}",
+      "document": "query ($_lookup_mutation_17_named_id: String!) {\n  _lookup_mutation_17_named: document(id: $_lookup_mutation_17_named_id) {\n    id\n    name: title\n  }\n}",
       "operationType": "query",
       "operationName": null,
       "rootFields": [
         "document"
       ],
       "variables": {
-        "_lookup_mutation_19_named_id": "String!"
+        "_lookup_mutation_17_named_id": "String!"
       },
-      "sha256": "bd640dc80096a01b9738e709f5dc320bcee489117cba63a2a15c97d3c8cb0f4d"
+      "sha256": "e0ed7babd087f72fb1314d8294122e84b6ce2ee9edc6b58b045862c78de02dcb"
     },
     {
       "id": "batch.lookup.named.document.name",
       "sourceClass": "compiled-batch",
-      "document": "query ($_lookup_mutation_20_named_name: String!) {\n  _lookup_mutation_20_named: documents(\n    first: 2\n    filter: {title: {eq: $_lookup_mutation_20_named_name}}\n  ) {\n    nodes {\n      id\n      name: title\n    }\n  }\n}",
+      "document": "query ($_lookup_mutation_18_named_reference: String!) {\n  _lookup_mutation_18_named: documents(\n    first: 3\n    filter: {or: [{title: {eq: $_lookup_mutation_18_named_reference}}, {slugId: {eq: $_lookup_mutation_18_named_reference}}]}\n  ) {\n    nodes {\n      id\n      name: title\n      slugId\n    }\n  }\n}",
       "operationType": "query",
       "operationName": null,
       "rootFields": [
         "documents"
       ],
       "variables": {
-        "_lookup_mutation_20_named_name": "String!"
+        "_lookup_mutation_18_named_reference": "String!"
       },
-      "sha256": "dd2cc1d604726f6f64710aa90bcdb322ca2123b41a1ad7d275d9695f42e57b05"
+      "sha256": "78cf11dfac60a482ec0703fa9a4f605451fc08637ce7d81970106d11faa42a3e"
     },
     {
       "id": "batch.lookup.named.initiative.id",
       "sourceClass": "compiled-batch",
-      "document": "query ($_lookup_mutation_15_named_id: String!) {\n  _lookup_mutation_15_named: initiative(id: $_lookup_mutation_15_named_id) {\n    id\n    name\n  }\n}",
+      "document": "query ($_lookup_mutation_13_named_id: String!) {\n  _lookup_mutation_13_named: initiative(id: $_lookup_mutation_13_named_id) {\n    id\n    name\n  }\n}",
       "operationType": "query",
       "operationName": null,
       "rootFields": [
         "initiative"
       ],
       "variables": {
-        "_lookup_mutation_15_named_id": "String!"
+        "_lookup_mutation_13_named_id": "String!"
       },
-      "sha256": "1d34b0c206d1989b072c5f16837d50dc10147fb74ffa7eda061fe6f9507d1ff0"
+      "sha256": "d1240a4a2b45a08379a60deb9a2705b1f489f5126c8e068d6b63f35961653692"
     },
     {
       "id": "batch.lookup.named.initiative.name",
       "sourceClass": "compiled-batch",
-      "document": "query ($_lookup_mutation_16_named_name: String!) {\n  _lookup_mutation_16_named: initiatives(\n    first: 2\n    filter: {name: {eq: $_lookup_mutation_16_named_name}}\n  ) {\n    nodes {\n      id\n      name\n    }\n  }\n}",
+      "document": "query ($_lookup_mutation_14_named_name: String!) {\n  _lookup_mutation_14_named: initiatives(\n    first: 2\n    filter: {name: {eq: $_lookup_mutation_14_named_name}}\n  ) {\n    nodes {\n      id\n      name\n    }\n  }\n}",
       "operationType": "query",
       "operationName": null,
       "rootFields": [
         "initiatives"
       ],
       "variables": {
-        "_lookup_mutation_16_named_name": "String!"
+        "_lookup_mutation_14_named_name": "String!"
       },
-      "sha256": "efdbcf04649f2758d6e205faffccfe8bbf6a0b9f05e55036c190fb8143077672"
+      "sha256": "d3bd8717d7d078386dceaf1caa9bdd27dec52ded19685fe336c205289fc96ed2"
     },
     {
       "id": "batch.lookup.named.project.id",
       "sourceClass": "compiled-batch",
-      "document": "query ($_lookup_mutation_13_named_id: String!) {\n  _lookup_mutation_13_named: project(id: $_lookup_mutation_13_named_id) {\n    id\n    name\n  }\n}",
+      "document": "query ($_lookup_mutation_11_named_id: String!) {\n  _lookup_mutation_11_named: project(id: $_lookup_mutation_11_named_id) {\n    id\n    name\n  }\n}",
       "operationType": "query",
       "operationName": null,
       "rootFields": [
         "project"
       ],
       "variables": {
-        "_lookup_mutation_13_named_id": "String!"
+        "_lookup_mutation_11_named_id": "String!"
       },
-      "sha256": "df348d01e1dbce6803851cab6a799abd8179eea3f12f63d6bf04f47afb1ebe3b"
+      "sha256": "8446f4c2a7e19d219140df94b65e9d14c45d7251ba3ad8f798c29bb102cefb30"
     },
     {
       "id": "batch.lookup.named.project.name",
       "sourceClass": "compiled-batch",
-      "document": "query ($_lookup_mutation_14_named_name: String!) {\n  _lookup_mutation_14_named: projects(\n    first: 2\n    filter: {name: {eq: $_lookup_mutation_14_named_name}}\n  ) {\n    nodes {\n      id\n      name\n    }\n  }\n}",
+      "document": "query ($_lookup_mutation_12_named_reference: String!) {\n  _lookup_mutation_12_named: projects(\n    first: 3\n    filter: {or: [{name: {eq: $_lookup_mutation_12_named_reference}}, {slugId: {eq: $_lookup_mutation_12_named_reference}}]}\n  ) {\n    nodes {\n      id\n      name\n      slugId\n    }\n  }\n}",
       "operationType": "query",
       "operationName": null,
       "rootFields": [
         "projects"
       ],
       "variables": {
-        "_lookup_mutation_14_named_name": "String!"
+        "_lookup_mutation_12_named_reference": "String!"
       },
-      "sha256": "36ef54544966b34d64903d3c7daa1e18f7b4d2974e063a066c2d231b64954bde"
+      "sha256": "a68e9176d053baddf236adaeb5576f54217b18e6ca78ae8eee0e686af43f2959"
     },
     {
       "id": "batch.lookup.named.projectMilestone.id",
       "sourceClass": "compiled-batch",
-      "document": "query ($_lookup_mutation_21_named_id: String!) {\n  _lookup_mutation_21_named: projectMilestone(id: $_lookup_mutation_21_named_id) {\n    id\n    name\n  }\n}",
+      "document": "query ($_lookup_mutation_19_named_id: String!) {\n  _lookup_mutation_19_named: projectMilestone(id: $_lookup_mutation_19_named_id) {\n    id\n    name\n  }\n}",
       "operationType": "query",
       "operationName": null,
       "rootFields": [
         "projectMilestone"
       ],
       "variables": {
-        "_lookup_mutation_21_named_id": "String!"
+        "_lookup_mutation_19_named_id": "String!"
       },
-      "sha256": "d5666cb77d8c81033ebab77eb599f5f048a0719b68582a64277b01087e16cab6"
+      "sha256": "5e01b2207289d4ea1666daf29a7648a4ea78f11fadcd6cf1914cda587e678296"
     },
     {
       "id": "batch.lookup.named.projectMilestone.name",
       "sourceClass": "compiled-batch",
-      "document": "query ($_lookup_mutation_22_named_name: String!) {\n  _lookup_mutation_22_named: projectMilestones(\n    first: 2\n    filter: {name: {eq: $_lookup_mutation_22_named_name}}\n  ) {\n    nodes {\n      id\n      name\n    }\n  }\n}",
+      "document": "query ($_lookup_mutation_20_named_name: String!) {\n  _lookup_mutation_20_named: projectMilestones(\n    first: 2\n    filter: {name: {eq: $_lookup_mutation_20_named_name}}\n  ) {\n    nodes {\n      id\n      name\n    }\n  }\n}",
       "operationType": "query",
       "operationName": null,
       "rootFields": [
         "projectMilestones"
       ],
       "variables": {
-        "_lookup_mutation_22_named_name": "String!"
+        "_lookup_mutation_20_named_name": "String!"
       },
-      "sha256": "cb96eb0c039b25609d0a6819feff857a738ea2a55a5c6cf3c29489cf443bba15"
+      "sha256": "2c935fddea15954fcc4545c330acf1c23878f83e2c77f0f7bacf6eed9ccac08c"
     },
     {
       "id": "batch.lookup.state.id",
@@ -1583,34 +1555,6 @@
       "sha256": "8f8319dd72fea1824c5f5b365415eb152f1876b7df3d935619ab06606a917cf9"
     },
     {
-      "id": "lookup.document.id",
-      "sourceClass": "lookup",
-      "document": "query ResolveDocumentById($id: String!) { document(id: $id) { id title } }",
-      "operationType": "query",
-      "operationName": "ResolveDocumentById",
-      "rootFields": [
-        "document"
-      ],
-      "variables": {
-        "id": "String!"
-      },
-      "sha256": "d782a58324ca82d6bd461dd9fb7f305abc9f13f6c32a0c3f68e1b1f36203a8e8"
-    },
-    {
-      "id": "lookup.document.title",
-      "sourceClass": "lookup",
-      "document": "query ResolveDocumentByTitle($title: String!) {\n  documents(first: 2, filter: { title: { eq: $title } }) { nodes { id title } }\n}",
-      "operationType": "query",
-      "operationName": "ResolveDocumentByTitle",
-      "rootFields": [
-        "documents"
-      ],
-      "variables": {
-        "title": "String!"
-      },
-      "sha256": "d44b044ae09a078121cd9449e720830eadad4007d1c92377b44f79a637a0c846"
-    },
-    {
       "id": "lookup.issue",
       "sourceClass": "lookup",
       "document": "query ResolveIssueById($id: String!) {\n  issue(id: $id) { id identifier team { id key } }\n}",
@@ -1711,16 +1655,16 @@
     {
       "id": "lookup.named.document.name",
       "sourceClass": "lookup",
-      "document": "query ResolveNamedEntityByName($name: String!) {\n  documents(first: 2, filter: { title: { eq: $name } }) { nodes { id name: title } }\n}",
+      "document": "query ResolveNamedEntityByReference($reference: String!) {\n  matches: documents(first: 3, filter: { or: [{ title: { eq: $reference } }, { slugId: { eq: $reference } }] }) {\n    nodes { id name: title slugId }\n  }\n}",
       "operationType": "query",
-      "operationName": "ResolveNamedEntityByName",
+      "operationName": "ResolveNamedEntityByReference",
       "rootFields": [
         "documents"
       ],
       "variables": {
-        "name": "String!"
+        "reference": "String!"
       },
-      "sha256": "fc210ef27fecc368875022e6b66cdb12ea6e1e2ccfa533f8600fae4b101a6eed"
+      "sha256": "57b6c591c8dd007eea5f657e3c72b30a7f812018b398acab8a3f187889db58b8"
     },
     {
       "id": "lookup.named.initiative.id",
@@ -1767,16 +1711,16 @@
     {
       "id": "lookup.named.project.name",
       "sourceClass": "lookup",
-      "document": "query ResolveNamedEntityByName($name: String!) {\n  projects(first: 2, filter: { name: { eq: $name } }) { nodes { id name } }\n}",
+      "document": "query ResolveNamedEntityByReference($reference: String!) {\n  matches: projects(first: 3, filter: { or: [{ name: { eq: $reference } }, { slugId: { eq: $reference } }] }) {\n    nodes { id name slugId }\n  }\n}",
       "operationType": "query",
-      "operationName": "ResolveNamedEntityByName",
+      "operationName": "ResolveNamedEntityByReference",
       "rootFields": [
         "projects"
       ],
       "variables": {
-        "name": "String!"
+        "reference": "String!"
       },
-      "sha256": "52b9ff21969843bc0cddf057eab172d073e72dadff539b277aa84fe5c49b55c5"
+      "sha256": "4193556373fd46129801930e272ed5c6fdcbdb9820701c84ad794ae922962838"
     },
     {
       "id": "lookup.named.projectMilestone.id",

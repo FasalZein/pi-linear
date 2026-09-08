@@ -77,6 +77,7 @@ export type MutationResultDetails = {
   success: boolean;
   entity?: Entity;
   notes: readonly string[];
+  warnings: readonly string[];
   target?: string;
 };
 
@@ -154,7 +155,8 @@ export type HelpOperationEntry = {
 export type HelpResultDetails =
   | { kind: 'help-domains'; domains: readonly string[]; loaded: readonly string[] }
   | { kind: 'help-operations'; domain?: string; operations: readonly HelpOperationEntry[]; loaded: readonly string[] }
-  | { kind: 'help-operation'; name: string; purpose?: string; parameters: readonly HelpParameter[]; loaded: readonly string[] }
+  | { kind: 'help-exact'; purpose: string; example: JsonObject; loaded: readonly string[] }
+  | { kind: 'help-card'; name: string; purpose?: string; parameters: readonly HelpParameter[]; loaded: readonly string[] }
   | UnknownResultDetails;
 
 export type ResultDetails =
@@ -188,6 +190,17 @@ function resolutionTarget(details: JsonObject): string | undefined {
   if (!target) return undefined;
   return asString(target.identifier) ?? asString(target.key) ?? asString(target.name)
     ?? asString(target.resolvedId) ?? asString(target.requested);
+}
+
+function graphqlWarnings(details: JsonObject): string[] {
+  if (!Array.isArray(details.errors)) return [];
+  return details.errors.flatMap((value) => {
+    const error = asObject(value);
+    const message = asString(error?.message);
+    if (!message) return [];
+    const path = Array.isArray(error?.path) ? error.path.map(String).join('.') : undefined;
+    return [`Partial GraphQL error${path ? ` at ${path}` : ''}: ${message}`];
+  });
 }
 
 function metaNotes(details: JsonObject): string[] {
@@ -281,10 +294,17 @@ function parseNamed(details: JsonObject, expectedRoots: readonly string[], fallb
       .filter(([key]) => key !== 'success' && key !== 'deleted')
       .map(([, value]) => asEntity(value))
       .find((value): value is Entity => !!value);
-    return { kind: 'mutation', success: record.success === true || record.deleted === true, entity, notes, target };
+    return {
+      kind: 'mutation',
+      success: record.success === true || record.deleted === true,
+      entity,
+      notes,
+      warnings: graphqlWarnings(details),
+      target,
+    };
   }
   if (/(?:create|update|delete|archive|unarchive)$/i.test(rootEntry?.[0] ?? '')) {
-    return { kind: 'mutation', success: false, notes, target };
+    return { kind: 'mutation', success: false, notes, warnings: graphqlWarnings(details), target };
   }
   return { kind: 'entity', entity: asEntity(record), notes, view };
 }
@@ -367,13 +387,16 @@ function parseHelp(details: JsonObject, fallback: JsonValue | undefined): HelpRe
       };
     });
     return {
-      kind: 'help-operation',
+      kind: 'help-card',
       name: asString(details.name) ?? '',
       purpose: asString(details.purpose),
       parameters,
       loaded,
     };
   }
+  const purpose = asString(details.purpose);
+  const example = asObject(details.example);
+  if (purpose && example) return { kind: 'help-exact', purpose, example, loaded };
   return { kind: 'unknown', summary: fallbackSummary(fallback) };
 }
 

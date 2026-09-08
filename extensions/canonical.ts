@@ -24,6 +24,7 @@ function projectedCanonical(name: string): CanonicalOperation {
   const canonical = definition.canonical;
   const projected: CanonicalOperation = {
     fields: Object.fromEntries(canonical.fields.map(({ name: field, type }) => [field, type])),
+    advanced: Object.fromEntries(canonical.advancedFields.map(({ name: field, type }) => [field, type])),
     branches: canonical.branches.map(({ all }) => all),
   };
   if (canonical.exclusiveBranches) projected.exclusiveBranches = true;
@@ -41,7 +42,12 @@ export function canonicalOperation(operation: LinearOperation): CanonicalOperati
 }
 
 export function canonicalFieldNames(operation: LinearOperation): string[] {
-  return operationDefinitions.find(({ name }) => name === operation.name)?.canonical.fields.map(({ name }) => name) ?? [];
+  const canonical = operationDefinitions.find(({ name }) => name === operation.name)?.canonical;
+  if (!canonical) return [];
+  return [
+    ...canonical.fields.map(({ name }) => name),
+    ...(canonical.advancedFields.length ? ['advanced'] : []),
+  ];
 }
 
 export function missingCanonicalOperations(): string[] {

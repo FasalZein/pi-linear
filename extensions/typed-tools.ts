@@ -16,30 +16,13 @@ import { typedToolName } from './tool-names';
 import { parseJsonObject } from './json';
 import { schemaProblems, withRecovery } from './failure-message';
 import type { MutationMode } from './safety';
-import { buildTypedToolMetadata, requirementBranches } from './typed-tool-metadata';
+import { buildTypedToolMetadata } from './typed-tool-metadata';
+import { legacyReferenceReplacement } from './operations/reference-language';
+import { flattenAdvancedArguments } from './advanced-arguments';
 
 export { typedToolName, typedToolOperationName } from './tool-names';
 export { canonicalFieldNames } from './canonical';
 export { buildTypedToolMetadata, parameterSchema, requirementBranches } from './typed-tool-metadata';
-
-function branchList(operation: LinearOperation): string {
-  return requirementBranches(operation)
-    .map((branch) => (branch.length ? `{ ${branch.join(', ')} }` : '{ }'))
-    .join(' or ');
-}
-
-/**
- * Same gate as the schema, restated where an actionable message can be produced and
- * where it cannot depend on a validator keyword. Rejects nothing the schema accepts.
- */
-function assertBranch(operation: LinearOperation, variables: JsonObject): void {
-  const branches = requirementBranches(operation);
-  const satisfied = branches.filter((branch) => branch.every((name) => variables[name] !== undefined));
-  if (canonicalOperation(operation).exclusiveBranches ? satisfied.length === 1 : satisfied.length > 0) return;
-  throw new Error(
-    `Invalid parameters for "${typedToolName(operation.name)}": supply ${branchList(operation)}.`,
-  );
-}
 
 /**
  * The canonical contract publishes one name per concept, so no two accepted fields can
@@ -47,17 +30,41 @@ function assertBranch(operation: LinearOperation, variables: JsonObject): void {
  * compatibility alias reaching a typed tool is refused before credential lookup.
  */
 function assertCanonicalOnly(operation: LinearOperation, variables: JsonObject): void {
+  const contract = canonicalOperation(operation);
   const allowed = new Set(canonicalFieldNames(operation));
   const foreign = Object.keys(variables).filter((key) => !allowed.has(key));
-  if (foreign.length) {
+  if (!foreign.length) return;
+  const advanced = foreign.filter((field) => field in (contract.advanced ?? {}));
+  if (advanced.length) {
     throw new Error(
-      `Unknown parameters for "${typedToolName(operation.name)}": ${foreign.join(', ')}. `
-      + `Accepted parameters: ${[...allowed].join(', ')}. Legacy aliases and raw input go through linear.`
-      + (foreign.includes('workspace')
-        ? ' Typed tools have no workspace parameter: the active workspace is used. Change it with /linear-auth switch.'
-        : ''),
+      `${advanced.map((field) => `"${field}"`).join(', ')} ${advanced.length === 1 ? 'is' : 'are'} advanced; `
+      + `send ${advanced.length === 1 ? 'it' : 'them'} inside "advanced".`,
     );
   }
+  const replacements = foreign
+    .map((field) => ({ field, replacement: legacyReferenceReplacement(operation.name, field, allowed) }))
+    .filter((entry): entry is { field: string; replacement: string } => entry.replacement !== undefined);
+  if (replacements.length) {
+    const duplicate = replacements.find(({ replacement }) => variables[replacement] !== undefined);
+    if (duplicate) {
+      throw new Error(
+        `Duplicate ${duplicate.replacement} identity: "${duplicate.field}" conflicts with "${duplicate.replacement}"; `
+        + `send only "${duplicate.replacement}".`,
+      );
+    }
+    throw new Error(
+      `Unsupported legacy parameters for "${typedToolName(operation.name)}": `
+      + replacements.map(({ field, replacement }) => `"${field}"; send "${replacement}"`).join(', ')
+      + `. Accepted parameters: ${[...allowed].join(', ')}.`,
+    );
+  }
+  throw new Error(
+    `Unknown parameters for "${typedToolName(operation.name)}": ${foreign.join(', ')}. `
+    + `Accepted parameters: ${[...allowed].join(', ')}. Legacy aliases and raw input go through linear.`
+    + (foreign.includes('workspace')
+      ? ' Typed tools have no workspace parameter: the active workspace is used. Change it with /linear-auth switch.'
+      : ''),
+  );
 }
 
 /**
@@ -143,7 +150,9 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
         // Runs before the schema check so a stray `workspace` gets the actionable message
         // rather than a bare additionalProperties rejection.
         assertCanonicalOnly(operation, variables);
-        assertVariant(operation, variables);
+        const flattened = flattenAdvancedArguments(operation.name, canonicalOperation(operation), variables);
+        assertVariant(operation, flattened);
+        operation.validateVariables?.(flattened);
         assertSchema(args);
         return args;
       } catch (error) {
@@ -155,13 +164,14 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       if (signal?.aborted) throw new Error('Request cancelled.');
       const variables = parseJsonObject(params) ?? {};
+      let flattened: JsonObject;
       try {
         assertOperationAllowed(operation, variables, mode);
         assertCanonicalOnly(operation, variables);
-        assertVariant(operation, variables);
-        assertBranch(operation, variables);
+        flattened = flattenAdvancedArguments(operation.name, canonicalOperation(operation), variables);
+        assertVariant(operation, flattened);
+        operation.validateVariables?.(flattened);
         assertSchema(params);
-        operation.validateVariables?.(variables);
       } catch (error) {
         throw guided(error);
       }
@@ -169,7 +179,7 @@ function typedTool(operation: LinearOperation, mode: MutationMode) {
       // select one explicitly.
       const call = linearCallContext(mode, signal, ctx, {});
       try {
-        const details = await executeOperationInContext(operation, { variables }, call);
+        const details = await executeOperationInContext(operation, { variables: flattened }, call);
         return { content: [{ type: 'text' as const, text: JSON.stringify(details) }], details };
       } catch (error) {
         throw guided(error);

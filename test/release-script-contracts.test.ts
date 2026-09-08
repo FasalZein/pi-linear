@@ -21,7 +21,7 @@ const required = [
 ];
 
 describe('bound release scripts', () => {
-  it('declares every bound release script name and 0.9.0 metadata', async () => {
+  it('declares every bound release script name and 1.0.0 metadata', async () => {
     const pkg = JSON.parse(await readFile('package.json', 'utf8')) as {
       version: string;
       peerDependencies: Record<string, string>;
@@ -31,7 +31,7 @@ describe('bound release scripts', () => {
       version: string;
       packages: Record<string, { version?: string }>;
     };
-    expect(pkg.version).toBe('0.9.0');
+    expect(pkg.version).toBe('1.0.0');
     expect(lock.version).toBe(pkg.version);
     expect(lock.packages['']?.version).toBe(pkg.version);
     expect(pkg.peerDependencies['@earendil-works/pi-coding-agent']).toBe('>=0.80.7');

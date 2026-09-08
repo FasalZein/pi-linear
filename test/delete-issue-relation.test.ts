@@ -16,7 +16,8 @@ const ISSUE = '11111111-1111-4111-8111-111111111111';
 const RELATED = '22222222-2222-4222-8222-222222222222';
 const RELATION = '33333333-3333-4333-8333-333333333333';
 const SECRET = 'lin_api_secret123456789abcdef';
-const variables = { relationId: RELATION, issueId: ISSUE, relatedIssueId: RELATED, type: 'related' };
+const variables = { relationId: RELATION, issue: ISSUE, relatedIssue: RELATED, type: 'related' };
+const legacyVariables = { relationId: RELATION, issueId: ISSUE, relatedIssueId: RELATED, type: 'related' };
 const originalKey = process.env.LINEAR_API_KEY;
 const originalMutations = process.env.LINEAR_MUTATIONS;
 const originalReadonly = process.env.LINEAR_READONLY;
@@ -81,29 +82,30 @@ afterEach(() => {
 });
 
 describe('delete_issue_relation strict guarded delete', () => {
-  it('publishes only the four exact required guards and rejects malformed or unknown fields with zero network calls', async () => {
+  it('publishes four exact required guards plus the result view and rejects malformed or unknown fields with zero network calls', async () => {
     const operation = operations.delete_issue_relation;
     expect(operation.parameters).toEqual([
       { name: 'relationId', type: 'UUID', required: true },
       { name: 'issueId', type: 'UUID', required: true },
       { name: 'relatedIssueId', type: 'UUID', required: true },
       { name: 'type', type: 'IssueRelationType', required: true },
+      { name: 'view', type: 'ResultView', required: false },
     ]);
     const tool = typedLinearTools().find((candidate: any) => candidate.name === 'linear_delete_issue_relation') as any;
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
     for (const invalid of [
       { ...variables, relationId: 'AEO-1' },
-      { ...variables, issueId: 'AEO-1' },
-      { ...variables, relatedIssueId: 'AEO-2' },
+      { ...variables, issueId: ISSUE },
+      { ...variables, relatedIssueId: RELATED },
       { ...variables, type: 'inverse' },
       { ...variables, input: {} },
-      { ...variables, issue: ISSUE },
-      { relationId: RELATION, issueId: ISSUE, relatedIssueId: RELATED },
+      { ...variables, issueId: ISSUE },
+      { relationId: RELATION, issue: ISSUE, relatedIssue: RELATED },
     ]) expect(() => tool.prepareArguments(invalid)).toThrow();
-    expect(() => resolveRequest({ operation: 'delete_issue_relation', variables: { ...variables, relationId: 'bad' } }))
+    expect(() => resolveRequest({ operation: 'delete_issue_relation', variables: { ...legacyVariables, relationId: 'bad' } }))
       .toThrow('Invalid relationId: expected a UUID.');
-    expect(() => resolveRequest({ operation: 'delete_issue_relation', variables: { ...variables, input: {} } }))
+    expect(() => resolveRequest({ operation: 'delete_issue_relation', variables: { ...legacyVariables, input: {} } }))
       .toThrow('Invalid parameters for "delete_issue_relation": unknown input.');
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -129,6 +131,34 @@ describe('delete_issue_relation strict guarded delete', () => {
     ).render(200).join('\n');
     expect(rendered).toContain('✓ Deleted relation');
     expect(rendered).not.toContain('status unknown');
+  });
+
+  it('resolves issue identifiers before applying the exact endpoint guard', async () => {
+    const requests: Array<{ query: string; variables: CompatibilityObject }> = [];
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
+      const request = JSON.parse(String(init.body)) as { query: string; variables: CompatibilityObject };
+      requests.push(request);
+      if (request.query.includes('ResolveIssueById')) {
+        const first = request.variables.id === 'AEO-1';
+        return response({ data: { issue: { id: first ? ISSUE : RELATED, identifier: first ? 'AEO-1' : 'AEO-2', team: { id: 'team', key: 'AEO' } } } });
+      }
+      if (request.query.includes('VerifyIssueRelationDelete')) {
+        return response({ data: { issueRelation: { id: RELATION, type: 'related', issue: { id: ISSUE }, relatedIssue: { id: RELATED } } } });
+      }
+      return response({ data: { issueRelationDelete: { success: true } } });
+    }));
+    process.env.LINEAR_API_KEY = SECRET;
+
+    const result = await execute({ operation: 'delete_issue_relation', variables: {
+      relationId: RELATION, issue: 'AEO-1', relatedIssue: 'AEO-2', type: 'related',
+    } });
+
+    expect(requests).toHaveLength(4);
+    expect(requests.at(-1)?.query).toContain('mutation DeleteIssueRelation');
+    expect(result.details.resolution).toMatchObject({
+      issue: { requested: 'AEO-1', resolvedId: ISSUE },
+      relatedIssue: { requested: 'AEO-2', resolvedId: RELATED },
+    });
   });
 
   it.each([
@@ -229,7 +259,7 @@ describe('delete_issue_relation strict guarded delete', () => {
 
   function batchDelete(reads: CompatibilityObject[] = []) {
     const payload: CompatibilityObject = {
-      mutations: [{ key: 'remove', operation: 'delete_issue_relation', variables }],
+      mutations: [{ key: 'remove', operation: 'delete_issue_relation', variables: legacyVariables }],
     };
     if (reads.length) payload.reads = reads;
     return execute({ operation: 'batch', variables: payload });
@@ -289,7 +319,7 @@ describe('delete_issue_relation strict guarded delete', () => {
       operation: 'batch',
       variables: {
         reads: reserved.map((key, index) => ({ key, operation: 'get_issue', variables: { issue: index ? RELATED : ISSUE } })),
-        mutations: [{ operation: 'delete_issue_relation', variables }],
+        mutations: [{ operation: 'delete_issue_relation', variables: legacyVariables }],
       },
     });
     const accounted = [
@@ -431,7 +461,7 @@ describe('delete_issue_relation strict guarded delete', () => {
       process.env.LINEAR_API_KEY = SECRET;
       const input = {
         operation: 'batch',
-        variables: { mutations: [{ key: 'remove', operation: 'delete_issue_relation', variables }] },
+        variables: { mutations: [{ key: 'remove', operation: 'delete_issue_relation', variables: legacyVariables }] },
       };
       const promise = failureKind === 'cancel'
         ? executeWithSignal(input, controller.signal)

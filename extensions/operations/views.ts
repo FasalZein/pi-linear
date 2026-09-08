@@ -14,6 +14,7 @@ import {
 	listOperation,
 	simpleMutation,
 	operationParameterDecision,
+	pageParameterFields,
 } from "./shared";
 
 export const views: readonly OperationDefinition[] = ([
@@ -21,12 +22,7 @@ export const views: readonly OperationDefinition[] = ([
 		name: "list_views",
 		...operationParameterDecision({
 		fields: [
-			{ name: "after", canonical: "String" },
-			{ name: "before", canonical: "String" },
-			{ name: "first", canonical: "Int" },
-			{ name: "last", canonical: "Int" },
-			{ name: "includeArchived", canonical: "Boolean" },
-			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			...pageParameterFields(),
 			{ name: "filter", canonical: "Filter" },
 		],
 		requirements: {
@@ -78,7 +74,7 @@ export const views: readonly OperationDefinition[] = ([
 			{ name: "initiativeFilterData", canonical: "FilterData", card: { order: 3, type: "Object" }, accepted: { order: 3 } },
 			{ name: "feedItemFilterData", canonical: "FilterData", card: { order: 4, type: "Object" }, accepted: { order: 4 } },
 			{ name: "teamId", accepted: { order: 6 } },
-			{ name: "teamKey", accepted: { order: 7 } },
+			{ name: "teamKey", accepted: { order: 7 }, reference: { type: "TeamReference" } },
 		],
 		requirements: {
 			canonicalBranches: 1,
@@ -93,10 +89,6 @@ export const views: readonly OperationDefinition[] = ([
 		selection: `customView { ${projection("view", "detail")} }`,
 						example: { name: "My issues", filterData: {} },
 		canonicalExample: { name: "My issues", filterData: { assignee: { isMe: { eq: true } } } },
-		resolverPaths: {
-			team: "resolveTeamReference",
-			teamKey: "resolveTeamReference",
-		},
 		plan(v) {
 			const input = mergedInput(v, ["team", "teamKey"]);
 			const teamRef = v.team ?? v.teamKey ?? v.teamId;

@@ -12,6 +12,7 @@ import {
 	listOperation,
 	addSaveOperation,
 	operationParameterDecision,
+	pageParameterFields,
 } from "./shared";
 
 export const initiativeReads: readonly OperationDefinition[] = ([
@@ -20,12 +21,7 @@ export const initiativeReads: readonly OperationDefinition[] = ([
 		...operationParameterDecision({
 		fields: [
 			{ name: "sort", canonical: "[InitiativeSort!]" },
-			{ name: "after", canonical: "String" },
-			{ name: "before", canonical: "String" },
-			{ name: "first", canonical: "Int" },
-			{ name: "last", canonical: "Int" },
-			{ name: "includeArchived", canonical: "Boolean" },
-			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			...pageParameterFields(),
 			{ name: "filter", canonical: "Filter" },
 		],
 		requirements: {
@@ -64,7 +60,6 @@ export const initiativeReads: readonly OperationDefinition[] = ([
 			variables: { initiative: "Platform" },
 		},
 		document: getDocument("GetInitiative", "initiative", projection("initiative", "detail")),
-		resolverPaths: { initiative: "resolveNamedEntityReference" },
 		plan(v) {
 			const requested = String(v.initiative ?? v.initiativeId);
 			return {
@@ -88,24 +83,24 @@ addSaveOperation({
 			{ kind: "typed", name: "content", type: "String", canonicalOrder: 3, mode: "both" },
 			{ kind: "typed", name: "description", type: "String", canonicalOrder: 2, mode: "both" },
 			{ kind: "typed", name: "icon", type: "String", canonicalOrder: 4, mode: "both" },
-			{ kind: "typed", name: "id", type: "UUID", canonicalOrder: 15, mode: "create" },
+			{ kind: "typed", name: "id", type: "UUID", canonicalOrder: 15, tier: "advanced", mode: "create" },
 			{ kind: "typed", name: "labelIds", type: "[UUID!]", canonicalOrder: 14, mode: "both" },
-			{ kind: "typed", name: "leadTeamId", type: "UUID", canonicalOrder: 10, mode: "both" },
+			{ kind: "typed", name: "leadTeamId", type: "UUID", canonicalOrder: 10, tier: "advanced", mode: "both" },
 			{ kind: "typed", name: "name", type: "String", canonicalOrder: 1, mode: "both", requiredOnCreate: true, compatibilityCard: true, renderTarget: true },
 			{ kind: "typed", name: "ownerId", type: "UUID", canonicalOrder: 9, mode: "both" },
 			{ kind: "typed", name: "priority", type: "Priority", canonicalOrder: 13, mode: "both" },
-			{ kind: "typed", name: "prioritySortOrder", type: "Float", canonicalOrder: 12, mode: "both" },
-			{ kind: "typed", name: "sortOrder", type: "Float", canonicalOrder: 11, mode: "both" },
+			{ kind: "typed", name: "prioritySortOrder", type: "Float", canonicalOrder: 12, tier: "advanced", mode: "both" },
+			{ kind: "typed", name: "sortOrder", type: "Float", canonicalOrder: 11, tier: "advanced", mode: "both" },
 			{ kind: "typed", name: "status", type: "InitiativeStatus", canonicalOrder: 6, mode: "both" },
 			{ kind: "typed", name: "targetDate", type: "NullableDate", canonicalOrder: 7, mode: "both" },
-			{ kind: "typed", name: "targetDateResolution", type: "DateResolutionType", canonicalOrder: 8, mode: "both" },
-			{ kind: "typed", name: "customIdentifier", type: "String", canonicalOrder: 16, mode: "update" },
-			{ kind: "typed", name: "frequencyResolution", type: "FrequencyResolutionType", canonicalOrder: 17, mode: "update" },
+			{ kind: "typed", name: "targetDateResolution", type: "DateResolutionType", canonicalOrder: 8, tier: "advanced", mode: "both" },
+			{ kind: "typed", name: "customIdentifier", type: "String", canonicalOrder: 16, tier: "advanced", mode: "update" },
+			{ kind: "typed", name: "frequencyResolution", type: "FrequencyResolutionType", canonicalOrder: 17, tier: "advanced", mode: "update" },
 			{ kind: "compatibility", name: "trashed", mode: "update" },
-			{ kind: "typed", name: "updateReminderFrequency", type: "Float", canonicalOrder: 18, mode: "update" },
-			{ kind: "typed", name: "updateReminderFrequencyInWeeks", type: "Float", canonicalOrder: 19, mode: "update" },
-			{ kind: "typed", name: "updateRemindersDay", type: "Day", canonicalOrder: 20, mode: "update" },
-			{ kind: "typed", name: "updateRemindersHour", type: "Float", canonicalOrder: 21, mode: "update" },
+			{ kind: "typed", name: "updateReminderFrequency", type: "Float", canonicalOrder: 18, tier: "advanced", mode: "update" },
+			{ kind: "typed", name: "updateReminderFrequencyInWeeks", type: "Float", canonicalOrder: 19, tier: "advanced", mode: "update" },
+			{ kind: "typed", name: "updateRemindersDay", type: "Day", canonicalOrder: 20, tier: "advanced", mode: "update" },
+			{ kind: "typed", name: "updateRemindersHour", type: "Float", canonicalOrder: 21, tier: "advanced", mode: "update" },
 		],
 	},
 	semanticException: "save-value-types",
@@ -119,7 +114,6 @@ addSaveOperation({
 	updateRoot: "initiativeUpdate",
 	createType: "InitiativeCreateInput",
 	updateType: "InitiativeUpdateInput",
-	resolverPaths: { initiativeId: "resolveNamedEntityReference" },
 	example: { name: "Platform" },
 }),
 ];

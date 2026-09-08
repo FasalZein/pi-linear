@@ -1,4 +1,3 @@
-import { isLinearUrlSlug } from "../client";
 import { namedEntityLookup, pureQueryPlan } from "../operation-plan";
 import { projection } from "../selections";
 import type {
@@ -15,6 +14,7 @@ import {
 	addSaveOperation,
 	withGetResultView,
 	operationParameterDecision,
+	pageParameterFields,
 } from "./shared";
 
 export const projectReads: readonly OperationDefinition[] = ([
@@ -23,12 +23,7 @@ export const projectReads: readonly OperationDefinition[] = ([
 		...operationParameterDecision({
 		fields: [
 			{ name: "sort", canonical: "[ProjectSort!]" },
-			{ name: "after", canonical: "String" },
-			{ name: "before", canonical: "String" },
-			{ name: "first", canonical: "Int" },
-			{ name: "last", canonical: "Int" },
-			{ name: "includeArchived", canonical: "Boolean" },
-			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			...pageParameterFields(),
 			{ name: "filter", canonical: "Filter" },
 			{ name: "view", canonical: "ResultView" },
 		],
@@ -63,14 +58,13 @@ export const projectReads: readonly OperationDefinition[] = ([
 	}),
 						aliases: [],
 		domain: "projects",
-		purpose: "Get a project by exact name or UUID.",
+		purpose: "Get a project by exact name, slug, or UUID.",
 						example: { operation: "get_project", variables: { project: "Platform" } },
 		document: getDocument("GetProject", "project", projection("project", "detail")),
-		resolverPaths: { project: "resolveNamedEntityReference" },
 		plan(v) {
 			const requested = String(v.project ?? v.projectId);
 			const reference = requested.trim();
-			if (isUuid(reference) || isLinearUrlSlug(reference)) {
+			if (isUuid(reference)) {
 				return pureQueryPlan({
 					variables: { id: reference },
 					exactNamed: { requested: reference, path: "project", kind: "project" },
@@ -97,42 +91,42 @@ addSaveOperation({
 	parameterDecision: {
 		identity: { kind: "identity", name: "projectId", type: "ProjectReference", canonicalOrder: 0 },
 		fields: [
-			{ kind: "typed", name: "id", type: "UUID", canonicalOrder: 30, mode: "create" },
+			{ kind: "typed", name: "id", type: "UUID", canonicalOrder: 30, tier: "advanced", mode: "create" },
 			{ kind: "typed", name: "name", type: "String", canonicalOrder: 1, mode: "both", requiredOnCreate: true, compatibilityCard: true, renderTarget: true },
 			{ kind: "typed", name: "description", type: "String", canonicalOrder: 3, mode: "both" },
 			{ kind: "typed", name: "content", type: "String", canonicalOrder: 4, mode: "both" },
 			{ kind: "typed", name: "color", type: "Color", canonicalOrder: 6, mode: "both" },
 			{ kind: "typed", name: "icon", type: "String", canonicalOrder: 5, mode: "both" },
-			{ kind: "typed", name: "convertedFromIssueId", type: "IssueReference", canonicalOrder: 17, mode: "both" },
+			{ kind: "typed", name: "convertedFromIssueId", type: "IssueReference", canonicalOrder: 17, tier: "advanced", mode: "both" },
 			{ kind: "typed", name: "labelIds", type: "[UUID!]", canonicalOrder: 16, mode: "both" },
-			{ kind: "typed", name: "lastAppliedTemplateId", type: "UUID", canonicalOrder: 18, mode: "both" },
+			{ kind: "typed", name: "lastAppliedTemplateId", type: "UUID", canonicalOrder: 18, tier: "advanced", mode: "both" },
 			{ kind: "typed", name: "leadId", type: "UUID", canonicalOrder: 13, mode: "both" },
-			{ kind: "typed", name: "leadTeamId", type: "UUID", canonicalOrder: 14, mode: "both" },
-			{ kind: "typed", name: "memberIds", type: "[UUID!]", canonicalOrder: 15, mode: "both" },
+			{ kind: "typed", name: "leadTeamId", type: "UUID", canonicalOrder: 14, tier: "advanced", mode: "both" },
+			{ kind: "typed", name: "memberIds", type: "[UUID!]", canonicalOrder: 15, tier: "advanced", mode: "both" },
 			{ kind: "typed", name: "priority", type: "Priority", canonicalOrder: 7, mode: "both" },
-			{ kind: "typed", name: "prioritySortOrder", type: "Float", canonicalOrder: 20, mode: "both" },
-			{ kind: "typed", name: "sortOrder", type: "Float", canonicalOrder: 19, mode: "both" },
+			{ kind: "typed", name: "prioritySortOrder", type: "Float", canonicalOrder: 20, tier: "advanced", mode: "both" },
+			{ kind: "typed", name: "sortOrder", type: "Float", canonicalOrder: 19, tier: "advanced", mode: "both" },
 			{ kind: "typed", name: "startDate", type: "Date", canonicalOrder: 8, mode: "both" },
-			{ kind: "typed", name: "startDateResolution", type: "DateResolutionType", canonicalOrder: 9, mode: "both" },
+			{ kind: "typed", name: "startDateResolution", type: "DateResolutionType", canonicalOrder: 9, tier: "advanced", mode: "both" },
 			{ kind: "typed", name: "statusId", type: "UUID", canonicalOrder: 12, mode: "both" },
 			{ kind: "typed", name: "targetDate", type: "NullableDate", canonicalOrder: 10, mode: "both" },
-			{ kind: "typed", name: "targetDateResolution", type: "DateResolutionType", canonicalOrder: 11, mode: "both" },
+			{ kind: "typed", name: "targetDateResolution", type: "DateResolutionType", canonicalOrder: 11, tier: "advanced", mode: "both" },
 			{ kind: "typed", name: "teamIds", type: "[ID!]", canonicalOrder: 2, mode: "both", requiredOnCreate: true },
-			{ kind: "typed", name: "templateId", type: "UUID", canonicalOrder: 28, mode: "create" },
-			{ kind: "typed", name: "useDefaultTemplate", type: "Boolean", canonicalOrder: 29, mode: "create" },
-			{ kind: "typed", name: "canceledAt", type: "NullableDateTime", canonicalOrder: 21, mode: "update" },
-			{ kind: "typed", name: "completedAt", type: "NullableDateTime", canonicalOrder: 22, mode: "update" },
-			{ kind: "typed", name: "frequencyResolution", type: "FrequencyResolutionType", canonicalOrder: 31, mode: "update" },
-			{ kind: "typed", name: "projectUpdateRemindersPausedUntilAt", type: "NullableDateTime", canonicalOrder: 23, mode: "update" },
-			{ kind: "typed", name: "slackIssueComments", type: "Boolean", canonicalOrder: 24, mode: "update" },
-			{ kind: "typed", name: "slackIssueStatuses", type: "Boolean", canonicalOrder: 25, mode: "update" },
-			{ kind: "typed", name: "slackNewIssue", type: "Boolean", canonicalOrder: 26, mode: "update" },
+			{ kind: "typed", name: "templateId", type: "UUID", canonicalOrder: 28, tier: "advanced", mode: "create" },
+			{ kind: "typed", name: "useDefaultTemplate", type: "Boolean", canonicalOrder: 29, tier: "advanced", mode: "create" },
+			{ kind: "typed", name: "canceledAt", type: "NullableDateTime", canonicalOrder: 21, tier: "advanced", mode: "update" },
+			{ kind: "typed", name: "completedAt", type: "NullableDateTime", canonicalOrder: 22, tier: "advanced", mode: "update" },
+			{ kind: "typed", name: "frequencyResolution", type: "FrequencyResolutionType", canonicalOrder: 31, tier: "advanced", mode: "update" },
+			{ kind: "typed", name: "projectUpdateRemindersPausedUntilAt", type: "NullableDateTime", canonicalOrder: 23, tier: "advanced", mode: "update" },
+			{ kind: "typed", name: "slackIssueComments", type: "Boolean", canonicalOrder: 24, tier: "advanced", mode: "update" },
+			{ kind: "typed", name: "slackIssueStatuses", type: "Boolean", canonicalOrder: 25, tier: "advanced", mode: "update" },
+			{ kind: "typed", name: "slackNewIssue", type: "Boolean", canonicalOrder: 26, tier: "advanced", mode: "update" },
 			{ kind: "compatibility", name: "trashed", mode: "update" },
-			{ kind: "typed", name: "updateReminderFrequency", type: "Float", canonicalOrder: 32, mode: "update" },
-			{ kind: "typed", name: "updateReminderFrequencyInWeeks", type: "Float", canonicalOrder: 33, mode: "update" },
-			{ kind: "typed", name: "updateRemindersDay", type: "Day", canonicalOrder: 34, mode: "update" },
-			{ kind: "typed", name: "updateRemindersHour", type: "Float", canonicalOrder: 35, mode: "update" },
-			{ kind: "typed", name: "slackChannelName", type: "String", canonicalOrder: 27, mode: "create" },
+			{ kind: "typed", name: "updateReminderFrequency", type: "Float", canonicalOrder: 32, tier: "advanced", mode: "update" },
+			{ kind: "typed", name: "updateReminderFrequencyInWeeks", type: "Float", canonicalOrder: 33, tier: "advanced", mode: "update" },
+			{ kind: "typed", name: "updateRemindersDay", type: "Day", canonicalOrder: 34, tier: "advanced", mode: "update" },
+			{ kind: "typed", name: "updateRemindersHour", type: "Float", canonicalOrder: 35, tier: "advanced", mode: "update" },
+			{ kind: "typed", name: "slackChannelName", type: "String", canonicalOrder: 27, tier: "advanced", mode: "create" },
 		],
 	},
 	semanticException: "save-value-types",
@@ -146,10 +140,6 @@ addSaveOperation({
 	updateRoot: "projectUpdate",
 	createType: "ProjectCreateInput",
 	updateType: "ProjectUpdateInput",
-	resolverPaths: {
-		projectId: "resolveNamedEntityReference",
-		convertedFromIssueId: "resolveIssueReference",
-	},
-	example: { name: "Platform", teamIds: ["team-id"] },
+	example: { name: "Platform", teamIds: ["AEO"] },
 }),
 ];

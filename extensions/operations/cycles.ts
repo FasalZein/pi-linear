@@ -18,6 +18,7 @@ import {
 	listOperation,
 	simpleMutation,
 	operationParameterDecision,
+	pageParameterFields,
 } from "./shared";
 
 export const cycles: readonly OperationDefinition[] = ([
@@ -26,12 +27,7 @@ export const cycles: readonly OperationDefinition[] = ([
 		...operationParameterDecision({
 		fields: [
 			{ name: "team", canonical: "TeamReference", card: { order: 0 }, accepted: { order: 0 } },
-			{ name: "after", canonical: "String", accepted: { order: 3 } },
-			{ name: "before", canonical: "String", accepted: { order: 4 } },
-			{ name: "first", canonical: "Int", accepted: { order: 5, type: "Int" } },
-			{ name: "last", canonical: "Int", accepted: { order: 6, type: "Int" } },
-			{ name: "includeArchived", canonical: "Boolean", accepted: { order: 7, type: "Boolean" } },
-			{ name: "orderBy", canonical: "PaginationOrderBy", accepted: { order: 8, type: "PaginationOrderBy" } },
+			...pageParameterFields(3),
 			{ name: "filter", canonical: "Filter", accepted: { order: 9, type: "Filter" } },
 			{ name: "teamId", accepted: { order: 1 } },
 			{ name: "teamKey", accepted: { order: 2 } },
@@ -48,7 +44,6 @@ export const cycles: readonly OperationDefinition[] = ([
 		purpose: "List cycles.",
 		pageSize: 50,
 		filterType: "CycleFilter",
-						resolverPaths: { team: "resolveTeamReference" },
 		plan: (v) => {
 			const ref = String(v.team ?? v.teamKey ?? v.teamId ?? "");
 			const lookups = ref ? [teamLookup("team", ref)] : [];
@@ -80,7 +75,6 @@ export const cycles: readonly OperationDefinition[] = ([
 		purpose: "Get a cycle by exact name or UUID.",
 						example: { operation: "get_cycle", variables: { cycle: "Cycle 12" } },
 		document: getDocument("GetCycle", "cycle", projection("cycle", "detail")),
-		resolverPaths: { cycle: "resolveNamedEntityReference" },
 		plan(v) {
 			const requested = String(v.cycle ?? v.id);
 			const reference = requested.trim();
@@ -127,7 +121,6 @@ export const cycles: readonly OperationDefinition[] = ([
 		inputType: "CycleCreateInput",
 		selection: `cycle { ${projection("cycle", "detail")} }`,
 								example: { team: "AEO", startsAt: "2026-08-17", endsAt: "2026-08-31" },
-		resolverPaths: { team: "resolveTeamReference" },
 		plan(v) {
 			const teamRef = v.team ?? v.teamKey ?? v.teamId;
 			return {

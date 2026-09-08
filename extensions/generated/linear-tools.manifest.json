@@ -282,7 +282,7 @@
     {
       "name": "linear_batch",
       "helpName": "batch",
-      "purpose": "Batch independent named Linear operations as flat reads or explicit read and mutation phases.",
+      "purpose": "Batch independent reads, or run several ordinary mutations sequentially after all-entry preflight. Stop at the first failure; grouped issue creates stay transactional.",
       "initialActive": false,
       "deferred": true,
       "schemaSource": "linearBatchParameters",

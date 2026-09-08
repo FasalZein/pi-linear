@@ -20,6 +20,7 @@ import {
 	type OperationEmptyState,
 	type OperationDomain,
 	type OperationParameter,
+	type OperationReferenceField,
 	type PaginationMetadata,
 	type ParsedOperationPlanFactory,
 	type RequirementBranch,
@@ -307,7 +308,7 @@ export function workspaceEmpty(
 
 type ProjectedParameterDecision = Pick<
 	OperationSource,
-	"canonical" | "compatibilityBranches" | "parameters"
+	"canonical" | "compatibilityBranches" | "parameters" | "referenceFields"
 > & Partial<Pick<OperationSource, "acceptedParameters" | "legacyParameters" | "aliasParameters">>;
 
 type ParameterCardRole = {
@@ -324,12 +325,16 @@ type ParameterFieldDecision = {
 	name: string;
 	/** Canonical fields follow declaration order. */
 	canonical?: string;
+	/** Rare canonical fields stay available only through the closed advanced tail. */
+	tier?: "advanced";
 	canonicalBranches?: readonly number[];
 	compatibilityRequirements?: readonly CompatibilityRequirementRole[];
 	card?: ParameterCardRole;
 	accepted?: ParameterCardRole;
 	legacy?: readonly (ParameterCardRole & { branch: number })[];
 	aliases?: readonly (ParameterCardRole & { operation: string })[];
+	/** Preparation routing metadata. Labels are always derived from the authored Reference type. */
+	reference?: { name?: string; type?: `${string}Reference`; order?: number };
 };
 
 type CompatibilityRequirementMetadata = Pick<
@@ -345,6 +350,26 @@ type OperationParameterDecision = {
 		exclusiveCanonical?: true;
 	};
 };
+
+function acceptedPageRole(
+	start: number | undefined,
+	offset: number,
+	type?: string,
+): Pick<ParameterFieldDecision, "accepted"> {
+	return start === undefined ? {} : { accepted: { order: start + offset, type } };
+}
+
+/** The one authored page shape. Backward paging remains available only through advanced. */
+export function pageParameterFields(acceptedStart?: number): readonly ParameterFieldDecision[] {
+	return [
+		{ name: "first", canonical: "Int", ...acceptedPageRole(acceptedStart, 2, "Int") },
+		{ name: "after", canonical: "String", ...acceptedPageRole(acceptedStart, 0) },
+		{ name: "includeArchived", canonical: "Boolean", ...acceptedPageRole(acceptedStart, 4, "Boolean") },
+		{ name: "orderBy", canonical: "PaginationOrderBy", ...acceptedPageRole(acceptedStart, 5, "PaginationOrderBy") },
+		{ name: "before", canonical: "String", tier: "advanced", ...acceptedPageRole(acceptedStart, 1) },
+		{ name: "last", canonical: "Int", tier: "advanced", ...acceptedPageRole(acceptedStart, 3, "Int") },
+	];
+}
 
 function parameterFromRole(
 	field: ParameterFieldDecision,
@@ -384,6 +409,24 @@ function groupedParameters(
 			values.sort((left, right) => left.order - right.order).map(({ parameter }) => parameter),
 		]),
 	);
+}
+
+function authoredReferenceType(type: string | undefined): `${string}Reference` | undefined {
+	return type?.endsWith("Reference") ? type as `${string}Reference` : undefined;
+}
+
+function parameterReferenceFields(
+	fields: readonly ParameterFieldDecision[],
+): OperationReferenceField[] {
+	return fields.flatMap((field, index) => {
+		const type = field.reference?.type ?? authoredReferenceType(field.canonical);
+		if (!type) {
+			if (field.reference) throw new Error(`Reference field ${field.name} is missing its Reference type.`);
+			return [];
+		}
+		return [{ name: field.reference?.name ?? field.name, type, order: field.reference?.order ?? index }];
+	}).sort((left, right) => left.order - right.order)
+		.map(({ name, type }) => ({ name, type }));
 }
 
 function canonicalBranches(
@@ -458,8 +501,10 @@ export function operationParameterDecision(
 	decision: OperationParameterDecision,
 ): ProjectedParameterDecision {
 	const canonicalFields: Record<string, string> = {};
+	const advancedFields: Record<string, string> = {};
 	for (const field of decision.fields) {
-		if (field.canonical) canonicalFields[field.name] = field.canonical;
+		if (!field.canonical) continue;
+		(field.tier === "advanced" ? advancedFields : canonicalFields)[field.name] = field.canonical;
 	}
 	const acceptedParameters = orderedParameters(decision.fields, "accepted");
 	const legacyByBranch = groupedParameters(decision.fields, "legacy");
@@ -471,6 +516,7 @@ export function operationParameterDecision(
 		fields: canonicalFields,
 		branches: canonicalBranches(decision.fields, decision.requirements.canonicalBranches),
 	};
+	if (Object.keys(advancedFields).length) canonical.advanced = advancedFields;
 	if (decision.requirements.exclusiveCanonical) canonical.exclusiveBranches = true;
 	const projected: ProjectedParameterDecision = {
 		canonical,
@@ -479,6 +525,7 @@ export function operationParameterDecision(
 			decision.requirements.compatibilityBranches,
 		),
 		parameters: orderedParameters(decision.fields, "card"),
+		referenceFields: parameterReferenceFields(decision.fields),
 	};
 	if (acceptedParameters.length) projected.acceptedParameters = acceptedParameters;
 	if (legacyParameters.length) projected.legacyParameters = legacyParameters;
@@ -495,11 +542,13 @@ type OperationSourceExtras = Pick<
 	| "renderKind"
 	| "renderTargetFields"
 	| "renderEmpty"
+	| "referenceFields"
 >;
 
 function sourceExtras(config: OperationSourceExtras): OperationSourceExtras {
 	return {
 		compatibilityBranches: config.compatibilityBranches,
+		referenceFields: config.referenceFields,
 		canonicalExample: config.canonicalExample,
 		semanticException: config.semanticException,
 		renderKind: config.renderKind,
@@ -526,7 +575,6 @@ export function listOperation(config: {
 	plan?: ParsedOperationPlanFactory;
 	aliases?: readonly string[];
 	example?: CompatibilityObject;
-	resolverPaths?: Readonly<{ [name: string]: string }>;
 	acceptedParameters?: readonly OperationParameter[];
 	validateVariables?: OperationSource["validateVariables"];
 	resultView?: { entity: ResultViewEntity; defaultView: ResultView };
@@ -610,7 +658,6 @@ export function listOperation(config: {
 			: config.acceptedParameters;
 	}
 	if (inventoryDocuments.length) source.inventoryDocuments = inventoryDocuments;
-	if (config.resolverPaths) source.resolverPaths = config.resolverPaths;
 	if (innerValidate) {
 		source.validateVariables = (variables) => {
 			if (defaultView) parseResultView(variables.view, defaultView);
@@ -635,7 +682,6 @@ export function simpleMutation(config: {
 	aliases?: readonly string[];
 	legacyParameters?: OperationSource["legacyParameters"];
 	aliasParameters?: OperationSource["aliasParameters"];
-	resolverPaths?: Readonly<{ [name: string]: string }>;
 	validateVariables?: OperationSource["validateVariables"];
 	document?: string;
 } & OperationSourceExtras): OperationSource {
@@ -665,7 +711,6 @@ export function simpleMutation(config: {
 		example: { operation: config.name, variables: config.example },
 		document,
 		variants: [mutationVariant(document, config.root, entityPath)],
-		resolverPaths: config.resolverPaths,
 		validateVariables: config.validateVariables,
 		plan: config.plan ?? (config.idKey ? updateInputPlan(config.idKey) : plainInputPlan()),
 	};
@@ -685,6 +730,7 @@ type TypedSaveParameterField = {
 	name: string;
 	type: string;
 	canonicalOrder: number;
+	tier?: "advanced";
 	mode: SaveParameterMode;
 	requiredOnCreate?: true;
 	compatibilityCard?: true;
@@ -709,6 +755,7 @@ type SaveParameterProjections = {
 	card: readonly OperationParameter[];
 	accepted: readonly OperationParameter[];
 	identity: string;
+	referenceFields: readonly OperationReferenceField[];
 	renderTargetFields: readonly string[];
 };
 
@@ -750,7 +797,10 @@ function saveParameterProjections(
 	const updateFields = typed.filter((field) => field.kind === "identity" || field.mode !== "create");
 	const updateContent = updateFields.filter((field) => field.kind === "typed");
 	const fields: Record<string, string> = {};
-	for (const field of typed) fields[field.name] = field.type;
+	const advanced: Record<string, string> = {};
+	for (const field of typed) {
+		(field.kind === "typed" && field.tier === "advanced" ? advanced : fields)[field.name] = field.type;
+	}
 	const createBranch = createRequired.map(({ name }) => name);
 	const updateBranches = updateContent.map(({ name }) => [identity, name]);
 	const pathVariants = (
@@ -772,15 +822,17 @@ function saveParameterProjections(
 		branch.mode = "create";
 		return branch;
 	};
+	const canonical: CanonicalOperation = {
+		fields,
+		branches: [createBranch, ...updateBranches],
+		variants: [
+			{ fields: createFields.map(({ name }) => name), branches: [createBranch] },
+			{ fields: updateFields.map(({ name }) => name), branches: updateBranches },
+		],
+	};
+	if (Object.keys(advanced).length) canonical.advanced = advanced;
 	return {
-		canonical: {
-			fields,
-			branches: [createBranch, ...updateBranches],
-			variants: [
-				{ fields: createFields.map(({ name }) => name), branches: [createBranch] },
-				{ fields: updateFields.map(({ name }) => name), branches: updateBranches },
-			],
-		},
+		canonical,
 		compatibilityBranches: [
 			compatibilityCreateBranch([primaryCreateField.name]),
 			compatibilityCreateBranch([`input.${primaryCreateField.name}`]),
@@ -805,6 +857,10 @@ function saveParameterProjections(
 		],
 		accepted: [...compatibilityFields.map(({ name }) => p(name)), p("input")],
 		identity,
+		referenceFields: typed.flatMap(({ name, type }) => {
+			const referenceType = authoredReferenceType(type);
+			return referenceType ? [{ name, type: referenceType }] : [];
+		}),
 		renderTargetFields: [
 			decision.identity.name,
 			...decision.fields
@@ -831,8 +887,7 @@ export function addSaveOperation(config: {
 	createType: string;
 	updateType: string;
 	example: CompatibilityObject;
-	resolverPaths?: Readonly<{ [name: string]: string }>;
-} & Omit<OperationSourceExtras, "compatibilityBranches" | "renderTargetFields">) {
+} & Omit<OperationSourceExtras, "compatibilityBranches" | "renderTargetFields" | "referenceFields">) {
 	const parameters = saveParameterProjections(config.parameterDecision, config.noun);
 	const entityPath = config.entity[0]!.toLowerCase() + config.entity.slice(1);
 	const baseCreateDocument = mutationDocument(
@@ -890,6 +945,7 @@ export function addSaveOperation(config: {
 		...sourceExtras({
 			...config,
 			compatibilityBranches: parameters.compatibilityBranches,
+			referenceFields: parameters.referenceFields,
 			renderTargetFields: parameters.renderTargetFields,
 		}),
 		name: config.name,
@@ -903,7 +959,6 @@ export function addSaveOperation(config: {
 		example: { operation: config.name, variables: config.example },
 		document: createDocument,
 		variants: [createVariant, updateVariant],
-		resolverPaths: config.resolverPaths,
 		requiresVariables: true,
 		validateVariables: validateSaveSemantics,
 		plan(v) {

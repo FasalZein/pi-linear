@@ -4,12 +4,12 @@ Linear tools for [Pi](https://pi.dev). The extension talks to the Linear GraphQL
 
 A Linear client with one tool per operation puts every parameter schema in the model prompt at session start. This package loads tools later instead. Pi registers 53 tools from the package. Only `linear` and `linear_get_result` are in the prompt at session start.
 
-The `linear` tool answers help requests. When the model asks for one operation by name, Pi adds that one tool to the prompt. This deferred loading keeps the prompt small in sessions that use few operations.
+The `linear` tool answers help requests. Exact help activates one direct tool. The activated schema publishes common fields. Exact advanced help publishes rare tail fields.
 
 ## What you get
 
 - 49 typed operation tools for issues, comments, projects, cycles, milestones, initiatives, documents, views, labels, relations, teams, users, and workspace selection.
-- One discovery tool, `linear`, that returns domains, operation names, and parameter cards.
+- One discovery tool, `linear`, that returns domains, operation names, normal help, and exact advanced tails.
 - `linear_batch` for independent operations in one request, with separate read and mutation phases.
 - `linear_graphql` for work that no named operation covers.
 - Complete results, saved to a file on disk when a result is too large for one tool answer.
@@ -23,6 +23,7 @@ The `linear` tool answers help requests. When the model asks for one operation b
 - Pi 0.80.7 or newer. That release added the dynamic tool loading this package depends on. Verified against Pi 0.84.2.
 - Node.js with `npm`, because Pi runs `npm install` for the package.
 - A Linear API key from Linear, under Settings, API, Personal API keys.
+- No Notebook extension or Notebook setup is required.
 
 ## Install
 
@@ -63,7 +64,7 @@ Stored keys live in `~/.pi/agent/extensions/linear/credentials.json`. The defaul
 
 ## First call
 
-Every `linear` call needs `operation: "help"`. The first call is a read of the catalog. It contacts nothing and needs no credential.
+Every `linear` call needs `operation: "help"`. The first call reads the catalog. It contacts nothing and needs no credential.
 
 Call `linear` with:
 
@@ -84,7 +85,7 @@ The response lists the domains and the help forms:
 }
 ```
 
-Ask for one operation by name. This request returns the parameter card and loads the matching tool.
+Ask for one operation by name. Normal exact help returns only the purpose, example, and activation result.
 
 Call `linear` with:
 
@@ -95,25 +96,45 @@ Call `linear` with:
 ```json
 {
   "loadedTools": ["linear_get_issue"],
-  "name": "get_issue",
-  "domain": "issues",
   "purpose": "Get one issue by exact identifier or UUID.",
-  "parameters": [
-    { "name": "issue", "type": "IssueReference", "required": true },
-    { "name": "view", "type": "ResultView", "required": false }
-  ],
-  "requirements": [["issue"]],
   "example": { "issue": "AEO-258" }
 }
 ```
 
-`loadedTools` names the tool that Pi added. Call `linear_get_issue` with:
+`loadedTools` names the tool that Pi added. Its schema is the authority for common fields.
+
+Call `linear_get_issue` with:
 
 ```json
 { "issue": "AEO-258" }
 ```
 
-The `linear` tool never runs an operation. Work runs through the underscore tools, such as `linear_get_issue`, `linear_batch`, `linear_graphql`, and `linear_get_result`.
+Some operations have rare tail fields. Request their exact advanced help before you use them:
+
+```json
+{ "operation": "help", "variables": { "operation": "list_comments:advanced" } }
+```
+
+```json
+{
+  "loadedTools": ["linear_list_comments"],
+  "name": "list_comments",
+  "parameters": [
+    { "name": "before", "type": "String" },
+    { "name": "last", "type": "Int" }
+  ]
+}
+```
+
+Send tail fields inside `advanced`:
+
+```json
+{ "issue": "AEO-258", "advanced": { "before": "CURSOR", "last": 20 } }
+```
+
+The advanced object is closed at runtime. Unknown fields fail before credential lookup or network access.
+
+The `linear` tool never runs an operation. Work runs through underscore tools such as `linear_get_issue`, `linear_batch`, `linear_graphql`, and `linear_get_result`.
 
 ## Discover operations
 
@@ -158,7 +179,15 @@ Call `linear_create_issue` with:
 { "title": "Cache the workspace lookup", "team": "AEO" }
 ```
 
-References must be exact. An issue is `TEAM-123` or a UUID. A team is its key or a UUID. A user is `me`, an email, a name, a display name, or a UUID. Projects, cycles, documents, milestones, initiatives, and views take an exact name or a UUID. A reference that matches nothing, or matches more than one record, fails before any change.
+References use one caller name for each object concept. Examples include `issue`, `team`, `project`, `cycle`, `milestone`, `initiative`, `label`, and `user`.
+
+References must be exact. An issue is `TEAM-123` or a UUID. A team is its key or a UUID. A user is `me`, an email, a name, a display name, or a UUID. Projects and documents also accept exact slugs. A reference that matches nothing or several records fails before any change.
+
+The extension stores no default project or default team. Supply required context in each call. A `create_issue` parent can supply its team.
+
+Use `null` only where the active schema publishes a nullable type. In those fields, `null` clears the existing association or date.
+
+The [v1.0 changelog](./CHANGELOG.md#100) lists every renamed field and every field moved into `advanced`.
 
 [`REFERENCE.md`](./REFERENCE.md) holds the full operation table, pagination rules, and rate-limit behavior.
 
@@ -208,9 +237,21 @@ Call `linear_batch` with:
 }
 ```
 
-The mutation phase accepts one ordinary named mutation. It also accepts two or more `create_issue` entries, which the extension sends as one Linear `issueBatchCreate` request. Linear applies that request as one server-side transaction. No other batch is a transaction, so a completed mutation stays completed when a later entry fails.
+Before the first mutation, the extension validates all entries and resolves all References. It also applies all read-only and named-root safety gates.
+
+The mutation phase accepts several independent ordinary mutations. It sends them in order, with one request per entry.
+
+The extension stops at the first failure. It keeps earlier acknowledgements and skips every later mutation without sending it.
+
+A transport, HTTP, or cancellation failure can leave the sent mutation outcome unknown. Do not retry that mutation without checking Linear first.
+
+Two or more `create_issue` entries use one Linear `issueBatchCreate` transaction. The batch rejects a mix of this transaction and ordinary mutations.
+
+No other mutation batch is a transaction. A completed mutation stays completed when a later entry fails.
 
 The result reports every caller key exactly once, under `data`, `errors`, or `skipped`.
+
+Mutations return a compact `summary` acknowledgement by default. Set `view` to `full` when a caller needs the complete mutation entity.
 
 ## Raw GraphQL
 
@@ -246,14 +287,15 @@ Every operation tool also accepts `sink`. Use `"sink": "artifact"` to force a sa
 | `LINEAR_SPILL_BYTES` | environment variable | Positive number that lowers the size at which a result goes to a file. |
 | `PI_ARTIFACT_PROJECT_ROOT` | environment variable | Root folder for saved results. Defaults to `~/.pi/artifacts`. |
 | `PI_CODING_AGENT_DIR` | environment variable | Pi agent directory that holds the credential file. Defaults to `~/.pi/agent`. |
-| `workspace` | tool argument | Stored workspace for one request. The active workspace does not change. |
-| `/linear-settings` | command | Sets the default result view, Human readable or Full JSON. |
+| `workspace` | `linear_graphql` or `linear_batch` argument | Stored Workspace for one exceptional request. The active Workspace does not change. Typed tools omit this field. |
+| `/linear-settings` | command | Sets the default output format, Human readable or Full JSON. |
 
-The result view preference is saved under the Pi agent state directory, in `state/extensions/linear/settings.json`. It is never written next to credentials.
+The output-format preference is saved under the Pi agent state directory, in `state/extensions/linear/settings.json`. It is never written next to credentials.
 
 ## Safety rules
 
 - Mutations run only through named operations. Each named operation declares the exact mutation roots it can send, and the runtime checks the parsed document against that declaration.
+- Common and advanced fields use the same mutation gates. The `advanced` wrapper does not widen mutation authority.
 - Raw GraphQL mutations need `LINEAR_MUTATIONS=all`.
 - `LINEAR_READONLY=1` and the read-only entry file reject every mutation, named or raw.
 - `delete_issue_relation` is the only delete operation. It checks the relation and both endpoints before it sends the delete.

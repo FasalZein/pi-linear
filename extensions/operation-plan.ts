@@ -283,36 +283,6 @@ export function userLookup(key: string, value: string): LookupPlan {
   };
 }
 
-export function documentLookup(key: string, value: string): LookupPlan {
-  const reference = required(value, 'document');
-  if (UUID.test(reference)) {
-    return {
-      key,
-      document: () => `query ResolveDocumentById($id: String!) { document(id: $id) { id title } }`,
-      variables: () => ({ id: reference }),
-      resolve(data) {
-        const document = presentRecord(data.document);
-        if (!document) throw new Error(`Linear document "${reference}" was not found.`);
-        if (document.id !== reference) throw new Error(`Linear document resolver returned mismatched id "${String(document.id)}" for "${reference}".`);
-        return { id: document.id, name: document.title };
-      },
-    };
-  }
-  return {
-    key,
-    document: () => `query ResolveDocumentByTitle($title: String!) {
-  documents(first: 2, filter: { title: { eq: $title } }) { nodes { id title } }
-}`,
-    variables: () => ({ title: reference }),
-    resolve(data) {
-      const nodes = lookupNodes(data.documents);
-      if (nodes.length !== 1) throw new Error(`Linear document "${reference}" resolved to ${nodes.length} results; expected exactly one.`);
-      if (nodes[0]!.title !== reference) throw new Error(`Linear document resolver returned mismatched title "${String(nodes[0]!.title)}" for "${reference}".`);
-      return { id: nodes[0]!.id, name: nodes[0]!.title };
-    },
-  };
-}
-
 export function issueRelationLookup(key: string, value: string, failureMessage: string): LookupPlan {
   const reference = required(value, 'issue relation');
   return {
@@ -341,11 +311,34 @@ export function issueRelationLookup(key: string, value: string, failureMessage: 
   };
 }
 
-export type LookupNamedKind = 'project' | 'initiative' | 'cycle' | 'document' | 'projectMilestone' | 'customView';
+export type LookupNamedKind =
+  | 'project'
+  | 'initiative'
+  | 'cycle'
+  | 'document'
+  | 'projectMilestone'
+  | 'customView'
+  | 'issueLabel'
+  | 'projectLabel'
+  | 'initiativeLabel'
+  | 'projectStatus';
+
+const NAMED_PLURALS = {
+  project: 'projects',
+  initiative: 'initiatives',
+  cycle: 'cycles',
+  document: 'documents',
+  projectMilestone: 'projectMilestones',
+  customView: 'customViews',
+  issueLabel: 'issueLabels',
+  projectLabel: 'projectLabels',
+  initiativeLabel: 'initiativeLabels',
+  projectStatus: 'projectStatuses',
+} as const satisfies Readonly<Record<LookupNamedKind, string>>;
 
 export function namedEntityLookup(key: string, kind: LookupNamedKind, value: string): LookupPlan {
   const reference = required(value, kind);
-  const plural = kind === 'projectMilestone' ? 'projectMilestones' : kind === 'customView' ? 'customViews' : `${kind}s`;
+  const plural = NAMED_PLURALS[kind];
   const nameField = kind === 'document' ? 'title' : 'name';
   const nameSelection = kind === 'document' ? 'name: title' : 'name';
   if (UUID.test(reference)) {
@@ -363,13 +356,25 @@ export function namedEntityLookup(key: string, kind: LookupNamedKind, value: str
       },
     };
   }
+  const supportsSlug = kind === 'project' || kind === 'document';
   return {
     key,
-    document: () => `query ResolveNamedEntityByName($name: String!) {
+    document: () => supportsSlug
+      ? `query ResolveNamedEntityByReference($reference: String!) {
+  matches: ${plural}(first: 3, filter: { or: [{ ${nameField}: { eq: $reference } }, { slugId: { eq: $reference } }] }) {
+    nodes { id ${nameSelection} slugId }
+  }
+}`
+      : `query ResolveNamedEntityByName($name: String!) {
   ${plural}(first: 2, filter: { ${nameField}: { eq: $name } }) { nodes { id ${nameSelection} } }
 }`,
-    variables: () => ({ name: reference }),
+    variables: () => supportsSlug ? { reference } : { name: reference },
     resolve(data) {
+      if (supportsSlug) {
+        const matches = lookupNodes(data.matches).filter((entity) =>
+          entity.name === reference || entity.slugId === reference);
+        return one(matches, `${kind} "${reference}"`);
+      }
       const nodes = lookupNodes(data[plural]).filter((entity) => entity.name === reference);
       return one(nodes, `${kind} "${reference}"`);
     },

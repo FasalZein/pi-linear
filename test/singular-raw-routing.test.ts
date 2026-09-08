@@ -19,6 +19,7 @@ isolateLinearCredentials();
 const originalRoot = process.env.PI_ARTIFACT_PROJECT_ROOT;
 const originalKey = process.env.LINEAR_API_KEY;
 const originalSpill = process.env.LINEAR_SPILL_BYTES;
+const DOCUMENT_ID = '11111111-1111-4111-8111-111111111111';
 const roots: string[] = [];
 
 async function useArtifactRoot() {
@@ -82,9 +83,9 @@ afterEach(async () => {
 describe('lossless singular routing', () => {
   it('returns the maintained 6,500-character get_document result inline', async () => {
     const content = 'd'.repeat(6_500);
-    installServer(() => ({ data: { document: { id: 'doc-1', slugId: 'doc-1', title: 'Notes', content } } }));
+    installServer(() => ({ data: { document: { id: DOCUMENT_ID, slugId: 'doc-1', title: 'Notes', content } } }));
 
-    const result = await execute({ operation: 'get_document', variables: { document: 'doc-1' } });
+    const result = await execute({ operation: 'get_document', variables: { document: DOCUMENT_ID } });
 
     expect(result.details.data.document.content).toBe(content);
     expect(result.details).not.toHaveProperty('handle');
@@ -98,9 +99,9 @@ describe('lossless singular routing', () => {
   it('externalizes an above-boundary singular result once and recovers every character', async () => {
     await useArtifactRoot();
     const content = '😀'.repeat(DEFAULT_MAX_BYTES);
-    installServer(() => ({ data: { document: { id: 'doc-1', slugId: 'doc-1', title: 'Notes', content } } }));
+    installServer(() => ({ data: { document: { id: DOCUMENT_ID, slugId: 'doc-1', title: 'Notes', content } } }));
 
-    const result = await execute({ operation: 'get_document', variables: { document: 'doc-1' } });
+    const result = await execute({ operation: 'get_document', variables: { document: DOCUMENT_ID } });
 
     expect(result.details).toMatchObject({
       handle: expect.stringMatching(/^linear-result:v1:/),
@@ -141,13 +142,13 @@ describe('lossless singular routing', () => {
 
   it('publishes named child errors with partial entity identity', async () => {
     installServer(() => ({
-      data: { document: { id: 'doc-1', slugId: 'doc-1', title: 'Notes', content: null } },
+      data: { document: { id: DOCUMENT_ID, slugId: 'doc-1', title: 'Notes', content: null } },
       errors: [{ path: ['document', 'content'], message: 'Content unavailable' }],
     }));
 
-    const result = await execute({ operation: 'get_document', variables: { document: 'doc-1' } });
+    const result = await execute({ operation: 'get_document', variables: { document: DOCUMENT_ID } });
 
-    expect(result.details.data.document).toMatchObject({ id: 'doc-1', title: 'Notes' });
+    expect(result.details.data.document).toMatchObject({ id: DOCUMENT_ID, title: 'Notes' });
     expect(result.details.errors).toEqual([{ path: ['document', 'content'], message: 'Content unavailable' }]);
   });
 
@@ -169,11 +170,11 @@ describe('lossless singular routing', () => {
 
   it('keeps typed and raw singular reads lossless', async () => {
     const content = 't'.repeat(6_500);
-    installServer(() => ({ data: { document: { id: 'doc-1', slugId: 'doc-1', title: 'Notes', content } } }));
+    installServer(() => ({ data: { document: { id: DOCUMENT_ID, slugId: 'doc-1', title: 'Notes', content } } }));
     const typed = typedLinearTools().find((tool: any) => tool.name === 'linear_get_document') as any;
 
-    const typedResult = await typed.execute('call-1', { document: 'doc-1' }, undefined, undefined, { hasUI: false });
-    const rawResult = await execute({ query: 'query { document(id: "doc-1") { id title content } }' });
+    const typedResult = await typed.execute('call-1', { document: DOCUMENT_ID }, undefined, undefined, { hasUI: false });
+    const rawResult = await execute({ query: `query { document(id: "${DOCUMENT_ID}") { id title content } }` });
 
     expect(typedResult.details.data).toEqual(rawResult.details.data);
     expect(typedResult.details.data.document.content).toBe(content);

@@ -1,5 +1,77 @@
 # Changelog
 
+## 1.0.0
+
+This entry documents the v1.0 contract. Release approval remains pending combined verification.
+
+### Common and advanced fields
+
+- Added a common tier for ordinary calls.
+- Added a closed `advanced` object for rare tail fields.
+- Added exact advanced discovery with `{ "operation": "help", "variables": { "operation": "<name>:advanced" } }`.
+- Changed normal exact help to return only purpose, example, and activation.
+- Kept the activated direct tool schema as the authority for common fields.
+- Moved backward paging to advanced tails. Common paging uses `first` and `after`. Advanced paging uses `before` and `last`.
+- Kept advanced calls on the same validation, reference-resolution, read-only, and mutation-safety paths.
+
+Every field moved from the v0.9 top level appears here:
+
+| Operation | Fields now inside `advanced` |
+| --- | --- |
+| `list_comments`, `list_views`, `list_cycles`, `list_documents`, `list_initiatives`, `list_issue_labels`, `list_issue_relations`, `list_issue_statuses`, `list_issues`, `search_issues`, `list_milestones`, `list_project_labels`, `list_project_relations`, `list_projects`, `list_teams`, `list_users` | `before`, `last` |
+| `create_comment` | `project`, `initiative`, `projectUpdateId`, `initiativeUpdateId`, `postId`, `documentContentId`, `parentId`, `bodyData`, `quotedText`, `doNotSubscribeToIssue`, `createOnSyncedSlackThread`, `createdAt`, `id` |
+| `create_issue` | `descriptionData`, `milestone`, `delegate`, `lastAppliedTemplateId`, `slaType`, `slaBreachesAt`, `slaStartedAt`, `sortOrder`, `subIssueSortOrder`, `prioritySortOrder`, `templateId`, `useDefaultTemplate`, `preserveSortOrderOnCreate`, `referenceCommentId`, `sourceCommentId`, `sourcePullRequestCommentId`, `createAsUser`, `displayIconUrl`, `completedAt`, `createdAt`, `id` |
+| `update_issue` | `descriptionData`, `milestone`, `delegate`, `lastAppliedTemplateId`, `slaType`, `slaBreachesAt`, `slaStartedAt`, `sortOrder`, `subIssueSortOrder`, `prioritySortOrder`, `autoClosedByParentClosing`, `snoozedBy`, `snoozedUntilAt` |
+| `save_initiative` | `targetDateResolution`, `leadTeam`, `sortOrder`, `prioritySortOrder`, `id`, `customIdentifier`, `frequencyResolution`, `updateReminderFrequency`, `updateReminderFrequencyInWeeks`, `updateRemindersDay`, `updateRemindersHour` |
+| `save_project` | `startDateResolution`, `targetDateResolution`, `leadTeam`, `members`, `convertedFromIssue`, `lastAppliedTemplateId`, `sortOrder`, `prioritySortOrder`, `canceledAt`, `completedAt`, `projectUpdateRemindersPausedUntilAt`, `slackIssueComments`, `slackIssueStatuses`, `slackNewIssue`, `slackChannelName`, `templateId`, `useDefaultTemplate`, `id`, `frequencyResolution`, `updateReminderFrequency`, `updateReminderFrequencyInWeeks`, `updateRemindersDay`, `updateRemindersHour` |
+
+### Unified Reference names
+
+Typed tools now use one caller name for each Reference concept. Every v0.9 replacement appears here:
+
+| Operation | v0.9 field → v1.0 field |
+| --- | --- |
+| `create_comment` | `projectId` → `project`<br>`initiativeId` → `initiative` |
+| `update_cycle` | `id` → `cycle` |
+| `create_document`, `update_document` | `issueId` → `issue`<br>`teamId` → `team`<br>`projectId` → `project`<br>`initiativeId` → `initiative`<br>`cycleId` → `cycle`<br>`ownerId` → `owner`<br>`subscriberIds` → `subscribers` |
+| `update_issue_label`, `update_project_label` | `id` → `label` |
+| `update_issue_relation`, `delete_issue_relation` | `issueId` → `issue`<br>`relatedIssueId` → `relatedIssue` |
+| `list_issues` | `projectId` → `project` |
+| `create_issue` | `projectId` → `project`<br>`projectMilestoneId` → `milestone`<br>`cycleId` → `cycle`<br>`labelIds` → `labels`<br>`subscriberIds` → `subscribers`<br>`delegateId` → `delegate` |
+| `update_issue` | `teamId` → `team`<br>`projectId` → `project`<br>`addedLabelIds` → `addLabels`<br>`removedLabelIds` → `removeLabels`<br>`projectMilestoneId` → `milestone`<br>`cycleId` → `cycle`<br>`labelIds` → `labels`<br>`subscriberIds` → `subscribers`<br>`delegateId` → `delegate`<br>`snoozedById` → `snoozedBy` |
+| `save_milestone` | `milestoneId` → `milestone`<br>`projectId` → `project` |
+| `create_project_relation`, `update_project_relation` | `projectId` → `project`<br>`relatedProjectId` → `relatedProject`<br>`projectMilestoneId` → `milestone`<br>`relatedProjectMilestoneId` → `relatedMilestone` |
+| `save_project` | `projectId` → `project`<br>`teamIds` → `teams`<br>`statusId` → `status`<br>`leadId` → `lead`<br>`leadTeamId` → `leadTeam`<br>`memberIds` → `members`<br>`labelIds` → `labels`<br>`convertedFromIssueId` → `convertedFromIssue` |
+| `save_initiative` | `initiativeId` → `initiative`<br>`ownerId` → `owner`<br>`leadTeamId` → `leadTeam`<br>`labelIds` → `labels` |
+
+The extension stores no default project or default team. Typed tools no longer publish `workspace`.
+
+Use `/linear-auth switch` or `linear_switch_workspace` to select a Workspace. `linear_graphql` and `linear_batch` keep an explicit cross-account override.
+
+Use `null` only for nullable fields. In these fields, `null` clears the current association or date.
+
+Document `icon` remains outside typed tools because Linear does not publish valid typed values. Compatibility calls can still accept it.
+
+### Mutation acknowledgements and batches
+
+- Added `view` to all 23 named mutation tools.
+- Mutations return a validated compact `summary` acknowledgement by default.
+- Set `view` to `full` to return the complete mutation entity.
+- A batch validates all mutation entries and resolves all References before the first mutation request.
+- Ordinary batch mutations run in order. The batch stops at the first failure and skips later entries.
+- A transport, HTTP, or cancellation failure marks the sent mutation outcome as unknown.
+- Several `create_issue` entries keep the one-request `issueBatchCreate` transaction.
+- Ordinary mutations remain non-atomic and keep the same named-root safety rules.
+
+### Dependencies and evidence
+
+- The package has no Notebook dependency.
+- AEO-831 records the context measurement in [`docs/v10-context-measurement-evidence.md`](./docs/v10-context-measurement-evidence.md). `scripts/context-measurement/run.sh` reproduces it offline.
+- The evidence names the commit that added the runner. Later commits changed only this file and the evidence files, so the measured extension source is unchanged.
+- That measurement runs no model. Completion, model-chosen wrong calls, latency, cache use, and billed provider usage stay unmeasured. This release note makes no token-improvement or behavior claim.
+- Exact serialized byte checks remain the deterministic schema measurement.
+- Architecture references: [`ADR 0005`](./docs/adr/0005-dynamic-typed-tools-over-static-registration.md), [`ADR 0006`](./docs/adr/0006-publish-the-operation-catalog.md), [`ADR 0007`](./docs/adr/0007-shape-results-and-batch-transport-by-phase.md), and [`ADR 0009`](./docs/adr/0009-use-explicit-unified-references-without-project-or-team-defaults.md).
+
 ## 0.9.0
 
 - Added deferred direct `linear_batch`. Exact `batch` help activates it. Direct calls use canonical `key`.
@@ -11,6 +83,8 @@
 - Normalized guarded relation preflight and delete failures to stable operation-specific errors that expose no supplied UUID or active credential.
 - Added batch transport: compatible reads share one aliased query, one ordinary mutation runs after the read gate, and independent issue creates use `issueBatchCreate`.
 - Added internal telemetry for every documented Linear rate-limit header. By default, results show compact `meta.rateLimit` details only near exhaustion. For explicit diagnostics, set top-level `telemetry: "always"` on the exact direct `linear_batch`, `linear_graphql`, or typed `linear_*` tool. Search reads retry one documented GraphQL `RATELIMITED` 400 response.
+- Removed document `icon` from typed tools because Linear does not publish its valid values. Compatibility calls still accept this field.
+- Classified `not a valid` GraphQL responses as input errors. The recovery message now requests corrected parameters instead of an unchanged retry.
 - Architecture references: [`ADR 0006`](./docs/adr/0006-publish-the-operation-catalog.md) publishes the catalog. [`ADR 0003`](./docs/adr/0003-result-routing.md) defines lossless routing. [`ADR 0007`](./docs/adr/0007-shape-results-and-batch-transport-by-phase.md) records result views, exact roots, and phased batch transport.
 
 ## 0.8.0

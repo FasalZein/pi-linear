@@ -1,6 +1,5 @@
-import { isLinearUrlSlug } from "../client";
 import { projection } from "../selections";
-import { documentLookup, issueLookup, namedEntityLookup, pureQueryPlan, teamLookup } from "../operation-plan";
+import { issueLookup, namedEntityLookup, pureQueryPlan, teamLookup } from "../operation-plan";
 import {
 	isCompatibilityString,
 	mergedInput,
@@ -22,6 +21,7 @@ import {
 	simpleMutation,
 	withGetResultView,
 	operationParameterDecision,
+	pageParameterFields,
 } from "./shared";
 
 export const documents: readonly OperationDefinition[] = ([
@@ -30,12 +30,7 @@ export const documents: readonly OperationDefinition[] = ([
 		...operationParameterDecision({
 		fields: [
 			{ name: "sort", canonical: "[DocumentSort!]" },
-			{ name: "after", canonical: "String" },
-			{ name: "before", canonical: "String" },
-			{ name: "first", canonical: "Int" },
-			{ name: "last", canonical: "Int" },
-			{ name: "includeArchived", canonical: "Boolean" },
-			{ name: "orderBy", canonical: "PaginationOrderBy" },
+			...pageParameterFields(),
 			{ name: "filter", canonical: "Filter" },
 			{ name: "view", canonical: "ResultView" },
 		],
@@ -70,17 +65,16 @@ export const documents: readonly OperationDefinition[] = ([
 	}),
 						aliases: [],
 		domain: "documents",
-		purpose: "Get a document by exact title or UUID.",
+		purpose: "Get a document by exact title, slug, or UUID.",
 						example: {
 			operation: "get_document",
 			variables: { document: "Planning notes" },
 		},
 		document: getDocument("GetDocument", "document", projection("document", "detail")),
-		resolverPaths: { document: "resolveNamedEntityReference" },
 		plan(v) {
 			const requested = String(v.document ?? v.documentId);
 			const reference = requested.trim();
-			if (isUuid(reference) || isLinearUrlSlug(reference)) {
+			if (isUuid(reference)) {
 				return pureQueryPlan({
 					variables: { id: reference },
 					exactNamed: { requested: reference, path: "document", kind: "document" },
@@ -100,10 +94,10 @@ export const documents: readonly OperationDefinition[] = ([
 		fields: [
 			{ name: "title", canonical: "String", canonicalBranches: [0], compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":0},{"branch":0,"kind":"atLeastOne","order":1,"input":true}], card: { order: 0, required: true }, accepted: { order: 16 } },
 			{ name: "content", canonical: "String", accepted: { order: 1 } },
-			{ name: "icon", canonical: "String", accepted: { order: 3 } },
+			{ name: "icon", accepted: { order: 3 } },
 			{ name: "color", canonical: "Color", accepted: { order: 0 } },
-			{ name: "issueId", canonical: "IssueReference", accepted: { order: 6 } },
-			{ name: "teamId", canonical: "TeamReference", accepted: { order: 14 } },
+			{ name: "issueId", canonical: "IssueReference", accepted: { order: 6 }, reference: { order: 0 } },
+			{ name: "teamId", canonical: "TeamReference", accepted: { order: 14 }, reference: { order: 2 } },
 			{ name: "projectId", canonical: "UUID", accepted: { order: 9 } },
 			{ name: "initiativeId", canonical: "UUID", accepted: { order: 5 } },
 			{ name: "cycleId", canonical: "UUID", accepted: { order: 2 } },
@@ -115,7 +109,7 @@ export const documents: readonly OperationDefinition[] = ([
 			{ name: "sortOrder", canonical: "Float", accepted: { order: 12 } },
 			{ name: "id", canonical: "UUID", accepted: { order: 4 } },
 			{ name: "input", card: { order: 1, type: "Input" }, accepted: { order: 17 }, legacy: [{ order: 0, type: "DocumentCreateInput", required: true, branch: 0 }] },
-			{ name: "teamKey", accepted: { order: 15 } },
+			{ name: "teamKey", accepted: { order: 15 }, reference: { type: "TeamReference", order: 1 } },
 		],
 		requirements: {
 			canonicalBranches: 1,
@@ -136,11 +130,6 @@ export const documents: readonly OperationDefinition[] = ([
 			) {
 				throw new Error("canonical fields or nested input require title");
 			}
-		},
-		resolverPaths: {
-			issueId: "resolveIssueReference",
-			teamKey: "resolveTeamReference",
-			teamId: "resolveTeamReference",
 		},
 		plan(v) {
 			const input = mergedInput(v, ["teamKey"]);
@@ -176,30 +165,30 @@ export const documents: readonly OperationDefinition[] = ([
 		name: "update_document",
 		...operationParameterDecision({
 		fields: [
-			{ name: "document", canonical: "DocumentReference", canonicalBranches: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15] },
+			{ name: "document", canonical: "DocumentReference", canonicalBranches: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14], reference: { name: "documentId", type: "DocumentIdReference", order: 0 } },
 			{ name: "title", canonical: "String", canonicalBranches: [0], accepted: { order: 17 } },
 			{ name: "content", canonical: "String", canonicalBranches: [1], accepted: { order: 2 } },
-			{ name: "icon", canonical: "String", canonicalBranches: [2], accepted: { order: 5 } },
-			{ name: "color", canonical: "Color", canonicalBranches: [3], accepted: { order: 1 } },
-			{ name: "issueId", canonical: "IssueReference", canonicalBranches: [4], accepted: { order: 7 } },
-			{ name: "teamId", canonical: "TeamReference", canonicalBranches: [5], accepted: { order: 15 } },
-			{ name: "projectId", canonical: "UUID", canonicalBranches: [6], accepted: { order: 10 } },
-			{ name: "initiativeId", canonical: "UUID", canonicalBranches: [7], accepted: { order: 6 } },
-			{ name: "cycleId", canonical: "UUID", canonicalBranches: [8], accepted: { order: 3 } },
-			{ name: "releaseId", canonical: "UUID", canonicalBranches: [9], accepted: { order: 11 } },
-			{ name: "resourceFolderId", canonical: "UUID", canonicalBranches: [10], accepted: { order: 12 } },
-			{ name: "lastAppliedTemplateId", canonical: "UUID", canonicalBranches: [11], accepted: { order: 8 } },
-			{ name: "ownerId", canonical: "UUID", canonicalBranches: [12], accepted: { order: 9 } },
-			{ name: "subscriberIds", canonical: "[UUID!]", canonicalBranches: [13], accepted: { order: 14 } },
-			{ name: "sortOrder", canonical: "Float", canonicalBranches: [14], accepted: { order: 13 } },
-			{ name: "hiddenAt", canonical: "NullableDateTime", canonicalBranches: [15], accepted: { order: 4 } },
+			{ name: "icon", accepted: { order: 5 } },
+			{ name: "color", canonical: "Color", canonicalBranches: [2], accepted: { order: 1 } },
+			{ name: "issueId", canonical: "IssueReference", canonicalBranches: [3], accepted: { order: 7 }, reference: { order: 1 } },
+			{ name: "teamId", canonical: "TeamReference", canonicalBranches: [4], accepted: { order: 15 }, reference: { order: 3 } },
+			{ name: "projectId", canonical: "UUID", canonicalBranches: [5], accepted: { order: 10 } },
+			{ name: "initiativeId", canonical: "UUID", canonicalBranches: [6], accepted: { order: 6 } },
+			{ name: "cycleId", canonical: "UUID", canonicalBranches: [7], accepted: { order: 3 } },
+			{ name: "releaseId", canonical: "UUID", canonicalBranches: [8], accepted: { order: 11 } },
+			{ name: "resourceFolderId", canonical: "UUID", canonicalBranches: [9], accepted: { order: 12 } },
+			{ name: "lastAppliedTemplateId", canonical: "UUID", canonicalBranches: [10], accepted: { order: 8 } },
+			{ name: "ownerId", canonical: "UUID", canonicalBranches: [11], accepted: { order: 9 } },
+			{ name: "subscriberIds", canonical: "[UUID!]", canonicalBranches: [12], accepted: { order: 14 } },
+			{ name: "sortOrder", canonical: "Float", canonicalBranches: [13], accepted: { order: 13 } },
+			{ name: "hiddenAt", canonical: "NullableDateTime", canonicalBranches: [14], accepted: { order: 4 } },
 			{ name: "documentId", compatibilityRequirements: [{"branch":0,"kind":"all","order":0}], card: { order: 0, type: "DocumentReference", required: true }, accepted: { order: 0 } },
 			{ name: "input", card: { order: 1, type: "Input" }, accepted: { order: 19 } },
-			{ name: "teamKey", accepted: { order: 16 } },
+			{ name: "teamKey", accepted: { order: 16 }, reference: { type: "TeamReference", order: 2 } },
 			{ name: "trashed", accepted: { order: 18 } },
 		],
 		requirements: {
-			canonicalBranches: 16,
+			canonicalBranches: 15,
 			compatibilityBranches: [{}],
 		},
 	}),
@@ -212,12 +201,6 @@ export const documents: readonly OperationDefinition[] = ([
 						example: { documentId: "document-id", title: "Updated notes" },
 		canonicalExample: { document: "document-id", title: "Updated notes" },
 		idKey: "documentId",
-		resolverPaths: {
-			documentId: "resolveDocumentReference",
-			issueId: "resolveIssueReference",
-			teamKey: "resolveTeamReference",
-			teamId: "resolveTeamReference",
-		},
 		plan(v) {
 			const requested = String(v.document ?? v.documentId);
 			const input = mergedInput(v, ["document", "documentId", "teamKey"]);
@@ -228,7 +211,7 @@ export const documents: readonly OperationDefinition[] = ([
 			return {
 				kind: "mutation",
 				lookups: [
-					documentLookup("target", requested),
+					namedEntityLookup("target", "document", requested),
 					...(issueRef ? [issueLookup("issue", issueRef)] : []),
 					...(teamRef ? [teamLookup("team", String(teamRef))] : []),
 				],
