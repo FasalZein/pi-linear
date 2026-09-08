@@ -57,7 +57,6 @@ function createIssueRefs(v: CompatibilityObject) {
 	]);
 	const projectRef = v.project;
 	if (isUuid(projectRef)) input.projectId = projectRef;
-	if (Array.isArray(v.labels)) input.labelIds = v.labels;
 	return {
 		input,
 		parentRef: v.parent ?? input.parentId,
@@ -392,7 +391,7 @@ export const issues: readonly OperationDefinition[] = ([
 			{ name: "parentId", compatibilityRequirements: [{"branch":0,"kind":"atLeastOne","order":5,"input":true},{"branch":1,"kind":"atLeastOne","order":5,"input":true}], accepted: { order: 17 }, reference: { type: "IssueReference", order: 1 } },
 			{ name: "stateId", accepted: { order: 30 }, reference: { type: "StateReference", order: 6 } },
 			{ name: "project", accepted: { order: 39, type: "ProjectReference" } },
-			{ name: "labels", accepted: { order: 40, type: "[UUID!]" } },
+			{ name: "labels", accepted: { order: 40, type: "[LabelReference!]" } },
 		],
 		requirements: {
 			canonicalBranches: 2,
@@ -419,9 +418,13 @@ export const issues: readonly OperationDefinition[] = ([
 			}
 			const labelSources = [variables.labels, variables.labelIds, raw.labelIds].filter((value) => value !== undefined);
 			if (labelSources.length > 1) throw new Error("labels, labelIds, and input.labelIds conflict; send exactly one");
-			for (const labels of labelSources) {
-				if (!Array.isArray(labels) || !labels.length || labels.some((label) => !isUuid(label))) {
-					throw new Error("labels and labelIds must be a non-empty list of exact issue-label UUIDs");
+			if (variables.labels !== undefined && (!Array.isArray(variables.labels) || !variables.labels.length
+				|| variables.labels.some((label) => !isCompatibilityString(label) || !label.trim()))) {
+				throw new Error("labels must be a non-empty list of exact issue-label names or UUIDs");
+			}
+			for (const labelIds of [variables.labelIds, raw.labelIds].filter((value) => value !== undefined)) {
+				if (!Array.isArray(labelIds) || !labelIds.length || labelIds.some((label) => !isUuid(label))) {
+					throw new Error("labelIds must be a non-empty list of exact issue-label UUIDs");
 				}
 			}
 			const title = variables.title ?? raw.title;

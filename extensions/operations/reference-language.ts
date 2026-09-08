@@ -69,7 +69,7 @@ const REFERENCE_RENAMES = referenceRenameCatalog({
     projectId: { name: 'project', type: 'ProjectReference', preserveCanonical: true },
     projectMilestoneId: { name: 'milestone', type: 'MilestoneReference', resolver: 'projectMilestone', destination: 'input' },
     cycleId: { name: 'cycle', type: 'CycleReference', resolver: 'cycle', destination: 'input' },
-    labelIds: { name: 'labels', type: '[LabelReference!]', resolver: 'issueLabel', many: true, destination: 'input' },
+    labelIds: { name: 'labels', type: '[LabelReference!]', resolver: 'issueLabel', many: true, destination: 'input', preserveCanonical: true },
     subscriberIds: { name: 'subscribers', type: '[UserReference!]', resolver: 'user', many: true, destination: 'input' },
     delegateId: { name: 'delegate', type: 'UserReference', resolver: 'user', destination: 'input' },
   },

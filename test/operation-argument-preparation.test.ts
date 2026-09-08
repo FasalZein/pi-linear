@@ -114,7 +114,8 @@ describe("loader create_issue compatibility", () => {
 	it.each([
 		[{ project: "" }, /project/],
 		[{ labels: [] }, /labels/],
-		[{ labels: ["bad"] }, /labels/],
+		[{ labels: [" "] }, /labels/],
+		[{ labelIds: ["bad"] }, /labelIds/],
 	])("rejects malformed create aliases before any network request", async (extra, message) => {
 		const fetch = vi.fn();
 		vi.stubGlobal("fetch", fetch);

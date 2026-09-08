@@ -283,36 +283,6 @@ export function userLookup(key: string, value: string): LookupPlan {
   };
 }
 
-export function documentLookup(key: string, value: string): LookupPlan {
-  const reference = required(value, 'document');
-  if (UUID.test(reference)) {
-    return {
-      key,
-      document: () => `query ResolveDocumentById($id: String!) { document(id: $id) { id title } }`,
-      variables: () => ({ id: reference }),
-      resolve(data) {
-        const document = presentRecord(data.document);
-        if (!document) throw new Error(`Linear document "${reference}" was not found.`);
-        if (document.id !== reference) throw new Error(`Linear document resolver returned mismatched id "${String(document.id)}" for "${reference}".`);
-        return { id: document.id, name: document.title };
-      },
-    };
-  }
-  return {
-    key,
-    document: () => `query ResolveDocumentByTitle($title: String!) {
-  documents(first: 2, filter: { title: { eq: $title } }) { nodes { id title } }
-}`,
-    variables: () => ({ title: reference }),
-    resolve(data) {
-      const nodes = lookupNodes(data.documents);
-      if (nodes.length !== 1) throw new Error(`Linear document "${reference}" resolved to ${nodes.length} results; expected exactly one.`);
-      if (nodes[0]!.title !== reference) throw new Error(`Linear document resolver returned mismatched title "${String(nodes[0]!.title)}" for "${reference}".`);
-      return { id: nodes[0]!.id, name: nodes[0]!.title };
-    },
-  };
-}
-
 export function issueRelationLookup(key: string, value: string, failureMessage: string): LookupPlan {
   const reference = required(value, 'issue relation');
   return {

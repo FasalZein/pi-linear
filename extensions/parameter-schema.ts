@@ -26,7 +26,7 @@ const REFERENCE_HINTS = {
   NullableProjectReference: 'Exact project name or slug, or a project UUID; null clears it.',
   NullableCycleReference: 'Exact cycle name, or a cycle UUID; null clears it.',
   NullableMilestoneReference: 'Exact milestone name, or a milestone UUID; null clears it.',
-  DocumentReference: 'Exact document title, or a document UUID.',
+  DocumentReference: 'Exact document title or slug, or a document UUID.',
   DateTime: 'ISO 8601 date-time.',
   Date: 'Calendar date, YYYY-MM-DD.',
   ResultView: 'Reads: lists default to summary and single records to full. Mutations default to summary.',

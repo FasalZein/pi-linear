@@ -1,5 +1,5 @@
 import { projection } from "../selections";
-import { documentLookup, issueLookup, namedEntityLookup, pureQueryPlan, teamLookup } from "../operation-plan";
+import { issueLookup, namedEntityLookup, pureQueryPlan, teamLookup } from "../operation-plan";
 import {
 	isCompatibilityString,
 	mergedInput,
@@ -211,7 +211,7 @@ export const documents: readonly OperationDefinition[] = ([
 			return {
 				kind: "mutation",
 				lookups: [
-					documentLookup("target", requested),
+					namedEntityLookup("target", "document", requested),
 					...(issueRef ? [issueLookup("issue", issueRef)] : []),
 					...(teamRef ? [teamLookup("team", String(teamRef))] : []),
 				],

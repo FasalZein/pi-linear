@@ -652,7 +652,7 @@ describe('batch mutation phase', () => {
   });
 
   it('keeps documentId on the compatibility batch path', async () => {
-    const document = { id: ISSUE_A, title: 'Planning notes', slugId: 'planning-notes' };
+    const document = { id: ISSUE_A, name: 'Planning notes', slugId: 'planning-notes' };
     const { requests } = graphqlStub((request) => {
       if (request.query.includes('documentUpdate')) {
         expect(Object.values(request.variables)).toContain(ISSUE_A);

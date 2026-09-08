@@ -250,10 +250,65 @@ describe.sequential('mutation safety and exact identity failures', () => {
       await expect(activateAndExecute(harness, base, {
         document: 'Fixture planning notes',
         title: 'Must not be written',
-      })).rejects.toThrow(behavior === 'document-missing' ? 'resolved to 0 results' : 'resolved to 2 results');
+      })).rejects.toThrow(behavior === 'document-missing' ? 'resolved to 0 matches' : 'resolved to 2 matches');
       expect(mutationRequests()).toEqual([]);
       expect(fixture.requests()).toHaveLength(1);
-      expect(fixture.requests()[0]).toMatchObject({ operationName: 'ResolveDocumentByTitle', kind: 'query' });
+      expect(fixture.requests()[0]).toMatchObject({ operationName: 'ResolveNamedEntityByReference', kind: 'query' });
+    },
+  );
+
+  it('updates a document by its exact slug over loopback HTTP', async () => {
+    const base = MUTATION_CASES.find(({ operation }) => operation === 'update_document')!;
+    const bySlug: MutationFixtureCase = {
+      ...base,
+      args: { document: 'fixture-notes', title: 'Renamed by slug' },
+      expectedVariables: { id: IDS.document, input: { title: 'Renamed by slug' } },
+    };
+    fixture.reset(bySlug);
+
+    const result = await activateAndExecute(await loadExtension(), bySlug);
+
+    expect(fixture.fixtureErrors()).toEqual([]);
+    expect(fixture.requests()[0]).toMatchObject({ operationName: 'ResolveNamedEntityByReference', kind: 'query' });
+    expect(fixture.requests()[0]!.query).toContain('slugId');
+    expect(mutationRequests()).toHaveLength(1);
+    expect(result.details.resolution.target).toMatchObject({ requested: 'fixture-notes', resolvedId: IDS.document });
+  });
+
+  it('creates an issue from exact label names over loopback HTTP', async () => {
+    const base = MUTATION_CASES.find(({ operation }) => operation === 'create_issue')!;
+    const byLabelName: MutationFixtureCase = {
+      ...base,
+      args: { title: 'Fixture issue', team: IDS.team, labels: ['fixture-needs-review'] },
+      expectedVariables: { input: { title: 'Fixture issue', teamId: IDS.team, labelIds: [IDS.issueLabel] } },
+    };
+    fixture.reset(byLabelName);
+
+    const result = await activateAndExecute(await loadExtension(), byLabelName);
+
+    expect(fixture.fixtureErrors()).toEqual([]);
+    expect(fixture.requests().map(({ operationName }) => operationName))
+      .toEqual(['ResolveTeamById', 'ResolveNamedEntityByName', 'CreateIssue']);
+    expect(mutationRequests()).toHaveLength(1);
+    expect(result.details.resolution.labels).toEqual([
+      { requested: 'fixture-needs-review', resolvedId: IDS.issueLabel },
+    ]);
+  });
+
+  it.each(['label-missing', 'label-ambiguous'] as const)(
+    'resolves a label name exactly and sends zero writes when identity is %s',
+    async (behavior) => {
+      const base = MUTATION_CASES.find(({ operation }) => operation === 'create_issue')!;
+      fixture.reset(undefined, behavior);
+
+      await expect(activateAndExecute(await loadExtension(), base, {
+        title: 'Must not be written',
+        team: IDS.team,
+        labels: ['fixture-needs-review'],
+      })).rejects.toThrow(behavior === 'label-missing' ? 'resolved to 0 matches' : 'resolved to 2 matches');
+      expect(mutationRequests()).toEqual([]);
+      expect(fixture.requests().map(({ operationName }) => operationName))
+        .toEqual(['ResolveTeamById', 'ResolveNamedEntityByName']);
     },
   );
 

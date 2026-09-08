@@ -24,8 +24,8 @@ afterEach(() => {
 
 function resolver() {
   return vi.fn(async (_apiKey: string, query: string, variables: any) => {
-    if (query.includes('ResolveDocumentById')) {
-      return { document: { id: variables.id, title: 'Planning notes' } };
+    if (query.includes('ResolveNamedEntityById')) {
+      return { document: { id: variables.id, name: 'Planning notes' } };
     }
     if (query.includes('ResolveNamedEntityByReference')) {
       return { matches: { nodes: [{ id: DOCUMENT_ID, name: variables.reference, slugId: 'planning-notes' }] } };

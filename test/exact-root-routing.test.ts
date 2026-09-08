@@ -273,11 +273,11 @@ describe('exact project, cycle, and document reads', () => {
 });
 
 describe('mutations do not infer slug identifiers', () => {
-  it('resolves an update_document slug-shaped id as a title, not document(id:)', async () => {
+  it('resolves an update_document slug-shaped id as a title or slug, not document(id:)', async () => {
     const { requests } = graphqlStub((query) => {
       expect(query).not.toMatch(/document\(id: \$id\)/);
-      if (query.includes('ResolveDocumentByTitle')) {
-        return { documents: { nodes: [{ id: DOCUMENT_ID, title: 'planning-notes' }] } };
+      if (query.includes('ResolveNamedEntityByReference')) {
+        return { matches: { nodes: [{ id: DOCUMENT_ID, name: 'Planning notes', slugId: 'planning-notes' }] } };
       }
       expect(query).toContain('mutation UpdateDocument');
       return { documentUpdate: { success: true, document: { id: DOCUMENT_ID, title: 'Updated notes' } } };
@@ -288,8 +288,8 @@ describe('mutations do not infer slug identifiers', () => {
       variables: { document: 'planning-notes', title: 'Updated notes' },
     });
 
-    expect(requests[0]!.query).toContain('ResolveDocumentByTitle');
-    expect(requests[0]!.variables).toEqual({ title: 'planning-notes' });
+    expect(requests[0]!.query).toContain('ResolveNamedEntityByReference');
+    expect(requests[0]!.variables).toEqual({ reference: 'planning-notes' });
     expect(requests[1]!.variables).toEqual({ id: DOCUMENT_ID, input: { title: 'Updated notes' } });
   });
 

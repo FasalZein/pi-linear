@@ -3744,7 +3744,7 @@
         "properties": {
           "document": {
             "type": "string",
-            "description": "Exact document title, or a document UUID.",
+            "description": "Exact document title or slug, or a document UUID.",
             "minLength": 1
           },
           "view": {
@@ -4342,7 +4342,7 @@
         "properties": {
           "document": {
             "type": "string",
-            "description": "Exact document title, or a document UUID.",
+            "description": "Exact document title or slug, or a document UUID.",
             "minLength": 1
           },
           "title": {
@@ -8662,7 +8662,7 @@
         },
         {
           "name": "labels",
-          "type": "[UUID!]",
+          "type": "[LabelReference!]",
           "required": false
         },
         {

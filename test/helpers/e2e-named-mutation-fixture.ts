@@ -176,7 +176,13 @@ export type RecordedGraphQLRequest = {
   query: string;
 };
 
-type LookupBehavior = 'normal' | 'document-missing' | 'document-ambiguous' | 'delete-mismatch';
+type LookupBehavior =
+  | 'normal'
+  | 'document-missing'
+  | 'document-ambiguous'
+  | 'label-missing'
+  | 'label-ambiguous'
+  | 'delete-mismatch';
 
 type FixtureState = {
   active?: MutationFixtureCase;
@@ -215,14 +221,18 @@ function lookupData(request: RecordedGraphQLRequest, behavior: LookupBehavior): 
   }
   if (operationName === 'ResolveTeamById') return { team: namedIdentity('team', variables.id) };
   if (operationName === 'ResolveUserById') return { user: namedIdentity('user', variables.id) };
-  if (operationName === 'ResolveDocumentById') return { document: namedIdentity('document', variables.id) };
-  if (operationName === 'ResolveDocumentByTitle') {
-    if (behavior === 'document-missing') return { documents: { nodes: [] } };
-    const title = String(variables.title);
-    const node = { id: IDS.document, title };
-    return { documents: { nodes: behavior === 'document-ambiguous' ? [node, { ...node, id: IDS.comment }] : [node] } };
-  }
   if (operationName === 'ResolveNamedEntityById') return { [root]: namedIdentity(root, variables.id) };
+  if (operationName === 'ResolveNamedEntityByReference') {
+    if (behavior === 'document-missing') return { matches: { nodes: [] } };
+    const node = { id: IDS.document, name: 'Fixture planning notes', slugId: 'fixture-notes' };
+    return { matches: { nodes: behavior === 'document-ambiguous' ? [node, { ...node, id: IDS.comment }] : [node] } };
+  }
+  if (operationName === 'ResolveNamedEntityByName') {
+    if (behavior === 'label-missing') return { [root]: { nodes: [] } };
+    const name = String(variables.name);
+    const node = { id: IDS.issueLabel, name };
+    return { [root]: { nodes: behavior === 'label-ambiguous' ? [node, { ...node, id: IDS.projectLabel }] : [node] } };
+  }
   if (operationName === 'VerifyIssueRelationDelete') {
     return {
       issueRelation: {

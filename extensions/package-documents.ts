@@ -1,7 +1,6 @@
 import { Kind, OperationTypeNode, parse, print, type OperationDefinitionNode } from 'graphql';
 import { aliasDocument, compileLookupDocument, ISSUE_BATCH_CREATE_DOCUMENT, mergeDocuments } from './batch';
 import {
-  documentLookup,
   issueLookup,
   issueRelationLookup,
   namedEntityLookup,
@@ -47,8 +46,6 @@ function lookupAuthorities(): Array<{ id: string; lookup: LookupPlan }> {
     { id: 'user.viewer', lookup: userLookup('user', 'me') },
     { id: 'user.id', lookup: userLookup('user', '00000000-0000-4000-8000-000000000004') },
     { id: 'user.identity', lookup: userLookup('user', 'person@example.com') },
-    { id: 'document.id', lookup: documentLookup('document', '00000000-0000-4000-8000-000000000005') },
-    { id: 'document.title', lookup: documentLookup('document', 'Roadmap') },
     { id: 'issue-relation', lookup: issueRelationLookup('relation', '00000000-0000-4000-8000-000000000006', 'guard') },
     ...namedKinds.flatMap((kind, index) => [
       { id: `named.${kind}.id`, lookup: namedEntityLookup('named', kind, `00000000-0000-4000-8000-${String(index + 10).padStart(12, '0')}`) },

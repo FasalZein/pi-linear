@@ -32,7 +32,7 @@ function installServer(resolveData: CompatibilityObject) {
   vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
     const request = JSON.parse(String(init.body));
     requests.push(request);
-    const data = request.query.includes('ResolveDocumentBy')
+    const data = request.query.includes('ResolveNamedEntity')
       ? resolveData
       : { documentUpdate: { success: true, document: { id: request.variables.id, title: 'Updated notes' } } };
     return new Response(JSON.stringify({ data }), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -42,12 +42,12 @@ function installServer(resolveData: CompatibilityObject) {
 
 describe('exact document resolution on public mutation paths', () => {
   it.each(updateTools())('resolves an exact title before %s mutation', async (_surface, tool, params) => {
-    const requests = installServer({ documents: { nodes: [{ id: DOCUMENT_ID, title: 'Planning notes' }] } });
+    const requests = installServer({ matches: { nodes: [{ id: DOCUMENT_ID, name: 'Planning notes', slugId: 'planning-notes' }] } });
 
     const result = await execute(tool, params);
 
     expect(requests).toHaveLength(2);
-    expect(requests[0]).toMatchObject({ variables: { title: 'Planning notes' } });
+    expect(requests[0]).toMatchObject({ variables: { reference: 'Planning notes' } });
     expect(requests[1]!.query).toContain('mutation UpdateDocument');
     expect(requests[1]!.variables).toEqual({ id: DOCUMENT_ID, input: { title: 'Updated notes' } });
     expect(result.details.resolution.target).toEqual({
@@ -57,8 +57,25 @@ describe('exact document resolution on public mutation paths', () => {
     });
   });
 
+  it.each(updateTools('planning-notes'))('resolves an exact slug before %s mutation', async (_surface, tool, params) => {
+    const requests = installServer({ matches: { nodes: [{ id: DOCUMENT_ID, name: 'Planning notes', slugId: 'planning-notes' }] } });
+
+    const result = await execute(tool, params);
+
+    expect(requests).toHaveLength(2);
+    expect(requests[0]!.query).toContain('slugId');
+    expect(requests[0]).toMatchObject({ variables: { reference: 'planning-notes' } });
+    expect(requests[1]!.query).toContain('mutation UpdateDocument');
+    expect(requests[1]!.variables).toEqual({ id: DOCUMENT_ID, input: { title: 'Updated notes' } });
+    expect(result.details.resolution.target).toEqual({
+      requested: 'planning-notes',
+      resolvedId: DOCUMENT_ID,
+      title: 'Planning notes',
+    });
+  });
+
   it.each(updateTools(DOCUMENT_ID))('verifies an exact UUID before %s mutation', async (_surface, tool, params) => {
-    const requests = installServer({ document: { id: DOCUMENT_ID, title: 'Planning notes' } });
+    const requests = installServer({ document: { id: DOCUMENT_ID, name: 'Planning notes' } });
 
     await execute(tool, params);
 
@@ -68,35 +85,35 @@ describe('exact document resolution on public mutation paths', () => {
   });
 
   it.each(updateTools())('does not run a %s mutation when exact resolution is ambiguous', async (_surface, tool, params) => {
-    const requests = installServer({ documents: { nodes: [
-      { id: DOCUMENT_ID, title: 'Planning notes' },
-      { id: OTHER_ID, title: 'Planning notes' },
+    const requests = installServer({ matches: { nodes: [
+      { id: DOCUMENT_ID, name: 'Planning notes', slugId: 'planning-notes' },
+      { id: OTHER_ID, name: 'Planning notes', slugId: 'planning-notes-2' },
     ] } });
 
     await expect(execute(tool, params)).rejects.toThrow(
-      'Linear document "Planning notes" resolved to 2 results; expected exactly one.',
+      'Linear document "Planning notes" resolved to 2 matches; expected exactly one.',
     );
     expect(requests).toHaveLength(1);
     expect(requests.every(({ query }) => !query.includes('mutation UpdateDocument'))).toBe(true);
   });
 
-  it.each(updateTools())('does not run a %s mutation for mixed exact and mismatched results', async (_surface, tool, params) => {
-    const requests = installServer({ documents: { nodes: [
-      { id: DOCUMENT_ID, title: 'Planning notes' },
-      { id: OTHER_ID, title: 'Planning note' },
+  it.each(updateTools('planning-notes'))('does not run a %s mutation when a title and a slug both match', async (_surface, tool, params) => {
+    const requests = installServer({ matches: { nodes: [
+      { id: DOCUMENT_ID, name: 'planning-notes', slugId: 'other-slug' },
+      { id: OTHER_ID, name: 'Planning notes', slugId: 'planning-notes' },
     ] } });
 
     await expect(execute(tool, params)).rejects.toThrow(
-      'Linear document "Planning notes" resolved to 2 results; expected exactly one.',
+      'Linear document "planning-notes" resolved to 2 matches; expected exactly one.',
     );
-    expect(requests.filter(({ query }) => query.includes('ResolveDocumentByTitle'))).toHaveLength(1);
+    expect(requests.filter(({ query }) => query.includes('ResolveNamedEntityByReference'))).toHaveLength(1);
     expect(requests.filter(({ query }) => query.includes('mutation UpdateDocument'))).toHaveLength(0);
   });
 
   it.each(updateTools())('does not run a %s mutation for missing or mismatched title results', async (_surface, tool, params) => {
     for (const [resolveData, message] of [
-      [{ documents: { nodes: [] } }, 'resolved to 0 results'],
-      [{ documents: { nodes: [{ id: DOCUMENT_ID, title: 'Planning note' }] } }, 'mismatched title "Planning note"'],
+      [{ matches: { nodes: [] } }, 'resolved to 0 matches'],
+      [{ matches: { nodes: [{ id: DOCUMENT_ID, name: 'Planning note', slugId: 'planning-note' }] } }, 'resolved to 0 matches'],
     ] as const) {
       const requests = installServer(resolveData);
       await expect(execute(tool, params)).rejects.toThrow(message);
