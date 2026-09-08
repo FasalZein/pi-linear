@@ -91,11 +91,11 @@ describe('native Anthropic route', () => {
 
     const comment = harness.tool('linear_create_comment');
     expect(comment.parameters).toBeTruthy();
-    expect(() => comment.prepareArguments({})).toThrow(/Invalid arguments for "linear_create_comment"/);
+    expect(() => comment.prepareArguments({})).toThrow('exactly one comment target is required');
     expect(() => comment.prepareArguments({
       issue: 'AEO-258',
-      projectId: '11111111-1111-4111-8111-111111111111',
+      advanced: { project: '11111111-1111-4111-8111-111111111111' },
       body: 'two targets',
-    })).toThrow(/Invalid arguments for "linear_create_comment"/);
+    })).toThrow('exactly one comment target is required');
   });
 });

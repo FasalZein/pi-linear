@@ -4,7 +4,7 @@
     "tool": {
       "name": "linear_list_comments",
       "label": "Linear list comments",
-      "description": "List comments, optionally for one exact issue.",
+      "description": "List comments, optionally for one exact issue. For advanced fields, request linear help with variables.operation \"list_comments:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
@@ -245,7 +245,7 @@
     "tool": {
       "name": "linear_create_comment",
       "label": "Linear create comment",
-      "description": "Create a comment on an issue or another supported target.",
+      "description": "Create a comment on an issue or another supported target. For advanced fields, request linear help with variables.operation \"create_comment:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
@@ -1050,7 +1050,7 @@
     "tool": {
       "name": "linear_list_views",
       "label": "Linear list views",
-      "description": "List custom views.",
+      "description": "List custom views. For advanced fields, request linear help with variables.operation \"list_views:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
@@ -2413,7 +2413,7 @@
     "tool": {
       "name": "linear_list_cycles",
       "label": "Linear list cycles",
-      "description": "List cycles.",
+      "description": "List cycles. For advanced fields, request linear help with variables.operation \"list_cycles:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
@@ -3456,7 +3456,7 @@
     "tool": {
       "name": "linear_list_documents",
       "label": "Linear list documents",
-      "description": "List documents.",
+      "description": "List documents. For advanced fields, request linear help with variables.operation \"list_documents:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
@@ -4977,7 +4977,7 @@
     "tool": {
       "name": "linear_list_initiatives",
       "label": "Linear list initiatives",
-      "description": "List initiatives.",
+      "description": "List initiatives. For advanced fields, request linear help with variables.operation \"list_initiatives:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
@@ -5384,7 +5384,7 @@
     "tool": {
       "name": "linear_list_issue_labels",
       "label": "Linear list issue labels",
-      "description": "List issue labels.",
+      "description": "List issue labels. For advanced fields, request linear help with variables.operation \"list_issue_labels:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
@@ -6367,7 +6367,7 @@
     "tool": {
       "name": "linear_list_issue_relations",
       "label": "Linear list issue relations",
-      "description": "List issue relations.",
+      "description": "List issue relations. For advanced fields, request linear help with variables.operation \"list_issue_relations:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
@@ -7316,7 +7316,7 @@
     "tool": {
       "name": "linear_list_issue_statuses",
       "label": "Linear list issue statuses",
-      "description": "List issue workflow states.",
+      "description": "List issue workflow states. For advanced fields, request linear help with variables.operation \"list_issue_statuses:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
@@ -7529,7 +7529,7 @@
     "tool": {
       "name": "linear_list_issues",
       "label": "Linear list issues",
-      "description": "List issues with exact convenience filters.",
+      "description": "List issues with exact convenience filters. For advanced fields, request linear help with variables.operation \"list_issues:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
@@ -9853,7 +9853,7 @@
     "tool": {
       "name": "linear_search_issues",
       "label": "Linear search issues",
-      "description": "Search issues by text.",
+      "description": "Search issues by text. For advanced fields, request linear help with variables.operation \"search_issues:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
@@ -10210,7 +10210,7 @@
     "tool": {
       "name": "linear_list_milestones",
       "label": "Linear list milestones",
-      "description": "List project milestones.",
+      "description": "List project milestones. For advanced fields, request linear help with variables.operation \"list_milestones:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
@@ -10558,7 +10558,7 @@
     "tool": {
       "name": "linear_list_project_labels",
       "label": "Linear list project labels",
-      "description": "List project labels.",
+      "description": "List project labels. For advanced fields, request linear help with variables.operation \"list_project_labels:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
@@ -11372,7 +11372,7 @@
     "tool": {
       "name": "linear_list_project_relations",
       "label": "Linear list project relations",
-      "description": "List project relations.",
+      "description": "List project relations. For advanced fields, request linear help with variables.operation \"list_project_relations:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
@@ -12252,7 +12252,7 @@
     "tool": {
       "name": "linear_list_projects",
       "label": "Linear list projects",
-      "description": "List projects.",
+      "description": "List projects. For advanced fields, request linear help with variables.operation \"list_projects:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
@@ -12701,7 +12701,7 @@
     "tool": {
       "name": "linear_list_teams",
       "label": "Linear list teams",
-      "description": "List teams and workflow states.",
+      "description": "List teams and workflow states. For advanced fields, request linear help with variables.operation \"list_teams:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
@@ -13049,7 +13049,7 @@
     "tool": {
       "name": "linear_list_users",
       "label": "Linear list users",
-      "description": "List users.",
+      "description": "List users. For advanced fields, request linear help with variables.operation \"list_users:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
