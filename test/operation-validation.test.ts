@@ -29,6 +29,20 @@ function namedValidationMessage(operation: string, variables: CompatibilityObjec
 }
 
 describe('operation validation messages', () => {
+  it('validates canonical relation identities without requiring advanced fields', () => {
+    const variables = {
+      relationId: '33333333-3333-4333-8333-333333333333',
+      issue: '11111111-1111-4111-8111-111111111111',
+      relatedIssue: '22222222-2222-4222-8222-222222222222',
+      type: 'related',
+    };
+    expect(() => resolveRequest({ operation: 'delete_issue_relation', variables })).not.toThrow();
+    expect(() => resolveRequest({
+      operation: 'delete_issue_relation',
+      variables: { ...variables, issueId: variables.issue },
+    })).toThrow('Duplicate issue identity');
+  });
+
   afterEach(() => vi.unstubAllGlobals());
 
   it('preserves structural failure messages on the named-request and batch paths', async () => {
