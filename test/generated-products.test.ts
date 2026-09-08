@@ -414,7 +414,7 @@ describe('generated products', () => {
     expect(readme).toContain('Call `linear_get_issue` with:');
     expect(readme).toContain('The `linear` tool never runs an operation.');
     expect(readme).not.toContain('Call an operation directly');
-    expect(reference).toContain('then call the activated `linear_<operation>` tool with direct arguments');
+    expect(reference).toContain('The activated `linear_<operation>` schema is the authority for common fields.');
     expect(reference).not.toContain('| First call |');
     for (const definition of operationDefinitions) {
       expect(reference, definition.name).toContain(`| \`${definition.name}\` | \`${definition.toolName}\``);
@@ -481,8 +481,8 @@ describe('generated products', () => {
     expect(readme).toContain(`The package registers ${manifest.allowedTools.length} tools.`);
     expect(readme).toContain('`delete_issue_relation` is the only delete operation.');
     expect(readme).not.toContain('Delete, archive, and unarchive tools do not exist.');
-    expect(reference).toContain('49 inactive typed tools');
-    expect(reference).toContain(`does not duplicate ${manifest.lazyTools.length} full schemas`);
+    expect(reference).toContain('49 typed tools load on demand.');
+    expect(reference).toContain(`\`linear_graphql\`, \`linear_batch\`, and ${manifest.lazyTools.length} typed tools load on demand.`);
     expect(changelog).toContain('By default, results show compact `meta.rateLimit` details only near exhaustion.');
     const referenceTelemetry = reference.match(/## Rate-limit telemetry\n([\s\S]*?)(?=\n## )/)?.[1] ?? '';
     const changelogTelemetry = changelog.split('\n').find((line) => line.startsWith('- Added internal telemetry')) ?? '';
@@ -507,7 +507,7 @@ describe('generated products', () => {
       readFile('docs/v09-result-transport-evidence.md', 'utf8'),
       readFile('CHANGELOG.md', 'utf8'),
     ]);
-    expect(adr).toContain('## Status\n\nAccepted.');
+    expect(adr).toContain('## Status\n\nAccepted with the v1.0 mutation acknowledgement and sequential batch amendments.');
     expect(adr).toContain('ADR 0006 publishes the operation catalog.');
     expect(adr).toContain('This ADR does not repeat or reopen that decision.');
     expect(adr).toContain('This ADR begins after operation selection.');
