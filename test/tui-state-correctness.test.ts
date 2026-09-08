@@ -426,8 +426,8 @@ describe('v0.6 state correctness', () => {
 
     const loaded = text(api({
       loadedTools: ['linear_get_issue'],
-      name: 'get_issue',
-      parameters: [{ name: 'issue', type: 'IssueReference', required: true }],
+      purpose: 'Get one issue.',
+      example: { issue: 'AEO-258' },
     }, { operation: 'help', variables: { operation: 'get_issue' } }));
     expect(loaded).toContain('✓ loaded 1 tool');
     expect(loaded).not.toContain('+ loaded');

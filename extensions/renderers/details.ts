@@ -155,7 +155,8 @@ export type HelpOperationEntry = {
 export type HelpResultDetails =
   | { kind: 'help-domains'; domains: readonly string[]; loaded: readonly string[] }
   | { kind: 'help-operations'; domain?: string; operations: readonly HelpOperationEntry[]; loaded: readonly string[] }
-  | { kind: 'help-operation'; name: string; purpose?: string; parameters: readonly HelpParameter[]; loaded: readonly string[] }
+  | { kind: 'help-exact'; purpose: string; example: JsonObject; loaded: readonly string[] }
+  | { kind: 'help-card'; name: string; purpose?: string; parameters: readonly HelpParameter[]; loaded: readonly string[] }
   | UnknownResultDetails;
 
 export type ResultDetails =
@@ -386,13 +387,16 @@ function parseHelp(details: JsonObject, fallback: JsonValue | undefined): HelpRe
       };
     });
     return {
-      kind: 'help-operation',
+      kind: 'help-card',
       name: asString(details.name) ?? '',
       purpose: asString(details.purpose),
       parameters,
       loaded,
     };
   }
+  const purpose = asString(details.purpose);
+  const example = asObject(details.example);
+  if (purpose && example) return { kind: 'help-exact', purpose, example, loaded };
   return { kind: 'unknown', summary: fallbackSummary(fallback) };
 }
 

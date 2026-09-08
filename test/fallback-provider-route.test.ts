@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { rm } from 'node:fs/promises';
 import { splitDeferredTools } from '../node_modules/@earendil-works/pi-ai/dist/utils/deferred-tools.js';
+import { operations } from '../extensions/operations';
 import {
   captureAnthropic,
   execute,
@@ -35,7 +36,11 @@ describe('fallback provider route', () => {
       operation: 'help',
       variables: { operation: 'get_issue' },
     });
-    expect(help.details.loadedTools).toEqual(['linear_get_issue']);
+    expect(help.details).toEqual({
+      loadedTools: ['linear_get_issue'],
+      purpose: operations.get_issue!.purpose,
+      example: { issue: 'AEO-258' },
+    });
     const graphqlHelp = await execute(harness.tool('linear'), {
       operation: 'help', variables: { operation: 'graphql' },
     });
@@ -54,7 +59,10 @@ describe('fallback provider route', () => {
       operation: 'help',
       variables: { operation: 'get_issue' },
     });
-    expect(again.details.loadedTools ?? []).toEqual([]);
+    expect(again.details).toEqual({
+      purpose: operations.get_issue!.purpose,
+      example: { issue: 'AEO-258' },
+    });
     expect(harness.activeTools()).toEqual(after);
 
     const wrapped = await loadIssueThroughWrapper(createLinearHarness());

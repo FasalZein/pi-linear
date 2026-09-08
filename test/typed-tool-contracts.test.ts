@@ -120,7 +120,11 @@ describe('deterministic activation', () => {
       variables: { operation: 'get_issue' },
     });
 
-    expect(result.details.loadedTools).toEqual(['linear_get_issue']);
+    expect(result.details).toEqual({
+      loadedTools: ['linear_get_issue'],
+      purpose: operations.get_issue!.purpose,
+      example: { issue: 'AEO-258' },
+    });
     const after = harness.activeTools();
     for (const name of before) expect(after).toContain(name);
     expect(after.length).toBe(before.length + 1);
@@ -164,7 +168,10 @@ describe('deterministic activation', () => {
       variables: { operation: 'get_issue' },
     });
 
-    expect(second.details.loadedTools).toBeUndefined();
+    expect(second.details).toEqual({
+      purpose: operations.get_issue!.purpose,
+      example: { issue: 'AEO-258' },
+    });
     expect(harness.activeTools()).toEqual(afterFirst);
     for (const names of harness.history) {
       for (const name of afterFirst.filter((entry) => names.includes(entry))) {

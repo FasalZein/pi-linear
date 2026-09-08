@@ -1,0 +1,198 @@
+{
+  "list_comments": {
+    "before": 670,
+    "current": 129
+  },
+  "create_comment": {
+    "before": 1555,
+    "current": 163
+  },
+  "update_comment": {
+    "before": 575,
+    "current": 129
+  },
+  "list_views": {
+    "before": 558,
+    "current": 81
+  },
+  "get_view": {
+    "before": 213,
+    "current": 93
+  },
+  "create_view": {
+    "before": 934,
+    "current": 231
+  },
+  "update_view": {
+    "before": 987,
+    "current": 117
+  },
+  "set_view_preferences": {
+    "before": 431,
+    "current": 164
+  },
+  "list_cycles": {
+    "before": 611,
+    "current": 76
+  },
+  "get_cycle": {
+    "before": 250,
+    "current": 114
+  },
+  "create_cycle": {
+    "before": 558,
+    "current": 138
+  },
+  "update_cycle": {
+    "before": 674,
+    "current": 116
+  },
+  "list_documents": {
+    "before": 678,
+    "current": 82
+  },
+  "get_document": {
+    "before": 341,
+    "current": 137
+  },
+  "create_document": {
+    "before": 1166,
+    "current": 128
+  },
+  "update_document": {
+    "before": 1631,
+    "current": 134
+  },
+  "list_initiatives": {
+    "before": 635,
+    "current": 86
+  },
+  "get_initiative": {
+    "before": 291,
+    "current": 130
+  },
+  "list_issue_labels": {
+    "before": 629,
+    "current": 88
+  },
+  "create_issue_label": {
+    "before": 749,
+    "current": 132
+  },
+  "update_issue_label": {
+    "before": 852,
+    "current": 127
+  },
+  "list_issue_relations": {
+    "before": 534,
+    "current": 94
+  },
+  "create_issue_relation": {
+    "before": 519,
+    "current": 170
+  },
+  "update_issue_relation": {
+    "before": 550,
+    "current": 133
+  },
+  "delete_issue_relation": {
+    "before": 730,
+    "current": 316
+  },
+  "list_issue_statuses": {
+    "before": 589,
+    "current": 99
+  },
+  "list_issues": {
+    "before": 1144,
+    "current": 144
+  },
+  "get_issue": {
+    "before": 310,
+    "current": 121
+  },
+  "create_issue": {
+    "before": 1173,
+    "current": 185
+  },
+  "update_issue": {
+    "before": 1655,
+    "current": 144
+  },
+  "search_issues": {
+    "before": 816,
+    "current": 111
+  },
+  "list_milestones": {
+    "before": 579,
+    "current": 92
+  },
+  "get_milestone": {
+    "before": 278,
+    "current": 122
+  },
+  "list_project_labels": {
+    "before": 579,
+    "current": 92
+  },
+  "create_project_label": {
+    "before": 569,
+    "current": 114
+  },
+  "update_project_label": {
+    "before": 766,
+    "current": 132
+  },
+  "list_project_relations": {
+    "before": 540,
+    "current": 98
+  },
+  "create_project_relation": {
+    "before": 882,
+    "current": 243
+  },
+  "update_project_relation": {
+    "before": 905,
+    "current": 137
+  },
+  "list_projects": {
+    "before": 673,
+    "current": 80
+  },
+  "get_project": {
+    "before": 326,
+    "current": 127
+  },
+  "list_teams": {
+    "before": 571,
+    "current": 94
+  },
+  "get_team": {
+    "before": 236,
+    "current": 105
+  },
+  "list_users": {
+    "before": 666,
+    "current": 74
+  },
+  "get_user": {
+    "before": 256,
+    "current": 125
+  },
+  "switch_workspace": {
+    "before": 282,
+    "current": 146
+  },
+  "save_initiative": {
+    "before": 1238,
+    "current": 116
+  },
+  "save_milestone": {
+    "before": 896,
+    "current": 132
+  },
+  "save_project": {
+    "before": 1371,
+    "current": 129
+  }
+}

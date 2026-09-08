@@ -79,26 +79,25 @@ describe('model-visible deferred operation contracts', () => {
     ['update_initiative', 'save_initiative'],
   ])('exact help for %s activates canonical %s', (alias, canonical) => {
     const result = helpResult({ operation: alias }, (names) => names);
-    expect(result).toMatchObject({ name: canonical, loadedTools: [`linear_${canonical}`] });
+    expect(result.loadedTools).toEqual([`linear_${canonical}`]);
+    expect(result).not.toHaveProperty('name');
   });
 
   /**
-   * Regression: `workspace` was published on all 49 schemas but absent from every help
-   * card. A caller told to trust the card met an undocumented free-text field, filled it
-   * with a directory path, and could not recover. The published schema and the card must
-   * name the same parameters.
+   * Regression: `workspace` was published on all 49 schemas and callers filled it with a
+   * directory path. Exact help now avoids a second parameter authority. The activated
+   * schema remains the only complete parameter list and must still omit `workspace`.
    */
-  it('publishes no parameter the help card does not document', () => {
+  it('uses the activated schema as the sole parameter authority', () => {
     for (const [toolName, tool] of tools) {
       const operation = toolName.slice('linear_'.length);
-      const card = helpResult({ operation }) as { parameters: { name: string }[]; advancedHelp?: unknown };
-      const documented = new Set(card.parameters.map(({ name }) => name));
-      if (card.advancedHelp) documented.add('advanced');
+      const card = helpResult({ operation });
+      expect(card, operation).not.toHaveProperty('parameters');
+      expect(card, operation).not.toHaveProperty('signature');
       const schema = (tool as any).parameters;
       const objects = schema.properties ? [schema] : (schema.anyOf ?? schema.oneOf ?? []);
       const published = new Set<string>(objects.flatMap((object: any) => Object.keys(object.properties ?? {})));
-      const undocumented = [...published].filter((name) => !documented.has(name));
-      expect(undocumented, `${toolName} publishes undocumented parameters`).toEqual([]);
+      expect(published.size, `${toolName} must publish its typed parameters`).toBeGreaterThan(0);
       expect(published, `${toolName} must not publish workspace`).not.toContain('workspace');
     }
   });
@@ -125,10 +124,10 @@ describe('model-visible deferred operation contracts', () => {
     );
   });
 
-  it('publishes list_projects default pagination guidance without changing the public sort shape', () => {
+  it('publishes list_projects default pagination guidance only in the typed schema', () => {
     const help = helpResult({ operation: 'list_projects' });
     const tool = tools.get('linear_list_projects')! as any;
-    expect(help.pagination).toEqual({ defaultPageSize: 20 });
+    expect(help).not.toHaveProperty('pagination');
     expect(tool.parameters.properties.first.description).toContain('Omit first to use the default 20');
     expect(tool.parameters.properties.sort.items.properties.key.enum).toContain('updatedAt');
     expect((tools.get('linear_list_issues') as any).parameters.properties.sort.items.properties.key.enum).not.toContain('labelGroup');

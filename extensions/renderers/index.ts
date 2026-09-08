@@ -606,7 +606,8 @@ export function renderLinearApiCall(args: any, theme: Theme): LinearBlockCompone
 
 type HelpDomainsDetails = Extract<HelpResultDetails, { kind: 'help-domains' }>;
 type HelpOperationsDetails = Extract<HelpResultDetails, { kind: 'help-operations' }>;
-type HelpOperationDetails = Extract<HelpResultDetails, { kind: 'help-operation' }>;
+type HelpExactDetails = Extract<HelpResultDetails, { kind: 'help-exact' }>;
+type HelpCardDetails = Extract<HelpResultDetails, { kind: 'help-card' }>;
 type KnownHelpDetails = Exclude<HelpResultDetails, UnknownResultDetails>;
 
 function helpDomainLines(theme: Theme, details: HelpDomainsDetails): BlockLine[] {
@@ -628,7 +629,16 @@ function helpOperationsLines(theme: Theme, details: HelpOperationsDetails): Bloc
   return lines;
 }
 
-function helpOperationLines(theme: Theme, details: HelpOperationDetails): BlockLine[] {
+function helpExactLines(theme: Theme, details: HelpExactDetails): BlockLine[] {
+  return [
+    theme.fg('success', '✓ operation help'),
+    `  ${theme.fg('dim', details.purpose)}`,
+    '',
+    wrapped(theme.fg('muted', JSON.stringify(details.example)), 2),
+  ];
+}
+
+function helpCardLines(theme: Theme, details: HelpCardDetails): BlockLine[] {
   const lines: BlockLine[] = [theme.fg('success', `✓ ${details.name}`)];
   if (details.purpose) lines.push(`  ${theme.fg('dim', details.purpose)}`);
   lines.push('');
@@ -642,7 +652,8 @@ function helpOperationLines(theme: Theme, details: HelpOperationDetails): BlockL
 function helpContentLines(theme: Theme, details: KnownHelpDetails): BlockLine[] {
   if (details.kind === 'help-domains') return helpDomainLines(theme, details);
   if (details.kind === 'help-operations') return helpOperationsLines(theme, details);
-  return helpOperationLines(theme, details);
+  if (details.kind === 'help-exact') return helpExactLines(theme, details);
+  return helpCardLines(theme, details);
 }
 
 function loadedHelpLines(theme: Theme, details: KnownHelpDetails): BlockLine[] {

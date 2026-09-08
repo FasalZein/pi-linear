@@ -113,12 +113,14 @@ export function parameterSchema(operation: LinearOperation) {
 }
 
 /**
- * The published schema already states the call shape, so the description carries purpose
- * only. A repeated worked example cost 2,910 bytes across the tool set and said nothing
- * the parameter list did not.
+ * The published schema states the common call shape. Operations with rare fields point to
+ * their on-demand advanced help without repeating the closed tail in normal context.
  */
 function toolDescription(operation: LinearOperation): string {
-  return operation.purpose;
+  const hasAdvancedFields = Object.keys(canonicalOperation(operation).advanced ?? {}).length > 0;
+  return hasAdvancedFields
+    ? `${operation.purpose} For advanced fields, request linear help with variables.operation "${operation.name}:advanced".`
+    : operation.purpose;
 }
 
 export type TypedToolMetadata = {

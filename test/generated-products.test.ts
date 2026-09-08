@@ -10,7 +10,8 @@ import manifest from '../extensions/generated/linear-tools.manifest.json';
 import { LINEAR_OPERATION_CATALOG } from '../extensions/generated/operation-catalog';
 import contracts from '../extensions/generated/operation-contracts.json';
 import schemaBaseline from './fixtures/design-b-s3-1-schema-baseline.json';
-import { DOMAINS, operationDefinitions, projectCompatibilityOperation } from '../extensions/operations';
+import helpBytes from '../scripts/fixtures/help-bytes.json';
+import { DOMAINS, operationDefinitions } from '../extensions/operations';
 import { typedLinearTools } from '../extensions/typed-tools';
 import { exceptionalToolDefinitions } from '../extensions/exceptional-tools';
 
@@ -181,8 +182,8 @@ describe('generated products', () => {
     [
       'typed tool description',
       'extensions/typed-tool-metadata.ts',
-      'return operation.purpose;',
-      'return `${operation.purpose} Call it.`;',
+      'For advanced fields, request linear help',
+      'For rare fields, request linear help',
     ],
     [
       'typed tool schema field',
@@ -349,44 +350,32 @@ describe('generated products', () => {
     expect(LINEAR_OPERATION_CATALOG).toContain('special: graphql, batch, get_result');
   });
 
-  it('keeps every exact help card sufficient to call and load its typed tool', () => {
+  it('returns only purpose, one direct example, and activation from exact operation help', () => {
     for (const definition of operationDefinitions) {
       const loaded: string[] = [];
       const result = helpResult({ operation: definition.name }, (names) => {
         loaded.push(...names);
         return names;
       });
-      const operation = projectCompatibilityOperation(definition);
-      const alwaysRequired = Object.keys(operation.canonical.fields)
-        .filter((name) => operation.canonical.branches.every((branch) => branch.includes(name)));
-      const advanced = operation.canonical.advanced ?? {};
-      const advancedNames = new Set(Object.keys(advanced));
-      const requirements = [...new Map(operation.canonical.branches.map((branch) => {
-        const projected = [...new Set(branch.map((name) => advancedNames.has(name) ? 'advanced' : name))];
-        return [JSON.stringify(projected), projected] as const;
-      })).values()];
-      const expected = {
+      expect(result, definition.name).toEqual({
         loadedTools: [definition.toolName],
-        name: definition.name,
-        domain: definition.domain,
         purpose: definition.purpose,
-        parameters: Object.entries(operation.canonical.fields).map(([name, type]) => ({
-          name,
-          type,
-          required: alwaysRequired.includes(name),
-        })),
-        requirements,
         example: definition.canonical.example,
-      };
-      const expectedWithAdvanced = Object.keys(advanced).length
-        ? { ...expected, advancedHelp: { operation: 'help', variables: { operation: `${definition.name}:advanced` } } }
-        : expected;
-      expect(result, definition.name).toEqual(
-        operation.pagination
-          ? { ...expectedWithAdvanced, pagination: { defaultPageSize: operation.pagination.defaultPageSize } }
-          : expectedWithAdvanced,
-      );
+      });
       expect(loaded, definition.name).toEqual([definition.toolName]);
+    }
+  });
+
+  it('keeps an exact measured help-byte fixture for every operation', () => {
+    expect(Object.keys(helpBytes)).toEqual(operationDefinitions.map(({ name }) => name));
+    for (const definition of operationDefinitions) {
+      const measured = Buffer.byteLength(JSON.stringify(
+        helpResult({ operation: definition.name }, (names) => names),
+      ), 'utf8');
+      const fixture = helpBytes[definition.name as keyof typeof helpBytes];
+      expect(measured, definition.name).toBe(fixture.current);
+      expect(measured, `${definition.name} must stay below its measured pre-slice help payload`)
+        .toBeLessThan(fixture.before);
     }
   });
 
@@ -433,7 +422,7 @@ describe('generated products', () => {
     }
   });
 
-  it('keeps all 49 generated typed schema bytes and operation-contract bytes unchanged', async () => {
+  it('keeps all 49 typed schemas stable and the generated operation contract exact', async () => {
     const typedSchemaSha256 = Object.fromEntries(typedLinearTools().map((tool) => [
       tool.name,
       createHash('sha256').update(JSON.stringify(tool.parameters)).digest('hex'),
@@ -457,7 +446,7 @@ describe('generated products', () => {
     expect(tools.map(({ label }) => label)).toEqual([
       'Linear', 'Linear get result', 'Linear GraphQL', 'Linear batch', 'Linear get issue',
     ]);
-    expect(helpResult({ operation: 'get_issue' })).toMatchObject({ name: 'get_issue' });
+    expect(helpResult({ operation: 'get_issue' }, (names) => names).loadedTools).toEqual(['linear_get_issue']);
     expect(JSON.stringify(tools.map(({ name }) => name))).not.toMatch(/linear (?:get issue|get_result|batch|graphql)/i);
   });
 

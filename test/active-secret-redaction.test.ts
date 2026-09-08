@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { linearApiTool } from '../extensions/api';
 import { activeSecrets } from '../extensions/active-secrets';
+import { operations } from '../extensions/operations';
 import { REDACTED } from '../extensions/redact';
 import { renderLinearApiCall } from '../extensions/renderers';
 import type { JsonObject } from '../extensions/runtime';
@@ -84,8 +85,11 @@ describe('help paths redact unknown-format active secrets', () => {
 
   it('keeps loader output and exact operation help usable while redacting', async () => {
     const result = await execute({ operation: 'help', variables: { operation: 'get_issue' } });
-    expect(result.details.name).toBe('get_issue');
-    expect(result.details.loadedTools).toEqual(['linear_get_issue']);
+    expect(result.details).toMatchObject({
+      purpose: operations.get_issue!.purpose,
+      loadedTools: ['linear_get_issue'],
+    });
+    expect(result.details).not.toHaveProperty('parameters');
     expect(surfaces(result)).not.toContain(ENV_SECRET);
   });
 

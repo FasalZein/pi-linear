@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TSchema } from 'typebox';
 import { helpResult } from '../extensions/api';
-import { operations } from '../extensions/operations';
+import { operationDefinitions, operations } from '../extensions/operations';
 import { validateOperationVariables } from '../extensions/operation-validation';
 import type { CompatibilityObject } from '../extensions/operation-types';
 import { typedLinearTools } from '../extensions/typed-tools';
@@ -75,17 +75,35 @@ describe('advanced typed arguments', () => {
       .toThrow(/"sortOrder" is advanced; send it inside "advanced"/);
   });
 
-  it('discovers the exact closed tail only on an explicit advanced help request', () => {
-    const common = helpResult({ operation: 'create_issue' });
-    expect(common.parameters).not.toContainEqual(expect.objectContaining({ name: 'sortOrder' }));
-    expect(common.advancedHelp).toEqual({
-      operation: 'help',
-      variables: { operation: 'create_issue:advanced' },
-    });
+  it('discovers each exact closed tail only on an explicit advanced help request', () => {
+    const advancedDefinitions = operationDefinitions.filter(({ canonical }) => canonical.advancedFields.length > 0);
+    expect(advancedDefinitions.map(({ name }) => name)).toEqual([
+      'create_issue', 'update_issue', 'save_initiative', 'save_project',
+    ]);
 
-    const detail = helpResult({ operation: 'create_issue:advanced' });
-    expect(detail).toMatchObject({ name: 'create_issue' });
-    expect(detail.parameters).toContainEqual({ name: 'sortOrder', type: 'Float' });
-    expect(detail.parameters).not.toContainEqual(expect.objectContaining({ name: 'title' }));
+    for (const definition of advancedDefinitions) {
+      const common = helpResult({ operation: definition.name });
+      expect(common, definition.name).toEqual({
+        purpose: definition.purpose,
+        example: definition.canonical.example,
+      });
+      const description = tools.get(definition.toolName)!.description;
+      expect(description, definition.name).toBe(
+        `${definition.purpose} For advanced fields, request linear help with variables.operation "${definition.name}:advanced".`,
+      );
+
+      const detail = helpResult({ operation: `${definition.name}:advanced` }) as {
+        name: string;
+        parameters: Array<{ name: string; type: string }>;
+      };
+      expect(detail.name, definition.name).toBe(definition.name);
+      expect(detail.parameters.map(({ name, type }) => ({ name, type })), definition.name)
+        .toEqual(definition.canonical.advancedFields.map(({ name, type }) => ({ name, type })));
+      for (const field of definition.canonical.fields) {
+        expect(detail.parameters, `${definition.name}.${field.name}`).not.toContainEqual(
+          expect.objectContaining({ name: field.name }),
+        );
+      }
+    }
   });
 });

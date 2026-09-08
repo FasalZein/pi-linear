@@ -8257,7 +8257,7 @@
     "tool": {
       "name": "linear_create_issue",
       "label": "Linear create issue",
-      "description": "Create an issue. A parent reference supplies the team when team is omitted.",
+      "description": "Create an issue. A parent reference supplies the team when team is omitted. For advanced fields, request linear help with variables.operation \"create_issue:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
@@ -8983,7 +8983,7 @@
     "tool": {
       "name": "linear_update_issue",
       "label": "Linear update issue",
-      "description": "Update an issue by exact identifier or UUID.",
+      "description": "Update an issue by exact identifier or UUID. For advanced fields, request linear help with variables.operation \"update_issue:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
@@ -13573,7 +13573,7 @@
     "tool": {
       "name": "linear_save_initiative",
       "label": "Linear save initiative",
-      "description": "Create or update an initiative.",
+      "description": "Create or update an initiative. For advanced fields, request linear help with variables.operation \"save_initiative:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
@@ -14982,7 +14982,7 @@
     "tool": {
       "name": "linear_save_project",
       "label": "Linear save project",
-      "description": "Create or update a project.",
+      "description": "Create or update a project. For advanced fields, request linear help with variables.operation \"save_project:advanced\".",
       "parameters": {
         "type": "object",
         "properties": {
