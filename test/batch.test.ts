@@ -615,6 +615,36 @@ describe('batch mutation phase', () => {
     expect(result.details.meta.requests).toEqual({ read: 0, mutation: 1 });
   });
 
+  // The alias count is the caller's accounting of how much work the batch carried. A mixed
+  // batch must count reads AND mutations; a reads-only batch cannot tell the difference.
+  it('counts reads and mutations together in the mixed-batch alias total', async () => {
+    graphqlStub((request) => (request.query.includes('mutation')
+      ? { body: { data: { edit: { success: true, issue: updated } } } }
+      : {
+        body: {
+          data: Object.fromEntries([
+            ...aliases(request.query, 'issue').map((alias) => [alias, issueNode(ISSUE_A, 'AEO-1')]),
+            ...Object.entries(lookupData(request.query)),
+          ]),
+        },
+      }));
+
+    const result = await execute({
+      operation: 'batch',
+      variables: {
+        reads: [
+          { key: 'first', operation: 'get_issue', variables: { issue: 'AEO-1' } },
+          { key: 'second', operation: 'get_issue', variables: { issue: 'AEO-1' } },
+        ],
+        mutations: [mutationEntry()],
+      },
+    });
+
+    expect(result.details.errors).toEqual([]);
+    expect(result.details.meta.aliases).toBe(3);
+    expect(result.details.meta.requests).toEqual({ read: 1, mutation: 1 });
+  });
+
   it('sends nullable issue association clears without lookup requests', async () => {
     const { requests } = graphqlStub((request) => {
       expect(request.query).toContain('edit: issueUpdate');
@@ -1366,6 +1396,109 @@ describe('batch transactional create', () => {
     expect(result.details.skipped).toEqual([]);
   });
 
+  // The first returned issue is the boundary of the index window. A window that starts at 1,
+  // or that rejects index 0, silently turns a precise per-issue error into a whole-batch failure.
+  it('maps an indexed transaction error on the FIRST returned issue to that issue alone', async () => {
+    graphqlStub((request) => {
+      if (!request.query.includes('issueBatchCreate')) return { body: { data: lookupData(request.query) } };
+      const issues = batchIssues(request);
+      return {
+        body: {
+          data: {
+            issueBatchCreate: {
+              success: true,
+              issues: [
+                { id: issues[0]!.id, identifier: 'AEO-1', title: 'A', description: null },
+                { id: issues[1]!.id, identifier: 'AEO-2', title: 'B' },
+              ],
+            },
+          },
+          errors: [{ message: 'Description unavailable', path: ['issueBatchCreate', 'issues', 0, 'description'] }],
+        },
+      };
+    });
+
+    const result = await execute({
+      operation: 'batch',
+      variables: { mutations: [createIssue('one', 'A'), createIssue('two', 'B')] },
+    });
+
+    expect(result.details.errors).toEqual([{
+      key: 'one',
+      path: ['issueBatchCreate', 'issues', 0, 'description'],
+      message: 'Description unavailable',
+      partial: { issueCreate: { success: true, issue: expect.objectContaining({ identifier: 'AEO-1', title: 'A' }) } },
+    }]);
+    expect(result.details.data).toEqual({
+      two: { issueCreate: { success: true, issue: expect.objectContaining({ identifier: 'AEO-2', title: 'B' }) } },
+    });
+    expect(result.details.skipped).toEqual([]);
+  });
+
+  // A transaction error outside the per-issue window belongs to every create, not to one issue.
+  it('treats an issueBatchCreate error outside the issues list as response-wide', async () => {
+    graphqlStub((request) => {
+      if (!request.query.includes('issueBatchCreate')) return { body: { data: lookupData(request.query) } };
+      const issues = batchIssues(request);
+      return {
+        body: {
+          data: {
+            issueBatchCreate: {
+              success: true,
+              issues: [
+                { id: issues[0]!.id, identifier: 'AEO-1', title: 'A' },
+                { id: issues[1]!.id, identifier: 'AEO-2', title: 'B' },
+              ],
+            },
+          },
+          errors: [{ message: 'Transaction rejected', path: ['issueBatchCreate', 'success'] }],
+        },
+      };
+    });
+
+    const result = await execute({
+      operation: 'batch',
+      variables: { mutations: [createIssue('one', 'A'), createIssue('two', 'B')] },
+    });
+
+    expect(result.details.data).toEqual({});
+    expect(result.details.errors.map((error: { key: string }) => error.key).sort()).toEqual(['one', 'two']);
+    for (const error of result.details.errors) expect(error.message).toContain('Transaction rejected');
+  });
+
+  // The acknowledgement summary hides the payload's success flag; the full view must still
+  // report the transaction actually succeeded.
+  it('reports transactional create success under the full result view', async () => {
+    graphqlStub((request) => {
+      if (!request.query.includes('issueBatchCreate')) return { body: { data: lookupData(request.query) } };
+      const issues = batchIssues(request);
+      return {
+        body: {
+          data: {
+            issueBatchCreate: {
+              success: true,
+              issues: [
+                { id: issues[0]!.id, identifier: 'AEO-1', title: 'A' },
+                { id: issues[1]!.id, identifier: 'AEO-2', title: 'B' },
+              ],
+            },
+          },
+        },
+      };
+    });
+
+    const result = await execute({
+      operation: 'batch',
+      variables: {
+        mutations: [createIssue('one', 'A', { view: 'full' }), createIssue('two', 'B', { view: 'full' })],
+      },
+    });
+
+    expect(result.details.data.one.issueCreate.success).toBe(true);
+    expect(result.details.data.two.issueCreate.success).toBe(true);
+    expect(result.details.errors).toEqual([]);
+  });
+
   it('returns keyed errors for GraphQL path errors on the transaction', async () => {
     graphqlStub((request) => {
       if (!request.query.includes('issueBatchCreate')) return { body: { data: lookupData(request.query) } };
@@ -1394,6 +1527,8 @@ describe('batch transactional create', () => {
   it.each([
     ['pathless', [{ message: `transaction denied ${TOKEN}` }]],
     ['unexpected-path', [{ message: `transaction denied ${TOKEN}`, path: ['unexpected'] }]],
+    // A numeric third element does not make an error per-issue; the root has to match too.
+    ['unexpected-indexed-path', [{ message: `transaction denied ${TOKEN}`, path: ['unexpected', 'issues', 0] }]],
   ])('classifies a response-wide %s transaction failure for every create', async (_case, responseErrors) => {
     const { requests } = graphqlStub((request) => {
       if (!request.query.includes('issueBatchCreate')) return { body: { data: lookupData(request.query) } };
@@ -1672,6 +1807,22 @@ describe('exact batch accounting and routing', () => {
       },
     }]);
     expect(result.details.skipped).toEqual([]);
+  });
+
+  // A result-contract failure still returns what the server sent, so the caller can see why
+  // the entry was rejected instead of getting a bare message.
+  it('keeps the returned payload as partial when a read fails its result contract', async () => {
+    graphqlStub(() => ({ body: { data: { wrong: issueNode(ISSUE_A, 'AEO-1') } } }));
+
+    const result = await batch([{ key: 'wrong', operation: 'get_issue', variables: { issue: 'AEO-2' } }]);
+
+    expect(result.details.data).toEqual({});
+    expect(result.details.errors).toEqual([{
+      key: 'wrong',
+      path: ['wrong'],
+      message: expect.stringMatching(/mismatched identifier/),
+      partial: { issue: issueNode(ISSUE_A, 'AEO-1') },
+    }]);
   });
 
   it('keeps a mutation skipped after a read failure only in skipped', async () => {

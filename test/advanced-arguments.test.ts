@@ -109,4 +109,18 @@ describe('advanced typed arguments', () => {
       }
     }
   });
+
+  // A save operation carries two variants: the first is the create shape, the second the
+  // update shape. Advanced help labels each field with the modes that accept it, so a field
+  // only Linear's create input takes must never be advertised as an update field.
+  it('labels an advanced field with the save modes that actually accept it', () => {
+    const detail = helpResult({ operation: 'save_initiative:advanced' }) as {
+      parameters: Array<{ name: string; type: string; modes?: string[] }>;
+    };
+    const modesFor = (name: string) => detail.parameters.find((parameter) => parameter.name === name)?.modes;
+
+    expect(modesFor('id')).toEqual(['create']);
+    expect(modesFor('customIdentifier')).toEqual(['update']);
+    expect(modesFor('sortOrder')).toEqual(['create', 'update']);
+  });
 });
