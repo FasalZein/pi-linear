@@ -126,8 +126,184 @@ function replaceGeneratedSection(source: string, body: string): string {
 
 function readmeCatalog(): string {
   const product = manifest();
-  const names = product.allowedTools.map((name) => `\`${name}\``).join(', ');
-  return `## Generated tool inventory\n\nThe package registers ${product.allowedTools.length} tools. \`linear\` and \`linear_get_result\` start active. \`linear_graphql\`, \`linear_batch\`, and typed tools load on demand.\n\n${names}`;
+  const rows = DOMAINS.map((domain) => ({
+    domain,
+    names: operationDefinitions
+      .filter((definition) => definition.domain === domain)
+      .map(({ toolName }) => `\`${toolName}\``),
+  })).filter(({ names }) => names.length)
+    .map(({ domain, names }) => `| ${domain} | ${names.join(', ')} |`);
+  return [
+    '## Generated tool inventory',
+    '',
+    `The package registers ${product.allowedTools.length} tools. \`linear\` and \`linear_get_result\` start active. The other tools load on demand.`,
+    '',
+    '| Group | Tools |',
+    '| --- | --- |',
+    '| Control | `linear`, `linear_get_result`, `linear_graphql`, `linear_batch` |',
+    ...rows,
+    '',
+    'See [`REFERENCE.md`](./REFERENCE.md) for every common field, advanced field, valid form, mode, result, and example.',
+  ].join('\n');
+}
+
+function fieldRequirement(
+  definition: (typeof operationDefinitions)[number],
+  name: string,
+): string {
+  if (definition.canonical.fields.find((field) => field.name === name)?.required) return 'required';
+  if (definition.canonical.branches.some((branch) => branch.all.includes(name))) return 'required in some forms';
+  return 'optional';
+}
+
+function fieldModes(
+  definition: (typeof operationDefinitions)[number],
+  name: string,
+): string {
+  const variants = definition.canonical.variants;
+  if (!variants) return 'all calls';
+  const create = variants[0]?.fields.includes(name) ?? false;
+  const update = variants[1]?.fields.includes(name) ?? false;
+  if (create && update) return 'create and update';
+  if (create) return 'create only';
+  if (update) return 'update only';
+  return 'result control';
+}
+
+function parameterTable(
+  definition: (typeof operationDefinitions)[number],
+  fields: readonly { name: string; type: string }[],
+): string[] {
+  if (!fields.length) return ['None.'];
+  return [
+    '| Field | Type | Requirement | Mode |',
+    '| --- | --- | --- | --- |',
+    ...fields.map(({ name, type }) =>
+      `| \`${name}\` | \`${type}\` | ${fieldRequirement(definition, name)} | ${fieldModes(definition, name)} |`),
+  ];
+}
+
+function validForms(definition: (typeof operationDefinitions)[number]): string[] {
+  const variants = definition.canonical.variants;
+  if (variants) {
+    return variants.flatMap((variant, index) => {
+      const mode = index === 0 ? 'create' : 'update';
+      const forms = variant.branches.map(({ all }) => all.length ? all.map((name) => `\`${name}\``).join(' + ') : 'no required fields');
+      return [`**${mode[0]!.toUpperCase()}${mode.slice(1)} forms**`, '', ...forms.map((form) => `- ${form}`), ''];
+    });
+  }
+  return definition.canonical.branches.map(({ all }) =>
+    `- ${all.length ? all.map((name) => `\`${name}\``).join(' + ') : 'No required fields.'}`);
+}
+
+function resultBehavior(definition: (typeof operationDefinitions)[number]): string {
+  if (definition.safety.mutation) return 'Compact acknowledgement by default. Set `view` to `full` when the schema publishes it.';
+  if (definition.result.category === 'collection') return 'Summary collection by default. Set `view` to `full` when the schema publishes it.';
+  if (definition.result.category === 'singular') return 'Full singular result by default.';
+  return 'Local result. No Linear network request.';
+}
+
+function detailedOperationReference(definition: (typeof operationDefinitions)[number]): string[] {
+  const advanced = definition.canonical.advancedFields;
+  return [
+    '<details>',
+    `<summary><code>${definition.toolName}</code> · ${definition.kind} · ${definition.purpose}</summary>`,
+    '',
+    `Activate: \`{ "operation": "help", "variables": { "operation": "${definition.name}" } }\``,
+    '',
+    '**Valid forms**',
+    '',
+    ...validForms(definition),
+    '',
+    '**Common fields**',
+    '',
+    ...parameterTable(definition, definition.canonical.fields),
+    '',
+    '**Advanced fields**',
+    '',
+    ...(advanced.length
+      ? [
+          `Load this list with \`{ "operation": "help", "variables": { "operation": "${definition.name}:advanced" } }\`.`,
+          '',
+          ...parameterTable(definition, advanced),
+        ]
+      : ['None.']),
+    '',
+    `Example: \`${JSON.stringify(definition.canonical.example)}\``,
+    '',
+    `Result: ${resultBehavior(definition)}`,
+    '',
+    `Safety: ${definition.safety.mutation
+      ? definition.safety.namedInputPolicy === 'guarded-destructive'
+        ? 'Guarded destructive mutation. The operation checks the target and its identity before the write.'
+        : 'Named mutation. Read-only mode rejects it before credential lookup or network access.'
+      : 'Read or local operation.'}`,
+    '',
+    '</details>',
+  ];
+}
+
+function controlToolReference(): string[] {
+  return [
+    '## Control tool details',
+    '',
+    '<details>',
+    '<summary><code>linear</code> · discovery and activation</summary>',
+    '',
+    '| Field | Type | Requirement |',
+    '| --- | --- | --- |',
+    '| `operation` | literal `"help"` | required |',
+    '| `variables.domain` | operation domain | optional, exclusive with `variables.operation` |',
+    '| `variables.operation` | operation name, `<name>:advanced`, `graphql`, `batch`, or `get_result` | optional, exclusive with `variables.domain` |',
+    '',
+    'This tool makes no Linear network request. Root and domain help load no tool. Exact operation help activates one direct tool.',
+    '',
+    '</details>',
+    '',
+    '<details>',
+    '<summary><code>linear_get_result</code> · read a stored result</summary>',
+    '',
+    '| Field | Type | Requirement |',
+    '| --- | --- | --- |',
+    '| `handle` | result handle | required |',
+    '| `path` | RFC 6901 JSON Pointer | optional |',
+    '| `offset` | integer, minimum 0 | optional |',
+    '',
+    'This tool starts active. Continue with the returned `nextOffset` until `complete` is true.',
+    '',
+    '</details>',
+    '',
+    '<details>',
+    '<summary><code>linear_graphql</code> · direct GraphQL escape hatch</summary>',
+    '',
+    '| Field | Type | Requirement |',
+    '| --- | --- | --- |',
+    '| `query` | GraphQL document string | required |',
+    '| `variables` | object | optional |',
+    '| `workspace` | stored Workspace name | optional |',
+    '| `sink` | `inline` or `artifact` | optional |',
+    '| `telemetry` | literal `always` | optional |',
+    '',
+    'Load this tool with exact `graphql` help. Raw mutations require `LINEAR_MUTATIONS=all` and explicit authorization.',
+    '',
+    '</details>',
+    '',
+    '<details>',
+    '<summary><code>linear_batch</code> · independent reads and ordered mutations</summary>',
+    '',
+    '| Field | Type | Requirement |',
+    '| --- | --- | --- |',
+    '| `operations` | non-empty `BatchEntry[]` | use this read-only form, or use phased fields |',
+    '| `reads` | non-empty `BatchEntry[]` | optional phased read list |',
+    '| `mutations` | non-empty `BatchEntry[]` | optional phased mutation list |',
+    '| `workspace` | stored Workspace name | optional |',
+    '| `sink` | `inline` or `artifact` | optional |',
+    '| `telemetry` | literal `always` | optional |',
+    '',
+    'A `BatchEntry` has `operation`, optional `variables`, and optional `key`. Use `operations`, or use `reads` and `mutations`. Do not combine both forms.',
+    '',
+    '</details>',
+  ];
 }
 
 function referenceCatalog(): string {
@@ -135,6 +311,15 @@ function referenceCatalog(): string {
     const required = definition.canonical.fields.filter(({ required }) => required).map(({ name }) => name).join(', ') || 'none';
     const example = `\`${JSON.stringify(definition.canonical.example)}\``;
     return `| \`${definition.name}\` | \`${definition.toolName}\` | ${definition.domain} | ${required} | ${definition.purpose} | ${example} |`;
+  });
+  const details = DOMAINS.flatMap((domain) => {
+    const definitions = operationDefinitions.filter((definition) => definition.domain === domain);
+    if (!definitions.length) return [];
+    return [
+      `### ${domain}`,
+      '',
+      ...definitions.flatMap((definition) => [...detailedOperationReference(definition), '']),
+    ];
   });
   return [
     '## Generated operation catalog',
@@ -212,6 +397,15 @@ function referenceCatalog(): string {
     '```json',
     '{ "handle": "linear-result:v1:550e8400-e29b-41d4-a716-446655440000", "path": "", "offset": 0 }',
     '```',
+    '',
+    ...controlToolReference(),
+    '',
+    '## Complete typed tool details',
+    '',
+    'These tables come from the same operation definitions that build the runtime schemas.',
+    'The activated schema remains authoritative for nested object keys, enum values, and provider validation.',
+    '',
+    ...details,
   ].join('\n');
 }
 

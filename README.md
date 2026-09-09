@@ -1,221 +1,256 @@
 # pi-linear
 
-Linear tools for [Pi](https://pi.dev). The extension talks to the Linear GraphQL API. It gives Pi 49 named operations, a batch tool, a raw GraphQL tool, and a result reader.
+Linear tools for [Pi](https://pi.dev). The package provides typed Linear operations, deferred tool loading, safe mutation rules, batching, and lossless large results.
 
-A Linear client with one tool per operation puts every parameter schema in the model prompt at session start. This package loads tools later instead. Pi registers 53 tools from the package. Only `linear` and `linear_get_result` are in the prompt at session start.
+Pi registers 53 tools from this package. Only `linear` and `linear_get_result` start active. The other schemas enter context only after exact help loads them.
 
-The `linear` tool answers help requests. Exact help activates one direct tool. The activated schema publishes common fields. Exact advanced help publishes rare tail fields.
+## Quick start
 
-## What you get
-
-- 49 typed operation tools for issues, comments, projects, cycles, milestones, initiatives, documents, views, labels, relations, teams, users, and workspace selection.
-- One discovery tool, `linear`, that returns domains, operation names, normal help, and exact advanced tails.
-- `linear_batch` for independent operations in one request, with separate read and mutation phases.
-- `linear_graphql` for work that no named operation covers.
-- Complete results, saved to a file on disk when a result is too large for one tool answer.
-- `linear_get_result` to read a saved result without file or shell tools.
-- Mutation rules that reject raw mutations, archive operations, and every delete except the guarded `delete_issue_relation`.
-- API key redaction in tool results, saved result files, resolution metadata, and error messages.
-- Multiple workspaces, with a per-request `workspace` argument.
-
-## Requirements
-
-- Pi 0.80.7 or newer. That release added the dynamic tool loading this package depends on. Verified against Pi 0.84.2.
-- Node.js with `npm`, because Pi runs `npm install` for the package.
-- A Linear API key from Linear, under Settings, API, Personal API keys.
-- No Notebook extension or Notebook setup is required.
-
-## Install
+### 1. Install the package
 
 ```bash
 pi install git:github.com/FasalZein/pi-linear
 ```
 
-This adds the package to `~/.pi/agent/settings.json` and loads `extensions/index.ts`. Use `pi install -l git:github.com/FasalZein/pi-linear` to write the entry to project configuration instead.
+### 2. Add a Linear API key
 
-To try the package for one run only, use the temporary form:
-
-```bash
-pi -e git:github.com/FasalZein/pi-linear
-```
-
-Check the installed packages with `pi list`.
-
-## Authenticate
-
-The extension reads the `LINEAR_API_KEY` environment variable:
+Use an environment variable:
 
 ```bash
 export LINEAR_API_KEY=lin_api_...
 ```
 
-For stored workspaces, use the `/linear-auth` command inside Pi:
+Or store a named Workspace inside Pi:
 
-| Command | Action |
-| --- | --- |
-| `/linear-auth add <name>` | Add a workspace and its API key. |
-| `/linear-auth remove <name>` | Remove a stored workspace. |
-| `/linear-auth switch <name>` | Set the active workspace. |
-| `/linear-auth prefer workspace` | Prefer the stored key over the environment variable. |
-| `/linear-auth prefer env` | Prefer `LINEAR_API_KEY` over the stored key. |
-| `/linear-auth status` | Show the auth source and the stored workspaces. |
-
-Stored keys live in `~/.pi/agent/extensions/linear/credentials.json`. The default order is stored workspace first, then `LINEAR_API_KEY`.
-
-## First call
-
-Every `linear` call needs `operation: "help"`. The first call reads the catalog. It contacts nothing and needs no credential.
-
-Call `linear` with:
-
-```json
-{ "operation": "help" }
+```text
+/linear-auth add work
 ```
 
-The response lists the domains and the help forms:
+### 3. Load one operation
+
+Call `linear`:
+
+```json
+{ "operation": "help", "variables": { "operation": "get_issue" } }
+```
+
+Pi activates `linear_get_issue`. Call `linear_get_issue` with:
+
+```json
+{ "issue": "AEO-258" }
+```
+
+The `linear` tool never runs an operation. It only provides discovery and activation.
+
+## Requirements
+
+- Pi 0.80.7 or newer.
+- Node.js and `npm`.
+- A Linear personal API key.
+- No Notebook mode or model-specific setup.
+
+Pi 0.80.7 added the deferred loading interface that this package uses. Development checks use Pi 0.84.2.
+
+## Installation
+
+Install for the current user:
+
+```bash
+pi install git:github.com/FasalZein/pi-linear
+```
+
+Install in the current project configuration:
+
+```bash
+pi install -l git:github.com/FasalZein/pi-linear
+```
+
+Run the package once without installing it:
+
+```bash
+pi -e git:github.com/FasalZein/pi-linear
+```
+
+Manage the package:
+
+```bash
+pi list
+pi update --extension git:github.com/FasalZein/pi-linear
+pi remove git:github.com/FasalZein/pi-linear
+```
+
+Pi adds the package to `~/.pi/agent/settings.json` by default. The `-l` flag writes to `.pi/settings.json`.
+
+## Authentication and Workspaces
+
+The extension can use `LINEAR_API_KEY` or a stored Workspace credential.
+
+A Workspace is a named Linear account and credential selection. It is not a Linear project, team, or Pi working directory.
+
+| Command | Result |
+| --- | --- |
+| `/linear-auth add <name>` | Store a Workspace and API key. |
+| `/linear-auth remove <name>` | Remove a stored Workspace. |
+| `/linear-auth switch <name>` | Select the active stored Workspace. |
+| `/linear-auth prefer workspace` | Prefer stored credentials. |
+| `/linear-auth prefer env` | Prefer `LINEAR_API_KEY`. |
+| `/linear-auth status` | Show the credential source and stored names. |
+
+Stored credentials live in `~/.pi/agent/extensions/linear/credentials.json`. The default order is stored Workspace first, then `LINEAR_API_KEY`.
+
+Typed operation tools always use the active Workspace. They do not accept a `workspace` field.
+
+`linear_graphql` and `linear_batch` accept a `workspace` override. The override applies to one request and does not change the active Workspace.
+
+The extension does not store a default project or team. Supply the required project or team in each operation.
+
+## Deferred tool loading
+
+The model starts with two Linear schemas:
+
+- `linear` provides discovery and activates tools.
+- `linear_get_result` reads saved results.
+
+The other 51 tools stay registered but inactive. Exact help activates one matching tool for the rest of the session.
+
+List a domain without loading tools:
+
+```json
+{ "operation": "help", "variables": { "domain": "issues" } }
+```
+
+Load a normal operation:
+
+```json
+{ "operation": "help", "variables": { "operation": "create_issue" } }
+```
+
+Normal help returns the purpose, one example, and the activation result. The activated tool schema defines the common fields.
+
+Load rare fields only when required:
+
+```json
+{ "operation": "help", "variables": { "operation": "create_issue:advanced" } }
+```
+
+Send those fields inside `advanced`:
 
 ```json
 {
-  "domains": ["issues", "comments", "users", "teams", "projects", "cycles", "milestones", "initiatives", "documents", "views", "labels", "relations", "workspace"],
-  "domainHelp": { "operation": "help", "variables": { "domain": "issues" } },
-  "operationHelp": { "operation": "help", "variables": { "operation": "get_issue" } },
-  "graphqlHelp": { "operation": "help", "variables": { "operation": "graphql" } },
-  "batchHelp": { "operation": "help", "variables": { "operation": "batch" } },
-  "resultHelp": { "operation": "help", "variables": { "operation": "get_result" } }
+  "title": "Investigate cache misses",
+  "team": "AEO",
+  "advanced": { "slaType": "all" }
 }
 ```
 
-Ask for one operation by name. Normal exact help returns only the purpose, example, and activation result.
+The `advanced` object is closed. The runtime rejects unknown fields, duplicate common fields, raw `input`, and destructive fields.
 
-Call `linear` with:
+The committed measurement uses local `o200k_base` tokenization. Five issue tools decreased from 3,988 to 2,278 tokens. All tool schemas decreased from 15,516 to 12,100 tokens. These values are not provider billing data.
+
+See [the measurement method](./docs/v10-context-measurement-evidence.md) for the fixed task set and limits.
+
+## Common workflows
+
+### Read an issue
 
 ```json
 { "operation": "help", "variables": { "operation": "get_issue" } }
 ```
 
 ```json
-{
-  "loadedTools": ["linear_get_issue"],
-  "purpose": "Get one issue by exact identifier or UUID.",
-  "example": { "issue": "AEO-258" }
-}
-```
-
-`loadedTools` names the tool that Pi added. Its schema is the authority for common fields.
-
-Call `linear_get_issue` with:
-
-```json
 { "issue": "AEO-258" }
 ```
 
-Some operations have rare tail fields. Request their exact advanced help before you use them:
+### List issues for a project
 
 ```json
-{ "operation": "help", "variables": { "operation": "list_comments:advanced" } }
+{ "operation": "help", "variables": { "operation": "list_issues" } }
 ```
 
 ```json
-{
-  "loadedTools": ["linear_list_comments"],
-  "name": "list_comments",
-  "parameters": [
-    { "name": "before", "type": "String" },
-    { "name": "last", "type": "Int" }
-  ]
-}
+{ "project": "pi-linear", "first": 20 }
 ```
 
-Send tail fields inside `advanced`:
-
-```json
-{ "issue": "AEO-258", "advanced": { "before": "CURSOR", "last": 20 } }
-```
-
-The advanced object is closed at runtime. Unknown fields fail before credential lookup or network access.
-
-The `linear` tool never runs an operation. Work runs through underscore tools such as `linear_get_issue`, `linear_batch`, `linear_graphql`, and `linear_get_result`.
-
-## Discover operations
-
-Domain help returns the operation names for one domain and loads no tool.
-
-Call `linear` with:
-
-```json
-{ "operation": "help", "variables": { "domain": "issues" } }
-```
+### Create an issue with exact references
 
 ```json
 {
-  "domain": "issues",
-  "operations": [
-    { "name": "list_issues" },
-    { "name": "get_issue" },
-    { "name": "create_issue" },
-    { "name": "update_issue" },
-    { "name": "search_issues" }
-  ]
+  "title": "Add cache diagnostics",
+  "team": "AEO",
+  "project": "pi-linear",
+  "labels": ["bug"],
+  "assignee": "me"
 }
 ```
 
-Each operation has its own tool. Send the matching help request first, then call the tool.
+References accept exact supported forms. Projects and documents accept exact names, slugs, or UUIDs. Issues accept identifiers or UUIDs. Teams accept keys or UUIDs.
 
-Call `linear_list_issues` with:
+Missing or ambiguous references fail before a mutation request.
 
-```json
-{ "assignee": "me", "stateType": "started" }
-```
-
-Call `linear_search_issues` with:
+### Update and clear fields
 
 ```json
-{ "term": "authentication" }
+{ "issue": "AEO-258", "state": "Done", "assignee": null, "dueDate": null }
 ```
 
-Call `linear_create_issue` with:
+Use `null` only when the activated schema publishes a nullable type.
+
+### Request a full mutation result
+
+Mutations return a compact acknowledgement by default:
 
 ```json
-{ "title": "Cache the workspace lookup", "team": "AEO" }
+{ "issue": "AEO-258", "priority": 1 }
 ```
 
-References use one caller name for each object concept. Examples include `issue`, `team`, `project`, `cycle`, `milestone`, `initiative`, `label`, and `user`.
+Request the complete returned entity when required:
 
-References must be exact. An issue is `TEAM-123` or a UUID. A team is its key or a UUID. A user is `me`, an email, a name, a display name, or a UUID. Projects and documents also accept exact slugs. A reference that matches nothing or several records fails before any change.
-
-The extension stores no default project or default team. Supply required context in each call. A `create_issue` parent can supply its team.
-
-Use `null` only where the active schema publishes a nullable type. In those fields, `null` clears the existing association or date.
-
-The [v1.0 changelog](./CHANGELOG.md#100) lists every renamed field and every field moved into `advanced`.
-
-[`REFERENCE.md`](./REFERENCE.md) holds the full operation table, pagination rules, and rate-limit behavior.
-
-## Read-only use
-
-Set `LINEAR_READONLY=1` to reject every mutation before credential lookup and before network access:
-
-```bash
-LINEAR_READONLY=1 pi
+```json
+{ "issue": "AEO-258", "priority": 1, "view": "full" }
 ```
 
-For a Pi agent definition, put the same variable in the `env` frontmatter of the agent file. `LINEAR_MUTATIONS=all` cannot override read-only mode. Use this method with the installed package.
+The `view` field controls only the result. It never enters the GraphQL mutation input.
 
-The repository has a second entry file, `extensions/readonly.ts`, with the same rule built in. It works only from a clone of the repository, because the installed package loads `extensions/index.ts` alone:
+## Tools
 
-```bash
-git clone https://github.com/FasalZein/pi-linear
-cd pi-linear && npm install
-pi -e ./extensions/readonly.ts
-```
+The package has 49 typed operation tools and four control tools. The generated inventory groups every registered tool.
 
-CAUTION: Do not load `extensions/index.ts` and `extensions/readonly.ts` in one session. Both register the same tool names.
+The [complete reference](./REFERENCE.md) lists every field, type, valid form, mode, result, and example.
+
+<!-- BEGIN GENERATED LINEAR OPERATIONS -->
+## Generated tool inventory
+
+The package registers 53 tools. `linear` and `linear_get_result` start active. The other tools load on demand.
+
+| Group | Tools |
+| --- | --- |
+| Control | `linear`, `linear_get_result`, `linear_graphql`, `linear_batch` |
+| issues | `linear_list_issues`, `linear_get_issue`, `linear_create_issue`, `linear_update_issue`, `linear_search_issues` |
+| comments | `linear_list_comments`, `linear_create_comment`, `linear_update_comment` |
+| users | `linear_list_users`, `linear_get_user` |
+| teams | `linear_list_teams`, `linear_get_team` |
+| projects | `linear_list_projects`, `linear_get_project`, `linear_save_project` |
+| cycles | `linear_list_cycles`, `linear_get_cycle`, `linear_create_cycle`, `linear_update_cycle` |
+| milestones | `linear_list_milestones`, `linear_get_milestone`, `linear_save_milestone` |
+| initiatives | `linear_list_initiatives`, `linear_get_initiative`, `linear_save_initiative` |
+| documents | `linear_list_documents`, `linear_get_document`, `linear_create_document`, `linear_update_document` |
+| views | `linear_list_views`, `linear_get_view`, `linear_create_view`, `linear_update_view`, `linear_set_view_preferences` |
+| labels | `linear_list_issue_labels`, `linear_create_issue_label`, `linear_update_issue_label`, `linear_list_project_labels`, `linear_create_project_label`, `linear_update_project_label` |
+| relations | `linear_list_issue_relations`, `linear_create_issue_relation`, `linear_update_issue_relation`, `linear_delete_issue_relation`, `linear_list_project_relations`, `linear_create_project_relation`, `linear_update_project_relation` |
+| workspace | `linear_list_issue_statuses`, `linear_switch_workspace` |
+
+See [`REFERENCE.md`](./REFERENCE.md) for every common field, advanced field, valid form, mode, result, and example.
+<!-- END GENERATED LINEAR OPERATIONS -->
 
 ## Batch requests
 
-Send exact `batch` help, then call `linear_batch`. Independent reads use one `operations` list.
+Load the batch tool:
 
-Call `linear_batch` with:
+```json
+{ "operation": "help", "variables": { "operation": "batch" } }
+```
+
+### Independent reads
 
 ```json
 {
@@ -226,131 +261,217 @@ Call `linear_batch` with:
 }
 ```
 
-A batch with a mutation uses explicit phases. The read phase runs first. If a read fails, the mutation phase does not run.
+The read entries compile into one GraphQL request.
 
-Call `linear_batch` with:
+### Reads followed by mutations
 
 ```json
 {
-  "reads": [{ "key": "issue", "operation": "get_issue", "variables": { "issue": "AEO-258" } }],
-  "mutations": [{ "key": "update", "operation": "update_issue", "variables": { "issue": "AEO-258", "state": "Backlog" } }]
+  "reads": [
+    { "key": "issue", "operation": "get_issue", "variables": { "issue": "AEO-258" } }
+  ],
+  "mutations": [
+    { "key": "update", "operation": "update_issue", "variables": { "issue": "AEO-258", "state": "Done" } },
+    { "key": "comment", "operation": "create_comment", "variables": { "issue": "AEO-258", "body": "Completed." } }
+  ]
 }
 ```
 
-Before the first mutation, the extension validates all entries and resolves all References. It also applies all read-only and named-root safety gates.
+The extension checks every entry before the first mutation. It validates fields, resolves references, and applies mutation rules.
 
-The mutation phase accepts several independent ordinary mutations. It sends them in order, with one request per entry.
+Ordinary mutations run in order. The first failure stops later writes. Earlier successful writes remain successful.
 
-The extension stops at the first failure. It keeps earlier acknowledgements and skips every later mutation without sending it.
+The result reports every key once under `data`, `errors`, or `skipped`.
 
-A transport, HTTP, or cancellation failure can leave the sent mutation outcome unknown. Do not retry that mutation without checking Linear first.
+CAUTION: A network failure can leave the current mutation outcome unknown. Read the target before you retry the mutation.
 
-Two or more `create_issue` entries use one Linear `issueBatchCreate` transaction. The batch rejects a mix of this transaction and ordinary mutations.
-
-No other mutation batch is a transaction. A completed mutation stays completed when a later entry fails.
-
-The result reports every caller key exactly once, under `data`, `errors`, or `skipped`.
-
-Mutations return a compact `summary` acknowledgement by default. Set `view` to `full` when a caller needs the complete mutation entity.
+Two or more `create_issue` entries can use one `issueBatchCreate` transaction. The batch rejects a mix of transactional issue creation and ordinary mutations.
 
 ## Raw GraphQL
 
-Send exact `graphql` help, then call `linear_graphql` with:
+Load `linear_graphql`:
 
 ```json
-{ "query": "query Viewer { viewer { id name } }", "variables": {} }
+{ "operation": "help", "variables": { "operation": "graphql" } }
 ```
 
-Use this tool only when no named operation covers the work. Select the fields you need. Add a small `first:` value to every connection, and include `pageInfo { hasNextPage endCursor }` when another page can matter. Raw mutations are rejected unless `LINEAR_MUTATIONS=all` is set.
-
-## Large results
-
-A complete result stays in the tool answer when it fits the Pi limit of 50KB or 2,000 lines. A larger result goes to a file under `${PI_ARTIFACT_PROJECT_ROOT:-$HOME/.pi/artifacts}/linear/raw/`. The tool then answers with a handle, a byte count, a short index, and metadata. Nothing is clipped, capped, or summarized. Entities, fields, batch keys, and Linear pagination values stay as the server returned them.
-
-Call `linear_get_result` with the handle:
+Run a bounded query:
 
 ```json
-{ "handle": "linear-result:v1:550e8400-e29b-41d4-a716-446655440000", "path": "", "offset": 0 }
+{
+  "query": "query Viewer { viewer { id name } }",
+  "variables": {}
+}
 ```
 
-A large string, array, or object comes back in ordered segments. Continue with the same `path` and the returned `nextOffset` until `complete` is true.
+Use raw GraphQL only when no named operation covers the work. Select only required fields. Set an explicit `first:` value on connections.
 
-Every operation tool also accepts `sink`. Use `"sink": "artifact"` to force a saved file. Use `"sink": "inline"` to prefer a direct answer.
+Raw mutations are disabled by default. Set `LINEAR_MUTATIONS=all` only for an authorized mutation that has no named operation.
+
+## Large results and result handles
+
+Results stay inline when they fit Pi's 50KB or 2,000-line tool limit. Larger results are saved under:
+
+```text
+${PI_ARTIFACT_PROJECT_ROOT:-$HOME/.pi/artifacts}/linear/raw/
+```
+
+The tool returns an opaque handle such as:
+
+```text
+linear-result:v1:550e8400-e29b-41d4-a716-446655440000
+```
+
+Read the saved value with `linear_get_result`:
+
+```json
+{
+  "handle": "linear-result:v1:550e8400-e29b-41d4-a716-446655440000",
+  "path": "",
+  "offset": 0
+}
+```
+
+If the value needs more than one segment, keep the same `path` and use the returned `nextOffset`. Stop when `complete` is true.
+
+Use `sink: "artifact"` to force a saved result. Use `sink: "inline"` to prefer inline output. Pi's hard result limit still applies.
+
+Result files contain complete redacted JSON. The router does not remove rows, fields, batch keys, or server cursors.
+
+## Read-only mode and mutation safety
+
+Start Pi in read-only mode:
+
+```bash
+LINEAR_READONLY=1 pi
+```
+
+This setting rejects all named and raw mutations before credential lookup and network access. `LINEAR_MUTATIONS=all` cannot override it.
+
+A repository clone also has a fixed read-only entry:
+
+```bash
+git clone https://github.com/FasalZein/pi-linear
+cd pi-linear
+npm install
+pi -e ./extensions/readonly.ts
+```
+
+CAUTION: Do not load `extensions/index.ts` and `extensions/readonly.ts` in one session. Both files register the same tool names.
+
+Safety rules:
+
+- Named operations declare the exact mutation roots that they can send.
+- Common and advanced fields use the same mutation rules.
+- `delete_issue_relation` is the only delete operation.
+- The delete operation checks the relation, both endpoints, and the relation type before the write.
+- Archive and unarchive operations do not exist.
+- API keys are redacted in results, saved files, indexes, resolution data, and error messages.
+- Permitted mutations run without a confirmation dialog.
+
+If a session must not write, use `LINEAR_READONLY=1`.
 
 ## Configuration
 
-| Name | Type | Effect |
+| Name | Kind | Result |
 | --- | --- | --- |
-| `LINEAR_API_KEY` | environment variable | Linear API key used when no stored workspace key applies. |
-| `LINEAR_READONLY` | environment variable | Set to `1` to reject every mutation. Cannot be overridden. |
-| `LINEAR_MUTATIONS` | environment variable | Set to `all` to allow raw GraphQL mutations. |
-| `LINEAR_SPILL_BYTES` | environment variable | Positive number that lowers the size at which a result goes to a file. |
-| `PI_ARTIFACT_PROJECT_ROOT` | environment variable | Root folder for saved results. Defaults to `~/.pi/artifacts`. |
-| `PI_CODING_AGENT_DIR` | environment variable | Pi agent directory that holds the credential file. Defaults to `~/.pi/agent`. |
-| `workspace` | `linear_graphql` or `linear_batch` argument | Stored Workspace for one exceptional request. The active Workspace does not change. Typed tools omit this field. |
-| `/linear-settings` | command | Sets the default output format, Human readable or Full JSON. |
+| `LINEAR_API_KEY` | Environment variable | Supplies the API key when no preferred stored Workspace applies. |
+| `LINEAR_READONLY=1` | Environment variable | Rejects every mutation. |
+| `LINEAR_MUTATIONS=all` | Environment variable | Allows raw GraphQL mutations. |
+| `LINEAR_SPILL_BYTES` | Environment variable | Sets a lower automatic result-file threshold. |
+| `PI_ARTIFACT_PROJECT_ROOT` | Environment variable | Sets the saved-result root. |
+| `PI_CODING_AGENT_DIR` | Environment variable | Sets the Pi agent directory and credential location. |
+| `workspace` | `linear_graphql` or `linear_batch` field | Selects a stored Workspace for one request. |
+| `telemetry: "always"` | Direct tool field | Includes available rate-limit data for that request. |
+| `/linear-settings` | Pi command | Selects Human readable or Full JSON display. |
 
-The output-format preference is saved under the Pi agent state directory, in `state/extensions/linear/settings.json`. It is never written next to credentials.
+The display setting is stored in `state/extensions/linear/settings.json`. It is separate from credentials.
 
-## Safety rules
+## Rate limits and retries
 
-- Mutations run only through named operations. Each named operation declares the exact mutation roots it can send, and the runtime checks the parsed document against that declaration.
-- Common and advanced fields use the same mutation gates. The `advanced` wrapper does not widen mutation authority.
-- Raw GraphQL mutations need `LINEAR_MUTATIONS=all`.
-- `LINEAR_READONLY=1` and the read-only entry file reject every mutation, named or raw.
-- `delete_issue_relation` is the only delete operation. It checks the relation and both endpoints before it sends the delete.
-- There are no archive or unarchive operations.
-- A reference that matches nothing, or matches more than one record, fails before the mutation request.
-- The API key is replaced with `[REDACTED]` in tool results, saved result files, indexes, resolution metadata, and error messages.
-- The extension shows no confirmation dialog. A permitted mutation runs when the model calls the tool. For a session that must not write, use `LINEAR_READONLY=1`.
+The extension reads Linear's request, endpoint, complexity, reset, and `Retry-After` headers. It makes no extra request for telemetry.
+
+Results include `meta.rateLimit` only near an observed limit. Use `telemetry: "always"` on a direct tool for diagnostics.
+
+HTTP 429 responses get one retry. An explicit `Retry-After` value has priority.
+
+Search reads can also retry one GraphQL `RATELIMITED` response. Mutations do not retry an uncertain GraphQL rate-limit failure.
 
 ## Development
 
+Install development dependencies:
+
 ```bash
 npm install
-npm test
-npm run lint
-npm run typecheck
-npm run generate:check
-npm run verify:package
-npm run verify:clean
-npm run test:providers
-npm run test:pi:min
-npm run test:pi:current
 ```
 
-These commands are offline. They need no Linear credential.
+Run the complete local checks:
 
-The read-only smoke test is different. It sends live read requests to the Linear API, so it needs a valid API key:
+```bash
+npm test
+npm run typecheck
+npm run lint
+npm run generate:check
+npm run test:schema-bytes
+npm run test:providers
+npm run verify:package
+npm run verify:clean
+```
+
+The normal checks are offline and need no Linear credential.
+
+Run the live read-only smoke check:
 
 ```bash
 LINEAR_READONLY=1 LINEAR_API_KEY=lin_api_... npm run smoke:readonly
 ```
 
-The script stops with an error when `LINEAR_READONLY=1` is missing. It sends no mutation.
+The smoke command sends reads to Linear. It sends no mutation.
 
-`npm run generate` rebuilds the generated tool manifest and the generated sections of this file and of `REFERENCE.md`. `npm run generate:check` fails when a generated section is stale. `npm run check:linear-agent-allowlists` and `npm run sync:linear-agent-allowlists` keep a restricted Linear agent file limited to `write` plus the generated Linear tool names.
+Regenerate code and documentation:
+
+```bash
+npm run generate
+```
+
+This command updates generated contracts, manifests, the README tool inventory, and the complete reference.
 
 ## Troubleshooting
 
-**Missing API key.** The tool reports `Missing Linear API key. Set LINEAR_API_KEY or run /linear-auth.` Set the environment variable, or add a workspace with `/linear-auth add`. Then use `/linear-auth status` to see the active source.
+### Missing API key
 
-**Unknown workspace.** The tool reports `Workspace "<name>" does not exist.` Run `/linear-auth status` for the stored names.
+Run `/linear-auth status`. Then set `LINEAR_API_KEY`, or add a stored Workspace.
 
-**Read-only rejection.** The tool reports `Linear mutations are disabled by read-only mode.` Make sure that `LINEAR_READONLY` is unset. Make sure that the session does not load the read-only entry file.
+### Unknown operation
 
-**Raw mutation rejection.** The tool reports `Raw Linear mutations are disabled. Set LINEAR_MUTATIONS=all to allow raw mutations.` Prefer a named operation. Use the environment variable only when no named operation covers the work.
+Ask for domain help:
 
-**Unknown operation.** The tool reports `Unknown Linear operation "<name>".` Send `{ "operation": "help", "variables": { "domain": "issues" } }` to `linear` for the current names in that domain.
+```json
+{ "operation": "help", "variables": { "domain": "issues" } }
+```
 
-**Bad issue reference.** The tool reports `Invalid Linear issue reference "<value>". Use TEAM-123 or a UUID.` A missing record reports `Linear issue "<reference>" was not found.` Find the exact identifier with `linear_search_issues` or `linear_list_issues` first.
+Then use exact operation help.
 
-**Network or API error.** Messages start with `Linear network error:` or `Linear API request failed:`. One HTTP 429 response is retried once, after the `Retry-After` delay, the endpoint reset time, or three seconds. Repeat the call after the reset time when the retry also fails.
+### Unknown or ambiguous reference
 
-<!-- BEGIN GENERATED LINEAR OPERATIONS -->
-## Generated tool inventory
+Use a Linear identifier, UUID, exact key, exact name, or exact slug that the Reference type accepts. Search or list the target first when you do not know the exact value.
 
-The package registers 53 tools. `linear` and `linear_get_result` start active. `linear_graphql`, `linear_batch`, and typed tools load on demand.
+### Advanced field rejection
 
-`linear`, `linear_get_result`, `linear_graphql`, `linear_batch`, `linear_list_comments`, `linear_create_comment`, `linear_update_comment`, `linear_list_views`, `linear_get_view`, `linear_create_view`, `linear_update_view`, `linear_set_view_preferences`, `linear_list_cycles`, `linear_get_cycle`, `linear_create_cycle`, `linear_update_cycle`, `linear_list_documents`, `linear_get_document`, `linear_create_document`, `linear_update_document`, `linear_list_initiatives`, `linear_get_initiative`, `linear_list_issue_labels`, `linear_create_issue_label`, `linear_update_issue_label`, `linear_list_issue_relations`, `linear_create_issue_relation`, `linear_update_issue_relation`, `linear_delete_issue_relation`, `linear_list_issue_statuses`, `linear_list_issues`, `linear_get_issue`, `linear_create_issue`, `linear_update_issue`, `linear_search_issues`, `linear_list_milestones`, `linear_get_milestone`, `linear_list_project_labels`, `linear_create_project_label`, `linear_update_project_label`, `linear_list_project_relations`, `linear_create_project_relation`, `linear_update_project_relation`, `linear_list_projects`, `linear_get_project`, `linear_list_teams`, `linear_get_team`, `linear_list_users`, `linear_get_user`, `linear_switch_workspace`, `linear_save_initiative`, `linear_save_milestone`, `linear_save_project`
-<!-- END GENERATED LINEAR OPERATIONS -->
+Request `<operation>:advanced` help. Put the returned field inside `advanced`.
+
+### Read-only rejection
+
+Remove `LINEAR_READONLY` only when the session is allowed to write. Make sure that the fixed read-only entry is not loaded.
+
+### Raw mutation rejection
+
+Prefer a named operation. Set `LINEAR_MUTATIONS=all` only for an authorized raw mutation.
+
+### Network or API failure
+
+The extension reports `Linear network error:` or `Linear API request failed:`. If a mutation result is uncertain, read the target before another write.
+
+## License
+
+MIT

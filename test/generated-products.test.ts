@@ -17,12 +17,14 @@ import { exceptionalToolDefinitions } from '../extensions/exceptional-tools';
 
 const typedNames = operationDefinitions.map(({ toolName }) => toolName);
 const expectedNames = ['linear', ...exceptionalToolDefinitions.map(({ name }) => name), ...typedNames];
-const REFERENCE_DIRECT_TELEMETRY = /set top-level `"telemetry": "always"` on the exact direct tool[^.\n]*`linear_batch`[^.\n]*`linear_graphql`[^.\n]*typed `linear_\*`[^.\n]*\./;
 const CHANGELOG_DIRECT_TELEMETRY = /set top-level `telemetry: "always"` on the exact direct[^.\n]*`linear_batch`[^.\n]*`linear_graphql`[^.\n]*typed `linear_\*`[^.\n]*\./;
 const LOADER_ONLY_TELEMETRY = /(?=[^.\n]*telemetry)(?=[^.\n]*loader)(?=[^.\n]*(?:\bonly\b|\binstead\b|\bpreferred\b))[^.\n]*/i;
 
 function assertDirectTelemetryGuidance(referenceSection: string, changelogEntry: string): void {
-  expect(referenceSection).toMatch(REFERENCE_DIRECT_TELEMETRY);
+  expect(referenceSection).toContain('set top-level `"telemetry": "always"` on the direct tool that performs the request');
+  expect(referenceSection).toContain('Use `linear_batch` for batch work.');
+  expect(referenceSection).toContain('Use `linear_graphql` for raw GraphQL.');
+  expect(referenceSection).toContain('Use the applicable typed `linear_*` tool for named work.');
   expect(changelogEntry).toMatch(CHANGELOG_DIRECT_TELEMETRY);
   expect(`${referenceSection}\n${changelogEntry}`).not.toMatch(LOADER_ONLY_TELEMETRY);
   expect(referenceSection).not.toMatch(/loader routes?.*telemetry/i);
@@ -419,6 +421,27 @@ describe('generated products', () => {
     for (const definition of operationDefinitions) {
       expect(reference, definition.name).toContain(`| \`${definition.name}\` | \`${definition.toolName}\``);
       expect(reference, definition.name).toContain(`\`${JSON.stringify(definition.canonical.example)}\``);
+    }
+  });
+
+  it('publishes complete generated details for every tool', async () => {
+    const reference = await readFile('REFERENCE.md', 'utf8');
+    expect([...reference.matchAll(/<summary><code>linear_[a-z_]+<\/code> ·/g)]).toHaveLength(52);
+    for (const definition of operationDefinitions) {
+      const start = reference.indexOf(`<summary><code>${definition.toolName}</code>`);
+      const end = reference.indexOf('</details>', start);
+      expect(start, definition.toolName).toBeGreaterThanOrEqual(0);
+      expect(end, definition.toolName).toBeGreaterThan(start);
+      const section = reference.slice(start, end);
+      expect(section, definition.toolName).toContain(`"operation": "${definition.name}"`);
+      expect(section, definition.toolName).toContain(`Example: \`${JSON.stringify(definition.canonical.example)}\``);
+      expect(section, definition.toolName).toContain('**Valid forms**');
+      for (const field of [...definition.canonical.fields, ...definition.canonical.advancedFields]) {
+        expect(section, `${definition.toolName}.${field.name}`).toContain(`| \`${field.name}\` | \`${field.type}\` |`);
+      }
+    }
+    for (const name of ['linear', 'linear_get_result', 'linear_graphql', 'linear_batch']) {
+      expect(reference, name).toContain(`<summary><code>${name}</code>`);
     }
   });
 
