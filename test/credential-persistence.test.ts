@@ -20,6 +20,10 @@ import { registerLinearExtension } from '../extensions/index';
 const originalEnvironment = { ...process.env };
 let agentDirectory: string;
 
+// A root process bypasses file permissions, so a 0o000 file stays readable and a read-denial
+// precondition cannot hold. Containers commonly run as root; a normal user account runs it.
+const fileReadCanBeDenied = process.getuid?.() !== 0;
+
 function credentials(overrides: Partial<WorkspaceCredentials> = {}): WorkspaceCredentials {
   return {
     activeWorkspace: 'first',
@@ -299,7 +303,7 @@ describe('fail-closed credential mutation', () => {
     expect(await readFile(file)).toEqual(before);
   });
 
-  it('surfaces read errors without replacing the file', async () => {
+  it.skipIf(!fileReadCanBeDenied)('surfaces read errors without replacing the file', async () => {
     const file = await put(credentials());
     await chmod(file, 0o000);
     try {
