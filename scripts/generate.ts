@@ -44,6 +44,7 @@ function manifest() {
     initialActiveTools: ['linear', ...exceptionalTools.filter(({ initialActive }) => initialActive).map(({ name }) => name)],
     lazyTools,
     exceptionalTools,
+    // The full list is the permission gate, not the active schema set. Keep it complete; initialActiveTools owns startup context cost.
     allowedTools: ['linear', ...exceptionalTools.map(({ name }) => name), ...lazyTools.map(({ name }) => name)],
   };
 }

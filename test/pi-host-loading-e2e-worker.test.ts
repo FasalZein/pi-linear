@@ -1,211 +1,29 @@
-import { createServer, type Server } from 'node:http';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
-import { Type } from 'typebox';
-import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  InMemoryCredentialStore,
   fauxAssistantMessage,
-  fauxProvider,
   fauxToolCall,
   type Context,
 } from '@earendil-works/pi-ai';
-import { validateToolArguments } from '@earendil-works/pi-ai';
-import {
-  createAgentSession,
-  DefaultResourceLoader,
-  ModelRuntime,
-  SessionManager,
-  SettingsManager,
-  type AgentSession,
-} from '@earendil-works/pi-coding-agent';
 import {
   NATIVE_ANTHROPIC_MODEL,
   NATIVE_OPENAI_MODEL,
   captureAnthropic,
   captureOpenAI,
 } from './helpers/provider-harness';
-import type { JsonObject } from '../extensions/json';
+import {
+  FIXTURE_KEY,
+  TEAM_ID,
+  createHostSession,
+  executeActiveTool,
+  issue,
+  resetHostFixtures,
+  snapshotContext,
+  startGraphQLServer,
+  toolNames,
+  toolResultDetails,
+} from './helpers/pi-host-session';
 
-const EXTENSION_PATH = resolve('extensions/index.ts');
-const ISSUE_ID = '11111111-1111-4111-8111-111111111111';
-const TEAM_ID = '22222222-2222-4222-8222-222222222222';
-const FIXTURE_KEY = 'linear-e2e-fixture-key-never-send';
-const TRACKED_ENV = [
-  'LINEAR_API_KEY',
-  'LINEAR_READONLY',
-  'LINEAR_SMOKE_GRAPHQL_ENDPOINT',
-  'LINEAR_MUTATIONS',
-  'PI_ARTIFACT_PROJECT_ROOT',
-  'PI_CODING_AGENT_DIR',
-] as const;
-const originalEnv = Object.fromEntries(TRACKED_ENV.map((name) => [name, process.env[name]]));
-const sessions: AgentSession[] = [];
-const servers: Server[] = [];
-const temporaryDirectories: string[] = [];
-
-type GraphQLRequest = { query: string; variables: JsonObject };
-type ToolResult = { content: Array<{ type: string; text?: string }>; details?: JsonObject; addedToolNames?: string[] };
-
-async function temporaryDirectory(prefix: string): Promise<string> {
-  const directory = await mkdtemp(join(tmpdir(), prefix));
-  temporaryDirectories.push(directory);
-  return directory;
-}
-
-async function startGraphQLServer(
-  respond: (request: GraphQLRequest, index: number) => { status?: number; body: unknown },
-): Promise<{ endpoint: string; requests: GraphQLRequest[] }> {
-  const requests: GraphQLRequest[] = [];
-  const server = createServer((request, response) => {
-    let body = '';
-    request.setEncoding('utf8');
-    request.on('data', (chunk) => { body += chunk; });
-    request.on('end', () => {
-      const parsed = JSON.parse(body) as GraphQLRequest;
-      requests.push(parsed);
-      const result = respond(parsed, requests.length - 1);
-      response.writeHead(result.status ?? 200, { 'content-type': 'application/json' });
-      response.end(JSON.stringify(result.body));
-    });
-  });
-  servers.push(server);
-  await new Promise<void>((resolveListen) => server.listen(0, '127.0.0.1', resolveListen));
-  const address = server.address() as AddressInfo;
-  return { endpoint: `http://127.0.0.1:${address.port}/graphql`, requests };
-}
-
-async function createHostSession(options: {
-  responses?: Parameters<ReturnType<typeof fauxProvider>['setResponses']>[0];
-  reason?: 'startup' | 'resume';
-  sentinel?: boolean;
-} = {}) {
-  const cwd = await temporaryDirectory('pi-linear-host-cwd-');
-  const agentDir = await temporaryDirectory('pi-linear-host-agent-');
-  const artifactRoot = await temporaryDirectory('pi-linear-host-artifacts-');
-  process.env.PI_CODING_AGENT_DIR = agentDir;
-  process.env.PI_ARTIFACT_PROJECT_ROOT = artifactRoot;
-
-  const faux = fauxProvider({ provider: `linear-e2e-faux-${Math.random().toString(36).slice(2)}` });
-  faux.setResponses(options.responses ?? [fauxAssistantMessage('done')]);
-  const modelRuntime = await ModelRuntime.create({
-    credentials: new InMemoryCredentialStore(),
-    modelsPath: null,
-    refreshOnCreate: false,
-  });
-  modelRuntime.registerNativeProvider(faux.provider);
-  const settingsManager = SettingsManager.inMemory({
-    compaction: { enabled: false },
-    retry: { enabled: false },
-  });
-  const resourceLoader = new DefaultResourceLoader({
-    cwd,
-    agentDir,
-    settingsManager,
-    additionalExtensionPaths: [EXTENSION_PATH],
-    noExtensions: true,
-    noSkills: true,
-    noPromptTemplates: true,
-    noThemes: true,
-    noContextFiles: true,
-  });
-  await resourceLoader.reload();
-  const created = await createAgentSession({
-    cwd,
-    agentDir,
-    model: faux.getModel(),
-    modelRuntime,
-    resourceLoader,
-    sessionManager: SessionManager.inMemory(cwd),
-    settingsManager,
-    noTools: 'builtin',
-    customTools: options.sentinel ? [{
-      name: 'host_sentinel',
-      label: 'Host sentinel',
-      description: 'A non-Linear tool that must survive Linear session setup.',
-      parameters: Type.Object({}, { additionalProperties: false }),
-      execute: async () => ({ content: [{ type: 'text', text: 'sentinel' }], details: {} }),
-    }] : undefined,
-    sessionStartEvent: options.reason === 'resume'
-      ? { type: 'session_start', reason: 'resume', previousSessionFile: '/fixture/previous.jsonl' }
-      : { type: 'session_start', reason: 'startup' },
-  });
-  await created.session.bindExtensions({ mode: 'print' });
-  sessions.push(created.session);
-  return { ...created, faux, cwd, artifactRoot };
-}
-
-function activeTool(session: AgentSession, name: string) {
-  const tool = session.agent.state.tools.find((candidate) => candidate.name === name);
-  if (!tool) throw new Error(`Expected active tool ${name}.`);
-  return tool;
-}
-
-async function executeActiveTool(
-  session: AgentSession,
-  name: string,
-  arguments_: JsonObject,
-  signal?: AbortSignal,
-): Promise<ToolResult> {
-  const tool = activeTool(session, name);
-  const prepared = tool.prepareArguments?.(arguments_) ?? arguments_;
-  const validated = validateToolArguments(tool, {
-    type: 'toolCall',
-    id: `call-${name}`,
-    name,
-    arguments: prepared,
-  });
-  return tool.execute(`call-${name}`, validated, signal) as Promise<ToolResult>;
-}
-
-function snapshotContext(context: Context): Context {
-  return {
-    systemPrompt: context.systemPrompt,
-    messages: structuredClone(context.messages),
-    tools: context.tools?.map(({ name, description, parameters }) => ({ name, description, parameters })),
-  };
-}
-
-function toolNames(context: Context): string[] {
-  return (context.tools ?? []).map((tool) => tool.name);
-}
-
-function toolResultDetails(context: Context, name: string): JsonObject {
-  const message = [...context.messages].reverse().find(
-    (candidate) => candidate.role === 'toolResult' && candidate.toolName === name,
-  );
-  if (!message || message.role !== 'toolResult') throw new Error(`Missing ${name} result.`);
-  const text = message.content.find((content) => content.type === 'text');
-  if (!text || text.type !== 'text') throw new Error(`Missing ${name} result text.`);
-  return JSON.parse(text.text) as JsonObject;
-}
-
-function issue(identifier: string, title: string) {
-  return {
-    id: ISSUE_ID,
-    identifier,
-    title,
-    team: { id: TEAM_ID, key: 'AEO', name: 'Agent Experience' },
-    state: { id: 'state-1', name: 'Open', type: 'started' },
-  };
-}
-
-afterEach(async () => {
-  vi.unstubAllGlobals();
-  vi.restoreAllMocks();
-  for (const session of sessions.splice(0)) session.dispose();
-  await Promise.all(servers.splice(0).map((server) => new Promise<void>((resolveClose, reject) => {
-    server.close((error) => error ? reject(error) : resolveClose());
-  })));
-  await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
-  for (const name of TRACKED_ENV) {
-    const value = originalEnv[name];
-    if (value === undefined) delete process.env[name];
-    else process.env[name] = value;
-  }
-});
+afterEach(resetHostFixtures);
 
 describe('installed Pi host deferred Linear control tools', () => {
   it('runs loader, typed call, raw GraphQL, result recovery, and read batch in one real Pi turn', async () => {

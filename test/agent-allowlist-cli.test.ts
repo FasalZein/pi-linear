@@ -5,13 +5,36 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
 import manifest from '../extensions/generated/linear-tools.manifest.json';
+import { LINEAR_AGENT_TOOL_SURFACE } from '../scripts/linear-agent-contract';
+import { linearApiTool } from '../extensions/api';
+import { exceptionalToolDefinitions } from '../extensions/exceptional-tools';
+import { typedLinearTools } from '../extensions/typed-tools';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 // Sync restricts: the agent keeps `read` and `write` and the published Linear tools,
 // and loses anything else it was granted.
 const expectedTools = ['read', 'write', ...manifest.allowedTools].join(', ');
 const staleAgent = (name: string) =>
-  `---\nname: ${name}\ntools: all, read, bash, linear_old\nmode: background\ncustom: preserve-${name}\n---\n\nIntro for ${name}.\n\n## Tool surface\n\nLegacy tool note for ${name}.\n\n## Query discipline\n\nLegacy query note for ${name}.\n\n## Job 1 — Execute a Linear task\n\nPreserve job instructions for ${name}.\n`;
+  `---\nname: ${name}\ntools: all, read, bash, linear_old\nmode: background\nmodel: fixture/provider-model\nskills: none\ninherit-append-system: false\ncustom: preserve-${name}\n---\n\nIntro for ${name}.\n\n## Tool surface\n\nLegacy tool note for ${name}.\n\n## Query discipline\n\nLegacy query note for ${name}.\n\n## Job 1 — Execute a Linear task\n\nPreserve job instructions for ${name}.\n\nSafety fixture: exact targets, authorization, and readback stay required.\n\nDECISION NEEDED\nQ1: Preserve this hand-authored decision contract?\n`;
+
+type SchemaProperty = { type?: string; description?: string };
+type ObjectSchema = { properties?: Record<string, SchemaProperty>; required?: string[] };
+
+// The shipped schemas, not the sentence, are the authority for what each tool accepts.
+const publishedSchemas = new Map<string, ObjectSchema>([
+  ['linear', linearApiTool().parameters as ObjectSchema],
+  ...exceptionalToolDefinitions.map(({ name, parameters }) => [name, parameters as ObjectSchema] as const),
+  ...typedLinearTools().map(({ name, parameters }) => [name, parameters as ObjectSchema] as const),
+]);
+const batchEntrySchema = (publishedSchemas.get('linear_batch')!.properties!.operations as {
+  items: ObjectSchema;
+}).items;
+const LOADER_FIELDS = ['operation', 'query', 'variables'];
+
+const fieldNames = (schema: ObjectSchema | undefined): string[] => Object.keys(schema?.properties ?? {});
+const backticked = (text: string): string[] => [...text.matchAll(/`([\w:]+)`/g)].map((match) => match[1]!);
+const toolsDeclaring = (field: string): string[] =>
+  [...publishedSchemas].filter(([, schema]) => fieldNames(schema).includes(field)).map(([name]) => name);
 
 function npm(script: string, home: string, paths: string[] = []) {
   return spawnSync('npm', ['run', script, ...(paths.length ? ['--', ...paths] : [])], {
@@ -33,6 +56,49 @@ describe('bound Linear agent allowlist package scripts', () => {
     await writeFile(linear, staleAgent('linear'));
   }, 120_000);
 
+  /**
+   * Regression: the owned instructions once said `query` and `variables` belong only to
+   * `linear`. That sentence made `linear_graphql` uncallable, and a verbatim assertion on
+   * the sentence could not see the conflict. Assert against the published schemas instead.
+   */
+  it('states loader field ownership that the published direct schemas support', () => {
+    expect(fieldNames(publishedSchemas.get('linear'))).toEqual(['operation', 'variables']);
+    expect(toolsDeclaring('query')).toContain('linear_graphql');
+    expect(toolsDeclaring('query')).not.toContain('linear');
+    expect(toolsDeclaring('variables')).toEqual(expect.arrayContaining(['linear', 'linear_graphql']));
+    expect(toolsDeclaring('operation')).toEqual(['linear']);
+    expect(batchEntrySchema.required).toEqual(['operation']);
+
+    const sentences = LINEAR_AGENT_TOOL_SURFACE.split('\n')
+      .filter((line) => line.startsWith('- '))
+      .flatMap((line) => line.split(/\.\s+/));
+    for (const sentence of sentences) {
+      const named = backticked(sentence);
+      const tools = named.filter((name) => publishedSchemas.has(name));
+      const fields = named.filter((name) => LOADER_FIELDS.includes(name));
+      if (tools.length !== 1 || !fields.length) continue;
+      const declared = tools[0] === 'linear_batch' && /entry/.test(sentence)
+        ? fieldNames(batchEntrySchema)
+        : fieldNames(publishedSchemas.get(tools[0]!));
+      for (const field of fields) {
+        expect({ sentence, tool: tools[0], field, declared: declared.includes(field) })
+          .toMatchObject({ declared: true });
+      }
+    }
+
+    // Every required loader-shaped field is named next to the tool that requires it.
+    const requiredPairs: Array<[string, string]> = [
+      ['linear', 'operation'],
+      ['linear_graphql', 'query'],
+      ['linear_batch', 'operation'],
+    ];
+    for (const [tool, field] of requiredPairs) {
+      const paired = LINEAR_AGENT_TOOL_SURFACE.split(/\.\s+|\n/)
+        .some((sentence) => backticked(sentence).includes(tool) && backticked(sentence).includes(field));
+      expect({ tool, field, paired }).toMatchObject({ paired: true });
+    }
+  });
+
   it('fails the bare check on the stale current deployment without writing it', async () => {
     const before = await readFile(linear, 'utf8');
     const result = npm('check:linear-agent-allowlists', home);
@@ -51,24 +117,41 @@ describe('bound Linear agent allowlist package scripts', () => {
     expect(npm('sync:linear-agent-allowlists', home).status).toBe(0);
     const synced = await readFile(linear, 'utf8');
     expect(synced).toContain(`tools: ${expectedTools}`);
+    expect(synced).toContain('model: fixture/provider-model');
+    expect(synced).toContain('skills: none');
+    expect(synced).toContain('inherit-append-system: false');
     expect(synced).toContain('custom: preserve-linear');
     expect(synced).toContain('Intro for linear.');
     expect(synced).toContain('Preserve job instructions for linear.');
+    expect(synced).toContain('Safety fixture: exact targets, authorization, and readback stay required.');
+    expect(synced).toContain('DECISION NEEDED\nQ1: Preserve this hand-authored decision contract?');
     expect(synced).toContain('Legacy tool note for linear.');
     expect(synced).toContain('Legacy query note for linear.');
-    expect(synced).toContain('Before the first use of an unfamiliar named operation, call loader help');
-    expect(synced).toContain('Help is local and makes no Linear network request.');
-    expect(synced).toContain('call that typed tool with only its declared direct parameters');
-    expect(synced).toContain('Never send loader fields (`operation`, `query`, `variables`, `workspace`, `sink`, or `telemetry`)');
+    expect(synced).toContain('Use the matching typed tool and its visible schema as the parameter authority.');
+    expect(synced).toContain('If that tool is unavailable in this session, request exact help');
+    expect(synced).toContain('Exact help is local and makes no Linear network request.');
+    expect(synced).toContain('Then call the activated tool with its declared direct fields.');
+    expect(synced).toContain('Send `operation` with help `variables` to `linear` only.');
+    expect(synced).toContain('Send `query` with optional `variables` to `linear_graphql`.');
+    expect(synced).toContain('Give every `linear_batch` entry an `operation` with optional `variables`.');
     expect(synced).toContain('Then call `linear_batch` directly');
     expect(synced).toContain('Use explicit `reads` and `mutations` phases only when mutations exist.');
     expect(synced).toContain('Do not invent keys; the runtime assigns stable keys when absent.');
-    expect(synced).toContain('Do not guess parameter names or nested `input` shapes.');
+    expect(synced).toContain('Ordinary batch mutations run in order after all entries pass preflight.');
+    expect(synced).toContain("Keep entries independent. Do not reference another entry's result.");
+    expect(synced).toContain('Do not retry an unknown write outcome before checking its target.');
+    expect(synced).toContain('Mutation replies default to a short acknowledgement.');
+    expect(synced).toContain('After each write, read the target independently and verify the requested fields.');
+    expect(synced).toContain('A full mutation reply does not replace this readback.');
+    expect(synced).not.toContain('unfamiliar named operation');
+    expect(synced).not.toContain('Do not guess parameter names or nested `input` shapes.');
     expect(synced).toContain('Use `linear_get_result` for lossless recovery');
     expect(synced).toContain('Pass `{ "handle": "..." }` directly');
     expect(synced).toContain('Use `linear` only for discovery.');
     expect(synced).toContain('never executes Linear work');
     expect(synced).toContain('call `linear_graphql` directly');
+    expect(synced).toContain('Use raw GraphQL only when no named operation supports the required capability or filter.');
+    expect(synced).toContain('Keep raw reads bounded. Send raw mutations only when the job explicitly authorizes them.');
     expect(synced).toContain('Continue through pages only until the requested result is complete.');
     expect(npm('check:linear-agent-allowlists', home).status).toBe(0);
     expect(npm('generate:check', home).status).toBe(0);
@@ -76,7 +159,7 @@ describe('bound Linear agent allowlist package scripts', () => {
 
   it('detects owned instruction drift and sync repairs only the owned section', async () => {
     const before = await readFile(linear, 'utf8');
-    const drifted = before.replace('Help is local and makes no Linear network request.', 'Help might use the network.');
+    const drifted = before.replace('Exact help is local and makes no Linear network request.', 'Exact help might use the network.');
     await writeFile(linear, drifted);
     expect(npm('check:linear-agent-allowlists', home).status).toBe(1);
     expect(npm('sync:linear-agent-allowlists', home).status).toBe(0);

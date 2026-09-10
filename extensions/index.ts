@@ -108,12 +108,95 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
     exceptionalToolDefinitions.filter(({ deferred }) => deferred).map(({ name }) => name),
   );
   const lazyToolNames = new Set([...typedNames, ...deferredExceptionalNames]);
+  const initialLinearToolNames = [
+    'linear',
+    ...exceptionalToolDefinitions.filter(({ initialActive }) => initialActive).map(({ name }) => name),
+  ];
+  const linearToolNames = new Set([...initialLinearToolNames, ...lazyToolNames]);
+  let visibleLinearToolNames = new Set<string>();
+  let rememberedActiveTools: string[] = [];
+  let registrySignature = '';
+  let registryRefreshPending = false;
+
+  const currentRegistrySignature = (): string => pi.getAllTools().map(({ name }) => name).join(',');
+
+  /**
+   * Evidence of a registry refresh, not of a bulk active-tool value. Pi rebuilds the registry
+   * by keeping the previous active list and appending every permitted tool, so a refresh keeps
+   * the remembered active list as a prefix. A tool allowlist hides the newly registered tool
+   * from `getAllTools`, so the registered-name change is the second, independent signal.
+   * A deliberate selection replaces the active list and matches neither signal.
+   */
+  const looksLikeRegistryRefresh = (activeTools: readonly string[]): boolean => {
+    if (![...lazyToolNames].every((name) => activeTools.includes(name))) return false;
+    return activeTools.length > rememberedActiveTools.length
+      && rememberedActiveTools.every((name, index) => activeTools[index] === name);
+  };
+
+  const observeRegistry = (): void => {
+    const signature = currentRegistrySignature();
+    const registryChanged = signature !== registrySignature;
+    registrySignature = signature;
+    if (registryChanged || looksLikeRegistryRefresh(pi.getActiveTools())) registryRefreshPending = true;
+  };
+
+  const rememberVisibleLinearTools = (): void => {
+    rememberedActiveTools = pi.getActiveTools();
+    visibleLinearToolNames = new Set(rememberedActiveTools.filter((name) => linearToolNames.has(name)));
+  };
+
+  const initializeDeferredSurface = (): void => {
+    pi.setActiveTools(pi.getActiveTools().filter((name) => !lazyToolNames.has(name)));
+    registrySignature = currentRegistrySignature();
+    registryRefreshPending = false;
+    rememberVisibleLinearTools();
+  };
+
+  const repairRegistryRefresh = (): void => {
+    observeRegistry();
+    if (registryRefreshPending) {
+      const before = pi.getActiveTools();
+      const restored = before.filter((name) => !linearToolNames.has(name) || visibleLinearToolNames.has(name));
+      if (restored.length !== before.length) pi.setActiveTools(restored);
+      registryRefreshPending = false;
+    }
+    rememberVisibleLinearTools();
+  };
+
+  const assertManifestEntriesRegistered = (allTools: ReturnType<ExtensionAPI['getAllTools']>): void => {
+    const registered = new Set(allTools.map(({ name }) => name));
+    const missing = ['linear', ...exceptionalToolDefinitions.map(({ name }) => name), ...lazyToolNames]
+      .filter((name) => !registered.has(name));
+    if (missing.length) {
+      throw new Error(`Linear tool configuration error: manifest entries are not registered: ${missing.join(', ')}.`);
+    }
+  };
+
+  const assertGeneratedSchemas = (
+    allTools: ReturnType<ExtensionAPI['getAllTools']>,
+    expectedTools: ReturnType<typeof typedLinearTools>,
+  ): void => {
+    for (const expected of expectedTools) {
+      const registeredTool = allTools.find(({ name }) => name === expected.name);
+      if (registeredTool?.parameters && JSON.stringify(registeredTool.parameters) !== JSON.stringify(expected.parameters)) {
+        throw new Error(`Linear tool configuration error: generated schema drift for manifest entry ${expected.name}.`);
+      }
+    }
+  };
+
+  const assertInitialLinearTools = (): void => {
+    const activeLinearTools = pi.getActiveTools().filter((name) => name === 'linear' || name.startsWith('linear_'));
+    if (activeLinearTools.join(',') !== initialLinearToolNames.join(',')) {
+      throw new Error(`Linear tool configuration error: initial active tools are ${activeLinearTools.join(', ')}; expected ${initialLinearToolNames.join(', ')}.`);
+    }
+  };
 
   /**
    * Additive activation only: the loader never removes a tool in the same call, so
    * pi can record the added names on the result and defer the schemas.
    */
   const activate = (toolNames: string[]): string[] => {
+    observeRegistry();
     const wanted = [...new Set(toolNames.filter((name) => lazyToolNames.has(name)))];
     const registered = new Set(pi.getAllTools().map(({ name }) => name));
     const missing = wanted.filter((name) => !registered.has(name));
@@ -131,6 +214,13 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
     const blocked = requested.filter((name) => !after.includes(name));
     if (blocked.length) {
       throw new Error(`Linear tool configuration error: policy blocked manifest entries: ${blocked.join(', ')}.`);
+    }
+    if (registryRefreshPending) {
+      // An unrepaired refresh state is not a selection. Keep the remembered selection and add
+      // only what this call was asked to activate, so the loader promise survives the repair.
+      for (const name of wanted) if (after.includes(name)) visibleLinearToolNames.add(name);
+    } else {
+      rememberVisibleLinearTools();
     }
     return requested.filter((name) => after.includes(name));
   };
@@ -150,24 +240,17 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
   // linear_get_result active; help loads only the typed tool the task needs.
   pi.on('session_start', () => {
     const allTools = pi.getAllTools();
-    const registered = new Set(allTools.map(({ name }) => name));
-    const missing = ['linear', ...exceptionalToolDefinitions.map(({ name }) => name), ...lazyToolNames]
-      .filter((name) => !registered.has(name));
-    if (missing.length) {
-      throw new Error(`Linear tool configuration error: manifest entries are not registered: ${missing.join(', ')}.`);
-    }
-    for (const expected of [...exceptionalTools, ...generatedTypedTools]) {
-      const registeredTool = allTools.find(({ name }) => name === expected.name);
-      if (registeredTool?.parameters && JSON.stringify(registeredTool.parameters) !== JSON.stringify(expected.parameters)) {
-        throw new Error(`Linear tool configuration error: generated schema drift for manifest entry ${expected.name}.`);
-      }
-    }
-    pi.setActiveTools(pi.getActiveTools().filter((name) => !lazyToolNames.has(name)));
-    const activeLinearTools = pi.getActiveTools().filter((name) => name === 'linear' || name.startsWith('linear_'));
-    const expectedActive = ['linear', ...exceptionalToolDefinitions.filter(({ initialActive }) => initialActive).map(({ name }) => name)];
-    if (activeLinearTools.join(',') !== expectedActive.join(',')) {
-      throw new Error(`Linear tool configuration error: initial active tools are ${activeLinearTools.join(', ')}; expected ${expectedActive.join(', ')}.`);
-    }
+    assertManifestEntriesRegistered(allTools);
+    assertGeneratedSchemas(allTools, [...exceptionalTools, ...generatedTypedTools]);
+    initializeDeferredSurface();
+    assertInitialLinearTools();
+  });
+
+  // A registry refresh can activate the full permission list. Restore the last remembered selection at the next user-prompt boundary.
+  pi.on('before_agent_start', () => repairRegistryRefresh());
+  pi.on('agent_end', () => {
+    observeRegistry();
+    if (!registryRefreshPending) rememberVisibleLinearTools();
   });
 }
 
