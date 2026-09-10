@@ -2,7 +2,7 @@
 
 ## 1.0.0
 
-This entry documents the v1.0 contract. Release approval remains pending combined verification.
+This entry documents the v1.0 contract. Combined verification passed on a clean checkout in a Linux container: type check, lint, generated-product check, package contents, and the complete test suite.
 
 ### Common and advanced fields
 
