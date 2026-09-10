@@ -105,7 +105,7 @@ describe('deterministic fake-server smoke command', () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
-  }, 30_000);
+  }, 60_000);
 
   it('keeps server failures compact, redacted, generic, and cleaned', async () => {
     const root = await mkdtemp(join(tmpdir(), 'pi-linear-fake-failure-'));

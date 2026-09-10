@@ -18,7 +18,11 @@ function invalidCredentialLock(): never {
   throw new Error('Invalid Linear credential lock. Repair or remove it before changing stored credentials.');
 }
 
-async function readCredentialLockRecord(lockPath: string, fileName: string): Promise<CredentialLockOwner> {
+async function readCredentialLockRecord(
+  lockPath: string,
+  fileName: string,
+  recordMayDisappear = false,
+): Promise<CredentialLockOwner> {
   const lockStat = await fs.lstat(lockPath).catch((error) => {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
     throw error;
@@ -34,13 +38,19 @@ async function readCredentialLockRecord(lockPath: string, fileName: string): Pro
   };
   const recordPath = path.join(lockPath, fileName);
   const recordStat = await fs.lstat(recordPath).catch(() => undefined);
-  if (!recordStat) return changed();
+  if (!recordStat) {
+    if (recordMayDisappear) throw Object.assign(new Error('Credential lock changed.'), { code: 'ENOENT' });
+    return changed();
+  }
   if (!recordStat.isFile() || recordStat.isSymbolicLink()) invalidCredentialLock();
   let record: unknown;
   try {
     record = JSON.parse(await fs.readFile(recordPath, 'utf8'));
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return changed();
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      if (recordMayDisappear) throw Object.assign(new Error('Credential lock changed.'), { code: 'ENOENT' });
+      return changed();
+    }
     invalidCredentialLock();
   }
   const current = await fs.lstat(lockPath).catch(() => undefined);
@@ -56,7 +66,7 @@ function readCredentialLockOwner(lockPath: string): Promise<CredentialLockOwner>
 }
 
 function readCredentialRecoveryClaim(lockPath: string): Promise<CredentialLockOwner> {
-  return readCredentialLockRecord(lockPath, 'recovery.json');
+  return readCredentialLockRecord(lockPath, 'recovery.json', true);
 }
 
 function ownerProcessIsGone(pid: number): boolean {

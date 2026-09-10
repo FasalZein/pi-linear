@@ -115,6 +115,33 @@ describe('credential lock safety', () => {
     await expect(access(lock)).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
+  it('retries when a recovery claim disappears while it is being read', async () => {
+    const file = await put(credentials());
+    const lock = `${file}.lock`;
+    const owner = spawn(process.execPath, ['-e', '']);
+    const deadOwnerPid = owner.pid!;
+    await new Promise<void>((resolve) => owner.once('exit', () => resolve()));
+    await mkdir(lock, { mode: 0o700 });
+    await writeFile(join(lock, 'owner.json'), JSON.stringify({ pid: deadOwnerPid, token: 'dead-owner' }), { mode: 0o600 });
+
+    const worker = join(process.cwd(), 'node_modules/vite-node/vite-node.mjs');
+    const helper = join(process.cwd(), 'test/helpers/credential-recovery-disappearance-worker.ts');
+    const child = spawn(process.execPath, [worker, helper, agentDirectory, 'third'], {
+      cwd: process.cwd(),
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stderr = '';
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
+
+    await expect(new Promise<void>((resolve, reject) => child.once('exit', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`Credential recovery worker exited ${code}: ${stderr}`));
+    }))).resolves.toBeUndefined();
+
+    expect((await readCredentials()).workspaces.third).toEqual({ apiKey: 'lin_api_third_secret_123456789' });
+    await expect(access(lock)).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
   it('recovers after the recovery claimant also dies', async () => {
     const file = await put(credentials());
     const lock = `${file}.lock`;
