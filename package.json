@@ -41,8 +41,8 @@
   "files": [
     "extensions",
     "scripts",
-    "docs",
     "CHANGELOG.md",
+    "LICENSE",
     "CONTEXT.md",
     "REFERENCE.md",
     "README.md"

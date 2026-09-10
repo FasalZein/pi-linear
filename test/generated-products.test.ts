@@ -488,17 +488,15 @@ describe('generated products', () => {
   });
 
   it('ships the public safety and lossless result contract', async () => {
-    const [readme, reference, context, adr, changelog] = await Promise.all([
+    const [readme, reference, context, changelog] = await Promise.all([
       readFile('README.md', 'utf8'),
       readFile('REFERENCE.md', 'utf8'),
       readFile('CONTEXT.md', 'utf8'),
-      readFile('docs/adr/0003-result-routing.md', 'utf8'),
       readFile('CHANGELOG.md', 'utf8'),
     ]);
-    const published = [readme, reference, context, adr, changelog].join('\n');
+    const published = [readme, reference, context, changelog].join('\n');
     for (const claim of [
-      'cardinality-aware', 'get_result', 'path-scoped errors', 'sink:inline',
-      'legacy compatibility path',
+      'cardinality-aware', 'get_result', 'path-scoped errors',
     ]) expect(published).toContain(claim);
     expect(readme).toContain('49 typed operation tools');
     expect(readme).toContain(`The package registers ${manifest.allowedTools.length} tools.`);
@@ -514,7 +512,7 @@ describe('generated products', () => {
     const reviewerCounterexample = 'The direct tools `linear_batch`, `linear_graphql`, and typed `linear_*` do not accept telemetry. Use top-level `telemetry: "always"` on the loader instead. Deprecated loader routes retain top-level telemetry for compatibility.';
     expect(() => assertDirectTelemetryGuidance(reviewerCounterexample, reviewerCounterexample)).toThrow();
     expect(`${reference}\n${changelog}`).not.toMatch(LOADER_ONLY_TELEMETRY);
-    const routingDocs = `${readme}\n${reference}\n${adr}`;
+    const routingDocs = `${readme}\n${reference}`;
     expect(routingDocs).not.toMatch(/\b8\s?KB\b|8\s*\*\s*1024|\b8192\b/i);
     expect(routingDocs).toContain("Pi's 50KB or 2,000-line custom-tool boundary");
     expect(routingDocs).toContain('`LINEAR_SPILL_BYTES`');
@@ -523,43 +521,9 @@ describe('generated products', () => {
     expect(published).not.toContain('linear-auditor.md');
   });
 
-  it('guards the accepted result and batch architecture contract', async () => {
-    const [context, adr, evidence, changelog] = await Promise.all([
-      readFile('CONTEXT.md', 'utf8'),
-      readFile('docs/adr/0007-shape-results-and-batch-transport-by-phase.md', 'utf8'),
-      readFile('docs/v09-result-transport-evidence.md', 'utf8'),
-      readFile('CHANGELOG.md', 'utf8'),
-    ]);
-    expect(adr).toContain('## Status\n\nAccepted with the v1.0 mutation acknowledgement and sequential batch amendments.');
-    expect(adr).toContain('ADR 0006 publishes the operation catalog.');
-    expect(adr).toContain('This ADR does not repeat or reopen that decision.');
-    expect(adr).toContain('This ADR begins after operation selection.');
-    expect(adr).toContain('Result routing stays lossless for both views.');
-    expect(adr).toContain('as ADR 0003 defines.');
-    expect(adr).toContain('[portable evidence ledger](../v09-result-transport-evidence.md)');
-    for (const claim of [
-      'singular read uses the complete `full` result view',
-      'collection uses the disclosed `summary` result view',
-      'Exact issue identifiers and UUIDs',
-      'project and document slugs can use singular roots because the returned `slugId` proves the requested identity',
-      'Cycle references support UUIDs or exact names because the live `Cycle` type has no `slugId`',
-      'A non-UUID reference uses exact-name lookup, then reads the result through the UUID singular root',
-      'Mutations follow in a second phase.',
-      'Each effective key appears exactly once',
-      'not GraphQL complexity or response payload size',
-    ]) expect(adr).toContain(claim);
-    for (const measurement of [
-      '`429` for the full issue-list projection and `50` for summary',
-      'recorded design baseline was `18` and `6`',
-      '`64,827` bytes for full and `3,664` bytes for summary',
-      '`X-Complexity: 18` and 49,162 response bytes for full',
-      '`X-Complexity: 4` and 4,811 response bytes',
-      'returned and kept 20 nodes without truncation',
-    ]) expect(adr).toContain(measurement);
-    expect(evidence).toContain('aeo-372-live-measurements.json');
-    expect(evidence).toMatch(/`[a-f0-9]{64}`/);
+  it('guards the published result vocabulary', async () => {
+    const context = await readFile('CONTEXT.md', 'utf8');
     expect(context).toContain('**Result view**:');
     expect(context).toContain('**Exact-root routing**:');
-    expect(changelog).toContain('[`ADR 0007`](./docs/adr/0007-shape-results-and-batch-transport-by-phase.md)');
   });
 });

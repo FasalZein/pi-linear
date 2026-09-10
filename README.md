@@ -147,7 +147,7 @@ The `advanced` object is closed. The runtime rejects unknown fields, duplicate c
 
 The committed measurement uses local `o200k_base` tokenization. Five issue tools decreased from 3,988 to 2,278 tokens. All tool schemas decreased from 15,516 to 12,100 tokens. These values are not provider billing data.
 
-See [the measurement method](./docs/v10-context-measurement-evidence.md) for the fixed task set and limits.
+The measurement uses a fixed task set and runs no model. It measures schema size only. Completion quality, latency, and billed provider usage stay unmeasured. `scripts/context-measurement/run.sh` reproduces it offline.
 
 ## Common workflows
 
@@ -419,6 +419,12 @@ npm run verify:clean
 ```
 
 The normal checks are offline and need no Linear credential.
+
+`npm run generate:check` also checks the deployed agent file at `~/.pi/agent/agents/linear.md`. It fails when no bound Linear agent exists on the machine. On a fresh clone, check only the generated products:
+
+```bash
+npm run generate -- --check
+```
 
 Run the live read-only smoke check:
 

@@ -66,11 +66,10 @@ Document `icon` remains outside typed tools because Linear does not publish vali
 ### Dependencies and evidence
 
 - The package has no Notebook dependency.
-- AEO-831 records the context measurement in [`docs/v10-context-measurement-evidence.md`](./docs/v10-context-measurement-evidence.md). `scripts/context-measurement/run.sh` reproduces it offline.
-- The evidence names the commit that added the runner. Later commits changed only this file and the evidence files, so the measured extension source is unchanged.
+- `scripts/context-measurement/run.sh` reproduces the context measurement offline.
+- Later commits changed only documentation, so the measured extension source is unchanged.
 - That measurement runs no model. Completion, model-chosen wrong calls, latency, cache use, and billed provider usage stay unmeasured. This release note makes no token-improvement or behavior claim.
 - Exact serialized byte checks remain the deterministic schema measurement.
-- Architecture references: [`ADR 0005`](./docs/adr/0005-dynamic-typed-tools-over-static-registration.md), [`ADR 0006`](./docs/adr/0006-publish-the-operation-catalog.md), [`ADR 0007`](./docs/adr/0007-shape-results-and-batch-transport-by-phase.md), and [`ADR 0009`](./docs/adr/0009-use-explicit-unified-references-without-project-or-team-defaults.md).
 
 ## 0.9.0
 
@@ -85,7 +84,6 @@ Document `icon` remains outside typed tools because Linear does not publish vali
 - Added internal telemetry for every documented Linear rate-limit header. By default, results show compact `meta.rateLimit` details only near exhaustion. For explicit diagnostics, set top-level `telemetry: "always"` on the exact direct `linear_batch`, `linear_graphql`, or typed `linear_*` tool. Search reads retry one documented GraphQL `RATELIMITED` 400 response.
 - Removed document `icon` from typed tools because Linear does not publish its valid values. Compatibility calls still accept this field.
 - Classified `not a valid` GraphQL responses as input errors. The recovery message now requests corrected parameters instead of an unchanged retry.
-- Architecture references: [`ADR 0006`](./docs/adr/0006-publish-the-operation-catalog.md) publishes the catalog. [`ADR 0003`](./docs/adr/0003-result-routing.md) defines lossless routing. [`ADR 0007`](./docs/adr/0007-shape-results-and-batch-transport-by-phase.md) records result views, exact roots, and phased batch transport.
 
 ## 0.8.0
 
@@ -104,7 +102,6 @@ Document `icon` remains outside typed tools because Linear does not publish vali
 - Published a generated `name: purpose` catalog of all 48 operations in the `linear` tool description. Call an operation directly from that catalog. Use `help { "operation": "<name>" }` only for exact parameters; that call also loads the typed tool.
 - Corrected the `save_initiative` and `save_milestone` purposes.
 - Moved the initial active schema from 669 bytes / 168 Pi-estimated tokens to 3,170 bytes / 793 tokens.
-- See [`docs/adr/0006-publish-the-operation-catalog.md`](./docs/adr/0006-publish-the-operation-catalog.md) and [`docs/v06-discovery-evidence.md`](./docs/v06-discovery-evidence.md).
 
 ## 0.6.0
 

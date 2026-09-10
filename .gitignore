@@ -1,6 +1,9 @@
 dist/
 node_modules/
 
-# Upstream reference tree — regenerate from history, never ship
-reference/*
-!reference/README.md
+# Upstream reference tree — local reading copy, never ship
+reference/
+
+# Internal working notes — local only, never ship
+BRIEF*.md
+docs/
