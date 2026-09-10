@@ -4,16 +4,19 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-import manifest from '../extensions/generated/linear-tools.manifest.json';
 import { LINEAR_AGENT_TOOL_SURFACE } from '../scripts/linear-agent-contract';
 import { linearApiTool } from '../extensions/api';
 import { exceptionalToolDefinitions } from '../extensions/exceptional-tools';
 import { typedLinearTools } from '../extensions/typed-tools';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-// Sync restricts: the agent keeps `read` and `write` and the published Linear tools,
-// and loses anything else it was granted.
-const expectedTools = ['read', 'write', ...manifest.allowedTools].join(', ');
+// Sync uses Pi's default tool mode so every Linear tool can register without an explicit
+// 53-name list. These tools stay unavailable to the bound Linear agent.
+const expectedDeniedTools = ['bash', 'edit', 'grep', 'find', 'ls', 'image_gen'].join(', ');
+const expectShortToolPolicy = (source: string) => {
+  expect(source).not.toMatch(/^tools:/m);
+  expect(source).toContain(`deny-tools: ${expectedDeniedTools}`);
+};
 const staleAgent = (name: string) =>
   `---\nname: ${name}\ntools: all, read, bash, linear_old\nmode: background\nmodel: fixture/provider-model\nskills: none\ninherit-append-system: false\ncustom: preserve-${name}\n---\n\nIntro for ${name}.\n\n## Tool surface\n\nLegacy tool note for ${name}.\n\n## Query discipline\n\nLegacy query note for ${name}.\n\n## Job 1 — Execute a Linear task\n\nPreserve job instructions for ${name}.\n\nSafety fixture: exact targets, authorization, and readback stay required.\n\nDECISION NEEDED\nQ1: Preserve this hand-authored decision contract?\n`;
 
@@ -116,7 +119,7 @@ describe('bound Linear agent allowlist package scripts', () => {
   it('synchronizes owned dispatch rules while preserving unrelated frontmatter and job instructions', async () => {
     expect(npm('sync:linear-agent-allowlists', home).status).toBe(0);
     const synced = await readFile(linear, 'utf8');
-    expect(synced).toContain(`tools: ${expectedTools}`);
+    expectShortToolPolicy(synced);
     expect(synced).toContain('model: fixture/provider-model');
     expect(synced).toContain('skills: none');
     expect(synced).toContain('inherit-append-system: false');
@@ -167,26 +170,20 @@ describe('bound Linear agent allowlist package scripts', () => {
   }, 120_000);
 
   it('does not require the retired linear-auditor deployment file', async () => {
-    expect(await readFile(linear, 'utf8')).toContain(`tools: ${expectedTools}`);
+    expectShortToolPolicy(await readFile(linear, 'utf8'));
     expect(npm('check:linear-agent-allowlists', home).status).toBe(0);
   }, 120_000);
 
-  /**
-   * Regression: sync rebuilt the line as `write` plus the Linear tools, so an agent granted
-   * `read` lost it silently on the next sync. Pi ignores unknown tool names without an
-   * error, so the ability would vanish with nothing to explain it.
-   */
-  it('keeps the tools the agent owns and manages only the Linear ones', async () => {
+  it('replaces a stale exact allowlist with the short deny-list policy', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'linear-allowlist-owned-'));
     await mkdir(join(directory, '.pi/agent/agents'), { recursive: true });
     const agent = join(directory, '.pi/agent/agents/linear.md');
     await writeFile(agent, staleAgent('linear').replace('tools: all, read, bash, linear_old', 'tools: read, write, linear_retired_tool'));
 
     expect(npm('sync:linear-agent-allowlists', directory).status).toBe(0);
-    const tools = /^tools:[ \t]*(.*)$/m.exec(await readFile(agent, 'utf8'))![1]!.split(', ');
-    expect(tools.slice(0, 2)).toEqual(['read', 'write']);
-    expect(tools).not.toContain('linear_retired_tool');
-    expect(tools.slice(2)).toEqual([...manifest.allowedTools]);
+    const source = await readFile(agent, 'utf8');
+    expectShortToolPolicy(source);
+    expect(source).not.toContain('linear_retired_tool');
     expect(npm('check:linear-agent-allowlists', directory).status).toBe(0);
   }, 180_000);
 
@@ -205,7 +202,7 @@ describe('bound Linear agent allowlist package scripts', () => {
     expect(npm('sync:linear-agent-allowlists', home, paths).status).toBe(0);
     const synced = await Promise.all(paths.map((path) => readFile(path, 'utf8')));
     for (const source of synced) {
-      expect(source).toContain(`tools: ${expectedTools}`);
+      expectShortToolPolicy(source);
       expect(source.match(/pi-linear:tool-surface:start/g)).toHaveLength(1);
       expect(source.match(/pi-linear:query-discipline:start/g)).toHaveLength(1);
       expect(source).not.toMatch(/OLD TOOL|OLD QUERY|STALE/);

@@ -4,6 +4,12 @@
 
 This entry documents the v1.0 contract. Combined verification passed on a clean checkout in a Linux container: type check, lint, generated-product check, package contents, and the complete test suite.
 
+### Bound agent tool policy
+
+- Replaced the 53-name agent allowlist with a short deny-list.
+- All Linear tools still register. Only `linear` and `linear_get_result` start active.
+- A tool-registry refresh keeps the deferred Linear tools inactive.
+
 ### Common and advanced fields
 
 - Added a common tier for ordinary calls.

@@ -394,13 +394,14 @@ describe('generated products', () => {
     expect(manifest.allowedTools).toEqual(expectedNames);
   });
 
-  it('syncs the restricted tools field and owned dispatch sections in external agent fixtures', async () => {
+  it('syncs the short deny-list and owned dispatch sections in external agent fixtures', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'linear-allowlist-'));
     const path = join(directory, 'agent.md');
     await writeFile(path, '---\nname: fixture\ntools: all, read, bash, linear_old\nmode: background\ncustom: keep\n---\n\nIntro.\n\n## Tool surface\n\nOld tool custom.\n\n## Query discipline\n\nOld query custom.\n\n## Job 1 — Execute\n\nKeep job.\n');
     await syncAllowlistFile(path);
     const synced = await readFile(path, 'utf8');
-    expect(synced).toContain(`tools: read, write, ${expectedNames.join(', ')}`);
+    expect(synced).not.toMatch(/^tools:/m);
+    expect(synced).toContain('deny-tools: bash, edit, grep, find, ls, image_gen');
     expect(synced).toContain('custom: keep');
     expect(synced).toContain('Intro.');
     expect(synced).toContain('Keep job.');

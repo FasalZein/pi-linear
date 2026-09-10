@@ -12,26 +12,27 @@ const originalArtifactRoot = process.env.PI_ARTIFACT_PROJECT_ROOT;
 const originalApiKey = process.env.LINEAR_API_KEY;
 const originalSpillBytes = process.env.LINEAR_SPILL_BYTES;
 
-function toolsFromAgent(source: string): string[] {
-  const tools = source.match(/^tools:\s*(.*)$/m)?.[1];
-  if (!tools) throw new Error('Missing tools frontmatter.');
+function deniedToolsFromAgent(source: string): string[] {
+  const tools = source.match(/^deny-tools:\s*(.*)$/m)?.[1];
+  if (!tools) throw new Error('Missing deny-tools frontmatter.');
   return tools.split(',').map((name) => name.trim()).filter(Boolean);
 }
 
-function policyHarness(allowed: readonly string[]) {
-  const policy = new Set(allowed);
+function policyHarness(denied: readonly string[]) {
+  const policy = new Set(denied);
   const registered: any[] = [];
   const sessionHandlers: Array<() => void> = [];
-  let active = policy.has('write') ? ['write'] : [];
+  let active = policy.has('write') ? [] : ['write'];
   const pi = {
     registerCommand: () => undefined,
     registerTool: (tool: any) => {
+      if (policy.has(tool.name)) return;
       registered.push(tool);
-      if (policy.has(tool.name)) active.push(tool.name);
+      active.push(tool.name);
     },
     getActiveTools: () => [...active],
     getAllTools: () => registered.map((tool) => ({ name: tool.name, parameters: tool.parameters })),
-    setActiveTools: (names: string[]) => { active = names.filter((name) => policy.has(name)); },
+    setActiveTools: (names: string[]) => { active = names.filter((name) => !policy.has(name)); },
     on: (event: string, handler: () => void) => {
       if (event === 'session_start') sessionHandlers.push(handler);
     },
@@ -71,14 +72,11 @@ describe('restricted Linear agent recovery', () => {
     const agentPath = join(root, 'linear.md');
     await writeFile(agentPath, '---\nname: linear\ntools: all, read, bash, exec, linear_old\nmode: background\n---\n\nRestricted agent.\n\n## Tool surface\n\nOld.\n\n## Query discipline\n\nOld.\n\n## Job 1 — Recover\n\nKeep.\n');
     await syncAllowlistFile(agentPath);
-    const allowed = toolsFromAgent(await readFile(agentPath, 'utf8'));
+    const agent = await readFile(agentPath, 'utf8');
+    const denied = deniedToolsFromAgent(agent);
 
-    // `read` and `write` are the agent's permitted base; command-running tools are stripped.
-    expect(allowed).toEqual(['read', 'write', ...manifest.allowedTools]);
-    expect(allowed.filter((name) => !name.startsWith('linear'))).toEqual(['read', 'write']);
-    expect(allowed).not.toEqual(expect.arrayContaining(['all', 'bash', 'exec']));
-    expect(allowed).toContain('linear_get_result');
-    expect(allowed).toContain('linear_graphql');
+    expect(agent).not.toMatch(/^tools:/m);
+    expect(denied).toEqual(['bash', 'edit', 'grep', 'find', 'ls', 'image_gen']);
 
     const rows = Array.from({ length: 80 }, (_, index) => ({
       id: `row-${index}`,
@@ -92,7 +90,7 @@ describe('restricted Linear agent recovery', () => {
     }));
     vi.stubGlobal('fetch', fetch);
 
-    const harness = policyHarness(allowed);
+    const harness = policyHarness(denied);
     expect(harness.registered).toHaveLength(53);
     expect(harness.registered.map(({ name }) => name)).toContain('linear_get_result');
     expect(harness.registered.map(({ name }) => name)).toContain('linear_graphql');
