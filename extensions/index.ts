@@ -146,7 +146,23 @@ export function registerLinearExtension(pi: ExtensionAPI, mode: MutationMode = '
   };
 
   const initializeDeferredSurface = (): void => {
-    pi.setActiveTools(pi.getActiveTools().filter((name) => !lazyToolNames.has(name)));
+    // Resume and parent loaders can leave registered tools inactive or keep only
+    // one discovery tool. Place the startup pair in contract order; keep other
+    // host tools in their relative order.
+    const withoutLazy = pi.getActiveTools().filter((name) => !lazyToolNames.has(name));
+    const initial = new Set(initialLinearToolNames);
+    const firstInitialIndex = withoutLazy.findIndex((name) => initial.has(name));
+    const rest = withoutLazy.filter((name) => !initial.has(name));
+    if (firstInitialIndex < 0) {
+      pi.setActiveTools([...rest, ...initialLinearToolNames]);
+    } else {
+      const prefixLength = withoutLazy.slice(0, firstInitialIndex).filter((name) => !initial.has(name)).length;
+      pi.setActiveTools([
+        ...rest.slice(0, prefixLength),
+        ...initialLinearToolNames,
+        ...rest.slice(prefixLength),
+      ]);
+    }
     registrySignature = currentRegistrySignature();
     registryRefreshPending = false;
     rememberVisibleLinearTools();

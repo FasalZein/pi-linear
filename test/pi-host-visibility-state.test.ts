@@ -25,6 +25,7 @@ function extensionVisibilityHarness(options: {
   driftSchema?: string;
   initialActive?: string[];
   deferSessionStart?: boolean;
+  activateOnRegister?: boolean;
 } = {}) {
   const allowed = new Set([...manifest.allowedTools, 'host_sentinel', ...(options.initialActive ?? [])]);
   const registered: Array<{ name: string; parameters?: unknown; execute?: (...args: any[]) => unknown }> = [];
@@ -37,7 +38,7 @@ function extensionVisibilityHarness(options: {
       if (tool.name !== options.omitRegistration) {
         registered.push(tool.name === options.driftSchema ? { ...tool, parameters: Type.Object({ drift: Type.String() }) } : tool);
       }
-      if (allowed.has(tool.name)) active.push(tool.name);
+      if (options.activateOnRegister !== false && allowed.has(tool.name)) active.push(tool.name);
     },
     getActiveTools: () => [...active],
     getAllTools: () => registered.map(({ name, parameters }) => ({ name, parameters })),
@@ -97,6 +98,29 @@ describe('Linear deferred tool visibility state', () => {
     expect(() => unexpected.emit('session_start')).toThrow(
       'Linear tool configuration error: initial active tools are linear_unexpected, linear, linear_get_result; expected linear, linear_get_result.',
     );
+  });
+
+  it('activates linear and linear_get_result when the host leaves registered tools inactive', () => {
+    const cases = [
+      ['host_sentinel'],
+      ['host_sentinel', 'linear'],
+      ['host_sentinel', 'linear_get_result'],
+      ['host_sentinel', 'linear_get_result', 'linear'],
+      ['linear_get_result', 'host_sentinel'],
+    ];
+    for (const initialActive of cases) {
+      const harness = extensionVisibilityHarness({
+        activateOnRegister: false,
+        initialActive,
+        deferSessionStart: true,
+      });
+      expect(() => harness.emit('session_start'), initialActive.join(',')).not.toThrow();
+      expect(
+        harness.active().filter((name) => name === 'linear' || name.startsWith('linear_')),
+        initialActive.join(','),
+      ).toEqual(['linear', 'linear_get_result']);
+      expect(harness.active(), initialActive.join(',')).toContain('host_sentinel');
+    }
   });
 
   it('does not reset the host tool selection when every permitted Linear tool was explicitly activated', async () => {
